@@ -66,11 +66,39 @@
   background: var(--ls-brand-fill);
 }
 
-/* Secondary: an accent outline, paired with a primary. Hover is the solid accent (rule 4). */
+/* Secondary: an accent outline, paired with a primary. Owner exception to rule 4 (addendum, 2026-10-15): it never fills on hover. The
+   background stays clear, the text keeps its color, the border goes one scale step stronger, the button lifts and grows a little and the
+   trailing arrow nudges forward (150 ms ease-out). Reduced motion and the off switch zero the three movement tokens: the border change is
+   all that is left. The arrow is the icon-set arrow (icons.tsx, 1.75 stroke on a 24 grid) drawn as a mask in the text color; a button that
+   is icon only, or already has its own icon, shows none. */
 [data-ui='v2'] .ls-btn-secondary {
-  border-color: var(--ls-brand);
+  border-color: var(--ls-outline-border);
   color: var(--ls-brand);
   background: transparent;
+}
+
+[data-ui='v2'] .ls-btn-secondary:not(.ls-btn-icon):not(:has(> svg))::after {
+  content: '';
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transition: transform var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-outline-border-hover);
+    color: var(--ls-brand);
+    background: transparent;
+    transform: translateY(var(--ls-btn-lift)) scale(var(--ls-btn-zoom));
+  }
+
+  [data-ui='v2'] .ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)::after {
+    transform: translateX(var(--ls-btn-nudge));
+  }
 }
 
 /* Neutral: the quiet pill (Cancel, filters, toolbar actions). Its fill is the step a field takes, so it shows on either band. */
@@ -88,6 +116,37 @@
   border-color: var(--ls-danger);
   color: var(--ls-danger);
   background: transparent;
+}
+
+/* Danger is a red of its own (never the accent) and always carries an icon in its label. The solid fill is the danger scale's step 9, its hover
+   step 10; dark mode flips the label to near-black because that red is a light one. */
+[data-ui='v2'] .ls-btn-danger {
+  color: var(--ls-on-danger);
+  background: var(--ls-danger-fill);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-btn-danger-outline:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-danger-fill);
+    color: var(--ls-on-danger);
+    background: var(--ls-danger-fill);
+  }
+
+  [data-ui='v2'] .ls-btn-danger:hover:not([aria-disabled='true']):not(:disabled) {
+    background: var(--ls-danger-fill-hover);
+  }
+}
+
+[data-ui='v2'] .ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled) {
+  color: var(--ls-on-danger);
+  background: var(--ls-danger-fill);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-menu-item-danger:hover:not(.ls-menu-item-disabled) {
+    color: var(--ls-on-danger);
+    background: var(--ls-danger-fill);
+  }
 }
 
 /* Disabled: the pressed neutral fill and subtle text, a word or reason beside it where it matters; no opacity, no hover. */

@@ -45,6 +45,7 @@
 
 /* ---- Wordmark (D2, Q12): Be Vietnam Pro 600 in the brand color; spacing and color are unchanged ---- */
 [data-ui='v2'] .ls-site-brand a {
+  color: var(--ls-wordmark);
   font-family: var(--ls-font-display);
   font-weight: var(--ls-weight-title);
 }

@@ -94,106 +94,212 @@ test('forced light repeats the light value of every token the dark block overrid
   );
 });
 
-test('light: bands are #ffffff and #f5f5f7, a card takes the other step', () => {
-  assert.equal(light['--ls-bg-page'], '#ffffff');
-  assert.equal(light['--ls-bg-sunken'], '#f5f5f7');
-  assert.equal(light['--ls-band-base'], '#ffffff');
-  assert.equal(light['--ls-band-alt'], '#f5f5f7');
-  assert.equal(light['--ls-bg-surface'], '#f5f5f7');
-  assert.equal(light['--ls-bg-surface-alt'], '#ffffff');
-  assert.equal(light['--ls-brand'], '#782b37');
-  assert.equal(light['--ls-brand-fill'], '#782b37');
+// Every role token is one step of a 12-step scale (DESIGN.md 6.1, Radix method). [light, dark]; a literal is not a step.
+const ROLE_STEPS: Record<string, [string, string]> = {
+  'band-base': ['gray-1', 'gray-1'],
+  'band-alt': ['gray-2', 'gray-2'],
+  'bg-page': ['gray-1', 'gray-1'],
+  'bg-sunken': ['gray-2', 'gray-2'],
+  'bg-surface': ['gray-2', 'gray-2'],
+  'bg-surface-alt': ['gray-1', 'gray-3'],
+  'bg-raised': ['gray-1', 'gray-3'],
+  'bg-pressed': ['gray-4', 'gray-4'],
+  text: ['gray-12', 'gray-12'],
+  'text-muted': ['gray-10', 'gray-10'],
+  'text-subtle': ['gray-8', 'gray-10'],
+  border: ['gray-5', 'gray-5'],
+  'border-control': ['gray-7', 'gray-7'],
+  brand: ['burgundy-11', 'burgundy-11'],
+  'brand-fill': ['burgundy-9', 'burgundy-9'],
+  'brand-fill-hover': ['burgundy-10', 'burgundy-10'],
+  'brand-soft': ['burgundy-3', 'burgundy-3'],
+  'brand-on-soft': ['burgundy-12', 'burgundy-11'],
+  focus: ['burgundy-11', 'burgundy-11'],
+  wordmark: ['burgundy-9', 'gray-12'],
+  'outline-border': ['burgundy-9', 'burgundy-9'],
+  'outline-border-hover': ['burgundy-10', 'burgundy-10'],
+  'hover-bg': ['burgundy-9', 'burgundy-9'],
+  'hover-border': ['burgundy-9', 'burgundy-9'],
+  'hover-ghost-border': ['burgundy-9', 'burgundy-9'],
+  'row-hover-bg': ['gray-2', 'gray-3'],
+  'nav-hover-bg': ['gray-4', 'gray-4'],
+  'nav-hover-text': ['gray-12', 'gray-12'],
+  'nav-active-bg': ['burgundy-9', 'burgundy-9'],
+  'auth-flat': ['burgundy-9', 'gray-2'],
+  danger: ['danger-11', 'danger-11'],
+  'danger-bg': ['danger-3', 'danger-3'],
+  'danger-fill': ['danger-9', 'danger-9'],
+  'danger-fill-hover': ['danger-10', 'danger-10'],
+  success: ['success-11', 'success-11'],
+  'success-bg': ['success-3', 'success-3'],
+  warning: ['warning-11', 'warning-11'],
+  'warning-bg': ['warning-3', 'warning-3'],
+  info: ['info-11', 'info-11'],
+  'info-bg': ['info-3', 'info-3'],
+};
+
+const v2Css = css.slice(css.indexOf('v2 scope (DESIGN.md'));
+const FAMILIES = ['gray', 'burgundy', 'danger', 'success', 'warning', 'info'];
+
+// OKLab distance (the "delta E OK"): how far apart two colors look. 0.1 is plainly visible, 0.2 is unmistakable.
+function oklab(value: string): [number, number, number] {
+  const n = parseInt(value.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+    const x = c / 255;
+    return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+const deltaE = (a: string, b: string): number => {
+  const [x, y] = [oklab(a), oklab(b)];
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+};
+
+test('every family has 12 steps in the light, both dark and the forced-light blocks', () => {
+  for (const theme of [light, darkAttribute, forcedLight]) {
+    for (const family of FAMILIES) {
+      for (let step = 1; step <= 12; step++)
+        hex(theme[`--ls-${family}-${step}`], `${family}-${step}`);
+    }
+  }
 });
 
-test('light ratios of DESIGN.md 6.1 are reproduced', () => {
-  const white = '#ffffff';
-  const band = '#f5f5f7';
-  assertRatio(ratio(token(light, 'text'), white), 16.83, 'text on white');
-  assertRatio(ratio(token(light, 'text'), band), 15.46, 'text on band');
-  assertRatio(ratio(token(light, 'text-muted'), white), 7.91, 'muted on white');
-  assertRatio(ratio(token(light, 'text-muted'), band), 7.26, 'muted on band');
-  assertRatio(ratio(token(light, 'text-subtle'), white), 5.07, 'subtle on white');
-  assertRatio(ratio(token(light, 'text-subtle'), band), 4.66, 'subtle on band');
-  assertRatio(ratio(token(light, 'border-control'), white), 3.62, 'control border on white');
-  assertRatio(ratio(token(light, 'border-control'), band), 3.33, 'control border on band');
-  assertRatio(ratio(token(light, 'brand'), white), 9.55, 'accent on white');
-  assertRatio(ratio(token(light, 'brand'), band), 8.77, 'accent on band');
-  assertRatio(
-    ratio(token(light, 'on-brand'), token(light, 'brand-fill')),
-    9.55,
-    'on-brand on fill',
-  );
-  assertRatio(
-    ratio(token(light, 'on-brand'), token(light, 'brand-fill-hover')),
-    11.58,
-    'on-brand on fill hover',
-  );
-  assertRatio(
-    ratio(token(light, 'brand-on-soft'), token(light, 'brand-soft')),
-    7.92,
-    'accent on soft',
-  );
+test('the burgundy light solid is #782b37 and the dark solid is a burgundy, not a pink', () => {
+  assert.equal(light['--ls-burgundy-9'], '#782b37');
+  assert.equal(light['--ls-brand-fill'], '#782b37');
+  assert.equal(light['--ls-bg-page'], '#ffffff');
+  assert.equal(light['--ls-bg-sunken'], '#f5f5f7');
+  assert.equal(darkAttribute['--ls-bg-page'], '#000000');
+  assert.equal(darkAttribute['--ls-bg-sunken'], '#1c1c1e');
+  assert.equal(darkAttribute['--ls-bg-raised'], '#2c2c2e');
+  assert.equal(darkAttribute['--ls-bg-pressed'], '#3a3a3c');
+  for (const retired of ['#e48f9f', '#eca5b2', '#3a2227']) {
+    assert.ok(
+      !v2Css.includes(retired),
+      `${retired} (the old candy pink) is gone from the v2 scope`,
+    );
+  }
+  // White text on the dark fill, as on the light one.
+  assert.equal(darkAttribute['--ls-on-brand'], '#ffffff');
+  assert.equal(darkAttribute['--ls-hover-text'], '#ffffff');
+});
+
+test('each role token is the documented step of its scale, in both modes', () => {
+  for (const [role, [lightStep, darkStep]] of Object.entries(ROLE_STEPS)) {
+    assert.equal(
+      light[`--ls-${role}`],
+      light[`--ls-${lightStep}`],
+      `${role} (light) = ${lightStep}`,
+    );
+    assert.equal(
+      darkAttribute[`--ls-${role}`],
+      darkAttribute[`--ls-${darkStep}`],
+      `${role} (dark) = ${darkStep}`,
+    );
+  }
 });
 
 test('light: every text color is 4.5:1 on both bands, controls and the focus ring are 3:1', () => {
   for (const surface of [token(light, 'bg-page'), token(light, 'bg-sunken')]) {
-    for (const name of ['text', 'text-muted', 'text-subtle', 'brand']) {
+    for (const name of [
+      'text',
+      'text-muted',
+      'text-subtle',
+      'brand',
+      'danger',
+      'success',
+      'warning',
+      'info',
+    ]) {
       assert.ok(ratio(token(light, name), surface) >= 4.5, `${name} on ${surface}`);
     }
     for (const name of ['border-control', 'focus']) {
       assert.ok(ratio(token(light, name), surface) >= 3, `${name} on ${surface}`);
     }
   }
+  assert.ok(ratio(token(light, 'text'), token(light, 'bg-page')) >= 15);
 });
 
-test('dark: the base is black, the steps are #1c1c1e, #2c2c2e and #3a3a3c, the accent is #e48f9f', () => {
-  const dark = darkAttribute;
-  assert.equal(dark['--ls-bg-page'], '#000000');
-  assert.equal(dark['--ls-bg-sunken'], '#1c1c1e');
-  assert.equal(dark['--ls-bg-surface'], '#1c1c1e');
-  assert.equal(dark['--ls-bg-surface-alt'], '#2c2c2e');
-  assert.equal(dark['--ls-bg-raised'], '#2c2c2e');
-  assert.equal(dark['--ls-bg-pressed'], '#3a3a3c');
-  assert.equal(dark['--ls-brand'], '#e48f9f');
-  assert.equal(dark['--ls-brand-fill'], '#e48f9f');
-  assert.equal(dark['--ls-focus'], '#e48f9f');
-  assert.equal(dark['--ls-on-brand'], '#000000', 'text on the accent fill is near-black');
+test('light: white on the accent fill, its hover and the danger fill is 4.5:1; status text holds on its own tint', () => {
+  assert.ok(ratio(token(light, 'on-brand'), token(light, 'brand-fill')) >= 9);
+  assert.ok(ratio(token(light, 'on-brand'), token(light, 'brand-fill-hover')) >= 9);
+  assert.ok(ratio(token(light, 'hover-text'), token(light, 'hover-bg')) >= 4.5);
+  assert.ok(ratio(token(light, 'brand-on-soft'), token(light, 'brand-soft')) >= 7);
+  assert.ok(ratio(token(light, 'on-danger'), token(light, 'danger-fill')) >= 4.5);
+  assert.ok(ratio(token(light, 'on-danger'), token(light, 'danger-fill-hover')) >= 4.5);
+  for (const name of ['danger', 'success', 'warning', 'info']) {
+    assert.ok(ratio(token(light, name), token(light, `${name}-bg`)) >= 4.5, `${name} on its tint`);
+  }
 });
 
-test('dark ratios of DESIGN.md 6.2 are reproduced on every elevation step', () => {
+test('dark: text, accent text and status text hold on every elevation step; the accent is a muted rose, 7:1 on E0 and E1', () => {
   const dark = darkAttribute;
   const [e0, e1, e2, e3] = ['#000000', '#1c1c1e', '#2c2c2e', '#3a3a3c'] as const;
-  assertRatio(ratio(token(dark, 'text'), e0), 19.29, 'text on E0');
-  assertRatio(ratio(token(dark, 'text'), e2), 12.8, 'text on E2');
-  assertRatio(ratio(token(dark, 'text-muted'), e0), 8.16, 'muted on E0');
-  assertRatio(ratio(token(dark, 'text-muted'), e1), 6.61, 'muted on E1');
-  assertRatio(ratio(token(dark, 'text-muted'), e2), 5.42, 'muted on E2');
-  assertRatio(ratio(token(dark, 'border-control'), e0), 5.8, 'control border on E0');
-  assertRatio(ratio(token(dark, 'border-control'), e1), 4.7, 'control border on E1');
-  assertRatio(ratio(token(dark, 'border-control'), e2), 3.85, 'control border on E2');
-  assertRatio(ratio(token(dark, 'brand'), e0), 8.73, 'accent on E0');
-  assertRatio(ratio(token(dark, 'brand'), e1), 7.07, 'accent on E1');
-  assertRatio(ratio(token(dark, 'brand'), e2), 5.79, 'accent on E2');
-  assertRatio(ratio(token(dark, 'brand'), e3), 4.72, 'accent on E3');
-  assertRatio(ratio(token(dark, 'on-brand'), token(dark, 'brand-fill')), 8.73, 'black on accent');
-  assertRatio(
-    ratio(token(dark, 'on-brand'), token(dark, 'brand-fill-hover')),
-    10.59,
-    'black on accent hover',
-  );
-  assertRatio(
-    ratio(token(dark, 'brand-on-soft'), token(dark, 'brand-soft')),
-    6.07,
-    'accent on soft',
-  );
   for (const surface of [e0, e1, e2]) {
-    for (const name of ['text', 'text-muted', 'text-subtle']) {
+    for (const name of [
+      'text',
+      'text-muted',
+      'text-subtle',
+      'brand',
+      'danger',
+      'success',
+      'warning',
+      'info',
+    ]) {
       assert.ok(ratio(token(dark, name), surface) >= 4.5, `${name} on ${surface}`);
     }
     assert.ok(ratio(token(dark, 'border-control'), surface) >= 3, `control border on ${surface}`);
+    assert.ok(ratio(token(dark, 'focus'), surface) >= 3, `focus ring on ${surface}`);
+  }
+  for (const surface of [e0, e1]) {
+    assert.ok(ratio(token(dark, 'brand'), surface) >= 7, `accent text on ${surface}`);
   }
   // E3 is a neutral hover or pressed surface only: ordinary text stays readable on it, the accent text is never used there.
   assert.ok(ratio(token(dark, 'text'), e3) >= 4.5);
+  // Muted rose: clearly less saturated than the old #e48f9f.
+  const [, a, b] = oklab(token(dark, 'brand'));
+  assert.ok(Math.hypot(a, b) < 0.07, `accent text chroma ${Math.hypot(a, b).toFixed(3)} < 0.07`);
+});
+
+test('dark: white text on the accent fill and its hover, dark text on the danger fill, status text on its tint', () => {
+  const dark = darkAttribute;
+  assert.ok(ratio(token(dark, 'on-brand'), token(dark, 'brand-fill')) >= 5);
+  assert.ok(ratio(token(dark, 'on-brand'), token(dark, 'brand-fill-hover')) >= 4.5);
+  assert.ok(ratio(token(dark, 'brand-on-soft'), token(dark, 'brand-soft')) >= 7);
+  assert.ok(ratio(token(dark, 'on-danger'), token(dark, 'danger-fill')) >= 4.5);
+  assert.ok(ratio(token(dark, 'on-danger'), token(dark, 'danger-fill-hover')) >= 4.5);
+  for (const name of ['danger', 'success', 'warning', 'info']) {
+    assert.ok(ratio(token(dark, name), token(dark, `${name}-bg`)) >= 4.5, `${name} on its tint`);
+  }
+  // The accent fill does not sink into black: 3:1 on E0 and E1.
+  assert.ok(ratio(token(dark, 'brand-fill'), '#000000') >= 3);
+  assert.ok(ratio(token(dark, 'brand-fill'), '#1c1c1e') >= 3);
+  assert.ok(ratio(token(dark, 'danger-fill'), '#2c2c2e') >= 3);
+});
+
+test('the brand and the danger color are never close: solid vs solid and text vs text, in both modes', () => {
+  for (const [mode, theme] of [
+    ['light', light],
+    ['dark', darkAttribute],
+  ] as const) {
+    assert.ok(
+      deltaE(token(theme, 'brand-fill'), token(theme, 'danger-fill')) >= 0.15,
+      `${mode} solids: ${deltaE(token(theme, 'brand-fill'), token(theme, 'danger-fill')).toFixed(3)}`,
+    );
+    assert.ok(
+      deltaE(token(theme, 'brand'), token(theme, 'danger')) >= 0.1,
+      `${mode} text: ${deltaE(token(theme, 'brand'), token(theme, 'danger')).toFixed(3)}`,
+    );
+  }
+  // The light accent text is plainly colored, not the ink.
+  assert.ok(deltaE(token(light, 'brand'), token(light, 'text')) >= 0.1);
 });
 
 test('hover: solid accent with its text in both modes (rule 4); rows and sidebar items use a neutral tint (Q3)', () => {

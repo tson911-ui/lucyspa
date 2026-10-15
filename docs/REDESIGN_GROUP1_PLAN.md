@@ -296,3 +296,7 @@ Carried to group 3: a staff screen to edit a customer's birthday (Owner, 2026-10
 - **C19: deploy guide (S).** Status: done (`docs/DEPLOY_REDESIGN_GROUP1.md`, 137 migrations, 82 permissions, with the policy import; the commit to install is filled in at push time).
   A single `docs/DEPLOY_REDESIGN_GROUP1.md` for the Owner to run. Not a deploy; group 1 ships once, after the Owner approves C18.
   Group 1 carries the C11b migration (see C11b), so the guide covers: migration, API restart, web reload.
+
+### Session 9 (group 1 polish before deploy)
+
+- **Item 1: color system (done, see the commit).** One 12-step scale per family, light and dark (burgundy anchored on `#782b37`, neutrals, danger, success, warning, info), role tokens that point at them, white text on the dark accent fill, a muted rose for dark accent text, a distinct danger red, the secondary-button hover exception. Single source for **groups 2 and 3 too**: they read these tokens and add only density (`DESIGN.md` 6.1, 14); no staff palette. Staff screens were not restyled.

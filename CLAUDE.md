@@ -90,9 +90,12 @@ These add to the UX quality gate above; none of it is removed.
    **Superseded in part by `DESIGN.md` (Owner, 2026-10-14):** the fonts and palette named in rules 1-2 and the direction C look
    described above. The brand red, the light and dark modes and the text logo stay.
 3. No gold or yellow anywhere, except holiday decorations (Tết, Mid-Autumn, national days) in the seasonal theme layer.
-4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the existing
-   dark-mode pink accent (now `#e48f9f`, see `DESIGN.md`). Exception (Owner delegation, 2026-10-14): hover on staff table rows
-   and staff sidebar items is a neutral tint, not the solid accent; the current page in the sidebar stays solid accent.
+4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the solid dark burgundy
+   (`--ls-hover-bg`, burgundy step 9, white text; the pink `#e48f9f` is retired, see `DESIGN.md` 6.1). Exception (Owner delegation, 2026-10-14):
+   hover on staff table rows and staff sidebar items is a neutral tint, not the solid accent; the current page in the sidebar stays
+   solid accent. Exception (Owner, 2026-10-15): a secondary (outline) button never fills on hover: transparent background, accent
+   text kept, border one scale step stronger, lift `translateY(-2px)` + `scale(1.02)` and a trailing arrow that nudges 3 px right
+   (150 ms ease-out, motion tokens); reduced motion and `ls-fx=off` keep the border change only (`DESIGN.md` 8.1).
 5. Polish passes change UI only: no business logic, API, database or data changes. Never touch `apps/web/next-env.d.ts`.
 6. Every UI change still goes through the quality gate (screenshots at 360/768/1440 px, light and dark, 130% text, all
    states, DOM audit vs baseline), with before/after screenshots for the Owner to approve.

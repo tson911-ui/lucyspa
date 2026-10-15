@@ -164,7 +164,7 @@
 
 [data-ui='v2'] .ls-home-fact-caption .ls-icon-lead {
   flex: none;
-  color: var(--ls-brand);
+  color: var(--ls-text-muted);
 }
 
 /* ---- Home: split intro and top services (9.1, item 3) --------------------------------------------------------------------------------- */
@@ -352,7 +352,7 @@
 }
 
 [data-ui='v2'] .ls-home-top-row svg {
-  color: var(--ls-brand);
+  color: var(--ls-text-muted);
 }
 
 [data-ui='v2'] .ls-home-empty {
@@ -731,7 +731,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 }
 
 [data-ui='v2'] .ls-home-why-card svg {
-  color: var(--ls-brand);
+  color: var(--ls-text);
 }
 
 [data-ui='v2'] .ls-home-why-title {
@@ -1124,7 +1124,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   display: grid;
   height: calc(1em * var(--ls-lh-body));
   place-items: center;
-  color: var(--ls-brand);
+  color: var(--ls-text);
 }
 
 [data-ui='v2'] .ls-svd-steps {
@@ -1680,7 +1680,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   height: var(--ls-space-8);
   border-radius: var(--ls-radius-full);
   background: var(--ls-bg-field);
-  color: var(--ls-brand);
+  color: var(--ls-text);
 }
 
 [data-ui='v2'] .ls-timeline-text {

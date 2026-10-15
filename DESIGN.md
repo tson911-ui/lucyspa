@@ -70,7 +70,7 @@ Where a reference conflicts with a locked decision, the locked decision wins:
 
 | Reference says                              | Lucy Spa uses                                                                                                             |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Apple blue `#0071e3` / Aevi blue `#a3bfdb`  | Accent `#782b37` (light), `#e48f9f` (dark)                                                                                |
+| Apple blue `#0071e3` / Aevi blue `#a3bfdb`  | Accent `#782b37` (light solid), a burgundy scale with a muted rose for dark text (6.1, revised 2026-10-15)                |
 | SF Pro                                      | Be Vietnam Pro                                                                                                            |
 | Aevi radius 2 px                            | Apple-style rounded corners: 8 px controls, 18 px cards and media, pill for buttons and tags                              |
 | Aevi powder-blue bands `#d5e0ea`            | Neutral bands `#f5f5f7`                                                                                                   |
@@ -94,7 +94,7 @@ Each rule has an ID for the screenshot gate (section 14).
   bezeled controls and about 24 px around bare icons so neighbours are not hit by mistake.
 - **H4 Contrast.** WCAG AA at least: 4.5:1 for text, 3:1 for large text (24 px, or 18.66 px bold) and for the boundary of a
   control or an icon that carries meaning. In dark mode check **every elevation step** a token can sit on (section 6.2).
-  Custom colors in dark mode aim for 7:1 on small text where possible (accent text reaches 7.07:1 on `#1c1c1e`).
+  Custom colors in dark mode aim for 7:1 on small text where possible (accent text reaches 8.61:1 on `#1c1c1e`, 6.1).
 - **H5 Color is never the only signal.** Status, selection, errors, required, sale and focus also use a word, an icon or a shape.
 - **H6 Typography.** One family (Be Vietnam Pro). Weights 400, 500, 600 only. Hierarchy by size, weight and color, and it
   survives text enlargement. Leading is loose for long text; tight leading never for 3 or more lines. Do not lock sizes
@@ -154,65 +154,125 @@ badge, table header and band colors must look like one family.
 All names keep the existing `--ls-*` namespace; values change. Every color below is a token; screens never use a hex. WCAG
 ratios were computed for this draft; `tokens.test.ts` must be updated to assert them (15).
 
-### 6.1 Color: light
+### 6.1 Color system (revised by the Owner, 2026-10-15, session 9; replaces the old 6.1 and 6.2 tables)
 
-| Token                          | Value                    | Use                                                                                                  | Contrast / note                   |
-| ------------------------------ | ------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `--ls-bg-page`                 | `#ffffff`                | Base band, header, popovers                                                                          |                                   |
-| `--ls-bg-sunken` (band)        | `#f5f5f7`                | Alternate band; staff app canvas                                                                     |                                   |
-| `--ls-bg-surface`              | the **other** band color | A card takes the opposite of its container: `#ffffff` on a `#f5f5f7` band, `#f5f5f7` on `#ffffff`    | Scoped by `.ls-band--base/--alt`  |
-| `--ls-bg-raised`               | `#ffffff`                | Dialog, drawer, menu, popover (with a hairline and the scrim)                                        |                                   |
-| `--ls-bg-pressed`              | `#e2e2e5`                | Pressed/disabled neutral surface                                                                     |                                   |
-| `--ls-text`                    | `#1d1d1f`                | Primary text                                                                                         | 16.83 on white, 15.46 on band     |
-| `--ls-text-muted`              | `#515154`                | Secondary text                                                                                       | 7.91 white, 7.26 band             |
-| `--ls-text-subtle`             | `#6e6e73`                | Captions, placeholders, helper text. **The lightest allowed text color.**                            | 5.07 white, 4.66 band             |
-| `--ls-border`                  | `#d2d2d7`                | Hairlines, dividers, card edges (decorative)                                                         | Not for control boundaries        |
-| `--ls-border-control`          | `#86868b`                | Input, select, checkbox boundary                                                                     | 3.62 white, 3.33 band (needs 3:1) |
-| `--ls-brand` / `--ls-focus`    | `#782b37`                | Accent: links, outline buttons, current item, focus ring                                             | 9.55 white, 8.77 band             |
-| `--ls-brand-fill`              | `#782b37`                | Primary button fill                                                                                  | white text 9.55                   |
-| `--ls-brand-fill-hover`        | `#632330`                | Primary button hover/press                                                                           | white text 11.58                  |
-| `--ls-on-brand`                | `#ffffff`                | Text on accent fill                                                                                  |                                   |
-| `--ls-brand-soft` / `-on-soft` | `#f3e7e9` / `#782b37`    | Selected tint, current-state chip                                                                    | 7.92                              |
-| `--ls-hover-bg` / `-text`      | `#782b37` / `#ffffff`    | Hover (Owner rule 4, kept: solid accent, white text)                                                 | 9.55                              |
-| `--ls-row-hover-bg`            | `#f5f5f7`                | Hover of **every** table row (customer and staff): the next neutral step from the table surface (Q3) |                                   |
-| `--ls-nav-hover-bg`            | `#e2e2e5`                | Hover of a staff sidebar item (ink text); the current page stays solid accent (Q3)                   | ink 13+                           |
+**One scale per family, 12 steps, light and dark, built by the Radix method** (Radix Colors usage: 1-2 backgrounds, 3-5 component
+backgrounds and the selected/hover tints, 6-8 borders, 9 the solid, 10 the solid on hover, 11 low-contrast text, 12 high-contrast
+text) and read with the Apple HIG rules (color used sparingly, a neutral text hierarchy, a dark mode of its own that is not an
+inversion). The scales are tokens (`--ls-gray-1` to `-12`, `--ls-burgundy-N`, `--ls-danger-N`, `--ls-success-N`, `--ls-warning-N`,
+`--ls-info-N`); every role token (`--ls-brand`, `--ls-text`, ...) is one step of one scale, and `tokens-v2.test.ts` asserts that
+mapping, the contrast ratios below and the distance between the brand and the danger color.
 
-Status (kept from today, re-verified on both bands): danger `#b3261e` on `#fdecea`, success `#1e6b3c` on `#e6f3ea`, warning
-`#8f4300` on `#fdeedd`, info `#22518a` on `#e8f0fa`. Ratios 5.7 to 7.0 on their tints, 6.0 to 7.4 on white or band. Charts keep
-their six-slot palette (`--ls-chart-*`) unchanged; `--ls-chart-1` is the accent family.
+**These tokens are the single source for the customer site, POS and admin.** Groups 2 and 3 read exactly these tokens through
+`data-ui="v2"` (D1): no staff palette, no staff accent. Staff screens are not restyled by this change (they still read the old
+root values until groups 2 and 3 switch them on).
 
-`#86868b` is **never** used as text in light mode (3.62 on white).
+Rules that follow from the HIG and are enforced by the roles below:
 
-### 6.2 Color: dark (Apple-style)
+- **Burgundy is anchored on `#782b37`, the light solid (step 9).** Accent fill: light `#782b37` with white text; dark `#af4c60`
+  (a burgundy that does not sink into black) with **white** text. Dark never uses black text on the accent fill and never uses
+  the old pink `#e48f9f` / `#eca5b2` / `#3a2227` (retired).
+- **Accent text** (links, the current nav item, the focus ring, outline-button text): step 11 in both modes. Light `#5c1f28` is
+  a deep burgundy, plainly colored (distance from the ink 0.137, "delta E OK"); dark `#dbadb2` is a muted dusty rose (chroma 0.055,
+  against 0.105 for the old pink). Step 12 (light `#4a1820`) is the text on the selected tint.
+- **Accent is used sparingly (D5):** the primary action, the current location, selection, links, the focus ring. Icons in
+  cards and lists are ink or grey; there is no tinted pink background unless a selection needs the soft tint (step 3).
+- **Wordmark:** light = the brand solid `#782b37`; dark = the page text color (white-grey), never pink.
+- **Hover (Owner rule 4, kept):** the solid accent fill (step 9) with white text, light and dark. A primary button, already
+  filled, goes to step 10. Staff table rows and the sidebar keep the neutral tint (Q3). **A secondary (outline) button never
+  fills on hover (Owner exception, 2026-10-15; 8.1).**
+- **Danger is a red of its own** (hue 29, against 14 for the burgundy): light solid `#d72119` with white text, dark solid
+  `#fb5a4a` with near-black text (`#1a0505`). A danger action also carries an icon and a word; it is never styled like a brand
+  action. Distance from the brand (delta E OK): solids 0.196 light and 0.157 dark; text colors 0.187 and 0.120.
+- Status colors (danger, success, warning, info): text, border and icon = step 11, tint = step 3, always with a word or an icon.
+  Only danger has a solid fill (the destructive button). The warning family is an orange-brown, not a yellow.
 
-Dark is stepped, not inverted: the closer a surface is to the user, the lighter it is (HIG base and elevated).
+#### Scales
 
-| Token                           | Value                                                                                | Use                                                                           | Contrast / note                                               |
-| ------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `--ls-bg-page` (E0, base)       | `#000000`                                                                            | Base band, header                                                             |                                                               |
-| `--ls-bg-sunken` (E1, band)     | `#1c1c1e`                                                                            | Alternate band; staff app canvas                                              |                                                               |
-| `--ls-bg-surface`               | the **other** step                                                                   | Card on E0 = `#1c1c1e`; card on E1 = `#2c2c2e`                                |                                                               |
-| `--ls-bg-raised` (E2)           | `#2c2c2e`                                                                            | Dialog, drawer, menu, popover                                                 |                                                               |
-| E3                              | `#3a3a3c`                                                                            | Neutral hover/pressed surface only. **No accent text on E3.**                 |                                                               |
-| `--ls-text`                     | `#f5f5f7`                                                                            | Primary text                                                                  | 19.29 on E0, 12.8 on E2                                       |
-| `--ls-text-muted`               | `#a1a1a6`                                                                            | Secondary text and captions. **The dimmest allowed dark text.**               | 8.16 E0, 6.61 E1, 5.42 E2                                     |
-| `--ls-border`                   | `#38383a`                                                                            | Hairlines (decorative)                                                        |                                                               |
-| `--ls-border-control`           | `#86868b`                                                                            | Control boundary                                                              | 5.8 E0, 4.7 E1, 3.85 E2                                       |
-| **`--ls-brand` / `--ls-focus`** | **`#e48f9f`**                                                                        | **Dark accent**: links, outlines, current item, focus ring, button fill       | **8.73 E0, 7.07 E1, 5.79 E2, 4.72 E3**: passes AA on all four |
-| `--ls-brand-fill`               | `#e48f9f`                                                                            | Primary button fill                                                           |                                                               |
-| `--ls-on-brand`                 | `#000000`                                                                            | **Text on the accent fill is near-black, never white** (white on it is 2.4:1) | 8.73                                                          |
-| `--ls-brand-fill-hover`         | `#eca5b2`                                                                            | Primary hover/press                                                           | black text 10.59                                              |
-| `--ls-brand-soft` / `-on-soft`  | `#3a2227` / `#e48f9f`                                                                | Selected tint                                                                 | 6.07                                                          |
-| `--ls-hover-bg` / `-text`       | `#e48f9f` / `#000000`                                                                | Hover (Owner rule 4, dark side)                                               | 8.73                                                          |
-| `--ls-row-hover-bg`             | next step up from the table surface (`#1c1c1e` to `#2c2c2e`, `#2c2c2e` to `#3a3a3c`) | Every table row hover, customer and staff (Q3)                                |                                                               |
-| `--ls-nav-hover-bg`             | `#3a3a3c`                                                                            | Staff sidebar item hover (text stays `#f5f5f7`; no accent text on E3)         |                                                               |
+| Step | gray light | gray dark | burgundy light | burgundy dark | danger light | danger dark |
+| ---- | ---------- | --------- | -------------- | ------------- | ------------ | ----------- |
+| 1    | `#ffffff`  | `#000000` | `#fffcfc`      | `#170c0d`     | `#fffcfb`    | `#170c0a`   |
+| 2    | `#f5f5f7`  | `#1c1c1e` | `#fcf6f6`      | `#221013`     | `#fff4f2`    | `#240f0d`   |
+| 3    | `#ececef`  | `#2c2c2e` | `#f9eced`      | `#36161c`     | `#ffe6e2`    | `#391410`   |
+| 4    | `#e2e2e5`  | `#3a3a3c` | `#f7e1e2`      | `#441d24`     | `#ffd9d3`    | `#4c1812`   |
+| 5    | `#d2d2d7`  | `#444447` | `#f4d5d7`      | `#53242d`     | `#fecbc3`    | `#5f1b14`   |
+| 6    | `#bcbcc2`  | `#58585b` | `#f1c7c9`      | `#662e38`     | `#febbb0`    | `#752019`   |
+| 7    | `#86868b`  | `#86868b` | `#ebb3b7`      | `#7e3946`     | `#fea194`    | `#902920`   |
+| 8    | `#6e6e73`  | `#8e8e93` | `#dc949a`      | `#9a4254`     | `#ff7362`    | `#b83025`   |
+| 9    | `#5e5e63`  | `#98989d` | `#782b37`      | `#af4c60`     | `#d72119`    | `#fb5a4a`   |
+| 10   | `#515154`  | `#a1a1a6` | `#6a242f`      | `#b95569`     | `#c51610`    | `#fe7362`   |
+| 11   | `#3a3a3d`  | `#d1d1d6` | `#5c1f28`      | `#dbadb2`     | `#b3150f`    | `#ff7f6f`   |
+| 12   | `#1d1d1f`  | `#f5f5f7` | `#4a1820`      | `#f8dde0`     | `#55120c`    | `#fedbd5`   |
 
-Status in dark (kept): danger `#ff9484`, success `#7fd39a`, warning `#ffb066`, info `#8ebcf0` on their dark tints
-`#3d1c1a`, `#14301d`, `#3a2410`, `#14283f`: 7.1 to 8.1 on the tints, 5.3 to 11.7 on E0 to E3.
-Scrim: light `rgb(0 0 0 / 0.4)`, dark `rgb(0 0 0 / 0.6)`. Dim white-background product images by a small brightness filter
-in dark mode so they do not glow.
+| Step | success light | success dark | warning light | warning dark | info light | info dark |
+| ---- | ------------- | ------------ | ------------- | ------------ | ---------- | --------- |
+| 1    | `#fbfefb`     | `#0b110c`    | `#fffcfb`     | `#150e09`    | `#fbfdff`  | `#0b1016` |
+| 2    | `#f2faf3`     | `#0d1910`    | `#fff6f0`     | `#1f130b`    | `#f2f7fe`  | `#0e1721` |
+| 3    | `#e0f4e4`     | `#122718`    | `#ffeadc`     | `#301c0e`    | `#e2eefd`  | `#142234` |
+| 4    | `#cdefd5`     | `#16321f`    | `#ffdfcb`     | `#3e2411`    | `#d2e5fe`  | `#1a2c44` |
+| 5    | `#b9e9c4`     | `#1a3e26`    | `#fed2b5`     | `#4f2b11`    | `#c1dcfe`  | `#1d3656` |
+| 6    | `#a3e1b3`     | `#224d2f`    | `#ffc29a`     | `#623512`    | `#afd1fc`  | `#23436c` |
+| 7    | `#86d29b`     | `#2c5f3c`    | `#fdac73`     | `#7a4216`    | `#97c1f7`  | `#2b5386` |
+| 8    | `#5ebc7b`     | `#377249`    | `#ed914c`     | `#925019`    | `#72a7eb`  | `#3464a0` |
+| 9    | `#287b46`     | `#35794b`    | `#a35303`     | `#a3591c`    | `#2b5e9d`  | `#346aac` |
+| 10   | `#216e3e`     | `#428557`    | `#974c01`     | `#b0652a`    | `#255691`  | `#4076b9` |
+| 11   | `#1e6b3c`     | `#7fd39a`    | `#8f4300`     | `#ffb066`    | `#22518a`  | `#8ebcf0` |
+| 12   | `#12361e`     | `#d5f0db`    | `#4d2809`     | `#ffe1ce`    | `#132e50`  | `#dbe9fc` |
 
-The dark block must stay declared twice (explicit toggle and `prefers-color-scheme`) and identical, as today.
+The neutrals are Apple's greys on a Radix skeleton: light 1 `#ffffff` is the page, 2 `#f5f5f7` the alternate band; dark 1 `#000000` the
+page, 2 `#1c1c1e` the alternate band (E1), 3 `#2c2c2e` raised surfaces (E2), 4 `#3a3a3c` the neutral hover/pressed surface (E3). The
+dark hairline is step 5 `#444447` (was `#38383a`). Dark steps 7 and 8 are borders only: they are below 4.5:1 on E2 and are never text.
+
+#### Role to step
+
+Same step number in both modes unless the table says otherwise (elevation roles are mode specific, because light raises with
+white and dark raises with lighter greys).
+
+| Token                                                          | Light                              | Dark                                  |
+| -------------------------------------------------------------- | ---------------------------------- | ------------------------------------- |
+| `--ls-bg-page`, `--ls-band-base`                               | gray 1                             | gray 1                                |
+| `--ls-bg-sunken`, `--ls-band-alt`, `--ls-bg-surface`           | gray 2                             | gray 2                                |
+| `--ls-bg-surface-alt`, `--ls-bg-raised`                        | gray 1                             | gray 3                                |
+| `--ls-bg-pressed`, `--ls-nav-hover-bg`                         | gray 4                             | gray 4                                |
+| `--ls-row-hover-bg`                                            | gray 2                             | gray 3                                |
+| `--ls-text` / `--ls-text-muted` / `--ls-text-subtle`           | gray 12 / 10 / 8                   | gray 12 / 10 / 10 (no dimmer AA text) |
+| `--ls-border` (hairline) / `--ls-border-control`               | gray 5 / gray 7                    | gray 5 / gray 7                       |
+| `--ls-brand`, `--ls-focus` (accent text, ring)                 | burgundy 11                        | burgundy 11                           |
+| `--ls-brand-fill` / `--ls-brand-fill-hover`                    | burgundy 9 / 10                    | burgundy 9 / 10                       |
+| `--ls-on-brand`, `--ls-hover-text`                             | `#ffffff`                          | `#ffffff`                             |
+| `--ls-brand-soft` / `--ls-brand-on-soft`                       | burgundy 3 / 12                    | burgundy 3 / 11                       |
+| `--ls-hover-bg`, `--ls-nav-active-bg`                          | burgundy 9                         | burgundy 9                            |
+| `--ls-outline-border` / `--ls-outline-border-hover`            | burgundy 9 / 10                    | burgundy 9 / 10                       |
+| `--ls-wordmark`                                                | burgundy 9                         | gray 12                               |
+| `--ls-auth-flat`                                               | burgundy 9                         | gray 2                                |
+| `--ls-danger` / `-bg` / `-fill` / `-fill-hover` / `-on-danger` | danger 11 / 3 / 9 / 10 / `#ffffff` | danger 11 / 3 / 9 / 10 / `#1a0505`    |
+| `--ls-success`, `--ls-warning`, `--ls-info` (+ `-bg`)          | step 11 (+ step 3)                 | step 11 (+ step 3)                    |
+
+#### Contrast (WCAG 2.x, measured from the tokens; all pairs pass AA)
+
+Light, text on white / on the `#f5f5f7` band: ink 16.83 / 15.46; muted 7.91 / 7.26; subtle 5.07 / 4.66; accent text 12.49 / 11.47;
+wordmark 9.55 / 8.77; danger 6.93 / 6.36; success 6.51 / 5.98; warning 7.07 / 6.49; info 8.04 / 7.38. Control border 3.62 / 3.33;
+outline-button border 9.55 / 8.77; focus ring 12.49 / 11.47. White on the accent fill 9.55, on its hover 11.02 (hover as a menu item:
+9.55); accent on its soft tint 12.65; white on the danger fill 5.10 and its hover 6.01; status text on its own tint 5.66 to 6.85.
+
+Dark, text on E0 / E1 / E2 / E3 (`#000000` / `#1c1c1e` / `#2c2c2e` / `#3a3a3c`): ink 19.29 / 15.63 / 12.80 / 10.42; muted and subtle
+8.16 / 6.61 / 5.42 / 4.41; accent text 10.63 / 8.61 / 7.06 / 5.75; danger 8.52 / 6.90 / 5.65 / 4.60; success 11.69 / 9.47 / 7.76 / 6.32;
+warning 11.65 / 9.44 / 7.73 / 6.30; info 10.60 / 8.59 / 7.04 / 5.73. Control border 5.80 / 4.70 / 3.85 / 3.13; focus ring 10.63 / 8.61 /
+7.06 / 5.75. White on the accent fill 5.22, on its hover 4.60; accent on its soft tint 8.25; near-black on the danger fill 6.24, on its
+hover 7.34; status text on its tint 6.65 to 8.98. **No accent text on E3** (kept).
+
+Known and recorded: the dark accent fill against its surface is 4.03 on E0, 3.26 on E1 and **2.67 on E2** (a button inside a dialog or
+a raised card), so on E2 the fill is identified by its white label (5.22), not by the 3:1 boundary rule; the dark outline-button border
+has the same 2.67 on E2 and its label (accent text, 7.06) identifies it. A lighter fill that reaches 3:1 on E2 would leave white text at
+4.6:1 and no room for a hover that keeps white text; the Owner decides (open question in the session 9 report).
+
+Light `#86868b` (gray 7) is never used as text (3.62 on white). `--ls-chart-*` keeps its six-slot palette unchanged.
+
+### 6.2 Dark mode (Apple-style, summary)
+
+Dark is stepped, not inverted: the closer a surface is to the user, the lighter it is (E0 base, E1 band, E2 raised, E3 hover). The
+colors are the dark column of 6.1; the dark block is declared twice (toggle and system preference) and identical. Scrim: light
+`rgb(0 0 0 / 0.4)`, dark `rgb(0 0 0 / 0.6)`. Product images with a white background are dimmed by `brightness(0.92)`.
 
 ### 6.3 Typography (Be Vietnam Pro, self-hosted through `next/font`, one family)
 
@@ -306,19 +366,19 @@ a different curve). Nothing else in `tokens.css` is conditioned on the area.
 ## 8. Core components (default + compact)
 
 All are in `packages/ui`; the compact variant is the same component. Hover is Owner rule 4 (solid accent, accent-contrast text)
-on every interactive surface except staff table rows and staff sidebar items (Q3, below); the primary button, already filled,
-darkens instead.
+on every interactive surface except staff table rows and staff sidebar items (Q3, below) and the secondary (outline) button
+(Owner exception, 2026-10-15, 8.1); the primary button, already filled, goes one scale step (10) instead.
 
 ### 8.1 Buttons
 
-| Variant                      | Look                                                                                                                                                    | Use                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **Primary** (filled pill)    | `--ls-brand-fill`, `--ls-on-brand` text, label 17/500 (compact 14/500), no border, no shadow. Padding 12 x 24 (compact 8 x 16). Height 44 (compact 40). | **One per view** (HIG: one or two prominent, never two filled side by side). |
-| **Secondary** (outline pill) | Transparent, 1 px accent border, accent text. Same size.                                                                                                | Paired with a primary ("Đặt lịch" + "Xem dịch vụ").                          |
-| **Tertiary** (text link)     | Accent text, underline on hover and focus. **Customer navigation only** ("Tìm hiểu thêm"); never an action (FR).                                        | Inline navigation.                                                           |
-| **Neutral** (pill)           | `--ls-bg-sunken` fill, ink text.                                                                                                                        | Filters, cancel in forms, toolbar actions.                                   |
-| **Destructive**              | Outline in `--ls-danger`; filled danger only inside the confirm dialog. Never the primary role. In a confirm dialog, focus starts on Cancel.            | Delete/cancel with confirmation.                                             |
-| **Icon button**              | Circle, 44 (compact 40), 20 px icon, accessible name required.                                                                                          | Toolbars, close, row menu `⋮`.                                               |
+| Variant                      | Look                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Use                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Primary** (filled pill)    | `--ls-brand-fill` (hover: burgundy 10), `--ls-on-brand` text, label 17/500 (compact 14/500), no border, no shadow. Padding 12 x 24 (compact 8 x 16). Height 44 (compact 40).                                                                                                                                                                                                                                                                                                                                                                  | **One per view** (HIG: one or two prominent, never two filled side by side). |
+| **Secondary** (outline pill) | Transparent, 1 px accent border (burgundy 9), accent text. Same size. A trailing arrow (icon set) when the label has no icon of its own. **Hover never fills** (Owner exception to rule 4, 2026-10-15): background stays transparent, text keeps its color, border one step stronger (burgundy 10), lift `translateY(-2px)` + `scale(1.02)`, the arrow nudges 3 px right; 150 ms ease-out from the motion tokens (`--ls-btn-lift`, `--ls-btn-zoom`, `--ls-btn-nudge`). Under `prefers-reduced-motion` or `ls-fx=off` only the border changes. | Paired with a primary ("Đặt lịch" + "Xem dịch vụ").                          |
+| **Tertiary** (text link)     | Accent text, underline on hover and focus. **Customer navigation only** ("Tìm hiểu thêm"); never an action (FR).                                                                                                                                                                                                                                                                                                                                                                                                                              | Inline navigation.                                                           |
+| **Neutral** (pill)           | `--ls-bg-sunken` fill, ink text.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Filters, cancel in forms, toolbar actions.                                   |
+| **Destructive**              | Outline in `--ls-danger` with an icon and a word (a red of its own, never the accent; hover fills `--ls-danger-fill`); filled danger only inside the confirm dialog. Never the primary role. In a confirm dialog, focus starts on Cancel.                                                                                                                                                                                                                                                                                                     | Delete/cancel with confirmation.                                             |
+| **Icon button**              | Circle, 44 (compact 40), 20 px icon, accessible name required.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Toolbars, close, row menu `⋮`.                                               |
 
 States: hover (rule 4), **pressed** (scale 0.98, or darker fill; always present), focus-visible (ring), **disabled** (`--ls-bg-pressed`
 fill, `--ls-text-subtle` text, no hover, `aria-disabled`; contrast exempt but readable), **busy** (label changes to "Đang
@@ -625,6 +685,8 @@ using the **same token names**; a group switches on by setting the attribute on 
 edits. Group 1 sets it on the customer frame (`.ls-site`); group 2 on the counter routes; group 3 on the rest of the workforce
 shell. The last Step removes the old values and the attribute. (D1 is met at the end of group 3.)
 
+**Groups 2 and 3 use exactly the 6.1 color tokens** (the 12-step scales and the roles that point at them, settled in session 9, 2026-10-15). There is no staff palette and no staff accent: POS and admin only gain the density tokens (6.7). A group that needs a color the roles do not offer adds a step of an existing scale, never a new hex.
+
 | Group | Scope                                                                                                                                                                                                                                             |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | Customer: home, services, service detail, booking, products, product detail, cart, checkout, auth, account (all), ticket, info/CMS pages, 404, header/footer/tab bar/contact button, fonts, token v2, shared components used there, GSAP wrapper. |
@@ -644,7 +706,7 @@ long text, many items, no image). Every image is opened and reviewed (CLAUDE.md 
 | G2  | **Matches the shared DNA** D1-D9: wordmark and header identical to the other groups; tokens only (no hex, no px/rem spacing literal, no new `wf-*` class); one component set with the compact variant; same scale and weights; accent only where D5 allows; icons from the one set; band colors `#ffffff`/`#f5f5f7` (dark `#000000`/`#1c1c1e`); radius 8/18/pill only; motion from tokens. |
 | G3  | **Look:** no shadow, no gradient (except the seasonal layer), hairlines not boxes inside cards, no orphaned elements, aligned edges, one vertical rhythm, sensible max widths, no layout shift.                                                                                                                                                                                            |
 | G4  | **Layout:** matches the Aevi pattern of its page (section 9) or the compact pattern (section 10); services and booking most prominent on the customer side; one primary action per view.                                                                                                                                                                                                   |
-| G5  | **Dark mode:** stepped surfaces, accent `#e48f9f`, text on accent fill near-black, no accent text on E3, images not glowing, status readable.                                                                                                                                                                                                                                              |
+| G5  | **Dark mode:** stepped surfaces, the burgundy fill with white text and the muted-rose accent text (6.1), no accent text on E3, images not glowing, status readable.                                                                                                                                                                                                                        |
 | G6  | **Motion:** values from tokens; staff Steps: nothing over 200 ms, nothing blocks input; reduced-motion and the off switch tested (both produce the final state with no tween); no animation of blur or layout.                                                                                                                                                                             |
 | G7  | **Functions unchanged:** no logic/API/DB change; the relevant tests pass; the season layer renders as before; toggle works in three options.                                                                                                                                                                                                                                               |
 | G8  | **Copy:** natural Vietnamese, verbs on buttons, sentence case, no "khám", error text says the fix.                                                                                                                                                                                                                                                                                         |
@@ -673,7 +735,7 @@ long text, many items, no image). Every image is opened and reviewed (CLAUDE.md 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Q1  | **Approved.** CLAUDE.md "Customer site redesign", "Staff screens in direction C" and the fonts/palette of "UI design rules" 1-2 are marked superseded by DESIGN.md. `docs/CUSTOMER_SITE_C.md` is superseded; its photo list stays valid.                                                                                                                                                                                            |
-| Q2  | **Approved.** Dark accent `#e48f9f`.                                                                                                                                                                                                                                                                                                                                                                                                |
+| Q2  | **Approved, then revised by the Owner on 2026-10-15** (the old dark accent `#e48f9f` read as candy pink): see 6.1.                                                                                                                                                                                                                                                                                                                  |
 | Q3  | **Decided by Claude per Owner delegation.** Staff table rows and staff sidebar items hover with a neutral tint (`--ls-row-hover-bg`, `--ls-nav-hover-bg`), not the solid accent; the sidebar's current page stays solid accent. Owner rule 4 stays everywhere else. Reason: a solid accent across a full-width row recolors every cell and hurts scanning, and the HIG reserves color for primary actions and the current location. |
 | Q4  | **Approved.** Flat auth panel (accent `#782b37`; dark `#1c1c1e`) and a hairline card; no gradient, no shadow.                                                                                                                                                                                                                                                                                                                       |
 | Q5  | **Agreed.** The home reviews band is not built until the Owner decides to publish reviews.                                                                                                                                                                                                                                                                                                                                          |

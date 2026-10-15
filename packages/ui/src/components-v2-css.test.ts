@@ -55,7 +55,16 @@ test('buttons: v2 sizes, the neutral and compact variants, disabled is a fill an
   assert.match(button, /padding:\s*var\(--ls-space-2\) var\(--ls-space-6\)/);
   assert.match(button, /border-radius:\s*var\(--ls-radius-full\)/);
   assert.match(button, /font-weight:\s*var\(--ls-weight-label\)/);
-  assert.match(body("[data-ui='v2'] .ls-btn-secondary"), /border-color:\s*var\(--ls-brand\)/);
+  assert.match(
+    body("[data-ui='v2'] .ls-btn-secondary"),
+    /border-color:\s*var\(--ls-outline-border\)/,
+  );
+  // Secondary hover (Owner addendum 2026-10-15): the background never fills; the border steps up; lift, zoom and the arrow nudge are tokens.
+  assert.match(
+    css,
+    /\.ls-btn-secondary:hover:not\(\[aria-disabled='true'\]\):not\(:disabled\) \{\s*border-color: var\(--ls-outline-border-hover\);\s*color: var\(--ls-brand\);\s*background: transparent;\s*transform: translateY\(var\(--ls-btn-lift\)\) scale\(var\(--ls-btn-zoom\)\);/,
+  );
+  assert.match(css, /::after \{\s*transform: translateX\(var\(--ls-btn-nudge\)\);/);
   assert.match(body("[data-ui='v2'] .ls-btn-neutral"), /background:\s*var\(--ls-bg-field\)/);
   const disabled = body("[data-ui='v2'] .ls-btn:is(:disabled, [aria-disabled='true'])");
   assert.match(disabled, /background:\s*var\(--ls-bg-pressed\)/);

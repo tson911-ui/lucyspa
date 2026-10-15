@@ -550,8 +550,7 @@
    and stays identical (tokens-v2.test.ts). A color or radius is declared here only; customer.css and staff.css never redefine one.
    Colors: white and #f5f5f7 bands (dark: black and stepped greys), no shadow, no gradient, radius 8 / 18 / pill, one accent. */
 [data-ui='v2'] {
-  /* Surfaces: --ls-bg-page is the base band, --ls-bg-sunken the alternate band. --ls-bg-surface is a card on the BASE band; on an
-     alternate band (`.ls-band--alt`) a card takes the other step (--ls-bg-surface-alt). */
+  /* Bands and surfaces (elevation, not Radix steps: light white / #f5f5f7, dark black / E1 / E2) */
   --ls-band-base: #ffffff;
   --ls-band-alt: #f5f5f7;
   --ls-bg-page: #ffffff;
@@ -560,25 +559,24 @@
   --ls-bg-surface-alt: #ffffff;
   --ls-bg-raised: #ffffff;
   --ls-bg-pressed: #e2e2e5;
-  /* The fill of a field and of a neutral button is the opposite step of what it sits on (DESIGN.md 8.2): on the base band it is the
-     alternate band color, on an alternate band it is the base color. A card, a dialog or a drawer is a surface of its own, so inside
-     it a field takes the step the card is not (`--ls-bg-field-in-card`, set per band below). Both read the band tokens, which the dark
-     blocks replace, so neither needs a dark value. */
-  --ls-bg-field: var(--ls-band-alt);
-  --ls-bg-field-in-card: var(--ls-band-base);
+  /* Text and lines (neutral scale) */
   --ls-text: #1d1d1f;
   --ls-text-muted: #515154;
   --ls-text-subtle: #6e6e73;
   --ls-border: #d2d2d7;
   --ls-border-control: #86868b;
-  --ls-brand: #782b37;
+  /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
+  --ls-brand: #5c1f28;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
-  --ls-brand-fill-hover: #632330;
-  --ls-brand-soft: #f3e7e9;
-  --ls-brand-on-soft: #782b37;
-  --ls-focus: #782b37;
-  /* Hover (Owner rule 4): the solid accent with its text. A table row and a staff sidebar item hover with a neutral tint (Q3). */
+  --ls-brand-fill-hover: #6a242f;
+  --ls-brand-soft: #f9eced;
+  --ls-brand-on-soft: #4a1820;
+  --ls-focus: #5c1f28;
+  --ls-wordmark: #782b37;
+  --ls-outline-border: #782b37;
+  --ls-outline-border-hover: #6a242f;
+  /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
   --ls-hover-bg: #782b37;
   --ls-hover-text: #ffffff;
   --ls-hover-border: #782b37;
@@ -588,11 +586,108 @@
   --ls-nav-hover-text: #1d1d1f;
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
-  --ls-overlay: rgb(0 0 0 / 0.4);
-  --ls-image-filter: none;
-  /* The flat panel of the sign-in pages (Q4): the accent in light, #1c1c1e in dark, with white text; the card on it is a hairline card. */
+  /* Flat panel of the sign-in pages (Q4) */
   --ls-auth-flat: #782b37;
   --ls-on-auth-flat: #ffffff;
+  /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
+  --ls-danger: #b3150f;
+  --ls-danger-bg: #ffe6e2;
+  --ls-danger-fill: #d72119;
+  --ls-danger-fill-hover: #c51610;
+  --ls-on-danger: #ffffff;
+  --ls-success: #1e6b3c;
+  --ls-success-bg: #e0f4e4;
+  --ls-warning: #8f4300;
+  --ls-warning-bg: #ffeadc;
+  --ls-info: #22518a;
+  --ls-info-bg: #e2eefd;
+  /* Scrim and photo filter */
+  --ls-overlay: rgb(0 0 0 / 0.4);
+  --ls-image-filter: none;
+  /* Scales (12 steps per family, Radix method; DESIGN.md 6.1). The roles above point at these. */
+  --ls-gray-1: #ffffff;
+  --ls-gray-2: #f5f5f7;
+  --ls-gray-3: #ececef;
+  --ls-gray-4: #e2e2e5;
+  --ls-gray-5: #d2d2d7;
+  --ls-gray-6: #bcbcc2;
+  --ls-gray-7: #86868b;
+  --ls-gray-8: #6e6e73;
+  --ls-gray-9: #5e5e63;
+  --ls-gray-10: #515154;
+  --ls-gray-11: #3a3a3d;
+  --ls-gray-12: #1d1d1f;
+  --ls-burgundy-1: #fffcfc;
+  --ls-burgundy-2: #fcf6f6;
+  --ls-burgundy-3: #f9eced;
+  --ls-burgundy-4: #f7e1e2;
+  --ls-burgundy-5: #f4d5d7;
+  --ls-burgundy-6: #f1c7c9;
+  --ls-burgundy-7: #ebb3b7;
+  --ls-burgundy-8: #dc949a;
+  --ls-burgundy-9: #782b37;
+  --ls-burgundy-10: #6a242f;
+  --ls-burgundy-11: #5c1f28;
+  --ls-burgundy-12: #4a1820;
+  --ls-danger-1: #fffcfb;
+  --ls-danger-2: #fff4f2;
+  --ls-danger-3: #ffe6e2;
+  --ls-danger-4: #ffd9d3;
+  --ls-danger-5: #fecbc3;
+  --ls-danger-6: #febbb0;
+  --ls-danger-7: #fea194;
+  --ls-danger-8: #ff7362;
+  --ls-danger-9: #d72119;
+  --ls-danger-10: #c51610;
+  --ls-danger-11: #b3150f;
+  --ls-danger-12: #55120c;
+  --ls-success-1: #fbfefb;
+  --ls-success-2: #f2faf3;
+  --ls-success-3: #e0f4e4;
+  --ls-success-4: #cdefd5;
+  --ls-success-5: #b9e9c4;
+  --ls-success-6: #a3e1b3;
+  --ls-success-7: #86d29b;
+  --ls-success-8: #5ebc7b;
+  --ls-success-9: #287b46;
+  --ls-success-10: #216e3e;
+  --ls-success-11: #1e6b3c;
+  --ls-success-12: #12361e;
+  --ls-warning-1: #fffcfb;
+  --ls-warning-2: #fff6f0;
+  --ls-warning-3: #ffeadc;
+  --ls-warning-4: #ffdfcb;
+  --ls-warning-5: #fed2b5;
+  --ls-warning-6: #ffc29a;
+  --ls-warning-7: #fdac73;
+  --ls-warning-8: #ed914c;
+  --ls-warning-9: #a35303;
+  --ls-warning-10: #974c01;
+  --ls-warning-11: #8f4300;
+  --ls-warning-12: #4d2809;
+  --ls-info-1: #fbfdff;
+  --ls-info-2: #f2f7fe;
+  --ls-info-3: #e2eefd;
+  --ls-info-4: #d2e5fe;
+  --ls-info-5: #c1dcfe;
+  --ls-info-6: #afd1fc;
+  --ls-info-7: #97c1f7;
+  --ls-info-8: #72a7eb;
+  --ls-info-9: #2b5e9d;
+  --ls-info-10: #255691;
+  --ls-info-11: #22518a;
+  --ls-info-12: #132e50;
+
+  /* Surfaces: --ls-bg-page is the base band, --ls-bg-sunken the alternate band. --ls-bg-surface is a card on the BASE band; on an
+     alternate band (`.ls-band--alt`) a card takes the other step (--ls-bg-surface-alt). */
+  /* The fill of a field and of a neutral button is the opposite step of what it sits on (DESIGN.md 8.2): on the base band it is the
+     alternate band color, on an alternate band it is the base color. A card, a dialog or a drawer is a surface of its own, so inside
+     it a field takes the step the card is not (`--ls-bg-field-in-card`, set per band below). Both read the band tokens, which the dark
+     blocks replace, so neither needs a dark value. */
+  --ls-bg-field: var(--ls-band-alt);
+  --ls-bg-field-in-card: var(--ls-band-base);
+  /* Hover (Owner rule 4): the solid accent with its text. A table row and a staff sidebar item hover with a neutral tint (Q3). */
+  /* The flat panel of the sign-in pages (Q4): the accent in light, #1c1c1e in dark, with white text; the card on it is a hairline card. */
   /* Text on a photo (DESIGN.md 9): white over one flat black scrim, the same in both modes (a photo does not follow the theme).
      0.55 keeps white text at 4.5:1 or better even over a pure-white photo (tokens-v2.test.ts). */
   --ls-on-photo: #ffffff;
@@ -626,6 +721,10 @@
   --ls-dur-slow: 320ms;
   --ls-dur-reveal: 560ms;
   --ls-dur-hero: 800ms;
+  /* Secondary (outline) button hover (Owner addendum, 2026-10-15): lift, zoom and the trailing arrow nudge. Zeroed under reduced motion and the off switch. */
+  --ls-btn-lift: -2px;
+  --ls-btn-zoom: 1.02;
+  --ls-btn-nudge: 3px;
 
   /* Typography (DESIGN.md 6.3): Be Vietnam Pro only, weights 400 / 500 / 600, sizes in rem. The family is loaded once at the root
      (next/font in the locale layout); the heading face is the same family. */
@@ -695,12 +794,13 @@
   --ls-bg-field: var(--ls-band-alt);
 }
 
-/* Dark: black base, stepped greys (the closer to the user, the lighter), accent #e48f9f, near-black text on it. Keep the three
+/* Dark: black base, stepped greys (the closer to the user, the lighter), a burgundy fill with white text, a muted rose for accent text. Keep the three
    selectors' blocks below identical (tokens-v2.test.ts). */
 :root[data-theme='dark'] [data-ui='v2'],
 [data-preview-theme='dark'] [data-ui='v2'],
 [data-preview-theme='dark'][data-ui='v2'] {
   color-scheme: dark;
+  /* Bands and surfaces (elevation, not Radix steps: light white / #f5f5f7, dark black / E1 / E2) */
   --ls-band-base: #000000;
   --ls-band-alt: #1c1c1e;
   --ls-bg-page: #000000;
@@ -709,37 +809,130 @@
   --ls-bg-surface-alt: #2c2c2e;
   --ls-bg-raised: #2c2c2e;
   --ls-bg-pressed: #3a3a3c;
+  /* Text and lines (neutral scale) */
   --ls-text: #f5f5f7;
   --ls-text-muted: #a1a1a6;
   --ls-text-subtle: #a1a1a6;
-  --ls-border: #38383a;
+  --ls-border: #444447;
   --ls-border-control: #86868b;
-  --ls-brand: #e48f9f;
-  --ls-brand-fill: #e48f9f;
-  --ls-on-brand: #000000;
-  --ls-brand-fill-hover: #eca5b2;
-  --ls-brand-soft: #3a2227;
-  --ls-brand-on-soft: #e48f9f;
-  --ls-focus: #e48f9f;
-  --ls-hover-bg: #e48f9f;
-  --ls-hover-text: #000000;
-  --ls-hover-border: #e48f9f;
-  --ls-hover-ghost-border: #e48f9f;
+  /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
+  --ls-brand: #dbadb2;
+  --ls-brand-fill: #af4c60;
+  --ls-on-brand: #ffffff;
+  --ls-brand-fill-hover: #b95569;
+  --ls-brand-soft: #36161c;
+  --ls-brand-on-soft: #dbadb2;
+  --ls-focus: #dbadb2;
+  --ls-wordmark: #f5f5f7;
+  --ls-outline-border: #af4c60;
+  --ls-outline-border-hover: #b95569;
+  /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
+  --ls-hover-bg: #af4c60;
+  --ls-hover-text: #ffffff;
+  --ls-hover-border: #af4c60;
+  --ls-hover-ghost-border: #af4c60;
   --ls-row-hover-bg: #2c2c2e;
   --ls-nav-hover-bg: #3a3a3c;
   --ls-nav-hover-text: #f5f5f7;
-  --ls-nav-active-bg: #e48f9f;
-  --ls-nav-active-text: #000000;
-  --ls-overlay: rgb(0 0 0 / 0.6);
-  /* A photo with a white background must not glow on a black page (DESIGN.md 6.2): dimmed a little in dark. */
-  --ls-image-filter: brightness(0.92);
+  --ls-nav-active-bg: #af4c60;
+  --ls-nav-active-text: #ffffff;
+  /* Flat panel of the sign-in pages (Q4) */
   --ls-auth-flat: #1c1c1e;
   --ls-on-auth-flat: #ffffff;
+  /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
+  --ls-danger: #ff7f6f;
+  --ls-danger-bg: #391410;
+  --ls-danger-fill: #fb5a4a;
+  --ls-danger-fill-hover: #fe7362;
+  --ls-on-danger: #1a0505;
+  --ls-success: #7fd39a;
+  --ls-success-bg: #122718;
+  --ls-warning: #ffb066;
+  --ls-warning-bg: #301c0e;
+  --ls-info: #8ebcf0;
+  --ls-info-bg: #142234;
+  /* Scrim and photo filter */
+  --ls-overlay: rgb(0 0 0 / 0.6);
+  --ls-image-filter: brightness(0.92);
+  /* Scales (12 steps per family, Radix method; DESIGN.md 6.1). The roles above point at these. */
+  --ls-gray-1: #000000;
+  --ls-gray-2: #1c1c1e;
+  --ls-gray-3: #2c2c2e;
+  --ls-gray-4: #3a3a3c;
+  --ls-gray-5: #444447;
+  --ls-gray-6: #58585b;
+  --ls-gray-7: #86868b;
+  --ls-gray-8: #8e8e93;
+  --ls-gray-9: #98989d;
+  --ls-gray-10: #a1a1a6;
+  --ls-gray-11: #d1d1d6;
+  --ls-gray-12: #f5f5f7;
+  --ls-burgundy-1: #170c0d;
+  --ls-burgundy-2: #221013;
+  --ls-burgundy-3: #36161c;
+  --ls-burgundy-4: #441d24;
+  --ls-burgundy-5: #53242d;
+  --ls-burgundy-6: #662e38;
+  --ls-burgundy-7: #7e3946;
+  --ls-burgundy-8: #9a4254;
+  --ls-burgundy-9: #af4c60;
+  --ls-burgundy-10: #b95569;
+  --ls-burgundy-11: #dbadb2;
+  --ls-burgundy-12: #f8dde0;
+  --ls-danger-1: #170c0a;
+  --ls-danger-2: #240f0d;
+  --ls-danger-3: #391410;
+  --ls-danger-4: #4c1812;
+  --ls-danger-5: #5f1b14;
+  --ls-danger-6: #752019;
+  --ls-danger-7: #902920;
+  --ls-danger-8: #b83025;
+  --ls-danger-9: #fb5a4a;
+  --ls-danger-10: #fe7362;
+  --ls-danger-11: #ff7f6f;
+  --ls-danger-12: #fedbd5;
+  --ls-success-1: #0b110c;
+  --ls-success-2: #0d1910;
+  --ls-success-3: #122718;
+  --ls-success-4: #16321f;
+  --ls-success-5: #1a3e26;
+  --ls-success-6: #224d2f;
+  --ls-success-7: #2c5f3c;
+  --ls-success-8: #377249;
+  --ls-success-9: #35794b;
+  --ls-success-10: #428557;
+  --ls-success-11: #7fd39a;
+  --ls-success-12: #d5f0db;
+  --ls-warning-1: #150e09;
+  --ls-warning-2: #1f130b;
+  --ls-warning-3: #301c0e;
+  --ls-warning-4: #3e2411;
+  --ls-warning-5: #4f2b11;
+  --ls-warning-6: #623512;
+  --ls-warning-7: #7a4216;
+  --ls-warning-8: #925019;
+  --ls-warning-9: #a3591c;
+  --ls-warning-10: #b0652a;
+  --ls-warning-11: #ffb066;
+  --ls-warning-12: #ffe1ce;
+  --ls-info-1: #0b1016;
+  --ls-info-2: #0e1721;
+  --ls-info-3: #142234;
+  --ls-info-4: #1a2c44;
+  --ls-info-5: #1d3656;
+  --ls-info-6: #23436c;
+  --ls-info-7: #2b5386;
+  --ls-info-8: #3464a0;
+  --ls-info-9: #346aac;
+  --ls-info-10: #4076b9;
+  --ls-info-11: #8ebcf0;
+  --ls-info-12: #dbe9fc;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) [data-ui='v2'] {
     color-scheme: dark;
+    /* Bands and surfaces (elevation, not Radix steps: light white / #f5f5f7, dark black / E1 / E2) */
     --ls-band-base: #000000;
     --ls-band-alt: #1c1c1e;
     --ls-bg-page: #000000;
@@ -748,32 +941,124 @@
     --ls-bg-surface-alt: #2c2c2e;
     --ls-bg-raised: #2c2c2e;
     --ls-bg-pressed: #3a3a3c;
+    /* Text and lines (neutral scale) */
     --ls-text: #f5f5f7;
     --ls-text-muted: #a1a1a6;
     --ls-text-subtle: #a1a1a6;
-    --ls-border: #38383a;
+    --ls-border: #444447;
     --ls-border-control: #86868b;
-    --ls-brand: #e48f9f;
-    --ls-brand-fill: #e48f9f;
-    --ls-on-brand: #000000;
-    --ls-brand-fill-hover: #eca5b2;
-    --ls-brand-soft: #3a2227;
-    --ls-brand-on-soft: #e48f9f;
-    --ls-focus: #e48f9f;
-    --ls-hover-bg: #e48f9f;
-    --ls-hover-text: #000000;
-    --ls-hover-border: #e48f9f;
-    --ls-hover-ghost-border: #e48f9f;
+    /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
+    --ls-brand: #dbadb2;
+    --ls-brand-fill: #af4c60;
+    --ls-on-brand: #ffffff;
+    --ls-brand-fill-hover: #b95569;
+    --ls-brand-soft: #36161c;
+    --ls-brand-on-soft: #dbadb2;
+    --ls-focus: #dbadb2;
+    --ls-wordmark: #f5f5f7;
+    --ls-outline-border: #af4c60;
+    --ls-outline-border-hover: #b95569;
+    /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
+    --ls-hover-bg: #af4c60;
+    --ls-hover-text: #ffffff;
+    --ls-hover-border: #af4c60;
+    --ls-hover-ghost-border: #af4c60;
     --ls-row-hover-bg: #2c2c2e;
     --ls-nav-hover-bg: #3a3a3c;
     --ls-nav-hover-text: #f5f5f7;
-    --ls-nav-active-bg: #e48f9f;
-    --ls-nav-active-text: #000000;
-    --ls-overlay: rgb(0 0 0 / 0.6);
-    /* A photo with a white background must not glow on a black page (DESIGN.md 6.2): dimmed a little in dark. */
-    --ls-image-filter: brightness(0.92);
+    --ls-nav-active-bg: #af4c60;
+    --ls-nav-active-text: #ffffff;
+    /* Flat panel of the sign-in pages (Q4) */
     --ls-auth-flat: #1c1c1e;
     --ls-on-auth-flat: #ffffff;
+    /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
+    --ls-danger: #ff7f6f;
+    --ls-danger-bg: #391410;
+    --ls-danger-fill: #fb5a4a;
+    --ls-danger-fill-hover: #fe7362;
+    --ls-on-danger: #1a0505;
+    --ls-success: #7fd39a;
+    --ls-success-bg: #122718;
+    --ls-warning: #ffb066;
+    --ls-warning-bg: #301c0e;
+    --ls-info: #8ebcf0;
+    --ls-info-bg: #142234;
+    /* Scrim and photo filter */
+    --ls-overlay: rgb(0 0 0 / 0.6);
+    --ls-image-filter: brightness(0.92);
+    /* Scales (12 steps per family, Radix method; DESIGN.md 6.1). The roles above point at these. */
+    --ls-gray-1: #000000;
+    --ls-gray-2: #1c1c1e;
+    --ls-gray-3: #2c2c2e;
+    --ls-gray-4: #3a3a3c;
+    --ls-gray-5: #444447;
+    --ls-gray-6: #58585b;
+    --ls-gray-7: #86868b;
+    --ls-gray-8: #8e8e93;
+    --ls-gray-9: #98989d;
+    --ls-gray-10: #a1a1a6;
+    --ls-gray-11: #d1d1d6;
+    --ls-gray-12: #f5f5f7;
+    --ls-burgundy-1: #170c0d;
+    --ls-burgundy-2: #221013;
+    --ls-burgundy-3: #36161c;
+    --ls-burgundy-4: #441d24;
+    --ls-burgundy-5: #53242d;
+    --ls-burgundy-6: #662e38;
+    --ls-burgundy-7: #7e3946;
+    --ls-burgundy-8: #9a4254;
+    --ls-burgundy-9: #af4c60;
+    --ls-burgundy-10: #b95569;
+    --ls-burgundy-11: #dbadb2;
+    --ls-burgundy-12: #f8dde0;
+    --ls-danger-1: #170c0a;
+    --ls-danger-2: #240f0d;
+    --ls-danger-3: #391410;
+    --ls-danger-4: #4c1812;
+    --ls-danger-5: #5f1b14;
+    --ls-danger-6: #752019;
+    --ls-danger-7: #902920;
+    --ls-danger-8: #b83025;
+    --ls-danger-9: #fb5a4a;
+    --ls-danger-10: #fe7362;
+    --ls-danger-11: #ff7f6f;
+    --ls-danger-12: #fedbd5;
+    --ls-success-1: #0b110c;
+    --ls-success-2: #0d1910;
+    --ls-success-3: #122718;
+    --ls-success-4: #16321f;
+    --ls-success-5: #1a3e26;
+    --ls-success-6: #224d2f;
+    --ls-success-7: #2c5f3c;
+    --ls-success-8: #377249;
+    --ls-success-9: #35794b;
+    --ls-success-10: #428557;
+    --ls-success-11: #7fd39a;
+    --ls-success-12: #d5f0db;
+    --ls-warning-1: #150e09;
+    --ls-warning-2: #1f130b;
+    --ls-warning-3: #301c0e;
+    --ls-warning-4: #3e2411;
+    --ls-warning-5: #4f2b11;
+    --ls-warning-6: #623512;
+    --ls-warning-7: #7a4216;
+    --ls-warning-8: #925019;
+    --ls-warning-9: #a3591c;
+    --ls-warning-10: #b0652a;
+    --ls-warning-11: #ffb066;
+    --ls-warning-12: #ffe1ce;
+    --ls-info-1: #0b1016;
+    --ls-info-2: #0e1721;
+    --ls-info-3: #142234;
+    --ls-info-4: #1a2c44;
+    --ls-info-5: #1d3656;
+    --ls-info-6: #23436c;
+    --ls-info-7: #2b5386;
+    --ls-info-8: #3464a0;
+    --ls-info-9: #346aac;
+    --ls-info-10: #4076b9;
+    --ls-info-11: #8ebcf0;
+    --ls-info-12: #dbe9fc;
   }
 }
 
@@ -782,6 +1067,7 @@
 :root [data-preview-theme='light'] [data-ui='v2'],
 :root [data-preview-theme='light'][data-ui='v2'] {
   color-scheme: light;
+  /* Bands and surfaces (elevation, not Radix steps: light white / #f5f5f7, dark black / E1 / E2) */
   --ls-band-base: #ffffff;
   --ls-band-alt: #f5f5f7;
   --ls-bg-page: #ffffff;
@@ -790,18 +1076,24 @@
   --ls-bg-surface-alt: #ffffff;
   --ls-bg-raised: #ffffff;
   --ls-bg-pressed: #e2e2e5;
+  /* Text and lines (neutral scale) */
   --ls-text: #1d1d1f;
   --ls-text-muted: #515154;
   --ls-text-subtle: #6e6e73;
   --ls-border: #d2d2d7;
   --ls-border-control: #86868b;
-  --ls-brand: #782b37;
+  /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
+  --ls-brand: #5c1f28;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
-  --ls-brand-fill-hover: #632330;
-  --ls-brand-soft: #f3e7e9;
-  --ls-brand-on-soft: #782b37;
-  --ls-focus: #782b37;
+  --ls-brand-fill-hover: #6a242f;
+  --ls-brand-soft: #f9eced;
+  --ls-brand-on-soft: #4a1820;
+  --ls-focus: #5c1f28;
+  --ls-wordmark: #782b37;
+  --ls-outline-border: #782b37;
+  --ls-outline-border-hover: #6a242f;
+  /* Hover (Owner rule 4): the solid accent fill with white text. A table row and a staff sidebar item hover with a neutral tint (Q3). A secondary (outline) button never fills (Owner addendum, 2026-10-15). */
   --ls-hover-bg: #782b37;
   --ls-hover-text: #ffffff;
   --ls-hover-border: #782b37;
@@ -811,10 +1103,97 @@
   --ls-nav-hover-text: #1d1d1f;
   --ls-nav-active-bg: #782b37;
   --ls-nav-active-text: #ffffff;
-  --ls-overlay: rgb(0 0 0 / 0.4);
-  --ls-image-filter: none;
+  /* Flat panel of the sign-in pages (Q4) */
   --ls-auth-flat: #782b37;
   --ls-on-auth-flat: #ffffff;
+  /* Status. Text / border / icon = 11, tint = 3, solid fill = 9 (danger only: the destructive button). Never color alone: every status has a word or an icon. */
+  --ls-danger: #b3150f;
+  --ls-danger-bg: #ffe6e2;
+  --ls-danger-fill: #d72119;
+  --ls-danger-fill-hover: #c51610;
+  --ls-on-danger: #ffffff;
+  --ls-success: #1e6b3c;
+  --ls-success-bg: #e0f4e4;
+  --ls-warning: #8f4300;
+  --ls-warning-bg: #ffeadc;
+  --ls-info: #22518a;
+  --ls-info-bg: #e2eefd;
+  /* Scrim and photo filter */
+  --ls-overlay: rgb(0 0 0 / 0.4);
+  --ls-image-filter: none;
+  /* Scales (12 steps per family, Radix method; DESIGN.md 6.1). The roles above point at these. */
+  --ls-gray-1: #ffffff;
+  --ls-gray-2: #f5f5f7;
+  --ls-gray-3: #ececef;
+  --ls-gray-4: #e2e2e5;
+  --ls-gray-5: #d2d2d7;
+  --ls-gray-6: #bcbcc2;
+  --ls-gray-7: #86868b;
+  --ls-gray-8: #6e6e73;
+  --ls-gray-9: #5e5e63;
+  --ls-gray-10: #515154;
+  --ls-gray-11: #3a3a3d;
+  --ls-gray-12: #1d1d1f;
+  --ls-burgundy-1: #fffcfc;
+  --ls-burgundy-2: #fcf6f6;
+  --ls-burgundy-3: #f9eced;
+  --ls-burgundy-4: #f7e1e2;
+  --ls-burgundy-5: #f4d5d7;
+  --ls-burgundy-6: #f1c7c9;
+  --ls-burgundy-7: #ebb3b7;
+  --ls-burgundy-8: #dc949a;
+  --ls-burgundy-9: #782b37;
+  --ls-burgundy-10: #6a242f;
+  --ls-burgundy-11: #5c1f28;
+  --ls-burgundy-12: #4a1820;
+  --ls-danger-1: #fffcfb;
+  --ls-danger-2: #fff4f2;
+  --ls-danger-3: #ffe6e2;
+  --ls-danger-4: #ffd9d3;
+  --ls-danger-5: #fecbc3;
+  --ls-danger-6: #febbb0;
+  --ls-danger-7: #fea194;
+  --ls-danger-8: #ff7362;
+  --ls-danger-9: #d72119;
+  --ls-danger-10: #c51610;
+  --ls-danger-11: #b3150f;
+  --ls-danger-12: #55120c;
+  --ls-success-1: #fbfefb;
+  --ls-success-2: #f2faf3;
+  --ls-success-3: #e0f4e4;
+  --ls-success-4: #cdefd5;
+  --ls-success-5: #b9e9c4;
+  --ls-success-6: #a3e1b3;
+  --ls-success-7: #86d29b;
+  --ls-success-8: #5ebc7b;
+  --ls-success-9: #287b46;
+  --ls-success-10: #216e3e;
+  --ls-success-11: #1e6b3c;
+  --ls-success-12: #12361e;
+  --ls-warning-1: #fffcfb;
+  --ls-warning-2: #fff6f0;
+  --ls-warning-3: #ffeadc;
+  --ls-warning-4: #ffdfcb;
+  --ls-warning-5: #fed2b5;
+  --ls-warning-6: #ffc29a;
+  --ls-warning-7: #fdac73;
+  --ls-warning-8: #ed914c;
+  --ls-warning-9: #a35303;
+  --ls-warning-10: #974c01;
+  --ls-warning-11: #8f4300;
+  --ls-warning-12: #4d2809;
+  --ls-info-1: #fbfdff;
+  --ls-info-2: #f2f7fe;
+  --ls-info-3: #e2eefd;
+  --ls-info-4: #d2e5fe;
+  --ls-info-5: #c1dcfe;
+  --ls-info-6: #afd1fc;
+  --ls-info-7: #97c1f7;
+  --ls-info-8: #72a7eb;
+  --ls-info-9: #2b5e9d;
+  --ls-info-10: #255691;
+  --ls-info-11: #22518a;
+  --ls-info-12: #132e50;
 }
 
 /* The document behind the v2 frame (overscroll, the safe-area strips, the page before the frame paints) takes the base band too,
@@ -851,6 +1230,14 @@
   }
 }
 
+/* The off switch (`ls-fx=off`) and the data-saver mark zero the secondary-button hover movement the same way as reduced motion: the border change is all that is left. */
+html[data-ls-fx='off'] [data-ui='v2'],
+html[data-ls-motion='reduced'] [data-ui='v2'] {
+  --ls-btn-lift: 0px;
+  --ls-btn-zoom: 1;
+  --ls-btn-nudge: 0px;
+}
+
 /* The first reduced-motion block above sits on :root; a v2 scope or a compact scope declares its own durations, so each one
    is zeroed here as well (HIG: no tweens at all). The hero duration is new and zeroed on the root too. */
 :root {
@@ -866,5 +1253,8 @@
     --ls-dur-slow: 0ms;
     --ls-dur-reveal: 0ms;
     --ls-dur-hero: 0ms;
+    --ls-btn-lift: 0px;
+    --ls-btn-zoom: 1;
+    --ls-btn-nudge: 0px;
   }
 }
