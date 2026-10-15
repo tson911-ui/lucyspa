@@ -142,6 +142,12 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
     orderBy: [{ code: 'asc' }],
     select: { id: true, nameVi: true },
   });
+  // Session 9: the logo of a brand (the foreign key is RESTRICT).
+  const brandLogos = await tx.brand.findMany({
+    where: { logoMediaId: assetId },
+    orderBy: [{ code: 'asc' }],
+    select: { id: true, nameVi: true },
+  });
   return [
     ...popups.map((popup) => ({
       kind: 'POPUP' as const,
@@ -172,6 +178,7 @@ export const mediaUsages: MediaUsageLookup = async (tx, assetId) => {
       id: row.id,
       title: row.nameVi,
     })),
+    ...brandLogos.map((row) => ({ kind: 'PRODUCT_BRAND' as const, id: row.id, title: row.nameVi })),
     ...[...new Map(candidates.map((row) => [row.candidate.id, row.candidate])).values()].map(
       (row) => ({
         kind: 'IMPORT_CANDIDATE' as const,

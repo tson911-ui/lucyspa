@@ -146,29 +146,71 @@ export async function editBrand(
     nameEn: input.name(request.nameEn, 'nameEn'),
     isActive: input.boolean(request.isActive, 'isActive'),
   };
+  // Session 9 (home brand band): the logo, the switch and the place are optional in the request; leaving one out keeps the current value.
+  const logo =
+    request.logoMediaId === undefined
+      ? undefined
+      : input.optionalUuid(request.logoMediaId, 'logoMediaId');
+  const showOnHome =
+    request.showOnHome === undefined ? undefined : input.boolean(request.showOnHome, 'showOnHome');
+  let homeSortOrder: number | undefined;
+  if (request.homeSortOrder !== undefined) {
+    try {
+      homeSortOrder = input.sortOrder(request.homeSortOrder);
+    } catch {
+      throw new AuthError('VALIDATION_FAILED', 'homeSortOrder');
+    }
+  }
   const expected = input.rowVersion(request.expectedRowVersion);
   const { tx } = context;
   await lockRow(tx, 'brands', id);
   const current = await tx.brand.findUniqueOrThrow({ where: { id }, select: brandSelect });
   if (current.rowVersion !== expected) throw new AuthError('CONFLICT');
+  const logoChanged = logo !== undefined && logo !== current.logoMediaId;
+  const extra = {
+    ...(logoChanged ? { logoMediaId: logo } : {}),
+    ...(showOnHome !== undefined && showOnHome !== current.showOnHome ? { showOnHome } : {}),
+    ...(homeSortOrder !== undefined && homeSortOrder !== current.homeSortOrder
+      ? { homeSortOrder }
+      : {}),
+  };
   if (
     current.nameVi === values.nameVi &&
     current.nameEn === values.nameEn &&
-    current.isActive === values.isActive
+    current.isActive === values.isActive &&
+    Object.keys(extra).length === 0
   ) {
     return presentBrand(current);
   }
+  if (logoChanged && logo !== null && logo !== undefined) {
+    try {
+      await requireUsableMedia(tx, logo);
+    } catch (error) {
+      // The shared helper names its own field.
+      if (error instanceof AuthError && error.field === 'mediaId') {
+        throw new AuthError(error.code, 'logoMediaId');
+      }
+      throw error;
+    }
+  }
   const saved = await tx.brand.update({
     where: { id },
-    data: { ...values, rowVersion: current.rowVersion + 1 },
+    data: { ...values, ...extra, rowVersion: current.rowVersion + 1 },
     select: brandSelect,
   });
   await appendAdminAudit(context, {
     action: 'PRODUCT_BRAND_UPDATED',
     entityType: 'Brand',
     entityId: id,
-    before: { nameVi: current.nameVi, nameEn: current.nameEn, isActive: current.isActive },
-    after: values,
+    before: {
+      nameVi: current.nameVi,
+      nameEn: current.nameEn,
+      isActive: current.isActive,
+      ...Object.fromEntries(
+        Object.keys(extra).map((key) => [key, current[key as keyof typeof current]]),
+      ),
+    },
+    after: { ...values, ...extra },
   });
   return presentBrand(saved);
 }

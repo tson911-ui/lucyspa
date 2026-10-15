@@ -163,7 +163,7 @@ test('filters: category links with the chosen one marked, sub-categories under t
       { code: 'rua', name: 'Sữa rửa mặt', parentCode: 'da', image: null },
       { code: 'mat-na', name: 'Mặt nạ', parentCode: null, image: null },
     ],
-    brands: [{ code: 'b1', name: 'Hãng một' }],
+    brands: [{ code: 'b1', name: 'Hãng một', logo: null, onHome: false, homeSortOrder: 0 }],
   });
   const text = html(
     <ProductsView
@@ -185,7 +185,13 @@ test('filters: category links with the chosen one marked, sub-categories under t
   const many = html(
     <ProductsView
       locale="vi"
-      data={{ ...rich, brands: [...rich.brands, { code: 'b2', name: 'Hãng hai' }] }}
+      data={{
+        ...rich,
+        brands: [
+          ...rich.brands,
+          { code: 'b2', name: 'Hãng hai', logo: null, onHome: false, homeSortOrder: 0 },
+        ],
+      }}
       state={EMPTY_PRODUCTS_STATE}
     />,
   );
@@ -328,8 +334,8 @@ test('list (C12): chips for the categories and brands from 640 px, the second ro
       { code: 'rua', name: 'Sữa rửa mặt', parentCode: 'da', image: null },
     ],
     brands: [
-      { code: 'b1', name: 'Hãng một' },
-      { code: 'b2', name: 'Hãng hai' },
+      { code: 'b1', name: 'Hãng một', logo: null, onHome: false, homeSortOrder: 0 },
+      { code: 'b2', name: 'Hãng hai', logo: null, onHome: false, homeSortOrder: 0 },
     ],
   });
   const start = html(<ProductsView locale="vi" data={rich} state={EMPTY_PRODUCTS_STATE} />);

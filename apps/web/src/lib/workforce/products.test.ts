@@ -13,6 +13,8 @@ import { ApiError } from './api';
 import {
   allowedStatusMoves,
   brandCreateRequest,
+  brandEditRequest,
+  draftFromBrandForm,
   crumbLabel,
   canEndPromotion,
   canOpenCatalog,
@@ -517,4 +519,46 @@ test('the current breadcrumb is one short line: a long name is cut with an ellip
   assert.ok(cut.endsWith('…'));
   assert.ok([...cut].length <= 33);
   assert.ok(long.startsWith(cut.slice(0, -1)));
+});
+
+test('the brand form sends the logo, the band switch and the place; a bad place or a blank name sends nothing (session 9)', () => {
+  const brand = {
+    id: 'b1',
+    code: 'lucy',
+    nameVi: 'Lucy',
+    nameEn: 'Lucy',
+    isActive: true,
+    logoMediaId: 'm1',
+    showOnHome: true,
+    homeSortOrder: 4,
+    rowVersion: 3,
+    productCount: 2,
+  };
+  const draft = draftFromBrandForm(brand);
+  assert.deepEqual([draft.logoMediaId, draft.showOnHome, draft.homeSortOrder], ['m1', true, '4']);
+  assert.deepEqual(brandEditRequest(draft, 3), {
+    expectedRowVersion: 3,
+    nameVi: 'Lucy',
+    nameEn: 'Lucy',
+    isActive: true,
+    logoMediaId: 'm1',
+    showOnHome: true,
+    homeSortOrder: 4,
+  });
+  assert.equal(
+    brandEditRequest({ ...draft, logoMediaId: '' }, 3)?.logoMediaId,
+    null,
+    'no logo is sent as null',
+  );
+  assert.equal(brandEditRequest({ ...draft, homeSortOrder: '-1' }, 3), null);
+  assert.equal(brandEditRequest({ ...draft, homeSortOrder: '1.5' }, 3), null);
+  assert.equal(brandEditRequest({ ...draft, nameVi: '  ' }, 3), null);
+  assert.deepEqual(
+    [
+      draftFromBrandForm(null).logoMediaId,
+      draftFromBrandForm(null).showOnHome,
+      draftFromBrandForm(null).homeSortOrder,
+    ],
+    ['', false, '0'],
+  );
 });

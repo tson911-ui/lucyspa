@@ -8,7 +8,8 @@ import { rules, selectors } from './css-rules-test-helper';
 const css = readFileSync(new URL('pages-v2.css', import.meta.url), 'utf8');
 const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
 const all = rules(stripped);
-const body = (selector: string) => all.find((rule) => rule.selector === selector)?.body ?? '';
+const body = (selector: string) =>
+  all.find((rule) => rule.selector.replace(/\s+/g, ' ') === selector)?.body ?? '';
 
 test('pages-v2.css: every selector sits under the v2 attribute, tokens only, no shadow, gradient or literal spacing', () => {
   assert.ok(all.length > 40, `rules found: ${all.length}`);
@@ -47,11 +48,20 @@ test('home hero: about 80 % of the screen and never under 35 rem, one flat scrim
     body("[data-ui='v2'] .ls-home-hero[data-media='photo'] :is(.ls-site-display, .ls-lead)"),
     /color:\s*var\(--ls-on-photo\)/,
   );
-  // The outline-white form is drawn only over a photo, and stays below the kit's hover rule so hover is still the solid accent.
+  // The outline-white form is drawn only over a photo. Like every secondary button it never fills on hover (Owner exception to rule 4,
+  // 2026-10-15): the white border goes from 70 % to full and the background stays clear.
   const outline = body("[data-ui='v2'] [data-media='photo'] .ls-btn-on-photo");
-  assert.match(outline, /border-color:\s*var\(--ls-on-photo\)/);
+  assert.match(
+    outline,
+    /border-color:\s*color-mix\(in srgb, var\(--ls-on-photo\) 70%, transparent\)/,
+  );
   assert.match(outline, /color:\s*var\(--ls-on-photo\)/);
   assert.doesNotMatch(outline, /background/);
+  const hover = body(
+    "[data-ui='v2'] [data-media='photo'] .ls-btn-on-photo:hover:not([aria-disabled='true']):not(:disabled)",
+  );
+  assert.match(hover, /border-color:\s*var\(--ls-on-photo\)/);
+  assert.match(hover, /background:\s*transparent/);
 });
 
 test('home: the product row scrolls inside itself with snap, the arrows appear from 1024 px, motion switches the smooth scroll off', () => {
@@ -298,4 +308,39 @@ test('C17 counter: the final number stays in the flow and the width never change
     /color:\s*transparent/,
   );
   assert.match(body("[data-ui='v2'] .ls-count-live"), /position:\s*absolute/);
+});
+
+test('home brand band: the accent solid, white logos of one height, a slow endless track that pauses, and a still row without motion', () => {
+  const band = body("[data-ui='v2'] .ls-brand-band");
+  assert.match(band, /background:\s*var\(--ls-brand-fill\)/);
+  assert.match(band, /color:\s*var\(--ls-on-brand\)/);
+  assert.match(band, /overflow:\s*hidden/);
+  assert.match(
+    body("[data-ui='v2'] .ls-brand-track"),
+    /animation:\s*ls-brand-scroll calc\(var\(--ls-brand-seconds\) \* 1s\) linear infinite/,
+  );
+  assert.match(css, /@keyframes ls-brand-scroll \{\s*to \{\s*transform: translateX\(-50%\);/);
+  assert.match(
+    body("[data-ui='v2'] .ls-brand-band:is(:hover, :focus-within, :active) .ls-brand-track"),
+    /animation-play-state:\s*paused/,
+  );
+  const logo = body("[data-ui='v2'] .ls-brand-logo");
+  assert.match(logo, /height:\s*var\(--ls-space-8\)/);
+  assert.match(logo, /filter:\s*brightness\(0\) invert\(1\)/);
+  assert.match(body("[data-ui='v2'] .ls-brand-link"), /min-height:\s*var\(--ls-control-h\)/);
+  // Reduced motion and the off switch: no animation, the duplicate copy and the fillers are not drawn.
+  assert.match(
+    body(
+      "html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-track, html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-track",
+    ),
+    /animation:\s*none/,
+  );
+  assert.match(
+    css,
+    /prefers-reduced-motion: reduce\) \{\s*\[data-ui='v2'\] \.ls-brand-track \{[^}]*animation:\s*none/,
+  );
+  assert.match(
+    css,
+    /\.ls-brand-set\[aria-hidden='true'\],\s*\[data-ui='v2'\] \.ls-brand-item\[aria-hidden='true'\] \{\s*display: none;/,
+  );
 });

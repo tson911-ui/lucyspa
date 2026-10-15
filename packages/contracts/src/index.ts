@@ -3098,7 +3098,8 @@ export interface MediaUsage {
     | 'IMPORT_CANDIDATE'
     | 'SERVICE'
     | 'SERVICE_GROUP'
-    | 'PRODUCT_CATEGORY';
+    | 'PRODUCT_CATEGORY'
+    | 'PRODUCT_BRAND';
   id: string;
   title: string;
 }
@@ -3840,6 +3841,17 @@ export interface PublicProductsCommitment {
   items: string[];
 }
 
+/** A brand of the catalog. The logo and the band flags drive the home brand band (session 9); the products page only needs the name. */
+export interface PublicProductBrand {
+  code: string;
+  name: string;
+  /** The logo the Owner uploaded, or null. */
+  logo: PublicSlideImage | null;
+  /** True when the Owner put the brand in the home band. */
+  onHome: boolean;
+  homeSortOrder: number;
+}
+
 /** GET /api/v1/public/products?locale&q&category&brand&sort&page : one page of the catalog and what the filters need. */
 export interface PublicProductsResponse {
   hero: PublicProductsHero | null;
@@ -3847,7 +3859,7 @@ export interface PublicProductsResponse {
   /** Categories that hold at least one visible product (a parent holds its children's products too). */
   categories: PublicProductCategory[];
   /** Brands that hold at least one visible product. */
-  brands: { code: string; name: string }[];
+  brands: PublicProductBrand[];
   items: PublicProductCard[];
   page: number;
   pageSize: number;
@@ -3939,6 +3951,10 @@ export interface ProductBrandResponse {
   nameVi: string;
   nameEn: string;
   isActive: boolean;
+  /** Session 9: the brand logo (a media-library image), whether it is in the home brand band and its place in the band; small first. */
+  logoMediaId: string | null;
+  showOnHome: boolean;
+  homeSortOrder: number;
   rowVersion: number;
   productCount: number;
 }
@@ -3960,6 +3976,11 @@ export interface ProductBrandEditRequest {
   nameVi: string;
   nameEn: string;
   isActive: boolean;
+  /** A media-library image, or null to remove the logo; omitted = unchanged. */
+  logoMediaId?: string | null;
+  /** Omitted = unchanged. */
+  showOnHome?: boolean;
+  homeSortOrder?: number;
 }
 
 export interface ProductCategoryResponse {

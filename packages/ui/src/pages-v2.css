@@ -76,10 +76,130 @@
   color: var(--ls-on-photo);
 }
 
-/* On the photo only the secondary button switches to the outline-white form (its hover is the kit's solid accent). */
+/* On the photo only the secondary button switches to the outline-white form. Like every secondary button it never fills on hover (Owner
+   exception to rule 4, 2026-10-15): the white border goes from 70 % to full, the lift and the arrow come from the kit rule. */
 [data-ui='v2'] [data-media='photo'] .ls-btn-on-photo {
-  border-color: var(--ls-on-photo);
+  border-color: color-mix(in srgb, var(--ls-on-photo) 70%, transparent);
   color: var(--ls-on-photo);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2']
+    [data-media='photo']
+    .ls-btn-on-photo:hover:not([aria-disabled='true']):not(:disabled) {
+    border-color: var(--ls-on-photo);
+    color: var(--ls-on-photo);
+    background: transparent;
+  }
+}
+
+/* ---- Home: brand band (session 9, 9.1 item 1b) --------------------------------------------------------------------------------------- */
+/* The logos of the cosmetics brands the shop sells, white on the burgundy solid (Owner-approved exception to D5: the one place a band is
+   the accent). One uniform logo height; the track moves slowly and endlessly (two equal copies, translated by half), and pauses while the
+   pointer is over it, a link has focus or a finger is down. Reduced motion and the off switch draw a still, centred, wrapped row. */
+[data-ui='v2'] .ls-brand-band {
+  overflow: hidden;
+  padding-block: var(--ls-space-4);
+  background: var(--ls-brand-fill);
+  color: var(--ls-on-brand);
+}
+
+[data-ui='v2'] .ls-brand-track {
+  display: flex;
+  width: max-content;
+  animation: ls-brand-scroll calc(var(--ls-brand-seconds) * 1s) linear infinite;
+}
+
+[data-ui='v2'] .ls-brand-band:is(:hover, :focus-within, :active) .ls-brand-track {
+  animation-play-state: paused;
+}
+
+[data-ui='v2'] .ls-brand-set {
+  display: flex;
+  flex: none;
+  gap: var(--ls-space-9);
+  margin: 0;
+  padding: 0;
+  padding-inline-end: var(--ls-space-9);
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-brand-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  border-block-end: 2px solid transparent;
+  color: inherit;
+  text-decoration: none;
+}
+
+[data-ui='v2'] .ls-brand-link:focus-visible {
+  outline: 2px solid var(--ls-on-brand);
+  outline-offset: var(--ls-space-1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-brand-link:hover {
+    border-block-end-color: var(--ls-on-brand);
+  }
+}
+
+/* A logo is a mark, so it is drawn white whatever colors the file has (a transparent PNG or SVG); the height is the same for all. */
+[data-ui='v2'] .ls-brand-logo {
+  display: block;
+  width: auto;
+  max-width: none;
+  height: var(--ls-space-8);
+  filter: brightness(0) invert(1);
+  object-fit: contain;
+}
+
+@keyframes ls-brand-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ui='v2'] .ls-brand-track {
+    width: auto;
+    justify-content: center;
+    animation: none;
+  }
+
+  [data-ui='v2'] .ls-brand-set {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-inline: var(--ls-gutter);
+    gap: var(--ls-space-2) var(--ls-space-9);
+  }
+
+  [data-ui='v2'] .ls-brand-set[aria-hidden='true'],
+  [data-ui='v2'] .ls-brand-item[aria-hidden='true'] {
+    display: none;
+  }
+}
+
+html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-track,
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-track {
+  width: auto;
+  justify-content: center;
+  animation: none;
+}
+
+html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-set,
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-set {
+  flex-wrap: wrap;
+  justify-content: center;
+  padding-inline: var(--ls-gutter);
+  gap: var(--ls-space-2) var(--ls-space-9);
+}
+
+html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-set[aria-hidden='true'],
+html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-item[aria-hidden='true'],
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-set[aria-hidden='true'],
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true'] {
+  display: none;
 }
 
 /* ---- Home: trust band (9.1, item 2) -------------------------------------------------------------------------------------------------- */

@@ -57,6 +57,13 @@ class BrandEditDto implements ProductBrandEditRequest {
   @ApiProperty() @IsString() @MaxLength(400) nameVi!: string;
   @ApiProperty() @IsString() @MaxLength(400) nameEn!: string;
   @ApiProperty() @IsBoolean() isActive!: boolean;
+  @ApiProperty({ required: false, nullable: true })
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(64)
+  logoMediaId?: string | null;
+  @ApiProperty({ required: false }) @IsOptional() @IsBoolean() showOnHome?: boolean;
+  @ApiProperty({ required: false }) @IsOptional() @IsInt() homeSortOrder?: number;
 }
 
 class CategoryCreateDto implements ProductCategoryCreateRequest {

@@ -623,6 +623,12 @@ export async function isPubliclyServed(
     select: { id: true },
   });
   if (categoryPhoto !== null) return true;
+  // The logo of a brand (session 9): public while the brand is active and in the home band.
+  const brandLogo = await tx.brand.findFirst({
+    where: { logoMediaId: assetId, isActive: true, showOnHome: true },
+    select: { id: true },
+  });
+  if (brandLogo !== null) return true;
   // A picture of a visible footer block (the block names its asset inside the profile's JSON).
   const [footer] = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM website_shop_info

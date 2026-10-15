@@ -24,15 +24,15 @@ import {
   brandEditRequest,
   categoryCreateRequest,
   categoryEditRequest,
-  draftFromBrand,
+  draftFromBrandForm,
   draftFromCategory,
   localizedName,
   orderCategoryTree,
   parentOptions,
   productErrorText,
   validateCategoryDraft,
-  validateNames,
-  type BrandDraft,
+  validateBrandForm,
+  type BrandFormDraft,
   type CategoryDraft,
   type Issue,
 } from '../../../lib/workforce/products';
@@ -174,13 +174,13 @@ function BrandDialog({
   const p = productDictionary(locale);
   const b = p.brands;
   const notify = useSuccessToast();
-  const [initial] = useState(() => draftFromBrand(brand));
-  const [draft, setDraft] = useState<BrandDraft>(initial);
+  const [initial] = useState(() => draftFromBrandForm(brand));
+  const [draft, setDraft] = useState<BrandFormDraft>(initial);
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const errors = validateNames(draft);
-  const set = (patch: Partial<BrandDraft>) => setDraft((state) => ({ ...state, ...patch }));
+  const errors = validateBrandForm(draft);
+  const set = (patch: Partial<BrandFormDraft>) => setDraft((state) => ({ ...state, ...patch }));
 
   async function submit() {
     if (pending) return;
@@ -257,6 +257,38 @@ function BrandDialog({
           </>
         ) : null}
       </FormGrid>
+      {brand ? (
+        <FormSection title={b.logoSection} description={b.logoHint}>
+          <MediaPhotoField
+            mediaId={draft.logoMediaId}
+            onChange={(logoMediaId) => set({ logoMediaId })}
+          />
+          <FormGrid>
+            <CheckField
+              label={b.showOnHome}
+              hint={b.showOnHomeHint}
+              checked={draft.showOnHome}
+              onChange={(event) => set({ showOnHome: event.target.checked })}
+            />
+            <Field
+              label={b.homeSortOrder}
+              hint={b.homeSortOrderHint}
+              error={issueText(checked, errors.homeSortOrder, p)}
+              width="md"
+            >
+              {(control) => (
+                <NumberInput
+                  {...control}
+                  inputMode="numeric"
+                  min={0}
+                  value={draft.homeSortOrder}
+                  onChange={(event) => set({ homeSortOrder: event.target.value })}
+                />
+              )}
+            </Field>
+          </FormGrid>
+        </FormSection>
+      ) : null}
     </FormDialog>
   );
 }

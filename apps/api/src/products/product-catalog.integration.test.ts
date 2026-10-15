@@ -566,6 +566,96 @@ test(
                   2,
                   'the same values are a quiet no-op',
                 );
+                // Session 9 (home brand band): the logo, the switch and the place are optional in the request. Omitting them keeps the
+                // current values; a logo needs Vietnamese alt text; null removes it; an image in use is named by the media usage.
+                assert.equal(edited.logoMediaId, null);
+                assert.equal(edited.showOnHome, false);
+                assert.equal(edited.homeSortOrder, 0);
+                const logoMedia = (altVi: string | null) =>
+                  tx.mediaAsset.create({
+                    data: {
+                      storageKey: `brand-logo-${run}-${randomUUID()}`,
+                      originalFilename: 'logo.png',
+                      mime: 'image/png',
+                      bytes: 10,
+                      width: 200,
+                      height: 80,
+                      sha256: randomUUID().replaceAll('-', '').repeat(2),
+                      altVi,
+                      createdByUserId: actors.manager.id,
+                    },
+                    select: { id: true },
+                  });
+                const logo = await logoMedia('Logo thương hiệu');
+                const noAltLogo = await logoMedia(null);
+                const brandSame = { nameVi: 'Đông y mới', nameEn: 'Đông Y Đẹp', isActive: false };
+                await fails(
+                  () =>
+                    catalog.editBrand(actors.manager.token, dong.id, {
+                      ...brandSame,
+                      expectedRowVersion: 2,
+                      logoMediaId: noAltLogo.id,
+                    }),
+                  'MEDIA_ALT_REQUIRED',
+                  'logoMediaId',
+                );
+                await fails(
+                  () =>
+                    catalog.editBrand(actors.manager.token, dong.id, {
+                      ...brandSame,
+                      expectedRowVersion: 2,
+                      logoMediaId: randomUUID(),
+                    }),
+                  'VALIDATION_FAILED',
+                  'logoMediaId',
+                );
+                await fails(
+                  () =>
+                    catalog.editBrand(actors.manager.token, dong.id, {
+                      ...brandSame,
+                      expectedRowVersion: 2,
+                      homeSortOrder: -1,
+                    }),
+                  'VALIDATION_FAILED',
+                  'homeSortOrder',
+                );
+                const banded = await catalog.editBrand(actors.manager.token, dong.id, {
+                  ...brandSame,
+                  expectedRowVersion: 2,
+                  logoMediaId: logo.id,
+                  showOnHome: true,
+                  homeSortOrder: 3,
+                });
+                assert.equal(banded.logoMediaId, logo.id);
+                assert.equal(banded.showOnHome, true);
+                assert.equal(banded.homeSortOrder, 3);
+                assert.equal(banded.rowVersion, 3);
+                const keptBand = await catalog.editBrand(actors.manager.token, dong.id, {
+                  ...brandSame,
+                  nameVi: 'Đông y mới nhất',
+                  expectedRowVersion: 3,
+                });
+                assert.equal(
+                  keptBand.logoMediaId,
+                  logo.id,
+                  'a request without the fields keeps them',
+                );
+                assert.equal(keptBand.showOnHome, true);
+                assert.equal(keptBand.homeSortOrder, 3);
+                assert.deepEqual(
+                  (await mediaUsages(tx, logo.id)).map((usage) => [usage.kind, usage.id]),
+                  [['PRODUCT_BRAND', dong.id]],
+                );
+                const unbanded = await catalog.editBrand(actors.manager.token, dong.id, {
+                  ...brandSame,
+                  nameVi: 'Đông y mới nhất',
+                  expectedRowVersion: 4,
+                  logoMediaId: null,
+                  showOnHome: false,
+                });
+                assert.equal(unbanded.logoMediaId, null);
+                assert.equal(unbanded.showOnHome, false);
+                assert.deepEqual(await mediaUsages(tx, logo.id), []);
                 for (const bad of [
                   { nameVi: '  ', nameEn: 'A' },
                   { nameVi: 'A', nameEn: '' },

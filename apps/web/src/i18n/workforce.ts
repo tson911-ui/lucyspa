@@ -633,6 +633,7 @@ const vi = {
       usageService: 'Dịch vụ',
       usageServiceGroup: 'Nhóm dịch vụ',
       usageProductCategory: 'Danh mục mỹ phẩm',
+      usageProductBrand: 'Logo thương hiệu',
       altVi: 'Mô tả ảnh (tiếng Việt)',
       altViHint:
         'Bắt buộc trước khi dùng ảnh trên website. Mô tả ngắn nội dung ảnh cho người dùng trình đọc màn hình.',
@@ -3440,6 +3441,7 @@ const en: Dictionary = {
       usageService: 'Service',
       usageServiceGroup: 'Service group',
       usageProductCategory: 'Cosmetics category',
+      usageProductBrand: 'Brand logo',
       altVi: 'Image description (Vietnamese)',
       altViHint:
         'Required before the image is used on the website. A short description of what the image shows, for screen reader users.',

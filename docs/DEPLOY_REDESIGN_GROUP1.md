@@ -6,11 +6,12 @@ Dành cho Owner, không cần rành kỹ thuật. Chỉ có **MỘT khối lện
 
 **Bản sẽ cài:** commit `__COMMIT_DA_PUSH__` _(Claude điền mã đầy đủ 40 ký tự vào đây và vào dòng `NEW=` trong khối lệnh ngay khi đẩy lên `main` và CI xanh; khối **từ chối chạy** khi dòng `NEW=` còn là `__COMMIT_DA_PUSH__`)_. Các commit tài liệu đẩy sau đó không đổi mã chạy.
 **Bản đang chạy (theo báo cáo của Owner):** `04ceaa52fbbdc4ca310a540d53db3aaf336312c1` (**134 migration, 82 quyền**).
-**Cơ sở dữ liệu:** từ 134 lên **137 migration**, chỉ **thêm**:
+**Cơ sở dữ liệu:** từ 134 lên **138 migration**, chỉ **thêm**:
 
 1. `20261214000000_redesign_service_content_photos`: 7 cột mới có thể để trống ở `services` (chữ "gồm những gì", "các bước", "câu hỏi thường gặp" mỗi thứ hai ngôn ngữ, và ảnh), 1 cột ảnh ở `service_categories` và 1 ở `product_categories` (khóa tới thư viện ảnh, không cho xóa ảnh đang dùng), 3 chỉ mục. **Không đổi dòng cũ nào.**
 2. `20261215000000_customer_email_change_guard`: thay **một hàm** bảo vệ (`lucy_guard_auth_challenge`) để khách có tài khoản cũng đổi được email đăng nhập bằng mật khẩu hiện tại và mã gửi tới email mới (Owner đã duyệt 15/10/2026). Không đổi bảng hay dòng nào.
 3. `20261215000001_website_info_pages`: bảng mới rỗng `website_pages` (trang thông tin: tiêu đề, nội dung, loại, xuất bản), một kiểu liệt kê mới `WebsitePageRole`, và một quy tắc ở cơ sở dữ liệu: **chỉ một** trang "Điều khoản" và **một** trang "Bảo mật" được xuất bản cùng lúc.
+4. `20261215000002_brand_logo_home_band`: 3 cột mới ở `brands` (logo — khóa ảnh thư viện, không cho xóa ảnh đang dùng; công tắc "hiện trên trang chủ", mặc định **tắt**; thứ tự trong dải, mặc định 0). Dải thương hiệu dưới ảnh đầu trang chủ **không hiện** cho tới khi Owner tải logo và bật công tắc cho ít nhất một thương hiệu.
 
 **Quyền:** **không đổi, vẫn 82** (quản lý trang thông tin dùng quyền sẵn có `MANAGE_WEBSITE_CONTENT`). Khối kiểm tra số quyền trước và sau.
 **Điều gì đổi với người dùng:**
@@ -133,7 +134,7 @@ AGAIN=$(pnpm --filter @lucy-spa/api run pages:import-policies --apply 2>&1) || {
 expect "ban tam: chay lai khong tao them, bo qua 8" "$(field "$(summary "$AGAIN")" exists)" "8"
 unset DATABASE_URL
 expect "khong con DATABASE_URL trong moi truong" "$(env | grep -c '^DATABASE_URL=' || true)" "0"
-expect "ban tam: migration va quyen" "$(sqlq $SCRATCH "$COUNTS")" "137|82"
+expect "ban tam: migration va quyen" "$(sqlq $SCRATCH "$COUNTS")" "138|82"
 expect "ban tam: 9 cot moi" "$(sqlq $SCRATCH "$COLS")" "9"
 expect "ban tam: bang trang thong tin" "$(sqlq $SCRATCH "$PAGES_TABLE")" "1"
 expect "ban tam: 4 loai trang" "$(sqlq $SCRATCH "$PAGE_ROLES")" "4"
@@ -159,7 +160,7 @@ expect "khong co DATABASE_URL trong moi truong" "$(env | grep -c '^DATABASE_URL=
 pnpm db:deploy || dung "db:deploy that loi: KHONG chay lai, hoi Claude (API va worker dang dung)"
 SYNC=$(pnpm db:permissions:sync 2>&1); echo "$SYNC" | tail -n 1
 echo "$SYNC" | grep -q "0 inserted, 82 already present" || dung "danh muc quyen that khong phai '0 inserted, 82 already present'"
-expect "migration va quyen sau" "$(sqlq $DB "$COUNTS")" "137|82"
+expect "migration va quyen sau" "$(sqlq $DB "$COUNTS")" "138|82"
 expect "9 cot moi" "$(sqlq $DB "$COLS")" "9"
 expect "bang trang thong tin rong" "$(sqlq $DB "$PAGES_ROWS")" "0"
 expect "4 loai trang" "$(sqlq $DB "$PAGE_ROLES")" "4"
@@ -233,7 +234,7 @@ expect "trang chinh sach tieng Anh hien chu tieng Viet" "$(http http://127.0.0.1
 expect "API trang thong tin cong khai: 8 trang" "$(curl -s http://127.0.0.1:3001/api/v1/public/pages | grep -o '"slug"' | wc -l | tr -d ' ')" "8"
 echo "=== XONG: khong co DUNG LAI nao. Gui Claude cac dong sau ==="
 echo "ma dang chay: $(git rev-parse HEAD)"
-echo "so lieu: $(sqlq $DB "$COUNTS") (mong doi 137|82)"
+echo "so lieu: $(sqlq $DB "$COUNTS") (mong doi 138|82)"
 echo "trang thong tin: $(sqlq $DB "$PUBLISHED") (mong doi 8|1|1|6|0)"
 echo "sao luu co so du lieu: $BACKUP"
 echo "sao luu web: $WEBBACKUP"
@@ -252,7 +253,7 @@ pm2 status
 
 ## Quay lại nếu có sự cố
 
-Ba migration chỉ **thêm** (cột và bảng mới, một hàm bảo vệ nới ra cho khách đổi email) nên **không cần xóa gì** ở cơ sở dữ liệu: bản cũ bỏ qua cột và bảng mới, không dùng đường đổi email của khách, và số quyền **không đổi** (82). Chỉ cần đổi lại bản chạy.
+Bốn migration chỉ **thêm** (cột và bảng mới, một hàm bảo vệ nới ra cho khách đổi email) nên **không cần xóa gì** ở cơ sở dữ liệu: bản cũ bỏ qua cột và bảng mới, không dùng đường đổi email của khách, và số quyền **không đổi** (82). Chỉ cần đổi lại bản chạy.
 
 ```bash
 (

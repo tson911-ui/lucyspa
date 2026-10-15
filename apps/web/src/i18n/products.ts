@@ -72,6 +72,14 @@ const vi = {
     codeHint: 'Mã tự tạo từ tên tiếng Anh và không đổi được.',
     empty: 'Chưa có thương hiệu nào. Hãy thêm thương hiệu đầu tiên.',
     created: 'Đã thêm thương hiệu.',
+    logoSection: 'Logo trên trang chủ',
+    logoHint:
+      'Logo hiện trong dải thương hiệu ngay dưới ảnh đầu trang chủ, màu trắng trên nền đỏ đô. Nên dùng ảnh PNG hoặc SVG nền trong, chữ đậm, đã mô tả ảnh.',
+    showOnHome: 'Hiện trong dải thương hiệu',
+    showOnHomeHint:
+      'Bật để logo xuất hiện trên trang chủ và bấm vào sẽ mở danh sách sản phẩm của thương hiệu. Cần có logo và ít nhất một sản phẩm đang bán.',
+    homeSortOrder: 'Thứ tự trong dải',
+    homeSortOrderHint: 'Số nhỏ đứng trước.',
   },
   categories: {
     add: 'Thêm danh mục',
@@ -415,6 +423,14 @@ const en: Dictionary = {
     codeHint: 'The code is made from the English name and never changes.',
     empty: 'There are no brands yet. Add the first brand.',
     created: 'Brand added.',
+    logoSection: 'Home page logo',
+    logoHint:
+      'The logo appears in the brand band right under the home hero, in white on the burgundy band. Use a PNG or SVG with a transparent background and bold shapes, and describe the image.',
+    showOnHome: 'Show in the brand band',
+    showOnHomeHint:
+      'Turn on to show the logo on the home page, linking to the product list of the brand. It needs a logo and at least one product on sale.',
+    homeSortOrder: 'Order in the band',
+    homeSortOrderHint: 'Smaller numbers come first.',
   },
   categories: {
     add: 'Add category',

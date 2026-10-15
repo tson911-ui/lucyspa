@@ -3,6 +3,7 @@ import {
   PUBLIC_PRODUCTS_PAGE_SIZE,
   type PublicCampaignRef,
   type PublicProductCard,
+  type PublicProductBrand,
   type PublicProductCategory,
   type PublicProductCategoryRef,
   type PublicProductCodesResponse,
@@ -354,7 +355,7 @@ async function pageOfIds(
 
 interface Taxonomy {
   categories: (PublicProductCategory & { id: string })[];
-  brands: { id: string; code: string; name: string }[];
+  brands: (PublicProductBrand & { id: string })[];
 }
 
 /** The categories and brands that hold at least one visible product (a parent holds its children's products too). */
@@ -382,7 +383,15 @@ async function taxonomy(tx: Tx, now: Date, locale: PublicLocale): Promise<Taxono
     tx.brand.findMany({
       where: { isActive: true },
       orderBy: [{ nameVi: 'asc' }, { code: 'asc' }],
-      select: { id: true, code: true, nameVi: true, nameEn: true },
+      select: {
+        id: true,
+        code: true,
+        nameVi: true,
+        nameEn: true,
+        showOnHome: true,
+        homeSortOrder: true,
+        logo: { select: mediaSelect() },
+      },
     }),
   ]);
   const held = new Set<string>();
@@ -414,11 +423,18 @@ async function taxonomy(tx: Tx, now: Date, locale: PublicLocale): Promise<Taxono
       }),
     brands: brands
       .filter((brand) => usedBrands.has(brand.id))
-      .map((brand) => ({
-        id: brand.id,
-        code: brand.code,
-        name: pick(brand.nameVi, brand.nameEn, locale) ?? brand.code,
-      })),
+      .map((brand) => {
+        const name = pick(brand.nameVi, brand.nameEn, locale) ?? brand.code;
+        return {
+          id: brand.id,
+          code: brand.code,
+          name,
+          // The logo's alt text is the brand name: a logo is the name, written as a picture.
+          logo: brand.logo ? { ...publicImage(brand.logo, locale, name), alt: name } : null,
+          onHome: brand.showOnHome && brand.logo !== null,
+          homeSortOrder: brand.homeSortOrder,
+        };
+      }),
   };
 }
 
@@ -462,7 +478,13 @@ export async function publicProducts(
       parentCode,
       image,
     })),
-    brands: tax.brands.map(({ code, name }) => ({ code, name })),
+    brands: tax.brands.map(({ code, name, logo, onHome, homeSortOrder }) => ({
+      code,
+      name,
+      logo,
+      onHome,
+      homeSortOrder,
+    })),
   };
   const head = {
     hero: presentHero(settings, locale),

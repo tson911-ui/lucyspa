@@ -2419,6 +2419,7 @@ model MediaAsset {
   servicePhotos         Service[]                @relation("ServicePhoto")
   serviceCategoryPhotos ServiceCategory[]        @relation("ServiceCategoryPhoto")
   productCategoryPhotos ProductCategory[]        @relation("ProductCategoryPhoto")
+  brandLogos            Brand[]                  @relation("BrandLogo")
 
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "media_assets_created_idx")
   @@map("media_assets")
@@ -3377,6 +3378,12 @@ model Brand {
   nameVi           String                 @map("name_vi")
   nameEn           String                 @map("name_en")
   isActive         Boolean                @default(true) @map("is_active")
+  /// Redesign group 1 (session 9): the optional logo of the brand (a media-library asset, transparent PNG or SVG), shown white in the home brand band.
+  logoMediaId      String?                @map("logo_media_id") @db.Uuid
+  logo             MediaAsset?            @relation("BrandLogo", fields: [logoMediaId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// Whether the logo is in the home brand band, and its place in the band (small first).
+  showOnHome       Boolean                @default(false) @map("show_on_home")
+  homeSortOrder    Int                    @default(0) @map("home_sort_order")
   rowVersion       Int                    @default(1) @map("row_version")
   createdAt        DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime               @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(3)
@@ -3386,6 +3393,7 @@ model Brand {
   importCandidates ImportCandidate[]
   valueMappings    SourceValueMapping[]
 
+  @@index([logoMediaId], map: "brands_logo_idx")
   @@map("brands")
 }
 

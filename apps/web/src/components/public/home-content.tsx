@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import {
+  homeBrands,
   homeFeaturedProducts,
   homeGroups,
   homeProductCategories,
@@ -10,6 +11,7 @@ import {
   topServiceColumns,
   type HomeData,
 } from '../../lib/public-site-core';
+import { BrandBand } from './brand-band';
 import { HomeOffer } from './campaign-views';
 import {
   categoryItems,
@@ -53,6 +55,7 @@ export function HomeContent({
   const groups = services && services.groups.length > 0 ? homeGroups(services, site) : [];
   const columns = topServiceColumns(groups);
   const featured = homeFeaturedProducts(products);
+  const brands = homeBrands(products);
   const productCategories = homeProductCategories(products);
 
   return (
@@ -108,6 +111,8 @@ export function HomeContent({
           </div>
         </div>
       </section>
+
+      <BrandBand locale={locale} brands={brands} />
 
       {site && site.facts.length > 0 ? (
         <Band

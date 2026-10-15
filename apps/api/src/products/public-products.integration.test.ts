@@ -417,6 +417,55 @@ test(
           const noCategory = result.items.find((item) => item.code === F.code)!;
           assert.equal(noCategory.category, null, 'a retired category shows no label');
           assert.deepEqual(result.brands.map((entry) => entry.code).includes(brand.code), true);
+          // Session 9 (home brand band): a brand is in the band only with the switch on AND a logo; the logo's alt text is the brand name.
+          const plain = result.brands.find((entry) => entry.code === brand.code)!;
+          assert.deepEqual([plain.logo, plain.onHome, plain.homeSortOrder], [null, false, 0]);
+          const logo = await tx.mediaAsset.create({
+            data: {
+              storageKey: `pub-logo-${run}`,
+              originalFilename: 'logo.png',
+              mime: 'image/png',
+              bytes: 10,
+              width: 400,
+              height: 120,
+              sha256: randomUUID().replaceAll('-', '').repeat(2),
+              altVi: 'Logo',
+              createdByUserId: full.id,
+            },
+            select: { id: true },
+          });
+          const currentBrand = (await catalog.brands(full.token)).brands.find(
+            (entry) => entry.id === brand.id,
+          )!;
+          await catalog.editBrand(full.token, brand.id, {
+            expectedRowVersion: currentBrand.rowVersion,
+            nameVi: currentBrand.nameVi,
+            nameEn: currentBrand.nameEn,
+            isActive: true,
+            showOnHome: true,
+            homeSortOrder: 2,
+          });
+          const noLogo = (await list()).brands.find((entry) => entry.code === brand.code)!;
+          assert.equal(
+            noLogo.onHome,
+            false,
+            'the switch alone is not enough: the band needs a logo',
+          );
+          const withLogoVersion = (await catalog.brands(full.token)).brands.find(
+            (entry) => entry.id === brand.id,
+          )!;
+          await catalog.editBrand(full.token, brand.id, {
+            expectedRowVersion: withLogoVersion.rowVersion,
+            nameVi: withLogoVersion.nameVi,
+            nameEn: withLogoVersion.nameEn,
+            isActive: true,
+            logoMediaId: logo.id,
+          });
+          const inBand = (await list()).brands.find((entry) => entry.code === brand.code)!;
+          assert.equal(inBand.onHome, true);
+          assert.equal(inBand.homeSortOrder, 2);
+          assert.equal(inBand.logo?.alt, inBand.name);
+          assert.equal(inBand.logo?.width, 400);
         },
       );
 

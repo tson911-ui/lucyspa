@@ -70,6 +70,9 @@ const brandSelect = {
   nameVi: true,
   nameEn: true,
   isActive: true,
+  logoMediaId: true,
+  showOnHome: true,
+  homeSortOrder: true,
   rowVersion: true,
   _count: { select: { products: true } },
 } satisfies Prisma.BrandSelect;
@@ -83,6 +86,9 @@ export function presentBrand(
     nameVi: row.nameVi,
     nameEn: row.nameEn,
     isActive: row.isActive,
+    logoMediaId: row.logoMediaId,
+    showOnHome: row.showOnHome,
+    homeSortOrder: row.homeSortOrder,
     rowVersion: row.rowVersion,
     productCount: row._count.products,
   };

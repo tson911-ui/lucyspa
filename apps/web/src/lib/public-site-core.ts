@@ -14,7 +14,9 @@ import {
   type PublicPageResponse,
   type PublicProductCard,
   type PublicProductCategory,
+  type PublicProductBrand,
   type PublicProductsResponse,
+  type PublicSlideImage,
   type PublicService,
   type PublicServiceContent,
   type PublicServiceDetailResponse,
@@ -570,6 +572,23 @@ export function homeFeaturedProducts(
   limit = 8,
 ): PublicProductCard[] {
   return (products?.items ?? []).filter((card) => card.featured).slice(0, limit);
+}
+
+/**
+ * The brands of the home brand band (session 9): the ones the Owner switched on that have a logo and at least one visible product (the
+ * catalog only lists those), in the Owner's order and then by name. Empty means the band is not drawn.
+ */
+export function homeBrands(
+  products: PublicProductsResponse | null | undefined,
+): (PublicProductBrand & { logo: PublicSlideImage })[] {
+  const shown: (PublicProductBrand & { logo: PublicSlideImage })[] = [];
+  for (const brand of products?.brands ?? []) {
+    if (brand.onHome && brand.logo) shown.push({ ...brand, logo: brand.logo });
+  }
+  return shown.sort(
+    (left, right) =>
+      left.homeSortOrder - right.homeSortOrder || left.name.localeCompare(right.name, 'vi'),
+  );
 }
 
 /** The top-level cosmetics categories for the home page's category grid (a sub-category is reached through its parent). */

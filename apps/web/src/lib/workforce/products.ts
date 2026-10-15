@@ -282,10 +282,27 @@ export interface BrandDraft {
   isActive: boolean;
 }
 
-export const draftFromBrand = (brand: ProductBrandResponse | null): BrandDraft => ({
+export const draftFromBrand = (
+  brand: Pick<ProductBrandResponse, 'nameVi' | 'nameEn' | 'isActive'> | null,
+): BrandDraft => ({
   nameVi: brand?.nameVi ?? '',
   nameEn: brand?.nameEn ?? '',
   isActive: brand?.isActive ?? true,
+});
+
+/** The brand form: the names and the switch, plus the home band fields (session 9) on an existing brand. */
+export interface BrandFormDraft extends BrandDraft {
+  /** The library image of the logo ('' = none). */
+  logoMediaId: string;
+  showOnHome: boolean;
+  homeSortOrder: string;
+}
+
+export const draftFromBrandForm = (brand: ProductBrandResponse | null): BrandFormDraft => ({
+  ...draftFromBrand(brand),
+  logoMediaId: brand?.logoMediaId ?? '',
+  showOnHome: brand?.showOnHome ?? false,
+  homeSortOrder: String(brand?.homeSortOrder ?? 0),
 });
 
 export function validateNames(draft: { nameVi: string; nameEn: string }) {
@@ -302,16 +319,26 @@ export function brandCreateRequest(draft: BrandDraft): ProductBrandCreateRequest
   return { nameVi: clean(draft.nameVi), nameEn: clean(draft.nameEn) };
 }
 
+export function validateBrandForm(draft: BrandFormDraft) {
+  const errors: Partial<Record<'nameVi' | 'nameEn' | 'homeSortOrder', Issue>> =
+    validateNames(draft);
+  if (wholeNumber(draft.homeSortOrder, 100_000) === null) errors.homeSortOrder = 'invalid';
+  return errors;
+}
+
 export function brandEditRequest(
-  draft: BrandDraft,
+  draft: BrandFormDraft,
   expectedRowVersion: number,
 ): ProductBrandEditRequest | null {
-  if (Object.keys(validateNames(draft)).length > 0) return null;
+  if (Object.keys(validateBrandForm(draft)).length > 0) return null;
   return {
     expectedRowVersion,
     nameVi: clean(draft.nameVi),
     nameEn: clean(draft.nameEn),
     isActive: draft.isActive,
+    logoMediaId: draft.logoMediaId === '' ? null : draft.logoMediaId,
+    showOnHome: draft.showOnHome,
+    homeSortOrder: wholeNumber(draft.homeSortOrder, 100_000)!,
   };
 }
 

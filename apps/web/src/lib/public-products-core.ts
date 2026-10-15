@@ -285,7 +285,17 @@ export function parsePublicProducts(value: unknown): PublicProductsResponse | nu
   const brands: PublicProductsResponse['brands'] = [];
   for (const item of value['brands']) {
     if (!isRecord(item) || !isString(item['code']) || !isString(item['name'])) return null;
-    brands.push({ code: item['code'], name: item['name'] });
+    const logo = item['logo'] === undefined ? null : parseImage(item['logo']);
+    if (logo === undefined) return null;
+    const homeSortOrder = item['homeSortOrder'] === undefined ? 0 : item['homeSortOrder'];
+    if (typeof homeSortOrder !== 'number' || !Number.isFinite(homeSortOrder)) return null;
+    brands.push({
+      code: item['code'],
+      name: item['name'],
+      logo,
+      onHome: item['onHome'] === true,
+      homeSortOrder,
+    });
   }
   return {
     hero,
