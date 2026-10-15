@@ -2322,6 +2322,22 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   font-weight: var(--ls-weight-label);
 }
 
+/* The first column names the row: it keeps its words on one line (a three-line "Mua tại quầy" beside two-line values reads as a mistake). */
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-info-table :is(thead th:first-child, tbody th) {
+    white-space: nowrap;
+  }
+}
+
+/* A paragraph that is only bold words is the text's own sub-heading (the Owner's numbered "1. Điều kiện"): a little more air above it. */
+[data-ui='v2'] .ls-info-article .ls-info-subhead {
+  margin-top: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-info-article .ls-info-subhead:first-child {
+  margin-top: 0;
+}
+
 [data-ui='v2'] .ls-info-table tbody tr + tr {
   border-top: 1px solid var(--ls-border);
 }

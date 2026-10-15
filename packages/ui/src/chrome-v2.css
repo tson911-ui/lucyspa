@@ -222,6 +222,12 @@
   }
 }
 
+/* Eight page titles, some of two lines: one even gap between the links, so a wrapped title does not look glued to the next one. */
+[data-ui='v2'] .ls-site-footer-grid [data-column='policies'] .ls-site-footer-list {
+  display: grid;
+  gap: var(--ls-space-3);
+}
+
 /* Below 1024 px the policy column takes the whole row: its page titles are long, and two narrow columns wrapped them. */
 @media (max-width: 1023px) {
   [data-ui='v2'] .ls-site-footer-grid > [data-column='policies'] {

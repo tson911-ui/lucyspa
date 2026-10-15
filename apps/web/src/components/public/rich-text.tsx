@@ -90,7 +90,19 @@ export function RichBlocks({
               </h3>
             );
           case 'p':
-            return <p key={index}>{inline(block.inlines)}</p>;
+            // A paragraph that is one bold phrase is the text's own sub-heading: the page gives it more air above.
+            return (
+              <p
+                key={index}
+                className={
+                  block.inlines.length === 1 && block.inlines[0]?.type === 'strong'
+                    ? 'ls-info-subhead'
+                    : undefined
+                }
+              >
+                {inline(block.inlines)}
+              </p>
+            );
           case 'table':
             return (
               <InfoTable
