@@ -222,10 +222,15 @@
   }
 }
 
-/* Eight page titles, some of two lines: one even gap between the links, so a wrapped title does not look glued to the next one. */
-[data-ui='v2'] .ls-site-footer-grid [data-column='policies'] .ls-site-footer-list {
-  display: grid;
-  gap: var(--ls-space-3);
+/* The policy column is the widest (eight page titles that should stay on one line): brand 3, contact 3, links 2, policies 4 of twelve. */
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-site-footer-grid[data-columns='3'] > [data-column='links'] {
+    grid-column: span 2;
+  }
+
+  [data-ui='v2'] .ls-site-footer-grid[data-columns='3'] > [data-column='policies'] {
+    grid-column: span 4;
+  }
 }
 
 /* Below 1024 px the policy column takes the whole row: its page titles are long, and two narrow columns wrapped them. */
