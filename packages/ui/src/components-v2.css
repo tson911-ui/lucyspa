@@ -137,6 +137,18 @@
   }
 }
 
+/* The icon of a danger action (DESIGN.md 8.1: never color alone): a crossed circle from the icon set (1.75 stroke, 24 grid), drawn in the
+   label color before the word. A danger button that already has an icon of its own keeps it. */
+[data-ui='v2'] :is(.ls-btn-danger, .ls-btn-danger-outline):not(:has(> svg))::before {
+  content: '';
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M9 9l6 6M15 9l-6 6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
 [data-ui='v2'] .ls-menu-item-danger:focus-visible:not(.ls-menu-item-disabled) {
   color: var(--ls-on-danger);
   background: var(--ls-danger-fill);
@@ -164,7 +176,7 @@
 }
 
 [data-ui='v2'] .ls-btn[aria-busy='true']:not(.ls-btn-primary) {
-  color: var(--ls-text-subtle);
+  color: var(--ls-text-muted);
   background: var(--ls-bg-pressed);
 }
 

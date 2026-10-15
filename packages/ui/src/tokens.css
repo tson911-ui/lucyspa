@@ -566,13 +566,13 @@
   --ls-border: #d2d2d7;
   --ls-border-control: #86868b;
   /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
-  --ls-brand: #5c1f28;
+  --ls-brand: #521b24;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #6a242f;
   --ls-brand-soft: #f9eced;
-  --ls-brand-on-soft: #4a1820;
-  --ls-focus: #5c1f28;
+  --ls-brand-on-soft: #521b24;
+  --ls-focus: #521b24;
   --ls-wordmark: #782b37;
   --ls-outline-border: #782b37;
   --ls-outline-border-hover: #6a242f;
@@ -627,8 +627,8 @@
   --ls-burgundy-8: #dc949a;
   --ls-burgundy-9: #782b37;
   --ls-burgundy-10: #6a242f;
-  --ls-burgundy-11: #5c1f28;
-  --ls-burgundy-12: #4a1820;
+  --ls-burgundy-11: #60212a;
+  --ls-burgundy-12: #521b24;
   --ls-danger-1: #fffcfb;
   --ls-danger-2: #fff4f2;
   --ls-danger-3: #ffe6e2;
@@ -770,6 +770,21 @@
   --ls-lh-lead: var(--ls-lh-body);
   --ls-type-small: var(--ls-type-label);
   --ls-lh-small: 1.5;
+}
+
+/* Season defaults inside the v2 frame (no season on): the :root defaults above resolve var(--ls-brand) at the root, which is the old staff value
+   (in dark the retired pink), and the frame would inherit that. Resolved here they follow the v2 accent. A season preset sits on <html>, so the guard
+   leaves every preset alone. */
+:root:not([data-season]) [data-ui='v2'] {
+  --ls-season-accent: var(--ls-brand);
+  --ls-season-accent-soft: var(--ls-brand-soft);
+  --ls-season-on-accent: var(--ls-on-brand);
+  --ls-season-frame-from: var(--ls-brand-fill);
+  --ls-season-frame-to: var(--ls-brand-fill-hover);
+  --ls-season-frame-text: var(--ls-on-brand);
+  --ls-season-ornament-1: var(--ls-brand);
+  --ls-season-ornament-2: var(--ls-brand-soft);
+  --ls-season-ornament-3: var(--ls-brand-fill-hover);
 }
 
 /* The alternate band and the card on it: a card takes the opposite of its container. */
@@ -1083,13 +1098,13 @@
   --ls-border: #d2d2d7;
   --ls-border-control: #86868b;
   /* Accent (burgundy scale). Fill = 9, fill hover = 10, text / link / focus = 11, text on the soft tint = 12 (light) or 11 (dark) */
-  --ls-brand: #5c1f28;
+  --ls-brand: #521b24;
   --ls-brand-fill: #782b37;
   --ls-on-brand: #ffffff;
   --ls-brand-fill-hover: #6a242f;
   --ls-brand-soft: #f9eced;
-  --ls-brand-on-soft: #4a1820;
-  --ls-focus: #5c1f28;
+  --ls-brand-on-soft: #521b24;
+  --ls-focus: #521b24;
   --ls-wordmark: #782b37;
   --ls-outline-border: #782b37;
   --ls-outline-border-hover: #6a242f;
@@ -1144,8 +1159,8 @@
   --ls-burgundy-8: #dc949a;
   --ls-burgundy-9: #782b37;
   --ls-burgundy-10: #6a242f;
-  --ls-burgundy-11: #5c1f28;
-  --ls-burgundy-12: #4a1820;
+  --ls-burgundy-11: #60212a;
+  --ls-burgundy-12: #521b24;
   --ls-danger-1: #fffcfb;
   --ls-danger-2: #fff4f2;
   --ls-danger-3: #ffe6e2;

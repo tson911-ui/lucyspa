@@ -172,9 +172,9 @@ Rules that follow from the HIG and are enforced by the roles below:
 - **Burgundy is anchored on `#782b37`, the light solid (step 9).** Accent fill: light `#782b37` with white text; dark `#af4c60`
   (a burgundy that does not sink into black) with **white** text. Dark never uses black text on the accent fill and never uses
   the old pink `#e48f9f` / `#eca5b2` / `#3a2227` (retired).
-- **Accent text** (links, the current nav item, the focus ring, outline-button text): step 11 in both modes. Light `#5c1f28` is
-  a deep burgundy, plainly colored (distance from the ink 0.137, "delta E OK"); dark `#dbadb2` is a muted dusty rose (chroma 0.055,
-  against 0.105 for the old pink). Step 12 (light `#4a1820`) is the text on the selected tint.
+- **Accent text** (links, the current nav item, the focus ring, outline-button text): light = the scale's high-contrast step 12 (as the Owner asked); dark = step 11, because dark step 12 is a pale pink and the Owner asked for a muted rose. Light `#521b24` is
+  a deep burgundy, plainly colored (distance from the ink 0.114, "delta E OK"); dark `#dbadb2` is a muted dusty rose (chroma 0.055,
+  against 0.105 for the old pink). Step 12 (light `#521b24`) is the text on the selected tint.
 - **Accent is used sparingly (D5):** the primary action, the current location, selection, links, the focus ring. Icons in
   cards and lists are ink or grey; there is no tinted pink background unless a selection needs the soft tint (step 3).
 - **Wordmark:** light = the brand solid `#782b37`; dark = the page text color (white-grey), never pink.
@@ -201,8 +201,8 @@ Rules that follow from the HIG and are enforced by the roles below:
 | 8    | `#6e6e73`  | `#8e8e93` | `#dc949a`      | `#9a4254`     | `#ff7362`    | `#b83025`   |
 | 9    | `#5e5e63`  | `#98989d` | `#782b37`      | `#af4c60`     | `#d72119`    | `#fb5a4a`   |
 | 10   | `#515154`  | `#a1a1a6` | `#6a242f`      | `#b95569`     | `#c51610`    | `#fe7362`   |
-| 11   | `#3a3a3d`  | `#d1d1d6` | `#5c1f28`      | `#dbadb2`     | `#b3150f`    | `#ff7f6f`   |
-| 12   | `#1d1d1f`  | `#f5f5f7` | `#4a1820`      | `#f8dde0`     | `#55120c`    | `#fedbd5`   |
+| 11   | `#3a3a3d`  | `#d1d1d6` | `#60212a`      | `#dbadb2`     | `#b3150f`    | `#ff7f6f`   |
+| 12   | `#1d1d1f`  | `#f5f5f7` | `#521b24`      | `#f8dde0`     | `#55120c`    | `#fedbd5`   |
 
 | Step | success light | success dark | warning light | warning dark | info light | info dark |
 | ---- | ------------- | ------------ | ------------- | ------------ | ---------- | --------- |
@@ -237,7 +237,7 @@ white and dark raises with lighter greys).
 | `--ls-row-hover-bg`                                            | gray 2                             | gray 3                                |
 | `--ls-text` / `--ls-text-muted` / `--ls-text-subtle`           | gray 12 / 10 / 8                   | gray 12 / 10 / 10 (no dimmer AA text) |
 | `--ls-border` (hairline) / `--ls-border-control`               | gray 5 / gray 7                    | gray 5 / gray 7                       |
-| `--ls-brand`, `--ls-focus` (accent text, ring)                 | burgundy 11                        | burgundy 11                           |
+| `--ls-brand`, `--ls-focus` (accent text, ring)                 | burgundy 12                        | burgundy 11                           |
 | `--ls-brand-fill` / `--ls-brand-fill-hover`                    | burgundy 9 / 10                    | burgundy 9 / 10                       |
 | `--ls-on-brand`, `--ls-hover-text`                             | `#ffffff`                          | `#ffffff`                             |
 | `--ls-brand-soft` / `--ls-brand-on-soft`                       | burgundy 3 / 12                    | burgundy 3 / 11                       |
@@ -250,10 +250,10 @@ white and dark raises with lighter greys).
 
 #### Contrast (WCAG 2.x, measured from the tokens; all pairs pass AA)
 
-Light, text on white / on the `#f5f5f7` band: ink 16.83 / 15.46; muted 7.91 / 7.26; subtle 5.07 / 4.66; accent text 12.49 / 11.47;
+Light, text on white / on the `#f5f5f7` band: ink 16.83 / 15.46; muted 7.91 / 7.26; subtle 5.07 / 4.66; accent text 13.63 / 12.52;
 wordmark 9.55 / 8.77; danger 6.93 / 6.36; success 6.51 / 5.98; warning 7.07 / 6.49; info 8.04 / 7.38. Control border 3.62 / 3.33;
-outline-button border 9.55 / 8.77; focus ring 12.49 / 11.47. White on the accent fill 9.55, on its hover 11.02 (hover as a menu item:
-9.55); accent on its soft tint 12.65; white on the danger fill 5.10 and its hover 6.01; status text on its own tint 5.66 to 6.85.
+outline-button border 9.55 / 8.77; focus ring 13.63 / 12.52. White on the accent fill 9.55, on its hover 11.02 (hover as a menu item:
+9.55); accent on its soft tint 11.84; white on the danger fill 5.10 and its hover 6.01; status text on its own tint 5.66 to 6.85.
 
 Dark, text on E0 / E1 / E2 / E3 (`#000000` / `#1c1c1e` / `#2c2c2e` / `#3a3a3c`): ink 19.29 / 15.63 / 12.80 / 10.42; muted and subtle
 8.16 / 6.61 / 5.42 / 4.41; accent text 10.63 / 8.61 / 7.06 / 5.75; danger 8.52 / 6.90 / 5.65 / 4.60; success 11.69 / 9.47 / 7.76 / 6.32;
@@ -427,7 +427,7 @@ style, not size. Footers are Cancel then primary, primary last (kept).
 
 - **Customer header:** wordmark at the leading edge; the existing 3-item menu and bell (unchanged function); language switch and theme
   toggle; one **"Đặt lịch" primary pill** at the trailing edge from 640 px (icon + text); below 640 px the booking tab of the phone tab bar is the always-visible call to action (a 360 px member bar has 9 px free; Owner, 2026-10-14). The header is clear (transparent) at the top over the home hero and turns to the translucent surface on scroll (Owner, 2026-10-14). Height 64, compacting to 52 on scroll (existing tokens). Link style: 14/500 ink, current page = accent text + 2 px accent underline offset 8 (never a fill in the bar);
-  hover = rule 4 pill.
+  hover = rule 4: the hovered link itself fills with the solid accent and white text at once; no highlight travels from one entry to the next (Owner, 2026-10-15). The same for the account tabs.
 - **Phone:** the existing app shell with the bottom tab bar (44 px+ items, label under icon, current = accent) stays. Safe-area
   padding included.
 - **Staff header (compact):** 56 px, same wordmark and bar styling, breadcrumb/page context at the leading edge, user and
@@ -473,7 +473,7 @@ prev/next and "Trang 2 / 7". URL state kept (`useUrlState`). Public lists with f
 Breadcrumbs, avatar (circle, initials fallback), progress bar (4 px, pill, accent), stepper for booking (numbers only because it **is** a
 sequence), accordion/FAQ (button + chevron, hairline between, no `<details>` per FR), skeleton, spinner (16 / 24), image
 frame (18 px, `object-fit: cover`, `alt` required, flat placeholder when missing), contact button (kept; restyled as a primary
-icon pill).
+icon pill; **fixed to the bottom-right corner of the viewport**, Owner 2026-10-15, superseding the 2026-10-06 slot above the footer: safe-area aware, above the phone tab bar and any sticky action bar, never resting mid-page; the footer keeps 88 px of bottom room so at the end of the page it covers no footer text or link).
 
 ## 9. Customer page patterns (Aevi layouts, Apple look)
 
@@ -488,7 +488,7 @@ may sit on a photo's bottom-left corner in white 14/500 over a flat `rgb(0 0 0 /
 1. **Hero** (full viewport width, height about 80 vh, min 560): real photo under a flat `rgb(0 0 0 / x)` scrim (no gradient) that gives the text 4.5:1, `display` headline, one supporting
    sentence, **"Đặt lịch" primary** (accent fill, as everywhere: D5) + "Xem dịch vụ" secondary (on the photo only the secondary switches to the
    outline-white variant, which keeps 4.5:1). The wordmark is not repeated as a decorative overlay.
-   1b. **Brand band** (directly under the hero; Owner, session 9, 2026-10-15): the logos of the cosmetics brands the shop sells, from the existing brand catalog (each brand has an optional logo, a "show on home" switch and a sort order in the admin brand form). **Owner-approved exception to D5: the band is the accent solid** (`--ls-brand-fill`: light `#782b37`, dark the dark solid), the logos are drawn white at one height (40 px), each links to that brand's product list (`/products?brand=code`) and carries the brand name as its alt text. A continuous slow horizontal scroll with a seamless loop (about 6 s per logo); it pauses on hover, focus and touch; under `prefers-reduced-motion` or `ls-fx=off` it is a still, centred, wrapped row. The band is not drawn when no brand is switched on. Logos must be transparent PNG or SVG (a logo on a white box would become a white block).
+   1b. **Brand band** (directly under the hero; Owner, session 9, 2026-10-15): the logos of the cosmetics brands the shop sells, from the existing brand catalog (each brand has an optional logo, a "show on home" switch and a sort order in the admin brand form). **Owner-approved exception to D5: the band is the accent solid** (`--ls-brand-fill`: light `#782b37`, dark the dark solid), the logos are drawn white at one height (40 px), each links to that brand's product list (`/products?brand=code`) and carries the brand name as its alt text. A continuous slow horizontal scroll with a seamless loop (about 6 s per logo); it pauses on hover, focus and touch; under `prefers-reduced-motion` or `ls-fx=off` it is a still, centred, wrapped row. The band is not drawn when no brand is switched on. Logos must be a transparent PNG or WebP (the media library takes JPEG, PNG and WebP only; a JPEG logo on a white box becomes a white block).
 2. **Trust band** (`#f5f5f7`): 3 to 4 facts from the existing facts-strip data (no invented numbers), `title` figure + caption,
    hairline between on desktop, stacked on phone. Optional press/partner logos strip at uniform height in grey.
 3. **Split intro/services** (white): left text (`title`, 2 sentences, link to all services, "Đặt lịch" secondary), right a framed

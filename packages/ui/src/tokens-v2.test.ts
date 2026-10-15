@@ -63,13 +63,6 @@ const hex = (value: string | undefined, name: string): string => {
 const token = (theme: Record<string, string>, name: string): string =>
   hex(theme[`--ls-${name}`], `--ls-${name}`);
 
-function assertRatio(actual: number, published: number, label: string): void {
-  assert.ok(
-    Math.abs(actual - published) < 0.06,
-    `${label}: spec ${published}, measured ${actual.toFixed(2)}`,
-  );
-}
-
 test('the two dark blocks of the v2 scope are identical', () => {
   assert.deepEqual(darkSystem, darkAttribute);
   assert.ok(Object.keys(darkAttribute).length >= 30);
@@ -109,12 +102,12 @@ const ROLE_STEPS: Record<string, [string, string]> = {
   'text-subtle': ['gray-8', 'gray-10'],
   border: ['gray-5', 'gray-5'],
   'border-control': ['gray-7', 'gray-7'],
-  brand: ['burgundy-11', 'burgundy-11'],
+  brand: ['burgundy-12', 'burgundy-11'],
   'brand-fill': ['burgundy-9', 'burgundy-9'],
   'brand-fill-hover': ['burgundy-10', 'burgundy-10'],
   'brand-soft': ['burgundy-3', 'burgundy-3'],
   'brand-on-soft': ['burgundy-12', 'burgundy-11'],
-  focus: ['burgundy-11', 'burgundy-11'],
+  focus: ['burgundy-12', 'burgundy-11'],
   wordmark: ['burgundy-9', 'gray-12'],
   'outline-border': ['burgundy-9', 'burgundy-9'],
   'outline-border-hover': ['burgundy-10', 'burgundy-10'],

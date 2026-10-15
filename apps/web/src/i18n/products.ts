@@ -74,7 +74,7 @@ const vi = {
     created: 'Đã thêm thương hiệu.',
     logoSection: 'Logo trên trang chủ',
     logoHint:
-      'Logo hiện trong dải thương hiệu ngay dưới ảnh đầu trang chủ, màu trắng trên nền đỏ đô. Nên dùng ảnh PNG hoặc SVG nền trong, chữ đậm, đã mô tả ảnh.',
+      'Logo hiện trong dải thương hiệu ngay dưới ảnh đầu trang chủ, màu trắng trên nền đỏ đô. Dùng ảnh PNG hoặc WebP nền trong suốt, hình đậm nét, và mô tả ảnh. Ảnh JPEG có nền sẽ thành một khối trắng.',
     showOnHome: 'Hiện trong dải thương hiệu',
     showOnHomeHint:
       'Bật để logo xuất hiện trên trang chủ và bấm vào sẽ mở danh sách sản phẩm của thương hiệu. Cần có logo và ít nhất một sản phẩm đang bán.',
@@ -425,7 +425,7 @@ const en: Dictionary = {
     created: 'Brand added.',
     logoSection: 'Home page logo',
     logoHint:
-      'The logo appears in the brand band right under the home hero, in white on the burgundy band. Use a PNG or SVG with a transparent background and bold shapes, and describe the image.',
+      'The logo appears in the brand band right under the home hero, in white on the burgundy band. Use a PNG or WebP with a transparent background and bold shapes, and describe the image. A JPEG with a background becomes a white block.',
     showOnHome: 'Show in the brand band',
     showOnHomeHint:
       'Turn on to show the logo on the home page, linking to the product list of the brand. It needs a logo and at least one product on sale.',
