@@ -39,23 +39,11 @@
   max-width: var(--ls-form-max);
 }
 
-/* ---------- type ---------- */
-.ls-eyebrow {
-  margin: 0;
-  color: var(--ls-text-muted);
-  font-size: var(--ls-text-xs);
-  line-height: var(--ls-leading-xs);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 /* The display face is for h1-h3 of the public site and member area only (contract 4); each rule sets every property
    the legacy global h1 rule touches, so nothing leaks from it. */
 .ls-site-display,
 .ls-h1-display,
 .ls-site-h2,
-.ls-site-h2-sub,
 .ls-site-h3 {
   margin: 0;
   color: var(--ls-text);
@@ -83,11 +71,6 @@
 .ls-site-h2 {
   font-size: var(--ls-type-section);
   line-height: var(--ls-lh-section);
-}
-
-.ls-site-h2-sub {
-  font-size: var(--ls-type-sub);
-  line-height: var(--ls-lh-sub);
 }
 
 .ls-site-h3 {
@@ -252,14 +235,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 /* The current entry is always the solid brand pill (light: brand red with white text; dark: pink with dark text), on
    every page, header state and season: the nav-active tokens, the same ones the staff sidebar uses. Here is the version
    without scripts or before the pill is placed; once the pill is placed (menu pill section below) the pill carries it. */
-.ls-site-nav a[aria-current='page'] {
-  font-weight: 500;
-}
-
-.ls-site-nav:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
-  background: var(--ls-nav-active-bg);
-  color: var(--ls-nav-active-text);
-}
 
 @media (hover: hover) and (pointer: fine) {
   .ls-site-nav:not([data-pill='still'], [data-pill='slide']) a:hover:not([aria-current='page']) {
@@ -327,26 +302,9 @@ html[data-ls-motion='reduced'] .ls-site-lead {
     color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .ls-theme-cycle:hover,
-  .ls-site-tool:hover {
-    background: var(--ls-hover-bg);
-    border-color: var(--ls-hover-border);
-    color: var(--ls-hover-text);
-  }
-}
-
-.ls-site .ls-btn {
-  border-radius: var(--ls-radius-full);
-}
-
 @media (min-width: 1024px) {
   .ls-site-nav {
     display: flex;
-  }
-
-  .ls-site-cta {
-    display: block;
   }
 }
 
@@ -404,9 +362,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 
   /* Whatever the browser shows below or around the shell (a viewport a few pixels taller than 100dvh while a browser bar
      animates) is the colour of the tab bar, never the page's: it can only read as a longer bar. */
-  html:has(.ls-site-scroll) {
-    background: var(--ls-bg-surface);
-  }
 
   .ls-site-scroll {
     position: relative;
@@ -450,12 +405,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   text-decoration: none;
 }
 
-/* Only the current page's tab uses the active style (brand colour and weight). */
-.ls-tab-bar a[aria-current='page'] {
-  color: var(--ls-brand);
-  font-weight: 600;
-}
-
 /* The booking tab is the one primary action, not a tab: a raised round brand button in the middle of the bar with the
    icon on it and the label below. On the booking page itself it also shows the active state (a ring and the brand
    label). The whole tab stays a full-height target (the bar's height, 72 px: the two-line label keeps a gap above the screen edge); the button is 48 px. */
@@ -479,16 +428,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
     box-shadow var(--ls-dur-base) var(--ls-ease-out);
 }
 
-.ls-tab-bar a[data-emphasis='true'][aria-current='page'] {
-  color: var(--ls-brand);
-}
-
-.ls-tab-bar a[data-emphasis='true'][aria-current='page'] svg {
-  box-shadow:
-    0 0 0 var(--ls-space-1) var(--ls-bg-surface),
-    0 0 0 calc(var(--ls-space-1) + 2px) var(--ls-brand);
-}
-
 @media (min-width: 1024px) {
   .ls-tab-bar {
     display: none;
@@ -498,18 +437,6 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 /* ---------- bands ---------- */
 .ls-band {
   padding-block: var(--ls-band-pad);
-}
-
-.ls-band-page {
-  background: var(--ls-bg-page);
-}
-
-.ls-band-surface {
-  background: var(--ls-bg-surface);
-}
-
-.ls-band-flush {
-  padding-block: 0;
 }
 
 /* The facts strip sits right under the hero on the same page colour; a hairline (not a border: the band is no surface)
@@ -526,35 +453,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   background: var(--ls-border);
 }
 
-.ls-section-head {
-  display: grid;
-  gap: var(--ls-space-2);
-  margin-bottom: var(--ls-head-gap);
-}
-
-.ls-section-head p {
-  margin: 0;
-  color: var(--ls-text-muted);
-  font-size: var(--ls-type-body);
-  line-height: var(--ls-lh-body);
-}
-
 /* ---------- hero ---------- */
-.ls-hero {
-  padding-block: var(--ls-band-pad);
-}
-
-.ls-hero-grid {
-  display: grid;
-  gap: var(--ls-space-7);
-  align-items: center;
-}
-
-.ls-hero-copy {
-  display: grid;
-  gap: var(--ls-space-4);
-  justify-items: start;
-}
 
 .ls-hero-actions {
   display: flex;
@@ -562,84 +461,8 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   gap: var(--ls-space-3);
 }
 
-@media (min-width: 1024px) {
-  .ls-hero-grid {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    gap: var(--ls-space-9);
-  }
-}
-
-/* Hero fallback when there is no slide and no hero image: a brand panel in the slider's frame (same aspect ratio,
-   so a slider arriving after the first paint does not move the page). */
-.ls-brand-panel {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 16 / 10;
-  border-radius: var(--ls-radius-lg);
-  background: linear-gradient(135deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
-  color: var(--ls-auth-panel-text);
-}
-
-.ls-brand-panel-mark {
-  font-size: var(--ls-type-section);
-  line-height: var(--ls-lh-section);
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 /* The offer line above the hero: the running campaign in the Owner's words, one link in the soft brand tint (a quiet line, not a
    second hero: the hero keeps the only solid button); it turns solid brand red with white text under the pointer. A phone puts the badge and the button on the first row and the words under them; from a tablet it is one row. */
-.ls-offer {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    'badge . cta'
-    'text text text';
-  align-items: center;
-  gap: var(--ls-space-1) var(--ls-space-3);
-  margin-bottom: var(--ls-space-6);
-  padding: var(--ls-space-3) var(--ls-space-4);
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-brand-soft);
-  color: var(--ls-text);
-  text-decoration: none;
-  transition:
-    background var(--ls-dur-fast) var(--ls-ease-out),
-    color var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-@media (min-width: 768px) {
-  .ls-offer {
-    grid-template-areas: 'badge text cta';
-    padding-inline: var(--ls-space-5);
-  }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-offer:hover {
-    border-color: var(--ls-hover-border);
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
-  }
-
-  .ls-offer:hover .ls-offer-badge {
-    background: var(--ls-hover-text);
-    color: var(--ls-hover-bg);
-  }
-
-  .ls-offer:hover .ls-offer-end,
-  .ls-offer:hover .ls-offer-cta {
-    color: inherit;
-  }
-}
-
-.ls-offer:focus-visible {
-  outline: 2px solid var(--ls-focus);
-  outline-offset: 2px;
-}
 
 .ls-offer-badge {
   grid-area: badge;
@@ -653,65 +476,8 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   white-space: nowrap;
 }
 
-.ls-offer-text {
-  grid-area: text;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--ls-space-3);
-  min-width: 0;
-}
-
-.ls-offer-headline {
-  font-size: var(--ls-type-body);
-  font-weight: 600;
-  line-height: var(--ls-lh-body);
-  overflow-wrap: anywhere;
-}
-
-.ls-offer-end {
-  color: var(--ls-text-muted);
-  font-size: var(--ls-type-small);
-  line-height: var(--ls-lh-small);
-}
-
-.ls-offer-cta {
-  grid-area: cta;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ls-space-1);
-  min-height: var(--ls-control-h);
-  color: var(--ls-brand);
-  font-size: var(--ls-text-sm);
-  font-weight: 600;
-  white-space: nowrap;
-  transition: translate var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-offer:hover .ls-offer-cta {
-    translate: var(--ls-arrow-nudge) 0;
-  }
-}
-
 /* The slider on the public site: the slide's title is in the display face like every other title, and its controls sit on
    one row under the picture, on the frame's own edges (dots at the start, arrows and Pause at the end). */
-.ls-site .ls-slider {
-  gap: var(--ls-space-2);
-}
-
-.ls-site .ls-slider-title {
-  font-family: var(--ls-font-display);
-  font-size: var(--ls-type-sub);
-  font-weight: var(--ls-weight-title);
-  line-height: var(--ls-lh-sub);
-  text-wrap: balance;
-}
-
-.ls-site .ls-slider-text {
-  font-size: var(--ls-type-body);
-  line-height: var(--ls-lh-body);
-}
 
 .ls-site .ls-slider-controls {
   flex-wrap: nowrap;
@@ -723,181 +489,9 @@ html[data-ls-motion='reduced'] .ls-site-lead {
   margin-inline-end: auto;
 }
 
-/* ---------- cards and lists ---------- */
-.ls-site-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ls-space-4);
-  padding: var(--ls-space-6);
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-surface);
-  box-shadow: var(--ls-shadow-sm);
-}
-
 /* On a white band a card takes the page colour so it still reads as a surface; border, radius and shadow stay the same everywhere. */
-.ls-band-surface .ls-site-card {
-  background: var(--ls-bg-page);
-}
-
-.ls-site-grid {
-  display: grid;
-  gap: var(--ls-space-6);
-}
-
-@media (min-width: 640px) {
-  .ls-site-grid-groups {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .ls-site-grid-groups {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  /* Exactly four cards (the real menu has four groups) stay a balanced 2 x 2 instead of three and one on its own. */
-  .ls-site-grid-groups:has(> :nth-child(4):last-child) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* The menu board (the home page's one signature element): the featured groups on ONE surface, like a printed spa menu. Two
-   columns from a tablet, one on a phone; each group is its serif name, then rows of name, dotted leader and price, then
-   "Xem tất cả". The board takes the page colour on the white band so it still reads as a surface. */
-.ls-board {
-  display: grid;
-  gap: var(--ls-space-7) var(--ls-space-9);
-  padding: var(--ls-space-5) var(--ls-space-3);
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-surface);
-}
-
-.ls-band-surface .ls-board {
-  background: var(--ls-bg-page);
-}
-
-@media (min-width: 768px) {
-  .ls-board {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: var(--ls-space-7);
-  }
-}
-
-.ls-board-group {
-  display: grid;
-  align-content: start;
-  gap: var(--ls-space-3);
-  min-width: 0;
-}
-
-.ls-board-group .ls-site-link {
-  justify-self: start;
-}
-
-/* Every line of a group (its name, a row, its link) has its text one step in from the group's edge: the hover shape of a row
-   is the group's full width, so it never reaches outside its column. */
-.ls-board-group .ls-group-head,
-.ls-board-group .ls-site-link {
-  padding-inline: var(--ls-space-3);
-}
-
-.ls-group-head {
-  display: grid;
-  align-content: start;
-  gap: var(--ls-space-1);
-}
-
-.ls-group-desc {
-  margin: 0;
-  color: var(--ls-text-muted);
-  font-size: var(--ls-type-body);
-  line-height: var(--ls-lh-body);
-}
-
-.ls-site-grid > .ls-reveal {
-  display: flex;
-}
-
-.ls-site-grid > .ls-reveal > .ls-site-card {
-  flex: 1;
-}
-
-.ls-price-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* One row of the menu: name, dotted leader, price. The row is a full-height touch target and its text starts on the same edge as
-   the group's name and link. */
-.ls-price-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ls-space-2);
-  min-height: var(--ls-control-h);
-  padding-inline: var(--ls-space-3);
-  border-radius: var(--ls-radius-md);
-  color: var(--ls-text);
-  font-size: var(--ls-type-body);
-  line-height: var(--ls-lh-body);
-  text-decoration: none;
-  transition:
-    background var(--ls-dur-fast) var(--ls-ease-out),
-    color var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-/* A service name is at most two lines; the rest is an ellipsis (the full name is the tooltip). */
-.ls-price-name {
-  display: -webkit-box;
-  min-width: 0;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-/* The leader fills what the name and price leave; it sits on the text's baseline, and it is a drawing only. */
-.ls-price-dots {
-  flex: 1 1 var(--ls-space-4);
-  min-width: var(--ls-space-4);
-  height: 0;
-  border-bottom: 2px dotted var(--ls-border-control);
-  translate: 0 0.5em;
-}
-
-/* The price is one short line in its own right-aligned column; a long name wraps instead of squeezing it. */
-.ls-price {
-  flex: none;
-  color: var(--ls-text);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  text-align: end;
-  white-space: nowrap;
-}
-
-a.ls-price-row:focus-visible {
-  outline: 2px solid var(--ls-focus);
-  outline-offset: 2px;
-}
 
 /* Hover (Owner rule): solid brand red with white text in light mode, the pink accent in dark mode. */
-@media (hover: hover) and (pointer: fine) {
-  a.ls-price-row:hover {
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
-  }
-
-  a.ls-price-row:hover .ls-price {
-    color: inherit;
-  }
-
-  a.ls-price-row:hover .ls-price-dots {
-    border-bottom-color: color-mix(in srgb, var(--ls-hover-text) 45%, transparent);
-  }
-}
 
 .ls-site-link {
   display: inline-flex;
@@ -918,10 +512,6 @@ a.ls-price-row:focus-visible {
 }
 
 /* ---------- footer ---------- */
-.ls-site-footer {
-  border-top: 1px solid var(--ls-border);
-  background: var(--ls-bg-surface);
-}
 
 .ls-site-footer-grid {
   display: grid;
@@ -931,12 +521,6 @@ a.ls-price-row:focus-visible {
 
 /* The brand column is a little wider than the two lists (logo, the shop's line, the one booking button), and the gap between
    columns is wide enough for the columns to read as separate. */
-@media (min-width: 768px) {
-  .ls-site-footer-grid {
-    grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
-    gap: var(--ls-space-6) var(--ls-space-8);
-  }
-}
 
 .ls-site-footer-brand {
   display: grid;
@@ -1203,11 +787,6 @@ a.ls-price-row:focus-visible {
   background: var(--ls-border);
 }
 
-.ls-steps li[data-done='true']::before,
-.ls-steps li[aria-current='step']::before {
-  background: var(--ls-brand-fill);
-}
-
 .ls-steps li[aria-current='step'] {
   color: var(--ls-brand);
   font-weight: 600;
@@ -1218,11 +797,6 @@ a.ls-price-row:focus-visible {
 }
 
 @media (min-width: 640px) {
-  .ls-steps li {
-    font-size: var(--ls-text-sm);
-    line-height: var(--ls-leading-sm);
-  }
-
   .ls-steps-long {
     display: inline;
   }
@@ -1287,11 +861,6 @@ a.ls-price-row:focus-visible {
   display: none;
 }
 
-.ls-choice[data-checked='true'] {
-  border-color: var(--ls-brand);
-  background: var(--ls-brand-soft);
-}
-
 .ls-choice-disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -1342,10 +911,6 @@ a.ls-price-row:focus-visible {
   min-width: 0;
 }
 
-.ls-choice-title {
-  font-weight: 600;
-}
-
 .ls-choice-meta {
   color: var(--ls-text-muted);
   font-size: var(--ls-type-small);
@@ -1381,163 +946,16 @@ a.ls-price-row:focus-visible {
   line-height: var(--ls-lh-small);
 }
 
-/* ---------- home: hero image, facts, visit ---------- */
-.ls-hero-image {
-  display: block;
-  width: 100%;
-  /* The picture's own height attribute must not win over the frame: the same ratio as the slider and the brand panel. */
-  height: auto;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-sunken);
-}
-
-.ls-site-facts {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--ls-space-2);
-  padding-block: var(--ls-space-4);
-}
-
-@media (min-width: 768px) {
-  .ls-site-facts {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--ls-space-4);
-  }
-}
-
-@media (min-width: 1024px) {
-  .ls-site-facts {
-    gap: var(--ls-space-6);
-  }
-}
-
-.ls-site-fact {
-  display: flex;
-  align-items: center;
-  gap: var(--ls-space-3);
-  min-height: var(--ls-control-h);
-  margin: 0;
-  min-width: 0;
-  color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-  line-height: var(--ls-leading-sm);
-}
-
 /* A phone stacks the items, one under the other, and a long address wraps inside its own line: nothing is cut off and
    the page never scrolls sideways. From a tablet up the items share one row; when they are wider than the width, the
    address and the custom lines shrink and end in an ellipsis (their full text is the tooltip) and the opening hours and
    the hotline never shrink; if even the shrunk items do not fit (many lines), the row wraps onto a second line. */
-@media (min-width: 768px) {
-  .ls-site-fact {
-    flex: 0 1 auto;
-    min-width: calc(var(--ls-space-9) * 2.5);
-    white-space: nowrap;
-  }
-
-  .ls-site-fact[data-fact='hours'],
-  .ls-site-fact[data-fact='hotline'] {
-    flex-shrink: 0;
-  }
-
-  .ls-site-fact > span,
-  .ls-site-fact > a {
-    min-width: 0;
-  }
-
-  .ls-site-fact > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ls-site-fact > a strong,
-  .ls-site-fact > strong {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
-.ls-site-fact strong {
-  color: var(--ls-text);
-  font-weight: 600;
-}
-
-.ls-site-fact .ls-icon-lead {
-  flex: none;
-  color: var(--ls-brand);
-}
-
-.ls-site-fact a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--ls-control-h);
-  color: inherit;
-  text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-site-fact a:hover strong {
-    color: var(--ls-brand);
-    text-decoration: underline;
-  }
-}
-
-.ls-group-count {
-  margin: 0;
-  color: var(--ls-text-muted);
-  font-size: var(--ls-text-sm);
-}
-
-.ls-site-card .ls-site-link {
-  align-self: flex-start;
-  margin-top: auto;
-}
 
 /* Group and why-us cards share their inner rows across a grid row (a subgrid of three rows: head, list or text, link): the
    price lists, the texts and "Xem tất cả" start at the same height in every card, whatever the length of a description or
    a heading. Without subgrid support the flex layout above still gives equal cards with the link at the bottom. */
-@supports (grid-template-rows: subgrid) {
-  .ls-site-grid-groups > .ls-reveal {
-    display: grid;
-    grid-row: span 3;
-    grid-template-rows: subgrid;
-    row-gap: 0;
-  }
-
-  .ls-site-grid-groups > .ls-reveal > .ls-site-card {
-    display: grid;
-    grid-row: 1 / span 3;
-    grid-template-rows: subgrid;
-    row-gap: var(--ls-space-4);
-    align-content: start;
-  }
-
-  .ls-site-grid-groups > .ls-reveal > .ls-site-card > .ls-icon-bubble {
-    justify-self: start;
-  }
-}
-
-.ls-icon-bubble {
-  display: grid;
-  place-items: center;
-  width: var(--ls-space-9);
-  height: var(--ls-space-9);
-  border-radius: var(--ls-radius-full);
-  background: var(--ls-brand-soft);
-  color: var(--ls-brand-on-soft);
-}
 
 /* The why-us cards are all the same height, with the heading and text starting at the same place. */
-.ls-site-grid-why {
-  align-items: stretch;
-}
 
 .ls-site-actions {
   display: flex;
@@ -1615,237 +1033,10 @@ a.ls-price-row:focus-visible {
   font-weight: 500;
 }
 
-/* The toolbar of the service list: the group filter and the search on one line from a tablet, stacked on a phone. */
-.ls-svc-toolbar {
-  display: grid;
-  gap: var(--ls-space-3);
-  margin-bottom: var(--ls-space-6);
-}
-
-@media (min-width: 768px) {
-  .ls-svc-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
-    align-items: center;
-    gap: var(--ls-space-5);
-  }
-}
-
-.ls-svc-toolbar .ls-pills {
-  margin: 0;
-}
-
-/* One section per group: its name, then the rows of the price list (no card around a list; a hairline between rows). */
-.ls-svc-section {
-  display: grid;
-  gap: var(--ls-space-2);
-  margin-bottom: var(--ls-space-7);
-}
-
-.ls-svc-list {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ls-svc-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--ls-space-3);
-  padding-block: var(--ls-space-2);
-}
-
-.ls-svc-row + .ls-svc-row {
-  border-top: 1px solid var(--ls-border);
-}
-
 /* The link of a row: name, dotted leader and price on the first line, the estimated time under them. A phone drops the leader
    and puts the price on the second line (the name then has the whole width). */
-.ls-svc-main {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(var(--ls-space-4), 1fr) auto;
-  grid-template-areas:
-    'name dots price'
-    'meta meta meta';
-  align-items: center;
-  column-gap: var(--ls-space-2);
-  row-gap: var(--ls-space-1);
-  min-height: var(--ls-control-h);
-  padding: var(--ls-space-2) var(--ls-space-3);
-  border-radius: var(--ls-radius-md);
-  color: var(--ls-text);
-  text-decoration: none;
-  transition:
-    background var(--ls-dur-fast) var(--ls-ease-out),
-    color var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-@media (max-width: 479px) {
-  .ls-svc-main {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'name name'
-      'price price'
-      'meta meta';
-  }
-
-  .ls-svc-main .ls-svc-price {
-    justify-self: start;
-    white-space: normal;
-  }
-
-  .ls-svc-dots {
-    display: none;
-  }
-
-  /* Every row is as tall as a two-line name, so the list keeps one rhythm whatever the names are. */
-  .ls-svc-main {
-    min-height: calc(
-      var(--ls-type-card) * var(--ls-lh-card) * 3 + var(--ls-type-small) * var(--ls-lh-small) +
-        var(--ls-space-2) + var(--ls-space-4)
-    );
-    align-content: center;
-  }
-}
-
-.ls-svc-name {
-  display: -webkit-box;
-  grid-area: name;
-  min-width: 0;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: var(--ls-type-card);
-  line-height: var(--ls-lh-card);
-  font-weight: 500;
-}
-
-.ls-svc-dots {
-  grid-area: dots;
-  height: 0;
-  border-bottom: 2px dotted var(--ls-border-control);
-  translate: 0 0.45em;
-}
-
-.ls-svc-price {
-  grid-area: price;
-  justify-self: end;
-  color: var(--ls-brand);
-  font-size: var(--ls-type-card);
-  line-height: var(--ls-lh-card);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.ls-svc-meta {
-  grid-area: meta;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--ls-space-2);
-  color: var(--ls-text-muted);
-  font-size: var(--ls-type-small);
-  line-height: var(--ls-lh-small);
-}
-
-.ls-svc-main:focus-visible {
-  outline: 2px solid var(--ls-focus);
-  outline-offset: 2px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-svc-main:hover {
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
-  }
-
-  .ls-svc-main:hover .ls-svc-price,
-  .ls-svc-main:hover .ls-svc-meta {
-    color: inherit;
-  }
-
-  .ls-svc-main:hover .ls-svc-dots {
-    border-bottom-color: color-mix(in srgb, var(--ls-hover-text) 45%, transparent);
-  }
-}
-
-.ls-detail {
-  display: grid;
-  gap: var(--ls-space-6);
-  padding-bottom: var(--ls-space-9);
-}
-
-/* A service's own page: the facts and the booking action in one card, the other services of the group beside it (under it on a
-   phone, sticky on a large screen so the visitor can pick another one without scrolling back). */
-.ls-detail-grid {
-  display: grid;
-  gap: var(--ls-space-6);
-  align-items: start;
-}
-
-@media (min-width: 1024px) {
-  .ls-detail-grid {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: var(--ls-space-8);
-  }
-
-  .ls-detail-related {
-    position: sticky;
-    top: calc(var(--ls-site-header-h) + var(--ls-space-4));
-  }
-}
-
-.ls-detail-related {
-  display: grid;
-  gap: var(--ls-space-3);
-}
-
-.ls-detail-main {
-  gap: var(--ls-space-5);
-  padding: var(--ls-space-6);
-}
-
-.ls-detail-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ls-space-5);
-  margin: 0;
-}
-
-.ls-detail-facts div {
-  display: grid;
-  align-content: start;
-  gap: var(--ls-space-1);
-}
-
-.ls-detail-facts dt {
-  color: var(--ls-text-muted);
-  font-size: var(--ls-type-small);
-  line-height: var(--ls-lh-small);
-}
 
 /* Time and price are figures: the sans face draws them plainly (the display face has old-style figures: a low "0" and "9"). */
-.ls-detail-facts dd {
-  margin: 0;
-  font-size: var(--ls-type-sub);
-  font-weight: 600;
-  line-height: var(--ls-lh-sub);
-  font-variant-numeric: tabular-nums;
-}
-
-.ls-detail-facts .ls-detail-price {
-  color: var(--ls-brand);
-}
-
-.ls-detail-copy {
-  margin: 0;
-  max-width: 40rem;
-  color: var(--ls-text-muted);
-  white-space: pre-line;
-}
 
 .ls-detail-note {
   margin: 0;
@@ -1865,14 +1056,6 @@ a.ls-price-row:focus-visible {
   border: 1px solid var(--ls-border);
   background: var(--ls-bg-surface);
   color: var(--ls-text);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-site-tools .ls-btn-icon:hover {
-    background: var(--ls-hover-bg);
-    border-color: var(--ls-hover-border);
-    color: var(--ls-hover-text);
-  }
 }
 
 /* A button inside the bell's panel is not a tool of the bar: no ring, and its row's tint shows. */
@@ -2021,14 +1204,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 /* ---------- member area: kit headings take the site's type scale ---------- */
 /* The member pages are built from the kit's Page, Card and list components, whose headings are the staff area's sans
    titles. Inside the site frame they use the same display face and scale as every public page. */
-.ls-site .ls-page-title,
-.ls-site .ls-list-section-title,
-.ls-site .ls-form-section-title,
-.ls-site .ls-card-title {
-  font-family: var(--ls-font-display);
-  font-weight: var(--ls-weight-title);
-  letter-spacing: normal;
-}
 
 .ls-site .ls-page-title {
   font-size: var(--ls-type-page);
@@ -2083,15 +1258,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
     color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-.ls-subnav a[aria-current='page'] {
-  font-weight: 500;
-}
-
-.ls-subnav:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
-  background: var(--ls-nav-active-bg);
-  color: var(--ls-nav-active-text);
-}
-
 @media (hover: hover) and (pointer: fine) {
   .ls-subnav:not([data-pill='still'], [data-pill='slide']) a:hover:not([aria-current='page']) {
     background: var(--ls-hover-bg);
@@ -2109,19 +1275,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   padding-top: var(--ls-space-6);
 }
 
-.ls-member-page {
-  display: grid;
-  gap: var(--ls-space-6);
-  padding-bottom: var(--ls-space-9);
-}
-
-/* The member row above and the pages below share one left edge: the shell's container owns the gutter, so a Page
-   does not add its own, and a narrow (form width) page starts at that edge instead of centring. */
-.ls-member-page .ls-page {
-  margin-inline: 0;
-  padding: 0;
-}
-
 /* A short status (checking the session, an error) in the middle of the member area. */
 .ls-site-state {
   display: grid;
@@ -2131,84 +1284,7 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   text-align: center;
 }
 
-/* ---------- member auth: one centered card on the page band ---------- */
-.ls-member-auth {
-  display: grid;
-  align-items: stretch;
-  justify-items: center;
-  padding: var(--ls-space-8) var(--ls-gutter) var(--ls-space-9);
-}
-
-.ls-member-card {
-  display: grid;
-  gap: var(--ls-space-5);
-  width: min(100%, 28rem);
-}
-
-/* From a large screen the card has the brand beside it (the same deep red as the staff sign-in): the wordmark, one line of what
-   an account is for and three short reasons. It is decoration for the eye, so a screen reader skips it. Phones show the card alone. */
-.ls-member-aside {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .ls-member-auth {
-    grid-template-columns: minmax(0, 22rem) minmax(0, 28rem);
-    justify-content: center;
-    gap: var(--ls-space-6);
-  }
-
-  .ls-member-aside {
-    display: grid;
-    align-content: start;
-    gap: var(--ls-space-5);
-    padding: var(--ls-space-8);
-    border-radius: var(--ls-radius-lg);
-    background: linear-gradient(135deg, var(--ls-auth-panel-from), var(--ls-auth-panel-to));
-    color: var(--ls-auth-panel-text);
-  }
-
-  .ls-member-aside-title {
-    margin: 0;
-    font-family: var(--ls-font-display);
-    font-size: var(--ls-type-section);
-    font-weight: var(--ls-weight-title);
-    line-height: var(--ls-lh-section);
-    text-wrap: balance;
-  }
-
-  .ls-member-aside ul {
-    display: grid;
-    gap: var(--ls-space-3);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    color: var(--ls-auth-panel-text-muted);
-  }
-
-  .ls-member-aside li {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--ls-space-3);
-  }
-
-  .ls-member-aside li svg {
-    flex: none;
-    margin-top: var(--ls-icon-nudge);
-    color: var(--ls-auth-panel-text);
-  }
-}
-
 /* The sign-in card breathes like the reference: 32 px of padding, fields as pills. */
-.ls-member-auth .ls-card {
-  padding: var(--ls-space-8);
-}
-
-@media (max-width: 479px) {
-  .ls-member-auth .ls-card {
-    padding: var(--ls-space-6);
-  }
-}
 
 .ls-member-head {
   display: grid;
@@ -2241,7 +1317,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 /* A "book" button in a page header: the phone tab bar (below 1024 px) already has "Đặt lịch ngay", so the button shows
    only where the tab bar does not, on the title's row. Its empty actions slot goes with it (no stray row). */
 @media (max-width: 1023.98px) {
-  .ls-site .ls-hide-on-tabbar,
   .ls-site .ls-page-actions:has(> .ls-hide-on-tabbar:only-child) {
     display: none;
   }
@@ -2428,10 +1503,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
     position: sticky;
     top: calc(var(--ls-site-header-h) + var(--ls-space-4));
   }
-
-  .ls-action-bar {
-    display: none;
-  }
 }
 
 /* The route fade wraps the page content (M5); it passes the remaining height on, so a short page still pushes the
@@ -2543,11 +1614,6 @@ html[data-ls-motion='reduced']::view-transition-new(.ls-morph) {
   pointer-events: none;
 }
 
-[data-pill='still'] > .ls-nav-pill,
-[data-pill='slide'] > .ls-nav-pill {
-  opacity: 1;
-}
-
 /* The pill glides to the current entry on a route change and to the hovered or keyboard-focused entry (mouse and keys
    only; the hook marks the entry under it with `data-under`). */
 [data-pill='slide'] > .ls-nav-pill {
@@ -2556,88 +1622,23 @@ html[data-ls-motion='reduced']::view-transition-new(.ls-morph) {
     width var(--ls-dur-glide) var(--ls-ease-premium);
 }
 
-/* With the pill placed the entries carry no fill of their own; only the entry under the pill has the on-pill text. */
-:is(.ls-site-nav, .ls-subnav):is([data-pill='still'], [data-pill='slide']) > a {
-  background: transparent;
-}
-
-:is(.ls-site-nav, .ls-subnav):is([data-pill='still'], [data-pill='slide']) > a[data-under] {
-  color: var(--ls-nav-active-text);
-}
-
 /* Keyboard focus: the ring sits outside the pill (the ring and the pill are both brand coloured). */
 :is(.ls-site-nav, .ls-subnav) a:focus-visible {
   outline-offset: var(--ls-space-1);
 }
 
-/* The hero media (picture, slider, brand panel) has the same soft 16 px corners as every card. */
-.ls-site .ls-slider-viewport {
-  border-radius: var(--ls-radius-lg);
-}
-
 /* ---------- hero photo: settle (M2), hover zoom (M3), parallax (M6) ---------- */
 /* The frame clips the picture, so a scaled or shifted image never leaves its rounded box. The picture itself uses the
    individual `scale` and `translate` properties, so the three effects never replace each other. */
-.ls-photo {
-  overflow: hidden;
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-sunken);
-}
-
-.ls-photo .ls-hero-image {
-  border: 0;
-  border-radius: 0;
-  scale: 1;
-  transition: scale var(--ls-dur-zoom) var(--ls-ease-premium);
-  animation: ls-settle var(--ls-dur-reveal) var(--ls-ease-premium) backwards;
-}
-
-@keyframes ls-settle {
-  from {
-    scale: 1.04;
-  }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-photo:hover .ls-hero-image {
-    scale: 1.03;
-  }
-}
 
 /* Parallax: only where the browser can drive an animation by scroll position, on a large screen with a fine pointer,
    and only when the device allows scroll effects (MotionGate). The picture is a little larger than its frame so the
    shift never shows an edge; the travel is the --ls-parallax-shift token. */
-@supports (animation-timeline: view()) {
-  @media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-    html[data-ls-motion='full'] .ls-photo .ls-hero-image {
-      scale: 1.2;
-      transition: none;
-      animation: ls-parallax linear both;
-      animation-timeline: view();
-    }
-
-    html[data-ls-motion='full'] .ls-photo:hover .ls-hero-image {
-      scale: 1.2;
-    }
-  }
-}
-
-@keyframes ls-parallax {
-  from {
-    translate: 0 calc(var(--ls-parallax-shift) * -1);
-  }
-
-  to {
-    translate: 0 var(--ls-parallax-shift);
-  }
-}
 
 /* ---------- hover steps (M3) ---------- */
 /* Every card a visitor can click (product cards, booking choices) answers the pointer the same way: it lifts
    and grows a little with a deeper shadow, dips when pressed (touch included) and settles back softly. The premium ease
    overshoots slightly on the way back. All distances are tokens, which are 0 under reduced motion. */
-.ls-prod-card,
 .ls-choice {
   transition:
     transform var(--ls-dur-slide) var(--ls-ease-premium),
@@ -2646,32 +1647,17 @@ html[data-ls-motion='reduced']::view-transition-new(.ls-morph) {
     box-shadow var(--ls-dur-base) var(--ls-ease-out);
 }
 
-.ls-prod-card:active,
 .ls-choice:not(.ls-choice-disabled):active {
   transform: scale(var(--ls-press-scale));
   transition-duration: var(--ls-dur-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .ls-prod-card:hover,
-  .ls-choice:not(.ls-choice-disabled):hover {
-    transform: translateY(calc(var(--ls-card-lift) * -1)) scale(var(--ls-card-zoom));
-    border-color: var(--ls-hover-border);
-    box-shadow: var(--ls-shadow-lg);
-  }
-
-  .ls-prod-card:active,
-  .ls-choice:not(.ls-choice-disabled):active {
-    transform: scale(var(--ls-press-scale));
-  }
-
-  .ls-site-link svg,
-  .ls-link-arrow {
+  .ls-site-link svg {
     transition: translate var(--ls-dur-fast) var(--ls-ease-out);
   }
 
-  .ls-site-link:hover svg,
-  .ls-site-link:hover .ls-link-arrow {
+  .ls-site-link:hover svg {
     translate: var(--ls-arrow-nudge) 0;
   }
 }
@@ -2847,27 +1833,6 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
 }
 
 /* "Đặt lịch ngay": on top of the button's hover zoom a light band sweeps across once (fine pointers only). */
-.ls-site .ls-btn-sheen {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.ls-site .ls-btn-sheen::after {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 60%;
-  background: linear-gradient(
-    100deg,
-    transparent,
-    color-mix(in srgb, var(--ls-on-brand) 38%, transparent),
-    transparent
-  );
-  translate: -150% 0;
-  pointer-events: none;
-}
 
 @media (hover: hover) and (pointer: fine) {
   .ls-site .ls-btn-sheen:hover::after {
@@ -2895,9 +1860,6 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
 
 /* The slot takes the colour of the band above it, so it never reads as a strip of its own, and that band keeps only a little
    bottom padding: the slot already gives it room (the blank band above the footer was about 130 px on a short page). */
-.site-shell:has(.ls-site-main > .ls-band-surface:last-child) > .ls-contact {
-  background: var(--ls-bg-surface);
-}
 
 .site-shell:has(> .ls-contact) .ls-site-main > .ls-band:last-child {
   padding-bottom: var(--ls-space-4);
@@ -3276,18 +2238,6 @@ button.ls-contact-link {
   --ls-footer-icon-hover: var(--ls-brand-zalo);
 }
 
-/* An empty state that stands alone on a page (an empty cart, a closed shop, no appointment at all) is one compact, centred card on the
-   same surface as every other card: a solid hairline, not the kit's dashed outline. (An empty table keeps its own.) */
-.ls-site .ls-page > .ls-empty {
-  width: min(100%, 32rem);
-  margin-inline: auto;
-  padding: var(--ls-space-9) var(--ls-space-6);
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-surface);
-  box-shadow: var(--ls-shadow-sm);
-}
-
 /* The order's own page: the status, the fulfilment and the lines in the main column, the delivery card beside them from 1024 px. */
 .ls-order-layout {
   display: grid;
@@ -3435,18 +2385,6 @@ button.ls-contact-link {
   color: var(--ls-text-muted);
   font-size: var(--ls-type-body);
   line-height: var(--ls-lh-body);
-}
-
-.ls-account-grid {
-  display: grid;
-  gap: var(--ls-space-6);
-  align-items: start;
-}
-
-@media (min-width: 768px) {
-  .ls-account-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* The account's quick links: one row each (icon, name, chevron); the row is the whole target and turns solid red under the pointer. */
@@ -3613,10 +2551,6 @@ button.ls-contact-link {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .ls-prod-hero-copy {
-    padding: var(--ls-space-8);
-  }
-
   .ls-prod-hero-picture {
     order: 0;
     aspect-ratio: auto;
@@ -3624,9 +2558,6 @@ button.ls-contact-link {
 }
 
 /* The list: a heading row (title, then search, filter and sort), the sidebar and the grid. */
-.ls-prod-section {
-  padding-top: var(--ls-head-gap);
-}
 
 .ls-prod-head {
   display: grid;
@@ -3648,9 +2579,6 @@ button.ls-contact-link {
 }
 
 /* The site's pill fields set their own side padding; a search field keeps the room for its icon and its clear button. */
-.ls-site .ls-search .ls-input {
-  padding-inline: var(--ls-space-8) var(--ls-space-3);
-}
 
 .ls-site .ls-search .ls-input:not(:placeholder-shown) {
   padding-inline-end: var(--ls-space-8);
@@ -3691,55 +2619,7 @@ button.ls-contact-link {
   }
 }
 
-.ls-prod-layout {
-  display: grid;
-  gap: var(--ls-space-7);
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas:
-    'main'
-    'commit';
-}
-
 /* Under 1024 px the sidebar dissolves: its filters are in the sheet and its commitment box follows the list. */
-.ls-prod-side {
-  display: contents;
-}
-
-@media (min-width: 1024px) {
-  .ls-prod-layout {
-    grid-template-columns: var(--ls-field-md) minmax(0, 1fr);
-    grid-template-areas: 'side main';
-    align-items: start;
-    column-gap: var(--ls-space-8);
-  }
-
-  .ls-prod-side {
-    display: grid;
-    grid-area: side;
-    gap: var(--ls-space-6);
-    align-content: start;
-  }
-
-  .ls-prod-side > .ls-prod-commitment {
-    grid-area: auto;
-  }
-}
-
-.ls-prod-main {
-  grid-area: main;
-  min-width: 0;
-}
-
-.ls-prod-aside {
-  display: none;
-  gap: var(--ls-space-6);
-}
-
-@media (min-width: 1024px) {
-  .ls-prod-aside {
-    display: grid;
-  }
-}
 
 .ls-prod-commitment {
   grid-area: commit;
@@ -3891,65 +2771,7 @@ button.ls-contact-link {
   min-width: 0;
 }
 
-.ls-prod-card {
-  position: relative;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--ls-border);
-  border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-surface);
-  box-shadow: var(--ls-shadow-sm);
-}
-
-.ls-prod-media {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1 / 1;
-  background: var(--ls-bg-sunken);
-  color: var(--ls-text-subtle);
-}
-
-.ls-prod-media img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 /* Badges sit on a picture, so they are solid: the brand colour with white text, readable on any photo. */
-.ls-prod-badges .ls-badge-brand {
-  border-color: var(--ls-brand-fill);
-  background: var(--ls-brand-fill);
-  color: var(--ls-on-brand);
-}
-
-.ls-prod-badges .ls-badge-neutral {
-  border-color: var(--ls-border);
-  background: var(--ls-bg-surface);
-  color: var(--ls-text);
-}
-
-.ls-prod-badges {
-  position: absolute;
-  inset-block-start: var(--ls-space-3);
-  inset-inline-start: var(--ls-space-3);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--ls-space-1);
-}
-
-.ls-prod-body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--ls-space-1);
-  padding: var(--ls-space-4);
-}
 
 .ls-prod-meta {
   display: block;
@@ -3962,42 +2784,6 @@ button.ls-contact-link {
 }
 
 /* The name is the card's one link, stretched over the whole card; two lines at most, so every card of a row lines up. */
-.ls-prod-name {
-  margin: 0;
-}
-
-.ls-prod-name a {
-  display: -webkit-box;
-  min-height: calc(2 * var(--ls-type-card) * var(--ls-lh-card));
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  color: inherit;
-  text-decoration: none;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.ls-prod-name a::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-}
-
-.ls-prod-name a:focus-visible {
-  outline: none;
-}
-
-.ls-prod-card:has(.ls-prod-name a:focus-visible) {
-  outline: 2px solid var(--ls-focus);
-  outline-offset: 2px;
-}
-
-.ls-prod-foot {
-  display: grid;
-  gap: var(--ls-space-1);
-  margin-top: auto;
-  padding-top: var(--ls-space-2);
-}
 
 .ls-prod-stock {
   margin: 0;
@@ -4081,11 +2867,6 @@ button.ls-contact-link {
   line-height: var(--ls-lh-card);
   font-weight: 700;
   white-space: nowrap;
-}
-
-.ls-sale[data-size='page'] .ls-sale-now strong {
-  font-size: var(--ls-type-sub);
-  line-height: var(--ls-lh-sub);
 }
 
 .ls-nowrap {
@@ -4207,12 +2988,6 @@ button.ls-contact-link {
   line-height: var(--ls-lh-small);
 }
 
-.ls-camp-hero-meta .ls-badge-brand {
-  border-color: var(--ls-brand-fill);
-  background: var(--ls-brand-fill);
-  color: var(--ls-on-brand);
-}
-
 /* The product's own page. */
 .ls-prod-detail {
   display: grid;
@@ -4266,11 +3041,6 @@ button.ls-contact-link {
 
 .ls-prod-viewport::-webkit-scrollbar {
   display: none;
-}
-
-.ls-prod-viewport:focus-visible {
-  outline: 2px solid var(--ls-focus);
-  outline-offset: 2px;
 }
 
 .ls-prod-slide {
@@ -4348,13 +3118,6 @@ button.ls-contact-link {
   margin: 0;
 }
 
-.ls-prod-detail-price strong {
-  color: var(--ls-brand);
-  font-size: var(--ls-type-sub);
-  line-height: var(--ls-lh-sub);
-  font-weight: 600;
-}
-
 .ls-prod-detail-price del {
   color: var(--ls-text-subtle);
   font-size: var(--ls-type-body);
@@ -4380,23 +3143,6 @@ button.ls-contact-link {
 .ls-prod-sections {
   display: grid;
   gap: var(--ls-space-4);
-}
-
-.ls-prod-section {
-  display: grid;
-  gap: var(--ls-space-1);
-}
-
-.ls-prod-section-title {
-  margin: 0;
-  color: var(--ls-text);
-  font-size: var(--ls-type-body);
-  font-weight: 600;
-  line-height: var(--ls-lh-body);
-}
-
-.ls-prod-page {
-  padding-top: var(--ls-space-2);
 }
 
 .ls-prod-offer {
@@ -4616,16 +3362,6 @@ button.ls-contact-link {
   padding-bottom: 0;
 }
 
-.ls-shop-line-thumb {
-  display: block;
-}
-
-.ls-shop-line-thumb .ls-thumb {
-  width: 5rem;
-  height: 5rem;
-  border-radius: var(--ls-radius-md);
-}
-
 .ls-shop-line-main {
   display: grid;
   gap: var(--ls-space-1);
@@ -4702,10 +3438,6 @@ button.ls-contact-link {
     align-items: flex-end;
     justify-content: flex-start;
   }
-
-  .ls-shop-line-total {
-    margin-inline-start: 0;
-  }
 }
 
 .ls-shop-mini {
@@ -4740,11 +3472,6 @@ button.ls-contact-link {
   display: flex;
   align-items: flex-end;
   gap: var(--ls-space-3);
-}
-
-.ls-shop-voucher-field {
-  flex: 1;
-  min-width: 0;
 }
 
 .ls-shop-saved {

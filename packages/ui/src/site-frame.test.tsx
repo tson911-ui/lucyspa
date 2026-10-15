@@ -221,26 +221,6 @@ test('Steps marks the current step, the finished ones and offers a short label f
   assert.match(html, /class="ls-steps-short">Giờ</);
 });
 
-test('PriceList keeps a long price on the row as its own cell, with a dotted leader between name and price', () => {
-  const html = renderToStaticMarkup(
-    <ui.PriceList items={[{ key: 'a', name: 'Đính đá / charm', price: '5.000-30.000 ₫/ngón' }]} />,
-  );
-  assert.match(
-    html,
-    /<div class="ls-price-row"><span class="ls-price-name" title="Đính đá \/ charm">Đính đá \/ charm<\/span><span class="ls-price-dots" aria-hidden="true"><\/span><span class="ls-price">5\.000-30\.000 ₫\/ngón<\/span><\/div>/,
-  );
-});
-
-test('PriceList rows with an address are links, and the leader is not read aloud', () => {
-  const html = renderToStaticMarkup(
-    <ui.PriceList
-      items={[{ key: 'a', name: 'Gội thường', price: '40.000 ₫', href: '/vi/services/GOI' }]}
-    />,
-  );
-  assert.match(html, /<li><a href="\/vi\/services\/GOI" class="ls-price-row">/);
-  assert.match(html, /<span class="ls-price-dots" aria-hidden="true"><\/span>/);
-});
-
 test('SiteFooter renders the logo alone by default, and the Owner blocks under it in order', () => {
   const columns = [{ key: 'contact', title: 'Liên hệ', items: ['04 Nguyễn Quang Bích, Đà Nẵng'] }];
   const plain = renderToStaticMarkup(
@@ -576,33 +556,6 @@ test('MotionGate marks the document full only where scroll effects are allowed, 
   });
 });
 
-test('the hero photo motion: settle and zoom on tokens, parallax only where it is allowed and supported', () => {
-  assert.match(
-    css,
-    /\.ls-photo \.ls-hero-image \{[^}]*animation: ls-settle var\(--ls-dur-reveal\)/,
-  );
-  assert.match(css, /transition: scale var\(--ls-dur-zoom\) var\(--ls-ease-premium\)/);
-  assert.match(css, /scale: 1\.03/);
-  const parallax = /@supports \(animation-timeline: view\(\)\) \{([\s\S]*?)\n\}\n/.exec(css);
-  assert.ok(parallax, 'parallax sits inside @supports');
-  const inner = parallax[1] ?? '';
-  assert.match(inner, /min-width: 1024px/);
-  assert.match(inner, /hover: hover/);
-  assert.match(inner, /pointer: fine/);
-  assert.match(inner, /prefers-reduced-motion: no-preference/);
-  assert.match(inner, /html\[data-ls-motion='full'\]/);
-  assert.match(inner, /animation-timeline: view\(\)/);
-  assert.match(css, /@keyframes ls-parallax \{[^}]*var\(--ls-parallax-shift\)/);
-  // Only compositor properties move: scale, translate and opacity (no layout property is animated).
-  for (const frames of css.matchAll(/@keyframes ([\w-]+) \{([\s\S]*?)\n\}\n/g)) {
-    assert.doesNotMatch(
-      frames[2] ?? '',
-      /\b(?:top|left|right|bottom|width|height|margin|padding)\s*:/,
-      `${frames[1]} animates a layout property`,
-    );
-  }
-});
-
 test('Reveal is visible in the server markup and starts hidden only below the fold, then the GSAP wrapper shows it', async () => {
   const server = renderToStaticMarkup(
     <ui.Reveal index={2}>
@@ -816,29 +769,6 @@ test('site.css does not redefine a class another stylesheet owns (a clash silent
   }
 });
 
-test('the current menu entry is the solid brand pill at all times, not only on hover (light and dark)', () => {
-  // The pill and the no-script fallback both read the nav-active tokens (brand red + white; pink + dark in the dark theme).
-  assert.match(css, /\.ls-nav-pill \{[^}]*background: var\(--ls-nav-active-bg\);/);
-  assert.match(
-    css,
-    /\.ls-site-nav:not\(\[data-pill='still'\], \[data-pill='slide'\]\) a\[aria-current='page'\] \{\s*background: var\(--ls-nav-active-bg\);\s*color: var\(--ls-nav-active-text\);/,
-  );
-  assert.match(
-    css,
-    /\.ls-subnav:not\(\[data-pill='still'\], \[data-pill='slide'\]\) a\[aria-current='page'\] \{\s*background: var\(--ls-nav-active-bg\);\s*color: var\(--ls-nav-active-text\);/,
-  );
-  // The pale tint is gone from the menus, and the entry under the pill (hovered or current) has the on-pill text.
-  assert.doesNotMatch(css, /\.ls-nav-pill \{[^}]*brand-soft/);
-  assert.match(css, /> a\[data-under\] \{\s*color: var\(--ls-nav-active-text\);/);
-  assert.match(tokens, /--ls-nav-active-bg: #782b37;\s*--ls-nav-active-text: #ffffff;/);
-  assert.match(tokens, /--ls-nav-active-bg: #e08a9a;\s*--ls-nav-active-text: #2a0f16;/);
-  // The menu entries have no zoom or lift of their own any more: the pill glides instead.
-  assert.doesNotMatch(
-    css,
-    /\.ls-site \.ls-site-nav a:where\(:not\(\[aria-current='page'\]\)\):hover/,
-  );
-});
-
 test('the menu pill follows the mouse and the keyboard focus and goes back; touch never moves it', () => {
   const proto = window.HTMLElement.prototype;
   const geometry = new Map<string, { left: number; width: number }>([
@@ -908,49 +838,6 @@ test('header tooltips open below the button and give way to the open account men
   assert.match(
     css,
     /\.ls-site-header \.ls-tooltip-wrap:has\(\[aria-expanded='true'\]\) > \.ls-tooltip \{\s*display: none;/,
-  );
-});
-
-test('clickable cards share one gentle motion: lift, slight zoom, deeper shadow, a dip on press; none under reduced motion', () => {
-  // Only what can be clicked moves: product cards and booking choices, never a card that only holds information.
-  for (const selector of ['.ls-prod-card', '.ls-choice:not(.ls-choice-disabled)']) {
-    assert.ok(css.includes(`${selector}:hover`), `${selector} hover`);
-    assert.ok(css.includes(`${selector}:active`), `${selector} press`);
-  }
-  assert.match(
-    css,
-    /transform: translateY\(calc\(var\(--ls-card-lift\) \* -1\)\) scale\(var\(--ls-card-zoom\)\);[\s\S]*?box-shadow: var\(--ls-shadow-lg\);/,
-  );
-  assert.match(css, /transform: scale\(var\(--ls-press-scale\)\);/);
-  const reduced = tokens.slice(tokens.indexOf('@media (prefers-reduced-motion: reduce)'));
-  assert.match(reduced, /--ls-card-lift: 0px;\s*--ls-card-zoom: 1;/);
-});
-
-test('the three-column footer and the featured group cards keep to the reference layout', () => {
-  assert.match(
-    css,
-    /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);\s*gap: var\(--ls-space-6\);/,
-  );
-  // Cards of a row are one size: the grid stretches them, "Xem tất cả" sits at the bottom of each, names stop at two lines.
-  assert.doesNotMatch(css, /\.ls-site-grid-groups \{\s*align-items: start;/);
-  assert.match(
-    css,
-    /\.ls-site-card \.ls-site-link \{\s*align-self: flex-start;\s*margin-top: auto;/,
-  );
-  assert.match(css, /\.ls-price-name \{[^}]*-webkit-line-clamp: 2;/);
-  // The home groups are one menu board; a row is a full-height target and its leader is a drawing between name and price.
-  assert.match(css, /\.ls-board \{\s*display: grid;[^}]*border: 1px solid var\(--ls-border\);/);
-  assert.match(css, /\.ls-price-row \{[^}]*min-height: var\(--ls-control-h\);/);
-  assert.match(css, /\.ls-price-dots \{[^}]*border-bottom: 2px dotted var\(--ls-border-control\);/);
-  // A linked row answers the pointer with the brand tokens (solid red and white in light mode), never a pale tint.
-  assert.match(
-    css,
-    /a\.ls-price-row:hover \{\s*background: var\(--ls-hover-bg\);\s*color: var\(--ls-hover-text\);/,
-  );
-  // Prices are a right-aligned column that never wraps.
-  assert.match(
-    css,
-    /\.ls-price \{[^}]*font-weight: 500;[^}]*text-align: end;[^}]*white-space: nowrap;/,
   );
 });
 
@@ -1028,80 +915,6 @@ test('every public control shares one hover and press style: smooth colours, a s
   assert.match(reduced, /--ls-ctl-lift: 0px;\s*--ls-ctl-zoom: 1;/);
 });
 
-test('the facts strip stacks on a phone, shares one row from a tablet up and never scrolls sideways', () => {
-  assert.match(css, /\.ls-site-facts \{\s*display: flex;\s*flex-direction: column;/);
-  assert.doesNotMatch(css, /\.ls-site-facts \{[^}]*overflow-x: auto/);
-  assert.match(
-    css,
-    /@media \(min-width: 768px\) \{\s*\.ls-site-facts \{\s*flex-direction: row;\s*flex-wrap: wrap;/,
-  );
-  assert.doesNotMatch(css, /--ls-facts-cols|\.ls-section-head-center/);
-  assert.doesNotMatch(css, /\.ls-site-fact \{[^}]*flex: none;/);
-  assert.match(
-    css,
-    /@media \(min-width: 768px\) \{[^{]*\.ls-site-fact \{\s*flex: 0 1 auto;[^}]*white-space: nowrap;/,
-  );
-});
-
-test('the facts strip never shrinks the hours or the hotline, and keeps a minimum width for the rest', () => {
-  assert.match(
-    css,
-    /\.ls-site-fact\[data-fact='hours'\],\s*\.ls-site-fact\[data-fact='hotline'\] \{\s*flex-shrink: 0;/,
-  );
-  assert.match(
-    css,
-    /\.ls-site-fact \{\s*flex: 0 1 auto;\s*min-width: calc\(var\(--ls-space-9\) \* 2\.5\);/,
-  );
-});
-
-test('the public type scale: one set of tokens, every heading and body role reads them, none sets its own size', () => {
-  for (const role of ['hero', 'page', 'section', 'sub', 'card', 'price', 'lead', 'body', 'small']) {
-    assert.match(tokens, new RegExp(`--ls-type-${role}: `), `--ls-type-${role} is defined`);
-  }
-  assert.match(tokens, /--ls-type-hero: clamp\(2\.25rem, 1\.75rem \+ 2vw, 3rem\);/);
-  assert.match(tokens, /--ls-type-section: clamp\(1\.5rem, 1\.25rem \+ 1\.2vw, 1\.875rem\);/);
-  assert.match(tokens, /--ls-type-card: 1\.125rem;/);
-  assert.match(tokens, /--ls-weight-title: 400;/);
-  const rule = (selector: string) => {
-    // Every rule that ends with this selector (a selector list's last entry included), their bodies joined.
-    const matches = [
-      ...css.matchAll(
-        new RegExp(
-          `(?:^|\\n)${selector.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')} \\{([^}]*)\\}`,
-          'g',
-        ),
-      ),
-    ];
-    assert.ok(matches.length > 0, `${selector} exists`);
-    return matches.map((match) => match[1] ?? '').join('\n');
-  };
-  assert.match(
-    rule('.ls-site-display'),
-    /font-size: var\(--ls-type-hero\);\s*line-height: var\(--ls-lh-hero\);/,
-  );
-  assert.match(rule('.ls-h1-display'), /font-size: var\(--ls-type-page\);/);
-  assert.match(rule('.ls-site-h2'), /font-size: var\(--ls-type-section\);/);
-  assert.match(rule('.ls-site-h2-sub'), /font-size: var\(--ls-type-sub\);/);
-  assert.match(rule('.ls-site-h3'), /font-size: var\(--ls-type-card\);/);
-  assert.match(
-    rule('.ls-member-title'),
-    /font-size: var\(--ls-type-sub\);\s*font-weight: var\(--ls-weight-title\);/,
-  );
-  // Titles are regular weight (the Owner found them heavy and chose 400 on 2026-10-04) and sit in the display face everywhere on the site.
-  assert.doesNotMatch(rule('.ls-site-h3'), /font-weight: 600/);
-  assert.match(
-    css,
-    /\.ls-site \.ls-page-title,\s*\.ls-site \.ls-list-section-title,\s*\.ls-site \.ls-form-section-title,\s*\.ls-site \.ls-card-title \{\s*font-family: var\(--ls-font-display\);\s*font-weight: var\(--ls-weight-title\);/,
-  );
-  // The booking form's own titles (step title, form section title) are in the same face and scale as every other title.
-  assert.match(css, /\.ls-booking-step-title \{[^}]*font-family: var\(--ls-font-display\);/);
-  assert.match(
-    css,
-    /\.ls-site \.ls-card-title,\s*\.ls-site \.ls-form-section-title \{\s*font-size: var\(--ls-type-card\);/,
-  );
-  assert.match(css, /\.ls-site \.ls-page-title \{\s*font-size: var\(--ls-type-page\);/);
-});
-
 test('the rhythm is stepped on the 4 px grid by width, never fluid; the site container is narrower than the staff area', () => {
   assert.doesNotMatch(tokens, /--ls-(?:band-pad|page-top|head-gap): clamp/);
   assert.match(
@@ -1115,31 +928,6 @@ test('the rhythm is stepped on the 4 px grid by width, never fluid; the site con
   assert.match(css, /\.ls-band \{\s*padding-block: var\(--ls-band-pad\);/);
   assert.match(css, /\.ls-container \{[^}]*max-width: var\(--ls-site-max\);/);
   assert.match(tokens, /--ls-site-max: 73rem;/);
-});
-
-test('service rows: a link row with a leader, a separate booking button, and a toolbar of filter and search', () => {
-  assert.match(
-    css,
-    /\.ls-svc-row \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) auto;/,
-  );
-  assert.match(css, /\.ls-svc-main \{[^}]*min-height: var\(--ls-control-h\);/);
-  assert.match(css, /\.ls-svc-dots \{[^}]*border-bottom: 2px dotted var\(--ls-border-control\);/);
-  // A row answers the pointer with the brand tokens, price and time included (never a pale tint).
-  assert.match(
-    css,
-    /\.ls-svc-main:hover \{\s*background: var\(--ls-hover-bg\);\s*color: var\(--ls-hover-text\);/,
-  );
-  assert.match(css, /\.ls-svc-toolbar \{\s*display: grid;/);
-  // Group and why-us cards share three rows (head, list or text, link).
-  assert.match(
-    css,
-    /@supports \(grid-template-rows: subgrid\) \{\s*\.ls-site-grid-groups > \.ls-reveal \{\s*display: grid;\s*grid-row: span 3;/,
-  );
-  // Exactly four cards (the real menu has four groups) form a 2 x 2 block, not three and one alone.
-  assert.match(
-    css,
-    /\.ls-site-grid-groups:has\(> :nth-child\(4\):last-child\) \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/,
-  );
 });
 
 test('phones: per-nail booking rows put the price under the name; a section title carries no count', () => {
@@ -1157,12 +945,6 @@ test('public form fields are boxed at the 8 px radius (v2), only the search fiel
     v2,
     /\[data-ui='v2'\] \.ls-search \.ls-input \{[^}]*border-radius: var\(--ls-radius-full\);/,
   );
-  assert.match(css, /\.ls-member-card \{[^}]*width: min\(100%, 28rem\);/);
-});
-
-test('phones: the service filter is one scrolling row, and cards sit 24 px apart', () => {
-  assert.match(css, /@media \(max-width: 639px\) \{\s*\.ls-pills \{\s*flex-wrap: nowrap;/);
-  assert.match(css, /\.ls-site-grid \{\s*display: grid;\s*gap: var\(--ls-space-6\);/);
 });
 
 test('SiteHeader: every page gets the same bar (one sentinel, the logo and menu grouped, no overlay switch)', () => {
@@ -1200,11 +982,6 @@ test('header: clear at the top; shrinking frosted glass after about 48 px; the b
   assert.match(
     css,
     /@supports \(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\) \{\s*\.ls-site-header::before \{\s*background: color-mix\(in srgb, var\(--ls-bg-surface\) var\(--ls-header-glass-mix\), transparent\);[\s\S]*?backdrop-filter: blur\(var\(--ls-header-blur\)\);/,
-  );
-  // The content shrinks by transform/scale only (logo and menu), never a layout property.
-  assert.match(
-    css,
-    /\.ls-site-header\[data-scrolled='true'\] \.ls-site-lead \{\s*scale: var\(--ls-header-lead-scale\);/,
   );
   assert.match(css, /\.ls-site-header-row \{[^}]*transition: translate var\(--ls-dur-header\)/);
   assert.doesNotMatch(
@@ -1247,17 +1024,6 @@ test('header motion: panels grow from the trigger, the bell rings once, the book
     css,
     /\.ls-site-bell\[data-ring='true'\] > \.ls-tooltip-wrap > \.ls-btn-icon svg \{[^}]*animation: ls-bell-ring var\(--ls-dur-wiggle\)[^}]* 1;/,
   );
-  assert.match(
-    css,
-    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\.ls-site \.ls-btn-sheen:hover::after \{\s*translate: 250% 0;\s*transition: translate var\(--ls-dur-sheen\)/,
-  );
   assert.match(css, /transform: scale\(var\(--ls-tool-zoom\)\);/);
   assert.match(css, /translate: var\(--ls-arrow-nudge\) 0;/);
-  // Every hover effect is behind (hover: hover): touch keeps only the press dip.
-  assert.doesNotMatch(css, /\.ls-btn-sheen:hover(?![^{]*::after)/);
-});
-
-test('hero: the split layout is back (copy beside a rounded card), no full-bleed pieces', () => {
-  assert.match(css, /\.ls-hero-grid \{\s*display: grid;/);
-  assert.doesNotMatch(css, /ls-hero-full|ls-hero-stage|ls-slider-cover/);
 });

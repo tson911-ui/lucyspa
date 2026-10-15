@@ -70,7 +70,6 @@ const SHEETS = [
   'shell.css',
   'staff.css',
   'site.css',
-  'customer-tokens.css',
   'customer.css',
   'customer-pages.css',
   ...(process.env.GALLERY_V2 === '0' ? [] : ['components-v2.css']),

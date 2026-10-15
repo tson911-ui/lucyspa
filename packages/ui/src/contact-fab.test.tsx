@@ -139,16 +139,9 @@ test('ContactFab css: sticky row on the shared layer scale, lifted above the tab
     css,
     /\.ls-contact-toggle \{[^}]*color: var\(--ls-on-brand\);[^}]*background: var\(--ls-brand-fill\)/,
   );
-  // Footer icons: footer-link grey, the official colour on hover.
+  // Footer icons: footer-link grey (the hover is the shared solid accent, DESIGN.md rule 4); the Zalo glyph is a step larger.
   assert.match(css, /\.ls-footer-icon \{[^}]*color: var\(--ls-text-muted\)/);
-  assert.match(
-    css,
-    /data-network='facebook'\] \{\s*--ls-footer-icon-hover: var\(--ls-brand-facebook\)/,
-  );
-  assert.match(
-    css,
-    /data-network='zalo'\] \{\s*--ls-footer-icon-size: var\(--ls-space-7\);\s*--ls-footer-icon-hover: var\(--ls-brand-zalo\)/,
-  );
+  assert.match(css, /data-network='zalo'\] \{\s*--ls-footer-icon-size: var\(--ls-space-7\)/);
   // The glyph (24 px Facebook, 32 px Zalo) sits on the text column's left edge: the link keeps a full touch target but a
   // negative margin makes it take only its glyph's width in the row; every footer row is one control-height line.
   assert.match(

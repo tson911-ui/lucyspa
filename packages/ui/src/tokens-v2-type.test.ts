@@ -4,7 +4,6 @@ import { test } from 'node:test';
 
 // DESIGN.md 6.3 (Be Vietnam Pro, three weights, the type roles) and H6 (rem, heading line height at least 1.2) against the CSS.
 const tokens = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
-const customerTokens = readFileSync(new URL('./customer-tokens.css', import.meta.url), 'utf8');
 const customer = readFileSync(new URL('./customer.css', import.meta.url), 'utf8');
 const base = readFileSync(new URL('./base.css', import.meta.url), 'utf8');
 const globals = readFileSync(
@@ -105,11 +104,6 @@ test('the names the public pages read point at the roles (one scale)', () => {
     '--ls-type-small': 'var(--ls-type-label)',
   };
   for (const [name, value] of Object.entries(expected)) assert.equal(v2[name], value, name);
-});
-
-test('the customer tokens no longer define a face or a type size', () => {
-  const body = customerTokens.replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.doesNotMatch(body, /--ls-font-|--ls-type-|--ls-lh-/);
 });
 
 test('v2 headings in base.css: 600, balanced, line height from the roles, zero specificity', () => {

@@ -31,10 +31,7 @@ const css = [
 ]
   .map((name) => readFileSync(new URL(name, here), 'utf8'))
   .join('\n');
-// The customer site's own tokens (direction C) are tokens too: defined in customer-tokens.css, read by the rules.
-const tokens = ['tokens.css', 'customer-tokens.css']
-  .map((name) => readFileSync(new URL(name, here), 'utf8'))
-  .join('\n');
+const tokens = readFileSync(new URL('tokens.css', here), 'utf8');
 
 test('kit polish: badge padding on the grid, flat notice with the card radius, phone title two lines', () => {
   assert.match(rule('.ls-badge'), /padding:\s*var\(--ls-space-1\) var\(--ls-space-2\)/);

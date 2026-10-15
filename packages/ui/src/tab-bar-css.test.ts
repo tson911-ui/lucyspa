@@ -12,35 +12,6 @@ const rule = (selector: string) => {
   return match[1] ?? '';
 };
 
-test('tab bar: only the current tab takes the active style; the booking tab does not', () => {
-  assert.match(
-    rule(".ls-tab-bar a[aria-current='page']"),
-    /color: var\(--ls-brand\);\s*font-weight: 600;/,
-  );
-  assert.doesNotMatch(
-    css,
-    /\.ls-tab-bar a\[aria-current='page'\],\s*\.ls-tab-bar a\[data-emphasis='true'\]/,
-  );
-  assert.match(rule(".ls-tab-bar a[data-emphasis='true']"), /color: var\(--ls-text\);/);
-});
-
-test('tab bar: the booking tab is a raised round brand button with its icon on it, a ring on the booking page', () => {
-  const disc = rule(".ls-tab-bar a[data-emphasis='true'] svg");
-  assert.match(disc, /border-radius: 50%;/);
-  assert.match(disc, /background: var\(--ls-brand\);/);
-  assert.match(disc, /color: var\(--ls-on-brand\);/);
-  assert.match(disc, /margin-top: calc\(var\(--ls-space-5\) \* -1\);/);
-  assert.match(
-    rule(".ls-tab-bar a[data-emphasis='true'][aria-current='page'] svg"),
-    /box-shadow:[^;]*var\(--ls-brand\)/,
-  );
-  // Gentle press on the disc only, from the shared token (1 = none under reduced motion).
-  assert.match(
-    rule(".ls-site .ls-tab-bar a[data-emphasis='true']:active svg"),
-    /transform: scale\(var\(--ls-press-scale\)\);/,
-  );
-});
-
 test('app shell below 1024 px: the scroller is the only scroll container and the tab bar is in the flow below it', () => {
   const bar = rule('.ls-tab-bar');
   // In the flow, opaque, the safe area as padding inside it; never fixed or sticky.
@@ -63,7 +34,6 @@ test('app shell below 1024 px: the scroller is the only scroll container and the
     ),
     'the scroller is the only scroll container',
   );
-  assert.ok(flat.includes('html:has(.ls-site-scroll) { background: var(--ls-bg-surface); }'));
   // From 1024 px the wrapper changes nothing: the document scrolls as before.
   assert.ok(flat.includes('.ls-site-scroll { display: contents; }'));
   // No page reserve, no document scroll padding: nothing can be behind the bar.
@@ -115,12 +85,5 @@ test('the page covers the whole screen (viewport-fit=cover) and can never be zoo
   assert.match(
     rule('.ls-tab-bar'),
     /padding-inline: var\(--ls-safe-left\) var\(--ls-safe-right\);/,
-  );
-});
-
-test('a "book" button in a page header is hidden below 1024 px, where the tab bar has "Đặt lịch ngay"', () => {
-  assert.match(
-    css,
-    /@media \(max-width: 1023\.98px\) \{\s*\.ls-site \.ls-hide-on-tabbar,\s*\.ls-site \.ls-page-actions:has\(> \.ls-hide-on-tabbar:only-child\) \{\s*display: none;/,
   );
 });

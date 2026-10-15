@@ -1,17 +1,7 @@
-/* The customer site's look: direction C, "Ấm áp thư giãn" (warm, soft, round), chosen by the Owner on 2026-10-10 (docs/CUSTOMER_SITE_C.md).
-   It loads after site.css and only re-themes what sits inside `.ls-site` (the public pages, the member area and the sign-in pages), so the staff
-   and admin screens keep their own palette, faces and radii. Order: tokens, page, header, controls, cards and forms, bands, footer.
-   Brand red and white stay the brand; no warm-metal tone; holiday themes keep working on top (they only set --ls-season-*
-   and --ls-art-*, which this file never touches). Colour literals live in the token blocks only; everything else reads a token.
-   The home page (hero, facts, split intro, product row, category grid, offer) and the photo slots moved to `pages-v2.css` with C10
-   (DESIGN.md 9.1); what is left here is the part the other pages still read, deleted as they are rebuilt (C18 at the latest). */
-
-/* ---------- the page ---------- */
-.ls-site {
-  font-family: var(--ls-font-sans);
-  /* DESIGN.md 6.5: no gradient in the base UI; the page is the base band. */
-  background: var(--ls-bg-page);
-}
+/* What is left of the customer frame's shared rules after the redesign (DESIGN.md, Owner 2026-10-14): the title tracking, the lead width, the
+   page band and the footer link width. Everything else is in the v2 files: tokens `tokens.css`, controls `components-v2.css`, header, footer, tab
+   bar and popup `chrome-v2.css`, pages `pages-v2.css`. Only what sits inside `.ls-site` is touched; the holiday themes set --ls-season-* and
+   --ls-art-* only, which this file never reads. */
 
 /* Titles: Be Vietnam Pro 600 (DESIGN.md 6.3). The display and page titles carry -0.01em; every other title has no tracking. */
 .ls-site-display,
@@ -20,84 +10,13 @@
   letter-spacing: var(--ls-tracking-display);
 }
 
-.ls-site-h2,
-.ls-site-h2-sub,
-.ls-site-h3,
-.ls-site .ls-list-section-title,
-.ls-site .ls-form-section-title,
-.ls-site .ls-card-title {
-  letter-spacing: 0;
-}
-
-.ls-site-h3,
-.ls-site .ls-page-title,
-.ls-site .ls-card-title,
-.ls-site .ls-dialog-title,
-.ls-site .ls-list-section-title,
-.ls-site .ls-form-section-title {
-  font-weight: var(--ls-weight-title);
-}
-
 .ls-lead {
   max-width: 34rem;
 }
 
-/* The header (surface, wordmark, menu, tools) and its call to action: `chrome-v2.css` (DESIGN.md 6.5, 8.5). */
-
-/* The phone tab bar: `chrome-v2.css` (DESIGN.md 8.5). */
-
-/* Buttons, fields and the other kit controls on the frame: `components-v2.css` (DESIGN.md 8.1, 8.2). */
-
-/* The promotional popup: `chrome-v2.css` (DESIGN.md 8.6). */
-
-/* ---------- cards and lists: soft surfaces, no hard outline ---------- */
-.ls-site .ls-card,
-.ls-site-card {
-  border-color: color-mix(in srgb, var(--ls-border) 55%, transparent);
-  border-radius: var(--ls-radius-lg);
-  box-shadow: var(--ls-shadow-md);
-}
-
-/* ---------- bands ---------- */
 .ls-band-page {
   background: transparent;
 }
-
-/* The rose band: the other pages' alternate band until they are rebuilt. A soft wave on its top edge (a mask, so it needs no extra markup). */
-.ls-band-surface {
-  position: relative;
-  margin-top: var(--ls-c-wave);
-  padding-block: 0 var(--ls-c-band);
-  background: var(--ls-c-rose);
-}
-
-.ls-band-surface::before {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  bottom: calc(100% - 1px);
-  height: var(--ls-c-wave);
-  background: var(--ls-wave-fill);
-  -webkit-mask: var(--ls-wave) center / 100% 100% no-repeat;
-  mask: var(--ls-wave) center / 100% 100% no-repeat;
-  pointer-events: none;
-}
-
-.ls-band-surface {
-  --ls-wave-fill: var(--ls-c-rose);
-  /* A card takes the opposite of its container (DESIGN.md 6.1): on this alternate band it is the other step. */
-  --ls-bg-surface: var(--ls-bg-surface-alt);
-}
-
-.ls-site {
-  --ls-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 90' preserveAspectRatio='none'%3E%3Cpath d='M0 52C180 12 330 8 520 36s330 52 520 22 290-44 400-26v58H0z'/%3E%3C/svg%3E");
-}
-
-.ls-band-surface > .ls-container {
-  padding-top: var(--ls-space-7);
-}
-
-/* ---------- footer: `chrome-v2.css` (DESIGN.md 8.5): the base band, no brand-red fill, no wave ---------- */
 
 /* A short word ("Book") is still a full touch target wide. */
 .ls-site-footer-list a:not(.ls-footer-icon) {

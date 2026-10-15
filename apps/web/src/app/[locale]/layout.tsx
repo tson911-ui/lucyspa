@@ -14,7 +14,6 @@ import '@lucy-spa/ui/components.css';
 import '@lucy-spa/ui/shell.css';
 import '@lucy-spa/ui/staff.css';
 import '@lucy-spa/ui/site.css';
-import '@lucy-spa/ui/customer-tokens.css';
 import '@lucy-spa/ui/customer.css';
 import '@lucy-spa/ui/customer-pages.css';
 import '@lucy-spa/ui/components-v2.css';

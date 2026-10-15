@@ -59,12 +59,11 @@ export { ContactPage, InfoPage, type InfoSection } from './info-page';
 export { InfoTable } from './info-table';
 export { CountUp } from './count-up';
 export { useStepSlide } from './step-slide';
-export { Band, PriceList, PublicMain, PublicPage, SiteFooter, Steps, TabBar } from './site';
+export { Band, PublicMain, PublicPage, SiteFooter, Steps, TabBar } from './site';
 export { SiteNav, SiteSubNav } from './site-nav';
 export type {
   FooterBlockItem,
   FooterColumn,
-  PriceListItem,
   SiteLinkComponent,
   SiteNavItem,
   StepItem,
