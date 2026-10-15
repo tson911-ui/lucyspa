@@ -70,11 +70,16 @@ test('C16 contact page: the place first, then the details and the contact pills,
       place={<p>04 Nguyễn Quang Bích</p>}
       details={<p>Mỗi ngày 09:00 - 21:00</p>}
       actions={<a href="tel:0934936101">Gọi</a>}
+      actionsLabel="Liên hệ nhanh"
     />,
   );
   assert.equal(html.match(/<h1\b/g)?.length, 1);
   assert.ok(html.indexOf('ls-info-place') < html.indexOf('ls-info-details'));
-  assert.match(html, /class="ls-info-actions"><a href="tel:0934936101">Gọi<\/a>/);
+  // The pills are one named navigation landmark, not loose buttons (the audit's orphan-action rule).
+  assert.match(
+    html,
+    /<nav class="ls-info-actions" aria-label="Liên hệ nhanh"><a href="tel:0934936101">Gọi<\/a><\/nav>/,
+  );
   const bare = renderToStaticMarkup(
     <ContactPage title="Liên hệ" place={<p>x</p>} details={<p>y</p>} />,
   );

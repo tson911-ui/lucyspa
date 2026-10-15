@@ -109,6 +109,7 @@ export function ContactPage({
   place,
   details,
   actions,
+  actionsLabel,
   className,
 }: {
   title: string;
@@ -116,8 +117,10 @@ export function ContactPage({
   back?: ReactNode;
   place: ReactNode;
   details: ReactNode;
-  /** The contact pills (call, Zalo, Facebook): buttons or links, drawn in one row. */
+  /** The contact pills (call, Zalo, Facebook): links, drawn in one row. */
   actions?: ReactNode;
+  /** The accessible name of the pills' group ("Quick contact"): they are one navigation landmark, not loose buttons. */
+  actionsLabel?: string | undefined;
   className?: string | undefined;
 }) {
   return (
@@ -128,7 +131,11 @@ export function ContactPage({
           <div className="ls-info-place">{place}</div>
           <div className="ls-info-details">
             {details}
-            {actions ? <div className="ls-info-actions">{actions}</div> : null}
+            {actions ? (
+              <nav className="ls-info-actions" aria-label={actionsLabel}>
+                {actions}
+              </nav>
+            ) : null}
           </div>
         </div>
       </Band>

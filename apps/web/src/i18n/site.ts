@@ -63,6 +63,8 @@ export interface SiteText {
     lead: string;
     mapTitle: string;
     openMap: string;
+    /** The name of the row of contact pills (call, Zalo, Messenger). */
+    quickContact: string;
     address: string;
     hotline: string;
     hours: string;
@@ -347,6 +349,7 @@ const text = {
       lead: 'Địa chỉ, giờ mở cửa và các cách liên hệ với Lucy Spa.',
       mapTitle: 'Bản đồ đường đến Lucy Spa',
       openMap: 'Mở trong Google Maps',
+      quickContact: 'Liên hệ nhanh',
       address: 'Địa chỉ',
       hotline: 'Hotline',
       hours: 'Giờ mở cửa',
@@ -607,6 +610,7 @@ const text = {
       lead: 'The address, opening hours and ways to reach Lucy Spa.',
       mapTitle: 'Map to Lucy Spa',
       openMap: 'Open in Google Maps',
+      quickContact: 'Quick contact',
       address: 'Address',
       hotline: 'Hotline',
       hours: 'Opening hours',

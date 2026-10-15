@@ -83,6 +83,7 @@ export function ContactView({ locale, site }: { locale: Locale; site: PublicSite
           ]}
         />
       }
+      actionsLabel={page.quickContact}
       actions={
         <>
           <a className={buttonClass('primary', 'lg')} href={telHref(site)}>
