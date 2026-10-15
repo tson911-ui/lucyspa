@@ -2,7 +2,7 @@
 
 For the Owner. Paste each numbered block into the iNET web terminal (logged in to the server) **one at a time**, in order, and wait for the last line before the next. Every block is wrapped in `( ... )`: copy from the `(` on the first line to the `)` on the last line. Every block checks itself and **stops with a `STOP:` line** when anything differs from what is expected. When you see `STOP:`: do **not** rerun, take a screenshot from the `STOP:` line upwards, and send it to Claude. Claude never touches the server; only the Owner runs commands.
 
-**Code to install:** commit `dedc73825fd272a7e53aab0de0386ec9f8e39957` (full 40 characters, already filled into every block that needs it). Docs-only commits pushed after it do not change running code.
+**Code to install:** commit `8afcb6f864af80ea28498e41f6c3f99ea5548565` (full 40 characters, already filled into every block that needs it). Docs-only commits pushed after it do not change running code.
 **Code running now (Owner report 2026-10-14):** `4f2ced4bab798ca52138f3bf527cab4b61d67730` (code of `04ceaa5` plus the favicon), **134 migrations, 82 permissions**.
 **Database:** 134 to **138** migrations, additive only:
 
@@ -17,7 +17,7 @@ For the Owner. Paste each numbered block into the iNET web terminal (logged in t
 
 ## Before you paste
 
-- GitHub Actions shows a **green** run for commit `dedc73825fd272a7e53aab0de0386ec9f8e39957`. Red or still running: do not start.
+- GitHub Actions shows a **green** run for commit `8afcb6f864af80ea28498e41f6c3f99ea5548565`. Red or still running: do not start.
 - Tell the cashier POS pauses for about 5 minutes (blocks 4 and 5).
 - While the blocks run, **do not press Save or Publish** in the admin Website pages.
 
@@ -27,7 +27,7 @@ For the Owner. Paste each numbered block into the iNET web terminal (logged in t
 (
 set -u
 cd /opt/lucyspa || { echo "STOP: no /opt/lucyspa"; exit 1; }
-NEW=dedc73825fd272a7e53aab0de0386ec9f8e39957
+NEW=8afcb6f864af80ea28498e41f6c3f99ea5548565
 OLD=4f2ced4bab798ca52138f3bf527cab4b61d67730
 DB=lucy_spa_dev
 dung() { echo; echo "STOP: $1"; echo "Screenshot from the STOP line upwards, send to Claude. Do NOT rerun."; exit 1; }
@@ -102,7 +102,7 @@ echo "=== BLOCK 1 DONE: no STOP. Next: block 2 ==="
 (
 set -u
 cd /opt/lucyspa || { echo "STOP: no /opt/lucyspa"; exit 1; }
-NEW=dedc73825fd272a7e53aab0de0386ec9f8e39957
+NEW=8afcb6f864af80ea28498e41f6c3f99ea5548565
 dung() { echo; echo "STOP: $1"; echo "Screenshot from the STOP line upwards, send to Claude. Do NOT rerun unless the text below says you may."; exit 1; }
 expect() { [ "$2" = "$3" ] || dung "$1: got '$2', expected '$3'"; echo "OK  $1: $2"; }
 case "$NEW" in __*) dung "the NEW= line still holds the placeholder";; esac
@@ -195,7 +195,7 @@ Tell the cashier now: POS pauses until block 5 ends (1 to 2 minutes).
 (
 set -u
 cd /opt/lucyspa || { echo "STOP: no /opt/lucyspa"; exit 1; }
-NEW=dedc73825fd272a7e53aab0de0386ec9f8e39957
+NEW=8afcb6f864af80ea28498e41f6c3f99ea5548565
 DB=lucy_spa_dev
 dung() { echo; echo "STOP: $1"; echo "Screenshot from the STOP line upwards, send to Claude. Do NOT rerun."; exit 1; }
 sqlq() { printf '%s\n' "$2" | docker exec -i lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$1" -At' _ "$1"; }
@@ -245,7 +245,7 @@ echo "=== BLOCK 4 DONE: database is at 138. API and worker are STOPPED. Run bloc
 (
 set -u
 cd /opt/lucyspa || { echo "STOP: no /opt/lucyspa"; exit 1; }
-NEW=dedc73825fd272a7e53aab0de0386ec9f8e39957
+NEW=8afcb6f864af80ea28498e41f6c3f99ea5548565
 DB=lucy_spa_dev
 dung() { echo; echo "STOP: $1"; echo "Screenshot from the STOP line upwards, send to Claude. Do NOT rerun."; exit 1; }
 sqlq() { printf '%s\n' "$2" | docker exec -i lucy-spa-postgres-1 sh -c 'psql -U "$POSTGRES_USER" -d "$1" -At' _ "$1"; }
