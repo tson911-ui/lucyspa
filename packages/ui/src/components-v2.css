@@ -1162,3 +1162,18 @@
 [data-ui='v2'] .ls-choice-price {
   font-weight: var(--ls-weight-label);
 }
+
+/* A table as cards on a phone: the label at the start, the value at the end on the same line when both fit, the value under the label when
+   they do not (a number never prints over its label at a large text size). */
+@media (max-width: 639px) {
+  [data-ui='v2'] .ls-table tbody tr td[data-label] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--ls-space-1) var(--ls-space-4);
+  }
+
+  [data-ui='v2'] .ls-table td[data-label] > * {
+    margin-inline-start: auto;
+  }
+}

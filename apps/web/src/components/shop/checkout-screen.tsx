@@ -194,7 +194,7 @@ export function CheckoutScreen() {
   }
   if (!isOpen(sales)) {
     return (
-      <ShopScreen title={c.closedTitle} narrow>
+      <ShopScreen title={c.closedTitle}>
         <EmptyState
           icon="cart"
           action={
@@ -210,7 +210,7 @@ export function CheckoutScreen() {
   }
   if (cart.lines.length === 0 && placed.current === null && phase === 'idle') {
     return (
-      <ShopScreen title={c.emptyTitle} narrow>
+      <ShopScreen title={c.emptyTitle}>
         <EmptyState
           icon="cart"
           action={

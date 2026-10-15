@@ -67,7 +67,7 @@ export function CartScreen() {
   }
   if (!isOpen(sales)) {
     return (
-      <ShopScreen title={s.cart.title} narrow>
+      <ShopScreen title={s.cart.title}>
         <EmptyState
           icon="cart"
           action={
@@ -102,7 +102,7 @@ export function CartScreen() {
 
   if (cart.lines.length === 0) {
     return (
-      <ShopScreen title={s.cart.title} narrow>
+      <ShopScreen title={s.cart.title}>
         <EmptyState
           icon="cart"
           action={

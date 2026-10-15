@@ -387,3 +387,16 @@
   font-size: var(--ls-type-heading);
   line-height: var(--ls-lh-heading);
 }
+
+/* Large text on a phone: the tools are 44 px each, so the header's side gutters and gaps give way a little (never below the normal ones at
+   the normal text size on a 360 px phone) and the last tool stays on the screen. */
+@media (max-width: 479px) {
+  [data-ui='v2'] .ls-site-header-row {
+    padding-inline: min(var(--ls-gutter), 4.5vw);
+    gap: min(var(--ls-space-2), 2.2vw);
+  }
+
+  [data-ui='v2'] .ls-site-tools {
+    gap: min(var(--ls-space-1), 1vw);
+  }
+}

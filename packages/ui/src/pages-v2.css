@@ -1543,8 +1543,8 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 
 /* The picture of a line is 64 px on a phone (the words need the room, most of all at large text) and 80 px from 640 px. */
 [data-ui='v2'] .ls-shop-line-thumb .ls-thumb {
-  width: 4rem;
-  height: 4rem;
+  width: min(4rem, 18vw);
+  height: min(4rem, 18vw);
   border-radius: var(--ls-radius-sm);
 }
 
@@ -2592,4 +2592,82 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
   inset-block-start: 0;
   inset-inline-start: 0;
   white-space: nowrap;
+}
+
+/* ---- Large text (G1, 200 % at 360 px): nothing is cut off at the edge and no words print over each other ---------------------------------- */
+/* A long word may break anywhere when nothing else fits, so a column can shrink to its card instead of pushing the page wider. */
+[data-ui='v2'] :is(.ls-site-main, .ls-site-footer) {
+  overflow-wrap: anywhere;
+}
+
+/* The sign-in card: the panel's one column may be narrower than the card's widest word. */
+[data-ui='v2'] .ls-auth-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-ui='v2'] .ls-auth-stack {
+  min-width: 0;
+}
+
+/* The product grid: as many columns as fit a card at least 7.5 rem wide (two at the normal text size, one when the text is large). */
+[data-ui='v2'] .ls-prod-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-prod-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-ui='v2'] .ls-prod-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* The membership tiers: the two numbers keep at least their own width (never wrapped), the name takes what is left and wraps. */
+[data-ui='v2'] :is(.ls-tier-head, .ls-tier-row) {
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(max-content, 1fr));
+}
+
+[data-ui='v2'] .ls-tier-number {
+  white-space: nowrap;
+}
+
+/* The sign-in wordmark never grows wider than the card at a large text size. */
+[data-ui='v2'] .ls-auth-brand {
+  --ls-wordmark-display: min(var(--ls-type-title), 9vw);
+}
+
+/* The campaign strips: the call to action drops under the words when they do not fit on one line. */
+[data-ui='v2'] .ls-camp-strip {
+  flex-wrap: wrap;
+}
+
+/* A service choice on the booking page: the price drops under the name when the row is too narrow for both (large text). */
+[data-ui='v2'] .ls-choice-list .ls-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+[data-ui='v2'] .ls-choice-list .ls-choice-body {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-choice-list .ls-choice-price {
+  margin-inline-start: auto;
+  white-space: normal;
+  text-align: end;
+}
+
+/* The booking form: its one column may be narrower than the widest row inside it. */
+[data-ui='v2'] .ls-form-section {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-ui='v2'] .ls-choice-list .ls-choice {
+  min-width: 0;
 }
