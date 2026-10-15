@@ -1,6 +1,6 @@
 # Lucy Spa: DESIGN.md
 
-**Status: Approved by the Owner 2026-10-14 (decisions in section 16). Docs only; no app code changed.**
+**Status: Approved by the Owner 2026-10-14 (decisions in section 16); revised by the Owner's session 10 brief (2026-10-16): A1 no theme switch, A2 customer account deletion, A3 brand colour only on clickable text, A4 button states (Apple + Radix), G motion (one main moment per page), R1-R26 reference rules, groups 1-3 built together. Where this file and the session 10 brief differed, the brief won and the text below was changed to match (section 17).**
 
 This is the single design spec for the Lucy Spa redesign: customer site, counter/POS and admin. It replaces direction C
 (Fraunces and Nunito, rose-cream page, pebble cards, soft rose shadows, waves, brand-red footer).
@@ -21,7 +21,7 @@ notes. 16 Decisions.
   visual parts of 9, 12 and 13 (their component lists, page anatomy and responsive behavior stay valid); and the visual direction
   in `docs/CUSTOMER_SITE_C.md`. Its photo list (which real photos the shop must take) stays useful.
 - **Still in force, not restated here:**
-  - `UXUI_REDESIGN_DESIGN.md` 6.1 (theme mechanism: Light, Dark, Auto by time), 20 (seasonal layer) and 21 (UX gate, FR1-FR15,
+  - `UXUI_REDESIGN_DESIGN.md` 20 (seasonal layer) and 21 (UX gate, FR1-FR15,
     DOM audit, ratchets). Section 14 of this file adds to the gate; it does not replace it.
   - Every functional and structural rule: page anatomy (10.1), list and action placement (10.2-10.5), confirmation dialogs
     (11), permissions, money, dates, the no-"khám" rule, VI/EN copy.
@@ -63,7 +63,7 @@ Locked by the Owner (used exactly; nothing added):
 5. Apple-style dark mode: black base, stepped greys, a lighter burgundy accent that passes WCAG AA.
 6. GSAP on all pages: full on customer pages; on POS and admin at most 200 ms, never blocks input, global off switch, honours
    `prefers-reduced-motion`.
-7. All functions, data, the light/dark toggle and the seasonal decoration layer stay unchanged.
+7. All functions, data and the seasonal decoration layer stay unchanged. **The appearance follows the device setting only** (prefers-color-scheme, live while open): the in-app Light/Dark/Auto switch, its cookie and the `data-theme` mechanism are removed (A1, Owner, 2026-10-16, session 10).
 8. Rollout: customer, then POS, then admin; each with before/after screenshots and its own deploy.
 
 Where a reference conflicts with a locked decision, the locked decision wins:
@@ -108,8 +108,7 @@ Each rule has an ID for the screenshot gate (section 14).
   with two meanings: the brand burgundy and the error red stay clearly different (6.4 of the old contract, kept). No colored
   backgrounds on many controls at once.
 - **H9 Dark mode is its own appearance, not an inversion.** Black base, stepped elevated greys (brighter = closer to the user),
-  semantic tokens only, no hard-coded colors, images with white backgrounds slightly dimmed. The light/dark toggle is kept
-  (Auto by time, Light, Dark). Check both modes for every screen.
+  semantic tokens only, no hard-coded colors, images with white backgrounds slightly dimmed. The appearance follows the device setting only (A1, Owner, 2026-10-16, session 10; no in-app toggle). Check both modes for every screen.
 - **H10 Motion has a purpose.** Only to show what changed, give feedback to an action, or orient navigation. Brief and precise.
   Never the only carrier of information. Interruptible: nothing waits for an animation. No animation on frequent interactions
   (typing, table updates, scanning). Reverse of an entrance leaves the way it came. Reduced motion replaces moves with fades or
@@ -134,17 +133,17 @@ Each rule has an ID for the screenshot gate (section 14).
 Staff screens must be instantly recognizable as the same Lucy Spa site. **POS and admin may change density only** (spacing
 step, row height, font-size step, control height). They may never change anything below.
 
-| ID  | DNA element               | The one rule                                                                                                                                                                                                                                                                                                                                                    |
-| --- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | **One token source**      | `packages/ui/src/tokens.css` is the only place for colors, type scale, radius, borders, motion. `customer.css` and `staff.css` may not redefine a color, radius, border or font. The customer frame and the staff shell read the same tokens; the only per-area difference is the density tokens, which include the shorter staff motion durations (6.7, 11.3). |
-| D2  | **Wordmark and header**   | The "LUCY SPA" text wordmark, in Be Vietnam Pro 600, in the same place (leading edge) on every header. Same hairline-bottom, same translucent sticky bar (6.5), same nav-link styling, same current-page treatment, same theme toggle and language switch. The customer header is taller; it is the same component.                                             |
-| D3  | **One component set**     | Buttons, inputs, cards, badges, tables, dialogs, drawers, tabs, menus, toasts, pagination come from `packages/ui` once, each with a **default** and a **compact** variant (`data-density="compact"` or a `compact` prop). No separate staff or customer designs of the same component.                                                                          |
-| D4  | **Typographic hierarchy** | The same scale (6.3), same roles (display, title, heading, body, caption), same weights. Compact moves a role down one step; it never changes the face, the weights or the ratios.                                                                                                                                                                              |
-| D5  | **Accent usage**          | Accent only for: the primary action (at most one per view), the current location, selection, links, focus ring. Everything else is neutral (ink, greys, hairlines). Status colors are separate and always come with a word or icon.                                                                                                                             |
-| D6  | **Icon style**            | One outline icon set from `packages/ui/src/icons.tsx`: the stroke the set already uses (1.75 px on a 24 px grid), round caps, no fills, no color except `currentColor`, sizes 16 / 20 / 24. No emoji as icons.                                                                                                                                                  |
-| D7  | **Section banding**       | Pages are stacked full-width bands alternating `#ffffff` and `#f5f5f7` (dark: `#000000` and `#1c1c1e`). Separation is the band change and 1 px hairlines, never shadows, never gradients, never a decorative divider ornament.                                                                                                                                  |
-| D8  | **Shape language**        | Pill for buttons, tags, badges, chips, segmented controls and search. 8 px for fields and small media. 18 px for cards, dialogs, drawers, large media. No other radius.                                                                                                                                                                                         |
-| D9  | **Motion language**       | Same easing family, same direction rules (up to enter, back the way it came to leave, horizontal only for sequences and drawers), same reduced-motion behavior (section 11). Staff screens use shorter durations of the same curves.                                                                                                                            |
+| ID  | DNA element               | The one rule                                                                                                                                                                                                                                                                                                                                                                                               |
+| --- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | **One token source**      | `packages/ui/src/tokens.css` is the only place for colors, type scale, radius, borders, motion. `customer.css` and `staff.css` may not redefine a color, radius, border or font. The customer frame and the staff shell read the same tokens; the only per-area difference is the density tokens, which include the shorter staff motion durations (6.7, 11.3).                                            |
+| D2  | **Wordmark and header**   | The "LUCY SPA" text wordmark, in Be Vietnam Pro 600, in the same place (leading edge) on every header. Same hairline-bottom, same translucent sticky bar (6.5), same nav-link styling, same current-page treatment, same language switch (no theme control: A1). The customer header is taller; it is the same component (`HeaderBar`, packages/ui/src/header-bar.tsx; R7, Owner, 2026-10-16, session 10). |
+| D3  | **One component set**     | Buttons, inputs, cards, badges, tables, dialogs, drawers, tabs, menus, toasts, pagination come from `packages/ui` once, each with a **default** and a **compact** variant (`data-density="compact"` or a `compact` prop). No separate staff or customer designs of the same component.                                                                                                                     |
+| D4  | **Typographic hierarchy** | The same scale (6.3), same roles (display, title, heading, body, caption), same weights. Compact moves a role down one step; it never changes the face, the weights or the ratios.                                                                                                                                                                                                                         |
+| D5  | **Accent usage**          | Accent only for: the primary action (at most one per view), the current location, selection, links, focus ring. Everything else is neutral (ink, greys, hairlines). Status colors are separate and always come with a word or icon.                                                                                                                                                                        |
+| D6  | **Icon style**            | One outline icon set from `packages/ui/src/icons.tsx`: the stroke the set already uses (1.75 px on a 24 px grid), round caps, no fills, no color except `currentColor`, sizes 16 / 20 / 24. No emoji as icons.                                                                                                                                                                                             |
+| D7  | **Section banding**       | Pages are stacked full-width bands alternating `#ffffff` and `#f5f5f7` (dark: `#000000` and `#1c1c1e`). Separation is the band change and 1 px hairlines, never shadows, never gradients, never a decorative divider ornament.                                                                                                                                                                             |
+| D8  | **Shape language**        | Pill for buttons, tags, badges, chips, segmented controls and search. 8 px for fields and small media. 18 px for cards, dialogs, drawers, large media. No other radius.                                                                                                                                                                                                                                    |
+| D9  | **Motion language**       | Same easing family, same direction rules (up to enter, back the way it came to leave, horizontal only for sequences and drawers), same reduced-motion behavior (section 11). Staff screens use shorter durations of the same curves.                                                                                                                                                                       |
 
 A reviewer checks DNA by laying the customer home, a POS screen and an admin list side by side: wordmark, header, button, input,
 badge, table header and band colors must look like one family.
@@ -272,7 +271,7 @@ Light `#86868b` (gray 7) is never used as text (3.62 on white). `--ls-chart-*` k
 ### 6.2 Dark mode (Apple-style, summary)
 
 Dark is stepped, not inverted: the closer a surface is to the user, the lighter it is (E0 base, E1 band, E2 raised, E3 hover). The
-colors are the dark column of 6.1; the dark block is declared twice (toggle and system preference) and identical. Scrim: light
+colors are the dark column of 6.1; the dark block is declared for the system preference and for the admin season preview (`data-preview-theme`) and the copies are identical. Scrim: light
 `rgb(0 0 0 / 0.4)`, dark `rgb(0 0 0 / 0.6)`. Product images with a white background are dimmed by `brightness(0.92)`.
 
 ### 6.3 Typography (Be Vietnam Pro, self-hosted through `next/font`, one family)
@@ -426,13 +425,13 @@ style, not size. Footers are Cancel then primary, primary last (kept).
 
 ### 8.5 Navigation and header
 
-- **Customer header:** wordmark at the leading edge; the existing 3-item menu and bell (unchanged function); language switch and theme
-  toggle; one **"Đặt lịch" primary pill** at the trailing edge from 640 px (icon + text); below 640 px the booking tab of the phone tab bar is the always-visible call to action (a 360 px member bar has 9 px free; Owner, 2026-10-14). The header is clear (transparent) at the top over the home hero and turns to the translucent surface on scroll (Owner, 2026-10-14). Height 64, compacting to 52 on scroll (existing tokens). Link style: 14/500 ink, current page = accent text + 2 px accent underline offset 8 (never a fill in the bar);
+- **Customer header:** wordmark at the leading edge; the existing 3-item menu and bell (unchanged function); language switch (no theme
+  control, A1); one **"Đặt lịch" primary pill** at the trailing edge from 640 px (icon + text); below 640 px the booking tab of the phone tab bar is the always-visible call to action (a 360 px member bar has 9 px free; Owner, 2026-10-14). The header is clear (transparent) at the top over the home hero and turns to the translucent surface on scroll (Owner, 2026-10-14). Height 64, compacting to 52 on scroll (existing tokens). Link style: 14/500 ink, current page = accent text + 2 px accent underline offset 8 (never a fill in the bar);
   hover = rule 4: the hovered link itself fills with the solid accent and white text at once; no highlight travels from one entry to the next (Owner, 2026-10-15). The same for the account tabs.
 - **Phone:** the existing app shell with the bottom tab bar (44 px+ items, label under icon, current = accent) stays. Safe-area
   padding included.
 - **Staff header (compact):** 56 px, same wordmark and bar styling, breadcrumb/page context at the leading edge, user and
-  theme controls at the trailing edge. **Sidebar:** `--ls-bg-sunken`, 264 / 72, grouped by task (existing IA), item 40 px high
+  the signed-in staff name always visible at the trailing edge (C74). **Sidebar:** `--ls-bg-sunken`, 264 / 72, grouped by task (existing IA), item 40 px high
   pill, current = solid accent fill + accent-contrast text (the one place the accent marks location), hover = `--ls-nav-hover-bg`, a neutral
   tint with ink text (Q3: the accent is reserved for the current page, so a hover never competes with it).
 - **Footer (customer):** `#f5f5f7` band (dark `#1c1c1e`), multi-column link grid (12 columns from 1024, 2 on phone), column
@@ -671,16 +670,14 @@ WCAG 2.2 AA is the floor, with the HIG rules of section 4. Applies to every area
 
 ## 13. Kept unchanged (what the redesign does not touch)
 
-All functions, data, API, permissions, routes and IA; the light/dark toggle with its three options (Light, Dark, Auto by time,
-`ls-theme` cookie, tokens declared twice in dark) and the `data-theme` mechanism; the **seasonal decoration layer** (registry,
+All functions, data, API, permissions, routes and IA (the light/dark toggle was removed by the Owner, A1 2026-10-16); the **seasonal decoration layer** (registry,
 `season.css`, ornaments, kits, particles, preview, `data-season`); the "LUCY SPA" text wordmark; no yellow or gold except holiday
 decorations; copy rules (natural Vietnamese, never "khám"); the existing hover rule (Owner rule 4, with the staff row and sidebar exception of section 8); FR1-FR15, the UX gate, the
 DOM audit and ratchets; integer VND, branch time zones, VI/EN.
 
 ## 14. Rollout and the per-group screenshot gate
 
-**Order: customer, then POS, then admin.** Each group is its own Step set, its own before/after screenshots, its own Owner
-review and its own deploy.
+**Order: customer, then POS, then admin. Session 10 (Owner, 2026-10-16, session 10): groups 1-3 are done together in one session** (one token source switched on for every area at once: `data-ui="v2"` on `<body>`, `data-density="compact"` on the staff shell and staff auth), with one before/after set per area and one Owner review; deploys stay the Owner's call.
 
 **How the groups can ship separately on one token source:** the new values are defined under a scope attribute (`data-ui="v2"`)
 using the **same token names**; a group switches on by setting the attribute on its layout root, so components change without
@@ -710,7 +707,7 @@ long text, many items, no image). Every image is opened and reviewed (CLAUDE.md 
 | G4  | **Layout:** matches the Aevi pattern of its page (section 9) or the compact pattern (section 10); services and booking most prominent on the customer side; one primary action per view.                                                                                                                                                                                                   |
 | G5  | **Dark mode:** stepped surfaces, the burgundy fill with white text and the muted-rose accent text (6.1), no accent text on E3, images not glowing, status readable.                                                                                                                                                                                                                        |
 | G6  | **Motion:** values from tokens; staff Steps: nothing over 200 ms, nothing blocks input; reduced-motion and the off switch tested (both produce the final state with no tween); no animation of blur or layout.                                                                                                                                                                             |
-| G7  | **Functions unchanged:** no logic/API/DB change; the relevant tests pass; the season layer renders as before; toggle works in three options.                                                                                                                                                                                                                                               |
+| G7  | **Functions unchanged:** no logic/API/DB change; the relevant tests pass; the season layer renders as before; the appearance follows the device, light and dark both checked.                                                                                                                                                                                                              |
 | G8  | **Copy:** natural Vietnamese, verbs on buttons, sentence case, no "khám", error text says the fix.                                                                                                                                                                                                                                                                                         |
 | G9  | **Ratchets and gate:** `ui-ratchet.test.ts` counters only down; DOM audit compared with the baseline; `pnpm format:check` clean; targeted tests and typecheck/lint of touched packages.                                                                                                                                                                                                    |
 | G10 | **Before/after pairs** delivered to `.local/uxui-screens/` for Owner approval, with what could not be fixed stated.                                                                                                                                                                                                                                                                        |
@@ -744,8 +741,59 @@ long text, many items, no image). Every image is opened and reviewed (CLAUDE.md 
 | Q6  | **Approved.** 40 px compact controls on fine pointers for staff; 44 px on touch.                                                                                                                                                                                                                                                                                                                                                    |
 | Q7  | **Approved.** Radius 8 / 18 / pill.                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Q8  | **Approved.** GSAP core + ScrollTrigger, the durations of 11.3, `ls-fx=off` extended into the global off switch, plus a staff-wide motion setting. The license check and the bundle budget are done when GSAP is added in group 1; it is not added now.                                                                                                                                                                             |
-| Q9  | **Approved.** Light / Dark / Auto by time is kept.                                                                                                                                                                                                                                                                                                                                                                                  |
+| Q9  | **Superseded by A1 (Owner, 2026-10-16, session 10):** no in-app theme switch; the device setting decides.                                                                                                                                                                                                                                                                                                                           |
 | Q10 | **Approved.** Translucent sticky header with blur.                                                                                                                                                                                                                                                                                                                                                                                  |
 | Q11 | **Approved.** Ink-filled "-%" label.                                                                                                                                                                                                                                                                                                                                                                                                |
 | Q12 | **Approved.** The wordmark changes typeface only; spacing and color stay.                                                                                                                                                                                                                                                                                                                                                           |
 | Q13 | **Approved.** `data-ui="v2"` scope per group.                                                                                                                                                                                                                                                                                                                                                                                       |
+
+## 17. Session 10 changes (Owner brief, 2026-10-16)
+
+The Owner's session 10 brief overrides the sections above where they differ. Report: `docs/REDESIGN_S10_REPORT.md`.
+
+### 17.1 Colour roles (A3, A4, R2, R11, R20-R26)
+
+| Role                                           | Light                                            | Dark                                          |
+| ---------------------------------------------- | ------------------------------------------------ | --------------------------------------------- |
+| `--ls-link`, `--ls-brand` (accent text), focus | burgundy 11 `#60212a`                            | gray 12 `#f5f5f7`, links underlined at rest   |
+| Primary fill / hover / pressed                 | burgundy 9 / 10 / 11                             | burgundy 9 / 10 / 8 (white label, never pink) |
+| Secondary border / hover border                | `#60212a` / burgundy 12 `#521b24` (its only use) | gray 10 `#a1a1a6` / gray 12                   |
+| Secondary hover / pressed background           | burgundy 3 `#f9eced` / 4 `#f7e1e2`               | gray 3 `#2c2c2e` / gray 4 `#3a3a3c`           |
+| Transparent control hover / pressed (R21)      | gray 3 / gray 4                                  | gray 3 / gray 4                               |
+| Auth page background (`--ls-auth-flat`)        | white                                            | black                                         |
+
+- Burgundy is used only for links, buttons, the selected state and status indicators (A3). Headings, prices, labels, captions and
+  table text are neutral. No role points at burgundy dark 11 `#dcadb0` or 12 `#f8ddde`: nothing reads as pink in dark mode (B22).
+- **Rule 4 (solid accent hover) is retired** (R11: hover never uses a vivid colour). The staff sidebar's current item keeps the solid
+  accent (selected state).
+- **Focus ring (R22, pending Owner):** R22 names burgundy 8 `#dc949a`, which measures 2.40:1 on white and 2.21:1 on `#f5f5f7` (dark
+  step 8 `#873742`: 2.66:1 on black, 2.15:1 on `#1c1c1e`), below the 3:1 a focus indicator needs. Until the Owner decides, the ring is
+  the link colour (light `#60212a`, 12.0:1; dark gray 12).
+
+### 17.2 Components
+
+- **Buttons (A4, replaces the 8.1 secondary row):** one solid fill per view, the primary. The secondary never fills, never lifts and no
+  arrow is appended to any button ("→" removed). Every button has hover (fine pointer) and pressed (every pointer: one colour step and
+  scale 0.98). Danger outline hovers with the danger tint, never a solid red; the solid danger button is only in the confirm dialog.
+- **Links (R10):** underline on hover; links inside running text are underlined at rest. Pressed: 2 px underline and the grey tint.
+- **Header (R7):** one `HeaderBar` component on every area; sticky only when the viewport is at least 560 css px tall, so at 200 % zoom
+  it scrolls away (B20). Customer nav hover is plain (underline), the current page a 2 px underline; no fill.
+- **Footer (R8):** 12 px grey links, 12/600 column heads, one link per 44 px row (no overlapping targets), no button in the footer.
+- **Back (C40, B7; replaces "← Quay lại" of 9.2):** an icon-only chevron with an accessible name, only on pages that have a parent (a
+  record, a form, a version). Top-level destinations (the area home and every page the staff sidebar or the member tabs open) have none.
+- **Badges (B18, replaces 8.7 shop labels):** shop labels are neutral (Bán chạy grey fill, Mới grey outline, sale ink fill); a status
+  badge always shows its icon with the word (out of stock = warning).
+- **Select (B9):** the icon-set chevron on every area; explicit text and background colours in both modes.
+- **Staff sign-in:** flat sunken canvas and one hairline card; no gradient, no botanical art (C8, C34).
+- **Brand-logo band (R16, replaces 9.1 1b's accent band):** a light band, logos in ink at one height, evenly spaced, no boxes.
+
+### 17.3 Motion (G1-G8, replaces 11.3 reveal/stagger rows and 11.4)
+
+- Each customer page has at most one orchestrated moment: home = the hero opening sequence (once per visit, ≤ 800 ms); service and product
+  detail = the shared-element photo morph from the card (ViewTransition); the brand band = a continuous marquee.
+- No scroll reveals, no card stagger, no count-up (`Reveal` is a plain wrapper, `CountUp` shows the final number).
+- Everything else is feedback to a user action (menus, dialogs, drawers, sheets, button press, add-to-cart, booking step change, toasts).
+- POS and admin: press, hover, focus, overlays, toast, tab underline, a 120 ms route fade (`--ls-dur-route`) and the skeleton; the GSAP
+  wrapper clamps every tween to 200 ms in the compact scope.
+- Reduced motion, data saver and `ls-fx=off`: no tweens at all (base.css zeroes every animation and transition under all three).
+- GSAP only through `useMotion`; transform and opacity only; every context is killed on unmount and on route change (`ls:route`).

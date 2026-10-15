@@ -90,7 +90,7 @@ These add to the UX quality gate above; none of it is removed.
    **Superseded in part by `DESIGN.md` (Owner, 2026-10-14):** the fonts and palette named in rules 1-2 and the direction C look
    described above. The brand red, the light and dark modes and the text logo stay.
 3. No gold or yellow anywhere, except holiday decorations (Tết, Mid-Autumn, national days) in the seasonal theme layer.
-4. Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the solid dark burgundy
+4. **Superseded by the Owner's session 10 brief (A4/R11/R21, 2026-10-16):** hover is never a vivid colour. A transparent control hovers one grey step and presses the next; the primary button (the one solid burgundy fill) goes burgundy 10 on hover and 11 when pressed (dark 10 / 8); the secondary is a 1 px #60212a outline whose hover tints #f9eced with a #521b24 border (dark: neutral border and text, elevated grey hover), never solid; no lift, no arrow nudge; nav hover is plain. Text links: #60212a (dark: the neutral text, underlined). Old text, kept for history: Hover: light mode = solid `#782b37` background with white text (not a pale pink tint); dark mode = the solid dark burgundy
    (`--ls-hover-bg`, burgundy step 9, white text; the pink `#e48f9f` is retired, see `DESIGN.md` 6.1). Exception (Owner delegation, 2026-10-14):
    hover on staff table rows and staff sidebar items is a neutral tint, not the solid accent; the current page in the sidebar stays
    solid accent. Exception (Owner, 2026-10-15): a secondary (outline) button never fills on hover: transparent background, accent
