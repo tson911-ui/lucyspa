@@ -2095,8 +2095,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   line-height: var(--ls-lh-label);
 }
 
-[data-ui='v2'] .ls-acct-tabs a[aria-current='page'],
-[data-ui='v2'] .ls-acct-tabs:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
+[data-ui='v2'] .ls-acct-tabs a[aria-current='page'] {
   background: transparent;
   color: var(--ls-brand);
   text-decoration: underline;
@@ -2105,39 +2104,20 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   text-underline-offset: var(--ls-space-2);
 }
 
-[data-ui='v2'] .ls-acct-tabs > .ls-nav-pill {
-  opacity: 0;
-  transition:
-    translate var(--ls-dur-glide) var(--ls-ease-premium),
-    width var(--ls-dur-glide) var(--ls-ease-premium),
-    opacity var(--ls-dur-fast) var(--ls-ease-out);
+/* Hover and keyboard focus fill the link itself, at once; no highlight travels between the tabs (session 9). */
+[data-ui='v2'] .ls-acct-tabs a {
+  transition: none;
 }
 
-[data-ui='v2'] .ls-acct-tabs:is([data-pill='still'], [data-pill='slide']) > a[data-under] {
-  color: var(--ls-text);
-}
-
-[data-ui='v2'] .ls-acct-tabs:is([data-pill='still'], [data-pill='slide']) > a[aria-current='page'] {
-  color: var(--ls-brand);
-}
-
-[data-ui='v2'] .ls-acct-tabs:has(> a:focus-visible) > .ls-nav-pill {
-  opacity: 1;
-}
-
-[data-ui='v2']
-  .ls-acct-tabs:is([data-pill='still'], [data-pill='slide'])
-  > a[data-under]:focus-visible {
-  color: var(--ls-nav-active-text);
+[data-ui='v2'] .ls-acct-tabs a:focus-visible {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-acct-tabs:has(> a:hover) > .ls-nav-pill {
-    opacity: 1;
-  }
-
-  [data-ui='v2'] .ls-acct-tabs:is([data-pill='still'], [data-pill='slide']) > a[data-under]:hover {
-    color: var(--ls-nav-active-text);
+  [data-ui='v2'] .ls-acct-tabs a:hover {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
   }
 }
 

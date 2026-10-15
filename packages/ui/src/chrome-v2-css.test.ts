@@ -53,29 +53,22 @@ test('header: the 96 % blur surface and a hairline, no shadow, no fade, opaque w
   assert.match(tokens, /--ls-header-blur:\s*16px/);
 });
 
-test('menu: 14 / 500 ink links, the current page is accent text with a 2 px underline and no fill, the pill is drawn only on hover or focus', () => {
+test('menu: 14 / 500 ink links, the current page is accent text with a 2 px underline and no fill, hover and focus fill the link itself at once', () => {
   const link = body("[data-ui='v2'] .ls-site-nav a");
   assert.match(link, /color:\s*var\(--ls-text\)/);
   assert.match(link, /font-size:\s*var\(--ls-type-label\)/);
   assert.match(link, /font-weight:\s*var\(--ls-weight-label\)/);
-  const current = all.find((rule) =>
-    rule.selector.startsWith("[data-ui='v2'] .ls-site-nav a[aria-current='page']"),
-  )?.body;
-  assert.ok(current);
+  assert.match(link, /transition:\s*none/, 'no travel and no fade: the fill is instant');
+  const current = body("[data-ui='v2'] .ls-site-nav a[aria-current='page']");
   assert.match(current, /background:\s*transparent/);
   assert.match(current, /color:\s*var\(--ls-brand\)/);
   assert.match(current, /text-decoration-thickness:\s*2px/);
   assert.match(current, /text-underline-offset:\s*var\(--ls-space-2\)/);
-  assert.match(body("[data-ui='v2'] .ls-site-nav > .ls-nav-pill"), /opacity:\s*0/);
-  assert.match(
-    css,
-    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-site-nav:has\(> a:hover\) > \.ls-nav-pill \{\s*opacity: 1;/,
-  );
-  // The pill keeps its glide: the opacity transition is added to the translate and width ones, not instead of them.
-  assert.match(
-    body("[data-ui='v2'] .ls-site-nav > .ls-nav-pill"),
-    /translate var\(--ls-dur-glide\)[\s\S]*width var\(--ls-dur-glide\)[\s\S]*opacity var\(--ls-dur-fast\)/,
-  );
+  const hover = body("[data-ui='v2'] .ls-site-nav a:hover");
+  assert.match(hover, /background:\s*var\(--ls-hover-bg\)/);
+  assert.match(hover, /color:\s*var\(--ls-hover-text\)/);
+  // The sliding highlight is gone from the stylesheet.
+  assert.doesNotMatch(css, /ls-nav-pill|data-under|data-pill/);
 });
 
 test('tools: bare ink circles, hover is the solid accent on a fine pointer only, the call to action shows from 640 px', () => {

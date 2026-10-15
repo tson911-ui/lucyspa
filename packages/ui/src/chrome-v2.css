@@ -52,17 +52,17 @@
 
 /* ---- Menu (8.5) --------------------------------------------------------------------------------------- */
 /* Links are 14 / 500 ink. The current page is accent text with a 2 px accent underline, offset 8 px: never a fill in the bar. Hover and
-   keyboard focus are the solid accent pill (Owner rule 4); it is the sliding pill of the menu, which rests under the current entry
-   without being drawn and appears only while an entry is hovered or focused. */
+   keyboard focus fill the hovered link itself with the solid accent and its white text, at once (Owner rule 4; session 9: no highlight
+   travels from one entry to the next). */
 [data-ui='v2'] .ls-site-nav a {
   color: var(--ls-text);
   font-size: var(--ls-type-label);
   font-weight: var(--ls-weight-label);
   line-height: var(--ls-lh-label);
+  transition: none;
 }
 
-[data-ui='v2'] .ls-site-nav a[aria-current='page'],
-[data-ui='v2'] .ls-site-nav:not([data-pill='still'], [data-pill='slide']) a[aria-current='page'] {
+[data-ui='v2'] .ls-site-nav a[aria-current='page'] {
   background: transparent;
   color: var(--ls-brand);
   text-decoration: underline;
@@ -71,40 +71,15 @@
   text-underline-offset: var(--ls-space-2);
 }
 
-[data-ui='v2'] .ls-site-nav > .ls-nav-pill {
-  opacity: 0;
-  transition:
-    translate var(--ls-dur-glide) var(--ls-ease-premium),
-    width var(--ls-dur-glide) var(--ls-ease-premium),
-    opacity var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-/* The entry under the pill keeps its own color until the pill is drawn. */
-[data-ui='v2'] .ls-site-nav:is([data-pill='still'], [data-pill='slide']) > a[data-under] {
-  color: var(--ls-text);
-}
-
-[data-ui='v2'] .ls-site-nav:is([data-pill='still'], [data-pill='slide']) > a[aria-current='page'] {
-  color: var(--ls-brand);
-}
-
-[data-ui='v2'] .ls-site-nav:has(> a:focus-visible) > .ls-nav-pill {
-  opacity: 1;
-}
-
-[data-ui='v2']
-  .ls-site-nav:is([data-pill='still'], [data-pill='slide'])
-  > a[data-under]:focus-visible {
-  color: var(--ls-nav-active-text);
+[data-ui='v2'] .ls-site-nav a:focus-visible {
+  background: var(--ls-hover-bg);
+  color: var(--ls-hover-text);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-site-nav:has(> a:hover) > .ls-nav-pill {
-    opacity: 1;
-  }
-
-  [data-ui='v2'] .ls-site-nav:is([data-pill='still'], [data-pill='slide']) > a[data-under]:hover {
-    color: var(--ls-nav-active-text);
+  [data-ui='v2'] .ls-site-nav a:hover {
+    background: var(--ls-hover-bg);
+    color: var(--ls-hover-text);
   }
 }
 

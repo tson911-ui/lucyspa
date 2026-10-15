@@ -32,98 +32,31 @@ test('SiteNav marks the current page and names the landmark', () => {
   assert.match(html, /<a href="\/vi\/services">Dịch vụ<\/a>/);
 });
 
-test('the menu pill slides to the new current entry on a route change and jumps for everything else', () => {
-  const server = renderToStaticMarkup(
-    <ui.SiteNav
-      label="Menu"
-      items={[{ key: 'home', label: 'Trang chủ', href: '/vi', current: true }]}
-    />,
-  );
-  assert.match(server, /<span class="ls-nav-pill" aria-hidden="true"><\/span>/);
-  assert.doesNotMatch(server, /data-pill/, 'nothing is placed on the server');
-
-  const proto = window.HTMLElement.prototype;
-  const geometry = new Map<string, { left: number; width: number }>([
-    ['/vi', { left: 8, width: 96 }],
-    ['/vi/services', { left: 112, width: 80 }],
-  ]);
-  const define = (name: string, read: (element: HTMLElement) => number) =>
-    Object.defineProperty(proto, name, {
-      configurable: true,
-      get(this: HTMLElement) {
-        return read(this);
-      },
+test('the menu is plain links: no sliding highlight element, nothing is placed, hover fills the hovered link only (session 9)', () => {
+  const items = [
+    { key: 'home', label: 'Trang chủ', href: '/vi', current: true },
+    { key: 'services', label: 'Dịch vụ', href: '/vi/services', current: false },
+  ];
+  for (const Menu of [ui.SiteNav, ui.SiteSubNav]) {
+    const server = renderToStaticMarkup(<Menu label="Menu" items={items} />);
+    assert.doesNotMatch(server, /ls-nav-pill/);
+    assert.doesNotMatch(server, /data-pill|data-under/);
+    const container = window.document.createElement('div');
+    window.document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => root.render(<Menu label="Menu" items={items} />));
+    const nav = container.querySelector('nav') as HTMLElement;
+    const [, services] = Array.from(nav.querySelectorAll('a')) as HTMLElement[];
+    act(() => {
+      const event = new window.Event('pointerover', { bubbles: true });
+      Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+      services?.dispatchEvent(event);
     });
-  const box = (element: HTMLElement) => geometry.get(element.getAttribute('href') ?? '');
-  define('offsetLeft', (element) => box(element)?.left ?? 0);
-  define('offsetWidth', (element) => box(element)?.width ?? 0);
-  define('offsetTop', () => 4);
-  define('offsetHeight', () => 40);
-
-  const container = window.document.createElement('div');
-  window.document.body.appendChild(container);
-  const root = createRoot(container);
-  const render = (current: string) =>
-    act(() =>
-      root.render(
-        <ui.SiteNav
-          label="Menu"
-          items={[
-            { key: 'home', label: 'Trang chủ', href: '/vi', current: current === 'home' },
-            {
-              key: 'services',
-              label: 'Dịch vụ',
-              href: '/vi/services',
-              current: current === 'services',
-            },
-            { key: 'other', label: 'Khác', href: '/vi/other', current: current === 'other' },
-          ]}
-        />,
-      ),
-    );
-  const nav = () => container.querySelector('nav') as HTMLElement;
-
-  render('home');
-  assert.equal(nav().dataset['pill'], 'still', 'first placement never slides');
-  assert.equal(nav().style.getPropertyValue('--ls-pill-x'), '8px');
-  assert.equal(nav().style.getPropertyValue('--ls-pill-w'), '96px');
-  render('services');
-  assert.equal(nav().dataset['pill'], 'slide', 'a route change slides');
-  assert.equal(nav().style.getPropertyValue('--ls-pill-x'), '112px');
-  assert.equal(nav().style.getPropertyValue('--ls-pill-w'), '80px');
-  render('other');
-  assert.equal(
-    nav().dataset['pill'],
-    'none',
-    'a current entry that is not laid out hides the pill',
-  );
-  render('home');
-  assert.equal(
-    nav().dataset['pill'],
-    'still',
-    'it comes back in place, not sliding from a stale spot',
-  );
-  act(() => root.unmount());
-  for (const name of ['offsetLeft', 'offsetWidth', 'offsetTop', 'offsetHeight']) {
-    Reflect.deleteProperty(proto, name);
+    assert.equal(nav.dataset['pill'], undefined, 'no pill state is ever set');
+    assert.equal(nav.querySelector('.ls-nav-pill'), null);
+    assert.equal(nav.getAttribute('style'), null, 'no geometry is written to the menu');
+    act(() => root.unmount());
   }
-
-  assert.match(css, /\.ls-site-nav \{[^}]*position: relative;/);
-  assert.match(css, /\.ls-subnav \{[^}]*position: relative;/);
-  assert.match(
-    css,
-    /\[data-pill='slide'\] > \.ls-nav-pill \{\s*transition:\s*translate var\(--ls-dur-glide\) var\(--ls-ease-premium\)/,
-  );
-  // A route change never fades the page in from nothing: the page paints at once, and the change is a view-transition
-  // cross-fade (the tab bar and the contact button are named so they stay above it, the header needs no name).
-  assert.doesNotMatch(css, /ls-route-in|\.ls-route-fade\[data-enter/);
-  assert.match(css, /\.ls-site \.ls-route-fade \{[^}]*animation: none;/);
-  assert.match(css, /\.ls-site \.ls-tab-bar \{\s*view-transition-name: ls-tab-bar;/);
-  assert.match(
-    css,
-    /::view-transition-group\(ls-page\) \{\s*animation-name: none;\s*animation-duration: var\(--ls-dur-base\);/,
-  );
-  assert.match(css, /::view-transition \{\s*pointer-events: none;/);
 });
 
 test('an open dialog hides the phone tab bar (the seasonal frame would otherwise stack it over the dialog buttons)', () => {
@@ -766,67 +699,6 @@ test('site.css does not redefine a class another stylesheet owns (a clash silent
       [],
       `classes also defined in ${other}`,
     );
-  }
-});
-
-test('the menu pill follows the mouse and the keyboard focus and goes back; touch never moves it', () => {
-  const proto = window.HTMLElement.prototype;
-  const geometry = new Map<string, { left: number; width: number }>([
-    ['/vi', { left: 8, width: 96 }],
-    ['/vi/services', { left: 112, width: 80 }],
-  ]);
-  const define = (name: string, read: (element: HTMLElement) => number) =>
-    Object.defineProperty(proto, name, {
-      configurable: true,
-      get(this: HTMLElement) {
-        return read(this);
-      },
-    });
-  const box = (element: HTMLElement) => geometry.get(element.getAttribute('href') ?? '');
-  define('offsetLeft', (element) => box(element)?.left ?? 0);
-  define('offsetWidth', (element) => box(element)?.width ?? 0);
-  define('offsetTop', () => 4);
-  define('offsetHeight', () => 40);
-  const container = window.document.createElement('div');
-  window.document.body.appendChild(container);
-  const root = createRoot(container);
-  act(() =>
-    root.render(
-      <ui.SiteNav
-        label="Menu"
-        items={[
-          { key: 'home', label: 'Trang chủ', href: '/vi', current: true },
-          { key: 'services', label: 'Dịch vụ', href: '/vi/services', current: false },
-        ]}
-      />,
-    ),
-  );
-  const nav = container.querySelector('nav') as HTMLElement;
-  const [home, services] = Array.from(nav.querySelectorAll('a')) as HTMLElement[];
-  const pointer = (type: string, target: Element, pointerType: string) =>
-    act(() => {
-      const event = new window.Event(type, { bubbles: true });
-      Object.defineProperty(event, 'pointerType', { value: pointerType });
-      target.dispatchEvent(event);
-    });
-  assert.equal(home?.hasAttribute('data-under'), true, 'the current entry starts under the pill');
-
-  pointer('pointerover', services as Element, 'touch');
-  assert.equal(nav.style.getPropertyValue('--ls-pill-x'), '8px', 'touch does not move it');
-
-  pointer('pointerover', services as Element, 'mouse');
-  assert.equal(nav.style.getPropertyValue('--ls-pill-x'), '112px');
-  assert.equal(nav.dataset['pill'], 'slide', 'it glides to the hovered entry');
-  assert.equal(services?.hasAttribute('data-under'), true);
-  assert.equal(home?.hasAttribute('data-under'), false, 'the text colour follows the pill');
-
-  pointer('pointerleave', nav, 'mouse');
-  assert.equal(nav.style.getPropertyValue('--ls-pill-x'), '8px', 'and back to the current entry');
-  assert.equal(home?.hasAttribute('data-under'), true);
-
-  act(() => root.unmount());
-  for (const name of ['offsetLeft', 'offsetWidth', 'offsetTop', 'offsetHeight']) {
-    Reflect.deleteProperty(proto, name);
   }
 });
 
