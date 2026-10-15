@@ -133,6 +133,14 @@
     const hasText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (!hasText) continue;
     const size = Math.round(px(getComputedStyle(el).fontSize) * 100) / 100;
+    // Session 10: every area reads the DESIGN.md 6.3 scale inside the v2 scope (12, 14, 17, 21, 24, 28, 40, 56; display and page titles fluid
+    // between 32 and 56; 16 on form fields), which supersedes the older staff scale (DESIGN.md 1).
+    const v2 =
+      el.closest("[data-ui='v2']") &&
+      ([12, 14, 17, 21, 24, 28, 40, 56].includes(size) ||
+        (size === 16 && el.matches('input, select, textarea, option')) ||
+        (size >= 32 && size <= 56 && el.closest('h1, h2')));
+    if (v2) continue;
     if (!scale.has(size) && !(publicSizes.has(size) && el.closest('.ls-site'))) {
       const key = `${region(el)}|${desc(el)}|${size}px`;
       fonts.set(key, (fonts.get(key) ?? 0) + 1);

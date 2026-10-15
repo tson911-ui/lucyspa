@@ -1,0 +1,283 @@
+{
+  "note": "Every POS (counter) and admin route of the staff app (redesign session 10). `path` is relative to /{locale}/workforce/. `area` is pos or admin (DESIGN.md 14: group 2 = counter, group 3 = admin). `as` is the login: `owner` = the audit Owner of the scratch stack (all permissions, every branch; credentials in .local/polish1/api.mjs or .local/uxui-audit/creds.json, never in the repository); `public` = no sign-in. A `{first}` placeholder is resolved in the browser: open `list`, take the first link whose href contains `link` (and not `/new`), and use that path. Pages shot at 1024, 1280 and 1440 px light and dark, plus 200 % zoom at 1280.",
+  "pages": [
+    { "name": "staff-login", "path": "login", "area": "admin", "as": "public" },
+    { "name": "staff-forgot", "path": "forgot-password", "area": "admin", "as": "public" },
+
+    { "name": "pos", "path": "pos", "area": "pos", "as": "owner" },
+    {
+      "name": "pos-invoice",
+      "path": "{first}",
+      "first": { "list": "pos", "link": "/workforce/pos/" },
+      "area": "pos",
+      "as": "owner"
+    },
+    { "name": "walk-in", "path": "walk-in", "area": "pos", "as": "owner" },
+    { "name": "booking-board", "path": "booking-board", "area": "pos", "as": "owner" },
+    { "name": "reassignment", "path": "reassignment", "area": "pos", "as": "owner" },
+    { "name": "cash", "path": "cash", "area": "pos", "as": "owner" },
+    { "name": "product-orders", "path": "product-orders", "area": "pos", "as": "owner" },
+    {
+      "name": "product-order-detail",
+      "path": "{first}",
+      "first": {
+        "list": [
+          "product-orders",
+          "product-orders?tab=ORDERED",
+          "product-orders?tab=ARRIVED",
+          "product-orders?tab=DONE"
+        ],
+        "link": "/workforce/product-orders/"
+      },
+      "area": "pos",
+      "as": "owner"
+    },
+    { "name": "online-orders", "path": "online-orders", "area": "pos", "as": "owner" },
+    {
+      "name": "online-order-detail",
+      "path": "{first}",
+      "first": { "list": "online-orders", "link": "/workforce/online-orders/" },
+      "area": "pos",
+      "as": "owner"
+    },
+    { "name": "product-returns", "path": "product-returns", "area": "pos", "as": "owner" },
+    {
+      "name": "product-return-detail",
+      "path": "{first}",
+      "first": { "list": "product-returns", "link": "/workforce/product-returns/" },
+      "area": "pos",
+      "as": "owner"
+    },
+    { "name": "product-return-new", "path": "product-returns/new", "area": "pos", "as": "owner" },
+    {
+      "name": "inventory-count-detail",
+      "path": "{first}",
+      "first": { "list": "inventory?tab=counts", "link": "/workforce/inventory/counts/" },
+      "area": "pos",
+      "as": "owner"
+    },
+
+    { "name": "dashboard", "path": "", "area": "admin", "as": "owner" },
+    { "name": "account", "path": "account", "area": "admin", "as": "owner" },
+    { "name": "notifications", "path": "notifications", "area": "admin", "as": "owner" },
+    { "name": "advances", "path": "advances", "area": "admin", "as": "owner" },
+    { "name": "attendance", "path": "attendance", "area": "admin", "as": "owner" },
+    { "name": "leave", "path": "leave", "area": "admin", "as": "owner" },
+    { "name": "income", "path": "income", "area": "admin", "as": "owner" },
+    { "name": "my-payslips", "path": "my-payslips", "area": "admin", "as": "owner" },
+    {
+      "name": "my-payslip-detail",
+      "path": "{first}",
+      "first": { "list": "my-payslips", "link": "/workforce/my-payslips/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "my-services", "path": "my-services", "area": "admin", "as": "owner" },
+    {
+      "name": "collaborator-schedule",
+      "path": "collaborator-schedule",
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "chat-requests", "path": "chat-requests", "area": "admin", "as": "owner" },
+
+    { "name": "employees", "path": "employees", "area": "admin", "as": "owner" },
+    {
+      "name": "employee-detail",
+      "path": "{first}",
+      "first": { "list": "employees", "link": "/workforce/employees/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "employee-new", "path": "employees/new", "area": "admin", "as": "owner" },
+    { "name": "teams", "path": "teams", "area": "admin", "as": "owner" },
+    {
+      "name": "team-detail",
+      "path": "{first}",
+      "first": { "list": "teams", "link": "/workforce/teams/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "roles", "path": "roles", "area": "admin", "as": "owner" },
+    { "name": "skills", "path": "skills", "area": "admin", "as": "owner" },
+    { "name": "organization", "path": "organization", "area": "admin", "as": "owner" },
+    { "name": "branches", "path": "branches", "area": "admin", "as": "owner" },
+    {
+      "name": "branch-detail",
+      "path": "{first}",
+      "first": { "list": "branches", "link": "/workforce/branches/" },
+      "area": "admin",
+      "as": "owner"
+    },
+
+    { "name": "services", "path": "services", "area": "admin", "as": "owner" },
+    {
+      "name": "service-detail",
+      "path": "{first}",
+      "first": { "list": "services", "link": "/workforce/services/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "discounts", "path": "discounts", "area": "admin", "as": "owner" },
+    {
+      "name": "discount-detail",
+      "path": "{first}",
+      "first": { "list": "discounts", "link": "/workforce/discounts/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "discount-new", "path": "discounts/new", "area": "admin", "as": "owner" },
+    {
+      "name": "discount-version-new",
+      "path": "{first}/versions/new",
+      "first": { "list": "discounts", "link": "/workforce/discounts/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "loyalty", "path": "loyalty", "area": "admin", "as": "owner" },
+    {
+      "name": "loyalty-member",
+      "path": "{first}",
+      "first": { "list": "loyalty", "link": "/workforce/loyalty/" },
+      "area": "admin",
+      "as": "owner"
+    },
+
+    { "name": "products", "path": "products", "area": "admin", "as": "owner" },
+    {
+      "name": "product-detail",
+      "path": "{first}",
+      "first": { "list": "products", "link": "/workforce/products/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "product-new", "path": "products/new", "area": "admin", "as": "owner" },
+    { "name": "product-campaigns", "path": "product-campaigns", "area": "admin", "as": "owner" },
+    {
+      "name": "product-campaign-detail",
+      "path": "{first}",
+      "first": { "list": "product-campaigns", "link": "/workforce/product-campaigns/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "product-rewrites", "path": "product-rewrites", "area": "admin", "as": "owner" },
+    {
+      "name": "product-rewrite-detail",
+      "path": "{first}",
+      "first": { "list": "product-rewrites", "link": "/workforce/product-rewrites/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    {
+      "name": "product-text-cleanup",
+      "path": "product-text-cleanup",
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "online-sales", "path": "online-sales", "area": "admin", "as": "owner" },
+    { "name": "shipping-carriers", "path": "shipping-carriers", "area": "admin", "as": "owner" },
+
+    { "name": "inventory", "path": "inventory", "area": "admin", "as": "owner" },
+    {
+      "name": "inventory-item",
+      "path": "{first}",
+      "first": { "list": "inventory", "link": "/workforce/inventory/items/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    {
+      "name": "inventory-receipt",
+      "path": "{first}",
+      "first": { "list": "inventory?tab=receipts", "link": "/workforce/inventory/receipts/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    {
+      "name": "inventory-receipt-edit",
+      "path": "{first}/edit",
+      "first": { "list": "inventory?tab=receipts", "link": "/workforce/inventory/receipts/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    {
+      "name": "inventory-receipt-new",
+      "path": "inventory/receipts/new",
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "import", "path": "import", "area": "admin", "as": "owner" },
+    {
+      "name": "import-detail",
+      "path": "{first}",
+      "first": { "list": "import", "link": "/workforce/import/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "supplier-imports", "path": "supplier-imports", "area": "admin", "as": "owner" },
+    {
+      "name": "supplier-imports-all",
+      "path": "supplier-imports/all",
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "supplier-sources", "path": "supplier-sources", "area": "admin", "as": "owner" },
+
+    { "name": "pay", "path": "pay", "area": "admin", "as": "owner" },
+    { "name": "payroll", "path": "payroll", "area": "admin", "as": "owner" },
+    {
+      "name": "payroll-detail",
+      "path": "{first}",
+      "first": { "list": "payroll", "link": "/workforce/payroll/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    {
+      "name": "payroll-slip",
+      "path": "{first}",
+      "first": { "list": "@payroll-detail", "link": "/workforce/payroll/slip/" },
+      "area": "admin",
+      "as": "owner"
+    },
+
+    { "name": "reports-revenue", "path": "reports/revenue", "area": "admin", "as": "owner" },
+    { "name": "reports-sales", "path": "reports/sales", "area": "admin", "as": "owner" },
+    { "name": "reports-customers", "path": "reports/customers", "area": "admin", "as": "owner" },
+    { "name": "reports-staff", "path": "reports/staff", "area": "admin", "as": "owner" },
+    { "name": "reports-stock", "path": "reports/stock", "area": "admin", "as": "owner" },
+    { "name": "reports-cash", "path": "reports/cash", "area": "admin", "as": "owner" },
+    { "name": "reports-pay", "path": "reports/pay", "area": "admin", "as": "owner" },
+    { "name": "reports-profit", "path": "reports/profit", "area": "admin", "as": "owner" },
+    { "name": "reports-refunds", "path": "reports/refunds", "area": "admin", "as": "owner" },
+    { "name": "reports-reviews", "path": "reports/reviews", "area": "admin", "as": "owner" },
+    { "name": "audit-log", "path": "audit-log", "area": "admin", "as": "owner" },
+
+    { "name": "website", "path": "website", "area": "admin", "as": "owner" },
+    {
+      "name": "website-page",
+      "path": "{first}",
+      "first": { "list": "website?tab=pages", "link": "/workforce/website/pages/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "website-page-new", "path": "website/pages/new", "area": "admin", "as": "owner" },
+    {
+      "name": "website-popup",
+      "path": "{first}",
+      "first": { "list": "website?tab=popup", "link": "/workforce/website/popups/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "website-popup-new", "path": "website/popups/new", "area": "admin", "as": "owner" },
+    {
+      "name": "website-season",
+      "path": "{first}",
+      "first": { "list": "website?tab=season", "link": "/workforce/website/seasons/" },
+      "area": "admin",
+      "as": "owner"
+    },
+    { "name": "website-season-new", "path": "website/seasons/new", "area": "admin", "as": "owner" },
+    { "name": "seo-drafts", "path": "seo-drafts", "area": "admin", "as": "owner" },
+    { "name": "ai-settings", "path": "ai-settings", "area": "admin", "as": "owner" },
+    { "name": "season-preview", "path": "../season-preview", "area": "admin", "as": "owner" }
+  ]
+}
