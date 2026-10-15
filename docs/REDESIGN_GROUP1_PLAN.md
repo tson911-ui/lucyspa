@@ -300,3 +300,4 @@ Carried to group 3: a staff screen to edit a customer's birthday (Owner, 2026-10
 ### Session 9 (group 1 polish before deploy)
 
 - **Item 1: color system (done, see the commit).** One 12-step scale per family, light and dark (burgundy anchored on `#782b37`, neutrals, danger, success, warning, info), role tokens that point at them, white text on the dark accent fill, a muted rose for dark accent text, a distinct danger red, the secondary-button hover exception. Single source for **groups 2 and 3 too**: they read these tokens and add only density (`DESIGN.md` 6.1, 14); no staff palette. Staff screens were not restyled.
+- **Items 2 to 7 (done, see `docs/REDESIGN_GROUP1_S9_REPORT.md`):** featured row (data, not a bug), brand band + migration `20261215000002`, plain nav hover, fixed contact button, footer hours (scratch data; production 09:00 to 21:00), full re-check with new contrast and accent gates. The deploy guide now lists 4 migrations (134 to 138).
