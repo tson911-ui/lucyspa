@@ -326,6 +326,18 @@ html:has([data-ui='v2'] .ls-site-header) {
   box-shadow: none;
 }
 
+/* On the sign-in pages the whole panel is the accent fill (Q4), so the button there is the inverse (white with an accent icon) and stays visible. */
+[data-ui='v2']:has(.ls-auth-panel) .ls-contact-toggle {
+  background: var(--ls-on-auth-flat);
+  color: var(--ls-auth-flat);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2']:has(.ls-auth-panel) .ls-contact-toggle:hover {
+    background: var(--ls-bg-pressed);
+  }
+}
+
 [data-ui='v2'] .ls-contact-label {
   background: var(--ls-bg-raised);
   box-shadow: none;

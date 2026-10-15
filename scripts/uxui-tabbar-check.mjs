@@ -132,6 +132,8 @@ try {
     return result.result.value;
   };
   await send('Page.enable');
+  // A page in a headless browser can lose focus between runs, and then :focus never matches; the keyboard check needs it.
+  await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await send('Network.enable');
   await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   let safeInsets = true;

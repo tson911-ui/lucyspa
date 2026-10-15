@@ -75,6 +75,11 @@
   border-color: var(--ls-outline-border);
   color: var(--ls-brand);
   background: transparent;
+  /* 150 ms ease-out from the motion tokens (the frame's general button transition is the slower premium glide). */
+  transition:
+    transform var(--ls-dur-fast) var(--ls-ease-out),
+    border-color var(--ls-dur-fast) var(--ls-ease-out),
+    color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
 [data-ui='v2'] .ls-btn-secondary:not(.ls-btn-icon):not(:has(> svg))::after {

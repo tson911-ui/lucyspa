@@ -147,10 +147,18 @@ export function ContactFab({
         watched = bar;
       }
       const shown = bar !== null && getComputedStyle(bar).display !== 'none';
-      element?.style.setProperty(
-        '--ls-fab-lift',
-        shown && bar ? `${Math.ceil(bar.getBoundingClientRect().height)}px` : '0px',
-      );
+      let lift = 0;
+      if (shown && bar) {
+        // The button always sits above the bar where the bar really is. Stuck to the bottom edge that is the bar's height; near the end of the
+        // page the bar leaves the edge with its container, and the button follows it up instead of covering its call to action.
+        const tab = scope.querySelector('.ls-tab-bar');
+        const tabShown = tab !== null && getComputedStyle(tab).display !== 'none';
+        const base =
+          tabShown && tab ? Math.max(0, window.innerHeight - tab.getBoundingClientRect().top) : 0;
+        const box = bar.getBoundingClientRect();
+        lift = Math.max(Math.ceil(box.height), Math.ceil(window.innerHeight - box.top - base));
+      }
+      element?.style.setProperty('--ls-fab-lift', `${lift}px`);
     }
     const schedule = () => {
       cancelAnimationFrame(frame);
@@ -160,12 +168,15 @@ export function ContactFab({
       typeof MutationObserver === 'undefined' ? null : new MutationObserver(schedule);
     mutations?.observe(scope, { childList: true, subtree: true });
     window.addEventListener('resize', schedule);
+    // The bar's position changes as the page scrolls (it leaves the edge near the end of the page).
+    const stopScroll = onPageScroll(schedule);
     sync();
     return () => {
       cancelAnimationFrame(frame);
       mutations?.disconnect();
       resize?.disconnect();
       window.removeEventListener('resize', schedule);
+      stopScroll();
     };
   }, []);
 

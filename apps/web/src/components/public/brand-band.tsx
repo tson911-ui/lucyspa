@@ -56,7 +56,6 @@ function LogoSet({
                 width={brand.logo.width}
                 height={brand.logo.height}
                 alt={filler ? '' : brand.logo.alt}
-                loading="lazy"
                 decoding="async"
               />
             </Link>

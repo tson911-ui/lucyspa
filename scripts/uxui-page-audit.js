@@ -449,6 +449,8 @@
       // The season preview stage holds a frame laid out at its true width (1440 or 390) and scaled down to fit: the
       // overflow is the design (S6b), the stage clips it and has the scaled size.
       if (el.querySelector(':scope > .ls-season-live-frame')) continue;
+      // The home brand band's window (session 9): its track of logos moves endlessly inside it, so the overflow is the design.
+      if (el.matches('.ls-brand-view')) continue;
       // Rule 7: a value clamped on purpose (ellipsis or line clamp) whose title repeats its whole text is the pattern, not a defect.
       const clamped =
         s.textOverflow === 'ellipsis' || (s.webkitLineClamp && s.webkitLineClamp !== 'none');

@@ -65,6 +65,10 @@ test('buttons: v2 sizes, the neutral and compact variants, disabled is a fill an
     /\.ls-btn-secondary:hover:not\(\[aria-disabled='true'\]\):not\(:disabled\) \{\s*border-color: var\(--ls-outline-border-hover\);\s*color: var\(--ls-brand\);\s*background: transparent;\s*transform: translateY\(var\(--ls-btn-lift\)\) scale\(var\(--ls-btn-zoom\)\);/,
   );
   assert.match(css, /::after \{\s*transform: translateX\(var\(--ls-btn-nudge\)\);/);
+  assert.match(
+    body("[data-ui='v2'] .ls-btn-secondary"),
+    /transition:\s*transform var\(--ls-dur-fast\) var\(--ls-ease-out\),\s*border-color var\(--ls-dur-fast\) var\(--ls-ease-out\)/,
+  );
   assert.match(body("[data-ui='v2'] .ls-btn-neutral"), /background:\s*var\(--ls-bg-field\)/);
   const disabled = body("[data-ui='v2'] .ls-btn:is(:disabled, [aria-disabled='true'])");
   assert.match(disabled, /background:\s*var\(--ls-bg-pressed\)/);
