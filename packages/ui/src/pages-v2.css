@@ -1352,6 +1352,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 }
 
 [data-ui='v2'] .ls-prod-detail {
+  grid-template-columns: minmax(0, 1fr);
   margin-bottom: 0;
   gap: var(--ls-space-7);
 }
@@ -2670,4 +2671,11 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
 
 [data-ui='v2'] .ls-choice-list .ls-choice {
   min-width: 0;
+}
+
+/* A label (a status, a count) may take two lines when the text is large, instead of running past the card. */
+[data-ui='v2'] .ls-badge {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
 }
