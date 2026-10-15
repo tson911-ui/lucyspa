@@ -2647,18 +2647,18 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
 }
 
 /* A service choice on the booking page: the price drops under the name when the row is too narrow for both (large text). */
-[data-ui='v2'] .ls-choice-list .ls-choice {
+[data-ui='v2'] :is(.ls-choice-list, .ls-prod-variants) .ls-choice {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
 }
 
-[data-ui='v2'] .ls-choice-list .ls-choice-body {
+[data-ui='v2'] :is(.ls-choice-list, .ls-prod-variants) .ls-choice-body {
   flex: 1 1 8rem;
   min-width: 0;
 }
 
-[data-ui='v2'] .ls-choice-list .ls-choice-price {
+[data-ui='v2'] :is(.ls-choice-list, .ls-prod-variants) .ls-choice-price {
   margin-inline-start: auto;
   white-space: normal;
   text-align: end;
@@ -2669,7 +2669,7 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
   grid-template-columns: minmax(0, 1fr);
 }
 
-[data-ui='v2'] .ls-choice-list .ls-choice {
+[data-ui='v2'] :is(.ls-choice-list, .ls-prod-variants) .ls-choice {
   min-width: 0;
 }
 
