@@ -2679,3 +2679,12 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
   white-space: normal;
   text-align: center;
 }
+
+/* The product facts and a card header are one column / may wrap: nothing inside is wider than the screen at a large text size. */
+[data-ui='v2'] .ls-prod-info {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-ui='v2'] .ls-card-header {
+  flex-wrap: wrap;
+}
