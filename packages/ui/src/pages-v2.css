@@ -2688,3 +2688,12 @@ html[data-ls-fx='off'] [data-ui='v2'] .ls-home-hero-copy > * {
 [data-ui='v2'] .ls-card-header {
   flex-wrap: wrap;
 }
+
+[data-ui='v2'] .ls-prod-offer {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+[data-ui='v2'] .ls-card-actions {
+  min-width: 0;
+  max-width: 100%;
+}
