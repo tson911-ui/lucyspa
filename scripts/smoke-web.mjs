@@ -77,11 +77,20 @@ async function main() {
   );
   assert.deepEqual(await health.json(), { status: 'ok', service: 'web' });
 
-  for (const path of ['/fr', '/vi/phase-zero-missing']) {
-    const response = await request(path);
-    assert.equal(response.status, 404, `${path} must return HTTP 404.`);
-    await response.body?.cancel();
-  }
+  // An unknown language is a plain 404.
+  const unknownLocale = await request('/fr');
+  assert.equal(unknownLocale.status, 404, '/fr must return HTTP 404.');
+  await unknownLocale.body?.cancel();
+
+  // An unknown address under a language is asked of the API (it may be a page the Owner published). With the API saying "no such
+  // page" it is a 404; with no API behind this probe the page cannot be read and the site answers its error page (500) on purpose, so
+  // a slow API never leaves a remembered 404 for a real policy page. Either way it is never a 200.
+  const unknownPage = await request('/vi/phase-zero-missing');
+  assert.ok(
+    [404, 500].includes(unknownPage.status),
+    `/vi/phase-zero-missing must return HTTP 404 (or 500 when the API cannot be read), got ${unknownPage.status}.`,
+  );
+  await unknownPage.body?.cancel();
 
   console.log(
     'Web smoke passed: default redirect, Vietnamese/English content and language links, health, and 404 routes.',
