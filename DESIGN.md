@@ -169,7 +169,7 @@ root values until groups 2 and 3 switch them on).
 
 Rules that follow from the HIG and are enforced by the roles below:
 
-- **Burgundy is anchored on `#782b37`, the light solid (step 9).** Accent fill: light `#782b37` with white text; dark `#af4c60`
+- **Burgundy is anchored on `#782b37`, the light solid (step 9).** Accent fill: light `#782b37` with white text; dark `#9b424e`
   (a burgundy that does not sink into black) with **white** text. Dark never uses black text on the accent fill and never uses
   the old pink `#e48f9f` / `#eca5b2` / `#3a2227` (retired).
 - **Accent text** (links, the current nav item, the focus ring, outline-button text): light = the scale's high-contrast step 12 (as the Owner asked); dark = step 11, because dark step 12 is a pale pink and the Owner asked for a muted rose. Light `#521b24` is
@@ -192,17 +192,17 @@ Rules that follow from the HIG and are enforced by the roles below:
 | Step | gray light | gray dark | burgundy light | burgundy dark | danger light | danger dark |
 | ---- | ---------- | --------- | -------------- | ------------- | ------------ | ----------- |
 | 1    | `#ffffff`  | `#000000` | `#fffcfc`      | `#170c0d`     | `#fffcfb`    | `#170c0a`   |
-| 2    | `#f5f5f7`  | `#1c1c1e` | `#fcf6f6`      | `#221013`     | `#fff4f2`    | `#240f0d`   |
-| 3    | `#ececef`  | `#2c2c2e` | `#f9eced`      | `#36161c`     | `#ffe6e2`    | `#391410`   |
-| 4    | `#e2e2e5`  | `#3a3a3c` | `#f7e1e2`      | `#441d24`     | `#ffd9d3`    | `#4c1812`   |
-| 5    | `#d2d2d7`  | `#444447` | `#f4d5d7`      | `#53242d`     | `#fecbc3`    | `#5f1b14`   |
-| 6    | `#bcbcc2`  | `#58585b` | `#f1c7c9`      | `#662e38`     | `#febbb0`    | `#752019`   |
-| 7    | `#86868b`  | `#86868b` | `#ebb3b7`      | `#7e3946`     | `#fea194`    | `#902920`   |
-| 8    | `#6e6e73`  | `#8e8e93` | `#dc949a`      | `#9a4254`     | `#ff7362`    | `#b83025`   |
-| 9    | `#5e5e63`  | `#98989d` | `#782b37`      | `#af4c60`     | `#d72119`    | `#fb5a4a`   |
-| 10   | `#515154`  | `#a1a1a6` | `#6a242f`      | `#b95569`     | `#c51610`    | `#fe7362`   |
-| 11   | `#3a3a3d`  | `#d1d1d6` | `#60212a`      | `#dbadb2`     | `#b3150f`    | `#ff7f6f`   |
-| 12   | `#1d1d1f`  | `#f5f5f7` | `#521b24`      | `#f8dde0`     | `#55120c`    | `#fedbd5`   |
+| 2    | `#f5f5f7`  | `#1c1c1e` | `#fcf6f6`      | `#221012`     | `#fff4f2`    | `#240f0d`   |
+| 3    | `#ececef`  | `#2c2c2e` | `#f9eced`      | `#36171a`     | `#ffe6e2`    | `#391410`   |
+| 4    | `#e2e2e5`  | `#3a3a3c` | `#f7e1e2`      | `#441d22`     | `#ffd9d3`    | `#4c1812`   |
+| 5    | `#d2d2d7`  | `#444447` | `#f4d5d7`      | `#53242a`     | `#fecbc3`    | `#5f1b14`   |
+| 6    | `#bcbcc2`  | `#58585b` | `#f1c7c9`      | `#672e35`     | `#febbb0`    | `#752019`   |
+| 7    | `#86868b`  | `#86868b` | `#ebb3b7`      | `#7f3942`     | `#fea194`    | `#902920`   |
+| 8    | `#6e6e73`  | `#8e8e93` | `#dc949a`      | `#873742`     | `#ff7362`    | `#b83025`   |
+| 9    | `#5e5e63`  | `#98989d` | `#782b37`      | `#9b424e`     | `#d72119`    | `#fb5a4a`   |
+| 10   | `#515154`  | `#a1a1a6` | `#6a242f`      | `#a74c58`     | `#c51610`    | `#fe7362`   |
+| 11   | `#3a3a3d`  | `#d1d1d6` | `#60212a`      | `#dcadb0`     | `#b3150f`    | `#ff7f6f`   |
+| 12   | `#1d1d1f`  | `#f5f5f7` | `#521b24`      | `#f8ddde`     | `#55120c`    | `#fedbd5`   |
 
 | Step | success light | success dark | warning light | warning dark | info light | info dark |
 | ---- | ------------- | ------------ | ------------- | ------------ | ---------- | --------- |
@@ -256,15 +256,16 @@ outline-button border 9.55 / 8.77; focus ring 13.63 / 12.52. White on the accent
 9.55); accent on its soft tint 11.84; white on the danger fill 5.10 and its hover 6.01; status text on its own tint 5.66 to 6.85.
 
 Dark, text on E0 / E1 / E2 / E3 (`#000000` / `#1c1c1e` / `#2c2c2e` / `#3a3a3c`): ink 19.29 / 15.63 / 12.80 / 10.42; muted and subtle
-8.16 / 6.61 / 5.42 / 4.41; accent text 10.63 / 8.61 / 7.06 / 5.75; danger 8.52 / 6.90 / 5.65 / 4.60; success 11.69 / 9.47 / 7.76 / 6.32;
-warning 11.65 / 9.44 / 7.73 / 6.30; info 10.60 / 8.59 / 7.04 / 5.73. Control border 5.80 / 4.70 / 3.85 / 3.13; focus ring 10.63 / 8.61 /
-7.06 / 5.75. White on the accent fill 5.22, on its hover 4.60; accent on its soft tint 8.25; near-black on the danger fill 6.24, on its
+8.16 / 6.61 / 5.42 / 4.41; accent text 10.65 / 8.63 / 7.07 / 5.75; danger 8.52 / 6.90 / 5.65 / 4.60; success 11.69 / 9.47 / 7.76 / 6.32;
+warning 11.65 / 9.44 / 7.73 / 6.30; info 10.60 / 8.59 / 7.04 / 5.73. Control border 5.80 / 4.70 / 3.85 / 3.13; focus ring 10.65 / 8.63 /
+7.07 / 5.75. White on the accent fill 6.40, on its hover 5.50; accent on its soft tint 8.23; near-black on the danger fill 6.24, on its
 hover 7.34; status text on its tint 6.65 to 8.98. **No accent text on E3** (kept).
 
-Known and recorded: the dark accent fill against its surface is 4.03 on E0, 3.26 on E1 and **2.67 on E2** (a button inside a dialog or
-a raised card), so on E2 the fill is identified by its white label (5.22), not by the 3:1 boundary rule; the dark outline-button border
-has the same 2.67 on E2 and its label (accent text, 7.06) identifies it. A lighter fill that reaches 3:1 on E2 would leave white text at
-4.6:1 and no room for a hover that keeps white text; the Owner decides (open question in the session 9 report).
+Known and recorded: the dark accent fill against its surface is 3.28 on E0, **2.66 on E1 and 2.18 on E2** (a button on a band or inside a dialog or
+a raised card), so there the fill is identified by its white label (6.40), not by the 3:1 boundary rule. The dark outline-button border is step 10
+(3.9 on E0, 3.2 on E1, 2.6 on E2; its hover is the rose step 11, 7:1) and its label (accent text, 7.07 on E2) identifies it. A lighter fill that reaches
+3:1 on E1 and E2 is the old pink-leaning look (#af4c60 gave 3.26 / 2.67 and read as raspberry on screen); the Owner decides (open question in the
+session 9 report).
 
 Light `#86868b` (gray 7) is never used as text (3.62 on white). `--ls-chart-*` keeps its six-slot palette unchanged.
 
