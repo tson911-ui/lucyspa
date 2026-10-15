@@ -138,10 +138,20 @@ function SignedInBell({ locale }: { locale: Locale }) {
         ref={panelRef}
       >
         <p className="ls-bell-title">{site.header.bell.label}</p>
-        {error ? <p className="ls-bell-note">{t.error}</p> : null}
-        {items === null && !error ? <p className="ls-bell-note">{t.loading}</p> : null}
+        {error ? (
+          <p className="ls-bell-note" role="status">
+            {t.error}
+          </p>
+        ) : null}
+        {items === null && !error ? (
+          <p className="ls-bell-note" role="status">
+            {t.loading}
+          </p>
+        ) : null}
         {items !== null && items.length === 0 && !error ? (
-          <p className="ls-bell-note">{t.empty}</p>
+          <p className="ls-bell-note" role="status">
+            {t.empty}
+          </p>
         ) : null}
         {items !== null && items.length > 0 ? (
           <ul className="ls-bell-list">

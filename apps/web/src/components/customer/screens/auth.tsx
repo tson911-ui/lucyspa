@@ -245,6 +245,8 @@ function LoginForm({ query }: { query: LoginQuery }) {
               {...control}
               type="email"
               autoComplete="username"
+              spellCheck={false}
+              autoCapitalize="none"
               maxLength={320}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -348,6 +350,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
               {...control}
               inputMode="numeric"
               autoComplete="one-time-code"
+              spellCheck={false}
               pattern="[0-9]{6}"
               maxLength={6}
               value={otp}
@@ -505,6 +508,8 @@ export function CustomerRegisterScreen() {
               {...control}
               type="email"
               autoComplete="email"
+              spellCheck={false}
+              autoCapitalize="none"
               maxLength={320}
               value={form.email}
               onChange={(event) => set('email')(event.target.value)}
@@ -625,6 +630,7 @@ export function CustomerForgotPasswordScreen() {
                 {...control}
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                spellCheck={false}
                 pattern="[0-9]{6}"
                 maxLength={6}
                 value={otp}
@@ -654,6 +660,8 @@ export function CustomerForgotPasswordScreen() {
                 {...control}
                 type="email"
                 autoComplete="email"
+                spellCheck={false}
+                autoCapitalize="none"
                 maxLength={320}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}

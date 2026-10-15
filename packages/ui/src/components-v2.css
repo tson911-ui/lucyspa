@@ -191,6 +191,11 @@
   display: none;
 }
 
+/* Scrolling surfaces keep their scroll to themselves: reaching the end of a menu, a list or the popup never moves the page behind (session 9 audit). */
+[data-ui='v2'] :is(.ls-popover, .ls-bell-list, .ls-listbox, .ls-promo-dialog, .ls-shop-policy) {
+  overscroll-behavior: contain;
+}
+
 /* ---- Fields (8.2) ------------------------------------------------------------------------------ */
 [data-ui='v2'] .ls-field {
   gap: var(--ls-space-2);

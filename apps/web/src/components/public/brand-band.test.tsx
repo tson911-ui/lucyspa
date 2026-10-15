@@ -72,6 +72,11 @@ test('a short list is repeated to fill the loop; the second copy and the fillers
     /<section class="ls-brand-band" aria-label="Thương hiệu mỹ phẩm tại Lucy Spa"/,
   );
   assert.match(html, /style="--ls-brand-seconds:60"/);
+  // A pause control for the moving logos (WCAG 2.2.2): a labelled checkbox, no script.
+  assert.match(
+    html,
+    /<input type="checkbox" class="ls-brand-pause" aria-label="Tạm dừng dải thương hiệu"\/>/,
+  );
   const sets = html.split('<ul ').slice(1);
   assert.equal(sets.length, 2);
   assert.doesNotMatch(sets[0]!.split('>')[0]!, /aria-hidden/);

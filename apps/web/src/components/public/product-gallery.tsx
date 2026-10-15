@@ -36,7 +36,12 @@ export function ProductGallery({
   const show = (index: number) => {
     const element = viewport.current;
     if (!element) return;
-    element.scrollTo({ left: index * element.clientWidth, behavior: 'smooth' });
+    // A visitor who asked for less motion (or the off switch) gets the jump, not the glide.
+    const still =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.dataset['lsFx'] === 'off' ||
+      document.documentElement.dataset['lsMotion'] === 'reduced';
+    element.scrollTo({ left: index * element.clientWidth, behavior: still ? 'auto' : 'smooth' });
     setCurrent(index);
   };
 

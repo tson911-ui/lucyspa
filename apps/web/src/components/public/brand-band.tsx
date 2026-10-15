@@ -70,7 +70,8 @@ function LogoSet({
 /**
  * The brand band under the home hero (session 9, DESIGN.md 9.1): the logos of the cosmetics brands the shop sells, white on the burgundy
  * solid, one uniform height, each linking to that brand's product list. Server markup and CSS only (no script): the track moves slowly
- * and endlessly, pauses on hover, focus and touch, and under reduced motion or the off switch it is a still, wrapped row of the first set.
+ * and endlessly, pauses while the pointer is over it, a link has focus or a finger is down, has a pause checkbox, and under reduced motion or
+ * the off switch it is a still, wrapped row of the first set.
  * Nothing is drawn when no brand is switched on.
  */
 export function BrandBand({ locale, brands }: { locale: Locale; brands: readonly BandBrand[] }) {
@@ -83,10 +84,14 @@ export function BrandBand({ locale, brands }: { locale: Locale; brands: readonly
       aria-label={text.home.brandBandLabel}
       style={{ '--ls-brand-seconds': loop.length * SECONDS_PER_LOGO } as CSSProperties}
     >
-      <div className="ls-brand-track">
-        <LogoSet locale={locale} loop={loop} unique={brands.length} hidden={false} />
-        <LogoSet locale={locale} loop={loop} unique={brands.length} hidden />
+      <div className="ls-brand-view">
+        <div className="ls-brand-track">
+          <LogoSet locale={locale} loop={loop} unique={brands.length} hidden={false} />
+          <LogoSet locale={locale} loop={loop} unique={brands.length} hidden />
+        </div>
       </div>
+      {/* The pause control for moving content (WCAG 2.2.2): a checkbox drawn as a round button, no script; checked = paused. */}
+      <input type="checkbox" className="ls-brand-pause" aria-label={text.home.brandPause} />
     </section>
   );
 }

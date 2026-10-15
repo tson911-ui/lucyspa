@@ -314,16 +314,33 @@ test('home brand band: the accent solid, white logos of one height, a slow endle
   const band = body("[data-ui='v2'] .ls-brand-band");
   assert.match(band, /background:\s*var\(--ls-brand-fill\)/);
   assert.match(band, /color:\s*var\(--ls-on-brand\)/);
-  assert.match(band, /overflow:\s*hidden/);
+  // The logos move inside their own window; the pause control (a checkbox drawn as a 44 px round button, WCAG 2.2.2) sits outside it.
+  assert.match(body("[data-ui='v2'] .ls-brand-view"), /overflow:\s*hidden/);
+  const pause = body("[data-ui='v2'] .ls-brand-pause");
+  assert.match(pause, /width:\s*var\(--ls-control-h\)/);
+  assert.match(pause, /appearance:\s*none/);
+  assert.match(
+    css,
+    /\.ls-brand-pause:checked::before \{\s*mask: url\("data:image\/svg\+xml[^"]*M8 5l11 7-11 7z/,
+  );
+  assert.match(
+    css,
+    /\.ls-brand-band:is\(:focus-within, :active, :has\(\.ls-brand-pause:checked\)\)\s+\.ls-brand-track \{\s*animation-play-state: paused;/,
+  );
+  // The pointer pause is for a mouse only: a tap on a touch screen would leave :hover stuck.
+  assert.match(
+    css,
+    /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-brand-band:hover \.ls-brand-track \{\s*animation-play-state: paused;/,
+  );
+  assert.match(
+    css,
+    /html\[data-ls-fx='off'\] \[data-ui='v2'\] \.ls-brand-pause,\s*html\[data-ls-motion='reduced'\] \[data-ui='v2'\] \.ls-brand-pause \{\s*display: none;/,
+  );
   assert.match(
     body("[data-ui='v2'] .ls-brand-track"),
     /animation:\s*ls-brand-scroll calc\(var\(--ls-brand-seconds\) \* 1s\) linear infinite/,
   );
   assert.match(css, /@keyframes ls-brand-scroll \{\s*to \{\s*transform: translateX\(-50%\);/);
-  assert.match(
-    body("[data-ui='v2'] .ls-brand-band:is(:hover, :focus-within, :active) .ls-brand-track"),
-    /animation-play-state:\s*paused/,
-  );
   const logo = body("[data-ui='v2'] .ls-brand-logo");
   assert.match(logo, /height:\s*var\(--ls-space-8\)/);
   assert.match(logo, /filter:\s*brightness\(0\) invert\(1\)/);
@@ -337,7 +354,7 @@ test('home brand band: the accent solid, white logos of one height, a slow endle
   );
   assert.match(
     css,
-    /prefers-reduced-motion: reduce\) \{\s*\[data-ui='v2'\] \.ls-brand-track \{[^}]*animation:\s*none/,
+    /prefers-reduced-motion: reduce\) \{[\s\S]*?\[data-ui='v2'\] \.ls-brand-track \{[^}]*animation:\s*none/,
   );
   assert.match(
     css,

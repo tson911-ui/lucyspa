@@ -163,6 +163,7 @@ export interface SiteText {
     factsLabel: string;
     brandBandLabel: string;
     brandLink: string;
+    brandPause: string;
     groupsTitle: string;
     groupsLead: string;
     viewAll: string;
@@ -437,6 +438,7 @@ const text = {
       factsLabel: 'Thông tin nhanh',
       brandBandLabel: 'Thương hiệu mỹ phẩm tại Lucy Spa',
       brandLink: 'Xem sản phẩm {name}',
+      brandPause: 'Tạm dừng dải thương hiệu',
       groupsTitle: 'Bảng giá dịch vụ',
       groupsLead:
         'Giá niêm yết rõ ràng cho từng dịch vụ. Chọn một dịch vụ để xem chi tiết và đặt lịch.',
@@ -700,6 +702,7 @@ const text = {
       factsLabel: 'Quick facts',
       brandBandLabel: 'Cosmetics brands at Lucy Spa',
       brandLink: 'See {name} products',
+      brandPause: 'Pause the brand band',
       groupsTitle: 'Service price list',
       groupsLead: 'Clear listed prices for every service. Pick one to see the details and book.',
       viewAll: 'View all',

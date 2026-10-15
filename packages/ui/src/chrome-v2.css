@@ -43,6 +43,17 @@
   }
 }
 
+/* A keyboard-focused control or an in-page link never lands under the sticky header or the fixed contact button (desktop: the window scrolls; the
+   phone scroller sets its own top in site.css). */
+html:has([data-ui='v2'] .ls-site-header) {
+  scroll-padding-top: calc(var(--ls-space-10) + var(--ls-space-4));
+  scroll-padding-bottom: calc(var(--ls-space-9) + var(--ls-space-2) + var(--ls-space-4) * 3);
+}
+
+[data-ui='v2'] .ls-site-scroll {
+  scroll-padding-bottom: calc(var(--ls-space-9) + var(--ls-space-2) + var(--ls-space-4) * 3);
+}
+
 /* ---- Wordmark (D2, Q12): Be Vietnam Pro 600 in the wordmark color (header and footer alike: light the brand solid, dark the page text color) ---- */
 [data-ui='v2'] :is(.ls-site-brand a, .ls-site-footer-logo) {
   color: var(--ls-wordmark);

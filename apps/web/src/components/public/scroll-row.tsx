@@ -60,7 +60,11 @@ export function ScrollRow({
       >
         {children}
       </ul>
-      <div className="ls-snap-arrows ls-toolbar-actions" role="group" aria-label={label}>
+      <div
+        className="ls-snap-arrows ls-toolbar-actions"
+        role="group"
+        aria-label={`${previous} / ${next}`}
+      >
         <IconButton
           icon="chevron-left"
           label={previous}

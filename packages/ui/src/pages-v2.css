@@ -98,10 +98,64 @@
    the accent). One uniform logo height; the track moves slowly and endlessly (two equal copies, translated by half), and pauses while the
    pointer is over it, a link has focus or a finger is down. Reduced motion and the off switch draw a still, centred, wrapped row. */
 [data-ui='v2'] .ls-brand-band {
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-4);
   padding-block: var(--ls-space-4);
+  padding-inline: 0 var(--ls-gutter);
   background: var(--ls-brand-fill);
   color: var(--ls-on-brand);
+}
+
+/* The logos move inside their own window; the pause control sits outside it at the trailing edge. */
+[data-ui='v2'] .ls-brand-view {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The pause control (WCAG 2.2.2, moving content): a checkbox drawn as a 44 px round button with the pause icon; checked = paused, and the icon is
+   the play triangle. The icons are drawn from the icon set's shapes as masks in the label color. */
+[data-ui='v2'] .ls-brand-pause {
+  position: relative;
+  flex: none;
+  width: var(--ls-control-h);
+  height: var(--ls-control-h);
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--ls-on-brand) 70%, transparent);
+  border-radius: var(--ls-radius-full);
+  background: transparent;
+  color: var(--ls-on-brand);
+  appearance: none;
+  cursor: pointer;
+}
+
+[data-ui='v2'] .ls-brand-pause::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6v12M15 6v12'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+[data-ui='v2'] .ls-brand-pause:checked::before {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5l11 7-11 7z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+[data-ui='v2'] .ls-brand-pause:focus-visible {
+  outline: 2px solid var(--ls-on-brand);
+  outline-offset: var(--ls-space-1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-brand-pause:hover {
+    border-color: var(--ls-on-brand);
+  }
 }
 
 [data-ui='v2'] .ls-brand-track {
@@ -110,8 +164,18 @@
   animation: ls-brand-scroll calc(var(--ls-brand-seconds) * 1s) linear infinite;
 }
 
-[data-ui='v2'] .ls-brand-band:is(:hover, :focus-within, :active) .ls-brand-track {
+/* Paused while a link has focus, a finger is down, the pause box is checked and, on a mouse only, while the pointer is over the band (a tap on a
+   touch screen would leave :hover stuck, so the pointer pause is gated). */
+[data-ui='v2']
+  .ls-brand-band:is(:focus-within, :active, :has(.ls-brand-pause:checked))
+  .ls-brand-track {
   animation-play-state: paused;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-brand-band:hover .ls-brand-track {
+    animation-play-state: paused;
+  }
 }
 
 [data-ui='v2'] .ls-brand-set {
@@ -161,6 +225,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-ui='v2'] .ls-brand-band {
+    padding-inline: var(--ls-gutter);
+  }
+
+  [data-ui='v2'] .ls-brand-pause {
+    display: none;
+  }
+
   [data-ui='v2'] .ls-brand-track {
     width: auto;
     justify-content: center;
@@ -178,6 +250,16 @@
   [data-ui='v2'] .ls-brand-item[aria-hidden='true'] {
     display: none;
   }
+}
+
+html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-band,
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-band {
+  padding-inline: var(--ls-gutter);
+}
+
+html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-pause,
+html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-pause {
+  display: none;
 }
 
 html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-track,

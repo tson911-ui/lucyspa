@@ -450,6 +450,8 @@ function EmailDialog({
                   inputMode="email"
                   maxLength={254}
                   autoComplete="email"
+                  spellCheck={false}
+                  autoCapitalize="none"
                   value={email}
                   // H12: the address is checked when the field is left, not only on submit.
                   onBlur={() => setEmailLeft(true)}
@@ -480,6 +482,7 @@ function EmailDialog({
                 aria-required="true"
                 inputMode="numeric"
                 autoComplete="one-time-code"
+                spellCheck={false}
                 pattern="[0-9]{6}"
                 maxLength={6}
                 value={code}

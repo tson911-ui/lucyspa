@@ -1,7 +1,16 @@
+import type { Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { PageTransition } from '../../../components/public/page-transition';
 import { SitePageFrame } from '../../../components/public/site-page-frame';
 import { isLocale } from '../../../i18n/locales';
+
+/** The browser bar takes the page's base band color in each scheme (DESIGN.md 6.1: --ls-band-base, white in light and black in dark). */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
+  ],
+};
 
 interface SiteLayoutProps {
   children: React.ReactNode;
