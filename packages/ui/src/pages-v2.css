@@ -984,10 +984,10 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   }
 }
 
-/* The floating contact button rests in a slot between the last band and the footer; it takes the color of an alternate last band, so it never
-   shows as a strip of its own (the base color is the page's, so the slot already matches it). */
-[data-ui='v2'] .site-shell:has(.ls-site-main > .ls-band--alt:last-child) > .ls-contact {
-  background: var(--ls-band-alt);
+/* The floating contact button is fixed to the corner of the screen (site.css), so the footer keeps room under its last row for it: at the end of the
+   page the button rests in that padding and covers no footer text or link (56 px button, 16 px above and below). */
+[data-ui='v2'] .ls-site-footer {
+  padding-block-end: calc(var(--ls-space-9) + var(--ls-space-2) + var(--ls-space-4) * 2);
 }
 
 /* ---- Services list (9.2) ----------------------------------------------------------------------------------------------------------------- */

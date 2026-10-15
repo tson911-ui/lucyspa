@@ -78,17 +78,26 @@ test('ContactFab: a click opens it, Escape and a press outside close it, focus r
   act(() => root.unmount());
 });
 
-test('ContactFab css: sticky row on the shared layer scale, lifted above the tab bar and the action bar, pulse once', () => {
-  // Above the page content, below the header, menus, drawers and dialogs: the shared sticky layer.
+test('ContactFab css: fixed to the viewport corner on the shared layer scale, lifted above the tab bar and the action bar, pulse once', () => {
+  // Above the page content, below the header, menus, drawers and dialogs: the shared sticky layer. Fixed (Owner 2026-10-15): it never
+  // rests mid-page above the footer.
   assert.match(
     css,
-    /\.ls-contact \{[^}]*position: sticky;[^}]*z-index: var\(--ls-z-sticky\);[^}]*height: calc\(var\(--ls-fab-size\) \+ var\(--ls-space-4\) \* 2\);/,
+    /\.ls-contact \{[^}]*position: fixed;[^}]*z-index: var\(--ls-z-sticky\);[^}]*height: calc\(var\(--ls-fab-size\) \+ var\(--ls-space-4\) \* 2\);/,
   );
   assert.match(
     css,
     /\.ls-contact \{[^}]*bottom: calc\(var\(--ls-fab-base\) \+ var\(--ls-fab-lift\)\);/,
   );
-  assert.match(css, /@media \(max-width: 1023\.98px\) \{\s*\.ls-contact \{\s*--ls-fab-base: 0px;/);
+  // On a phone the button sits above the tab bar (its tabs plus the safe area) and clear of the right safe area.
+  assert.match(
+    css,
+    /@media \(max-width: 1023\.98px\) \{\s*\.ls-contact \{\s*--ls-fab-base: calc\(var\(--ls-tab-bar-h\) \+ var\(--ls-safe-bottom\)\);/,
+  );
+  assert.match(
+    css,
+    /\.ls-contact-stack \{[^}]*inset-inline-end: calc\(var\(--ls-gutter\) \+ var\(--ls-safe-right\)\);/,
+  );
   assert.match(css, /\.ls-site:has\(\.ls-booking-bar\) \.ls-contact \{\s*--ls-fab-base: 0px;/);
   // One pulse (1 iteration), on the motion tokens; the ring only exists while the pulse plays.
   assert.match(

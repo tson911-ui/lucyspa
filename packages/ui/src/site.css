@@ -1841,35 +1841,27 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
   }
 }
 
-/* ---------- floating contact button (Owner request 2026-10-06) ---------- */
-/* A sticky row placed just before the footer, as tall as the button plus a safe space above and below it. It sticks above the
-   bottom of the screen while the page scrolls and, at the end of the page, rests in its own slot between the content (an action
-   bar included) and the footer, so at rest the button covers nothing. The bottom edge is lifted above the phone tab bar, and
-   above a sticky action bar (the booking flow) by the height the component measures. Layer: above the page content, below the
-   header, the menus, the drawers and the dialogs (the shared scale). */
+/* ---------- floating contact button (Owner request 2026-10-06; fixed to the corner, Owner 2026-10-15) ---------- */
+/* Always fixed at the bottom-right corner of the viewport, whatever the page length: it never rests mid-page above the footer. The offset
+   is the device safe area, plus the phone tab bar (which sits in the app shell below the scroller), plus the height of a sticky action bar
+   (the booking flow) that the component measures. The footer keeps bottom room for the button, so at the end of the page it covers no
+   footer text or link. Layer: above the page content, below the header, the menus, the drawers and the dialogs (the shared scale). */
 .ls-contact {
   --ls-fab-size: calc(var(--ls-space-9) + var(--ls-space-2));
   --ls-fab-base: var(--ls-safe-bottom);
   --ls-fab-lift: 0px;
-  position: sticky;
+  position: fixed;
+  inset-inline: 0;
   bottom: calc(var(--ls-fab-base) + var(--ls-fab-lift));
   z-index: var(--ls-z-sticky);
   height: calc(var(--ls-fab-size) + var(--ls-space-4) * 2);
   pointer-events: none;
 }
 
-/* The slot takes the colour of the band above it, so it never reads as a strip of its own, and that band keeps only a little
-   bottom padding: the slot already gives it room (the blank band above the footer was about 130 px on a short page). */
-
-.site-shell:has(> .ls-contact) .ls-site-main > .ls-band:last-child {
-  padding-bottom: var(--ls-space-4);
-}
-
-/* On a phone the button sticks to the bottom of the scroller, which already ends above the tab bar (the app shell), so nothing
-   is added for the bar; the booking flow's action bar is measured by ContactFab and lifts it. */
+/* On a phone the tab bar fills the bottom of the screen (its tabs plus the safe area), so the button sits above it. */
 @media (max-width: 1023.98px) {
   .ls-contact {
-    --ls-fab-base: 0px;
+    --ls-fab-base: calc(var(--ls-tab-bar-h) + var(--ls-safe-bottom));
   }
 }
 /* A phone: the button steps aside while the visitor reads down the page (ContactFab sets data-away), so it never sits on
@@ -1899,7 +1891,7 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
 
 .ls-contact-stack {
   position: absolute;
-  inset-inline-end: var(--ls-gutter);
+  inset-inline-end: calc(var(--ls-gutter) + var(--ls-safe-right));
   bottom: var(--ls-space-4);
   display: flex;
   flex-direction: column;
