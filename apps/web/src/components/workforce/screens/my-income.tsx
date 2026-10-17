@@ -4,18 +4,21 @@ import type { BranchSummary, IncomePeriod, MyIncomeResponse } from '@lucy-spa/co
 import {
   Cluster,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DateTextInput,
   DescriptionList,
+  EmptyState,
   IconButton,
   ListSection,
   Select,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { loadMyIncome, shiftAnchor } from '../../../lib/workforce/my-income';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { normalizePage, normalizePageSize } from '../../../lib/workforce/list-view';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import { useBranches } from '../data';
 import { useWorkforce } from '../session';
 import { Empty, ErrorState, Loading, PageHeader, Section, useResource } from '../ui';
@@ -23,6 +26,22 @@ import { Empty, ErrorState, Loading, PageHeader, Section, useResource } from '..
 type IncomeItem = NonNullable<MyIncomeResponse['collaboratorWork']>['items'][number];
 
 const PERIODS: IncomePeriod[] = ['DAY', 'WEEK', 'MONTH'];
+
+const INCOME_DEFAULTS = { period: 'MONTH', date: '' };
+const INCOME_OPTIONS = {
+  normalize: (state: typeof INCOME_DEFAULTS) => ({
+    period: (PERIODS as string[]).includes(state.period) ? state.period : 'MONTH',
+    date: /^\d{4}-\d{2}-\d{2}$/.test(state.date) ? state.date : '',
+  }),
+};
+/** The details table's pager, in the address bar too. */
+const DETAILS_DEFAULTS = { detailsPage: 1, detailsSize: DEFAULT_PAGE_SIZE };
+const DETAILS_OPTIONS = {
+  normalize: (state: typeof DETAILS_DEFAULTS) => ({
+    detailsPage: normalizePage(state.detailsPage),
+    detailsSize: normalizePageSize(state.detailsSize),
+  }),
+};
 
 /**
  * "Thu nhập của tôi / My Income" (follow-up Step 7): read-only, own data only. Collaborator
@@ -32,8 +51,12 @@ const PERIODS: IncomePeriod[] = ['DAY', 'WEEK', 'MONTH'];
 export function MyIncomeScreen() {
   const { api, t } = useWorkforce();
   const branches = useBranches(api);
-  const [period, setPeriod] = useState<IncomePeriod>('MONTH');
-  const [date, setDate] = useState<string | null>(null);
+  // Period and anchor day in the address bar (?period=WEEK&date=2026-10-12): Back/Forward and a shared link restore the view.
+  const [url, update] = useUrlState(INCOME_DEFAULTS, INCOME_OPTIONS);
+  const period = url.period as IncomePeriod;
+  const date = url.date === '' ? null : url.date;
+  const setPeriod = (value: IncomePeriod) => update({ period: value });
+  const setDate = (value: string | null) => update({ date: value ?? '' });
   const income = useResource(() => loadMyIncome(api, period, date), [api, period, date]);
   const texts = t.myIncome;
   const anchor = date ?? income.data?.period.date ?? null;
@@ -92,7 +115,18 @@ export function MyIncomeView({
   const { t, locale } = useWorkforce();
   const texts = t.myIncome;
   const work = t.collaboratorWork;
-  const detailsPaging = useClientPaging(t, texts.details);
+  const [pager, updatePager] = useUrlState(DETAILS_DEFAULTS, DETAILS_OPTIONS);
+  const detailsPaging = urlPaging(
+    pager.detailsPage,
+    pager.detailsSize,
+    ({ page, pageSize }) =>
+      updatePager({
+        ...(page !== undefined ? { detailsPage: page } : {}),
+        ...(pageSize !== undefined ? { detailsSize: pageSize } : {}),
+      }),
+    t,
+    texts.details,
+  );
   const branchName = (id: string) => branches?.get(id)?.name ?? '—';
   const nothing =
     income.baseSalary === null &&
@@ -102,7 +136,7 @@ export function MyIncomeView({
   const earned = (amount: string, count: number) => (
     <>
       <strong>{formatVnd(amount, locale)}</strong>
-      {count > 0 ? ` · ${fill(texts.earningsCount, { count })}` : null}
+      {count > 0 ? ` (${fill(texts.earningsCount, { count })})` : null}
     </>
   );
   const items = income.collaboratorWork?.items ?? [];
@@ -118,7 +152,7 @@ export function MyIncomeView({
     {
       key: 'branch',
       header: work.branch,
-      truncate: true,
+      wrap: true,
       cell: (item) => branchName(item.branchId),
     },
     { key: 'mode', header: work.mode, cell: (item) => work.modes[item.mode] },
@@ -142,7 +176,7 @@ export function MyIncomeView({
       key: 'branch',
       header: work.branch,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       cell: (row) => branchName(row.branchId),
     },
     { key: 'count', header: texts.count, numeric: true, cell: (row) => row.occurrenceCount },
@@ -163,8 +197,17 @@ export function MyIncomeView({
         })}
         {income.period.kind === 'WEEK' ? ` ${texts.weekNote}` : null}
       </p>
-      {income.kind === 'OWNER' ? <Empty>{texts.ownerNote}</Empty> : null}
-      {income.kind === 'EMPLOYEE' && nothing ? <Empty>{texts.empty}</Empty> : null}
+      {/* Empty states: a heading and one sentence; there is no action to take from here. */}
+      {income.kind === 'OWNER' ? (
+        <EmptyState icon="wallet" title={texts.ownerTitle}>
+          {texts.ownerNote}
+        </EmptyState>
+      ) : null}
+      {income.kind === 'EMPLOYEE' && nothing ? (
+        <EmptyState icon="wallet" title={texts.emptyTitle}>
+          {texts.empty}
+        </EmptyState>
+      ) : null}
       {income.baseSalary ? (
         <Section title={texts.baseSalary}>
           <p className="ls-stat-value">
@@ -214,7 +257,7 @@ export function MyIncomeView({
               ]}
             />
             <p className="ls-hint">{texts.totalNote}</p>
-            {items.length === 0 ? <Empty>{texts.noWork}</Empty> : null}
+            {items.length === 0 ? <Empty title={texts.noWorkTitle}>{texts.noWork}</Empty> : null}
           </Section>
           {byBranch.length > 1 ? (
             <ListSection title={texts.byBranch}>
@@ -247,7 +290,8 @@ export function MyIncomeView({
           <p className="ls-hint">{texts.unavailableNote}</p>
           <ul className="ls-list-plain">
             {income.unavailableSources.map((source) => (
-              <li key={source}>{texts.sources[source]}</li>
+              // An unknown source key shows its code rather than an empty item (wig my-income.tsx:249).
+              <li key={source}>{texts.sources[source] ?? source}</li>
             ))}
           </ul>
         </Section>

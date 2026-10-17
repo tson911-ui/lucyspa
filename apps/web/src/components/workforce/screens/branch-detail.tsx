@@ -20,22 +20,25 @@ import {
   Stack,
   TextInput,
   TimeInput,
+  PageHeader as UiPageHeader,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink } from '../link';
 import { useState } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { canAt, canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
+import { timezoneLabel } from './branches';
+import { focusFirstInvalidSoon } from './service-price-fields';
 import {
   Badge,
   Button,
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   Section,
   useResource,
   useSubmit,
@@ -110,7 +113,7 @@ function BranchDetail({ branch, reload }: { branch: BranchResponse; reload: () =
     ? [
         {
           id: 'status',
-          label: branch.isActive ? t.common.deactivate : t.common.activate,
+          label: opensInput(branch.isActive ? t.common.deactivate : t.common.activate),
           ...(branch.isActive ? { tone: 'danger' as const } : {}),
           onSelect: () => setOverlay('status'),
         },
@@ -119,39 +122,44 @@ function BranchDetail({ branch, reload }: { branch: BranchResponse; reload: () =
 
   return (
     <>
-      <PageHeader
+      <UiPageHeader
         title={branch.name}
-        intro={`${branch.code} · ${branch.timezone}`}
+        // The code alone (no "code · IANA zone" meta string); the zone is a fact below, in words.
+        description={branch.code}
+        status={
+          <Badge tone={branch.isActive ? 'success' : 'neutral'}>
+            {branch.isActive ? t.common.active : t.common.inactive}
+          </Badge>
+        }
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: t.branches.title, href: `${base}/branches` }, { label: branch.name }]}
           />
         }
-      >
-        {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
-        {manage ? (
-          <Button variant="primary" icon="edit" onClick={() => setOverlay('details')}>
-            {t.branches.editDetails}
-          </Button>
-        ) : null}
-      </PageHeader>
-      <Cluster gap="inline">
-        <span className="ls-hint">{t.common.status}:</span>
-        <Badge tone={branch.isActive ? 'success' : 'neutral'}>
-          {branch.isActive ? t.common.active : t.common.inactive}
-        </Badge>
-      </Cluster>
+        actions={
+          menu.length > 0 || manage ? (
+            <>
+              {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
+              {manage ? (
+                <Button variant="primary" icon="edit" onClick={() => setOverlay('details')}>
+                  {opensInput(t.branches.editDetails)}
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      />
       {!manage ? <Notice tone="info">{t.branches.readOnly}</Notice> : null}
       <Stack gap="page">
         <Section title={t.common.details}>
           <DescriptionList
             columns={2}
             items={[
-              { label: t.common.code, value: branch.code },
+              { label: t.common.code, value: <span translate="no">{branch.code}</span> },
               { label: t.common.name, value: branch.name },
-              { label: t.branches.timezone, value: branch.timezone },
+              { label: t.branches.timezone, value: timezoneLabel(branch.timezone, t) },
             ]}
           />
         </Section>
@@ -160,7 +168,7 @@ function BranchDetail({ branch, reload }: { branch: BranchResponse; reload: () =
           actions={
             manage ? (
               <Button variant="secondary" icon="edit" onClick={() => setOverlay('hours')}>
-                {t.branches.editHours}
+                {opensInput(t.branches.editHours)}
               </Button>
             ) : undefined
           }
@@ -168,8 +176,9 @@ function BranchDetail({ branch, reload }: { branch: BranchResponse; reload: () =
           {branch.hours.length === 0 ? (
             <Notice tone="info">{t.branches.noHours}</Notice>
           ) : (
+            // One column, Monday to Sunday in reading order (two columns made the eye zig-zag).
             <DescriptionList
-              columns={2}
+              className="ls-ppl-hours"
               items={editableHours(branch.hours).map((day) => ({
                 label: t.branches.weekdays[day.isoWeekday] ?? String(day.isoWeekday),
                 value: day.isClosed ? (
@@ -227,9 +236,16 @@ function BranchEdit({
   const [timezone, setTimezone] = useState(branch.timezone);
   const submit = useSubmit();
   const changed = name !== branch.name || timezone !== branch.timezone;
+  // Validate on submit: an empty name or time zone is reported at its field and takes focus (WIG Forms).
+  const [tried, setTried] = useState(false);
 
   async function save() {
     if (!changed) return;
+    if (!name.trim() || !timezone.trim()) {
+      setTried(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const body: BranchUpdateRequest = {
       expectedVersion: branch.version,
       ...(name !== branch.name ? { name } : {}),
@@ -251,27 +267,41 @@ function BranchEdit({
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={changed}
-      submitDisabled={!changed || !name.trim() || !timezone.trim()}
+      submitDisabled={!changed}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={t.common.name} required>
+        <Field
+          label={t.common.name}
+          required
+          error={tried && !name.trim() ? t.common.form.fieldRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={200}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
           )}
         </Field>
-        <Field label={t.branches.timezone} required hint={t.branches.timezoneLocked}>
+        <Field
+          label={t.branches.timezone}
+          required
+          hint={t.branches.timezoneLocked}
+          error={tried && !timezone.trim() ? t.common.form.fieldRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="timezone"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="none"
+              translate="no"
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
             />
@@ -357,6 +387,7 @@ function HoursEdit({
               </Cluster>
               <FormGrid cols={2}>
                 <TimeInput
+                  name="opensAt"
                   aria-label={`${label(day)}: ${t.branches.opensAt}`}
                   value={day.opensAt ?? ''}
                   disabled={day.isClosed}
@@ -364,6 +395,7 @@ function HoursEdit({
                   onChange={(event) => update(day.isoWeekday, { opensAt: event.target.value })}
                 />
                 <TimeInput
+                  name="closesAt"
                   aria-label={`${label(day)}: ${t.branches.closesAt}`}
                   value={day.closesAt ?? ''}
                   disabled={day.isClosed}
@@ -397,10 +429,10 @@ function BranchStatus({
     <ConfirmDialog
       title={deactivating ? t.branches.deactivateTitle : t.branches.activateTitle}
       description={deactivating ? t.branches.deactivateBody : t.branches.activateBody}
-      facts={[{ label: t.common.code, value: `${branch.code} · ${branch.name}` }]}
+      facts={[{ label: t.common.code, value: `${branch.name} (${branch.code})` }]}
       tone={deactivating ? 'danger' : 'neutral'}
       confirmLabel={deactivating ? t.common.deactivate : t.common.activate}
-      busyLabel={t.common.saving}
+      busyLabel={deactivating ? t.common.deactivating : t.common.activating}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{

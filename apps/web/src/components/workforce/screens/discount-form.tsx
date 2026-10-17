@@ -5,16 +5,43 @@ import type {
   ServiceCategoryListResponse,
   ServiceListResponse,
 } from '@lucy-spa/contracts';
-import { CheckField, Field, FormGrid, FormSection, Select, Stack, TextInput } from '@lucy-spa/ui';
+import {
+  CheckField,
+  DateTimeInput,
+  Field,
+  FormGrid,
+  FormSection,
+  MoneyInput,
+  Select,
+  Stack,
+  TextInput,
+} from '@lucy-spa/ui';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   scopeHasProducts,
   scopeHasServices,
+  type DiscountField,
   type DiscountForm,
+  type DiscountProblem,
 } from '../../../lib/workforce/discounts';
 import { useWorkforce } from '../session';
 import { Loading, useResource } from '../ui';
 import { PickerGroup, ProductTargetsFields, useProductCatalog } from './discount-targets';
+
+/** The message each field shows for its problem (`discountFieldProblems` -> the dictionary's problem texts). */
+export function discountFieldErrors(
+  problems: Partial<Record<DiscountField, DiscountProblem>>,
+  texts: Record<DiscountProblem, string>,
+): Partial<Record<DiscountField, string>> {
+  const errors: Partial<Record<DiscountField, string>> = {};
+  for (const [field, problem] of Object.entries(problems) as [DiscountField, DiscountProblem][]) {
+    errors[field] = texts[problem];
+  }
+  return errors;
+}
+
+/** The whole number a digit string holds, for the money field (anything else shows as empty). */
+const digits = (value: string): number | null => (/^\d+$/.test(value) ? Number(value) : null);
 
 /**
  * The configuration fields of one discount program version, grouped in sections (program, discount,
@@ -28,11 +55,14 @@ export function DiscountFormFields({
   setForm,
   mode,
   columns = 1,
+  errors = {},
 }: {
   form: DiscountForm;
   setForm: Dispatch<SetStateAction<DiscountForm>>;
   mode: 'create' | 'version';
   columns?: 1 | 2;
+  /** The message to show at each field after a submit (the first invalid field takes focus). */
+  errors?: Partial<Record<DiscountField, string>> | undefined;
 }) {
   const { api, t, locale } = useWorkforce();
   const withServices = scopeHasServices(form.scope);
@@ -67,6 +97,7 @@ export function DiscountFormFields({
         : [...current[key], id],
     }));
   const name = (vi: string, en: string) => (locale === 'vi' ? vi : en);
+  const separator = locale === 'vi' ? '.' : ',';
 
   return (
     <Stack gap="page">
@@ -74,12 +105,15 @@ export function DiscountFormFields({
         <FormGrid cols={columns}>
           {mode === 'create' ? (
             <>
-              <Field label={d.code} hint={d.codeHint} required width="lg" full>
+              <Field label={d.code} hint={d.codeHint} required width="lg" full error={errors.code}>
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="code"
                     maxLength={64}
                     autoComplete="off"
+                    spellCheck={false}
+                    autoCapitalize="characters"
                     value={form.code}
                     onChange={(event) => change({ code: event.target.value.toUpperCase() })}
                   />
@@ -95,20 +129,22 @@ export function DiscountFormFields({
               </div>
             </>
           ) : null}
-          <Field label={d.nameVi} required>
+          <Field label={d.nameVi} required error={errors.nameVi}>
             {(control) => (
               <TextInput
                 {...control}
+                name="nameVi"
                 maxLength={200}
                 value={form.nameVi}
                 onChange={(event) => change({ nameVi: event.target.value })}
               />
             )}
           </Field>
-          <Field label={d.nameEn} required>
+          <Field label={d.nameEn} required error={errors.nameEn}>
             {(control) => (
               <TextInput
                 {...control}
+                name="nameEn"
                 maxLength={200}
                 value={form.nameEn}
                 onChange={(event) => change({ nameEn: event.target.value })}
@@ -134,10 +170,11 @@ export function DiscountFormFields({
             )}
           </Field>
           {form.kind === 'PERCENT' ? (
-            <Field label={d.percent} hint={d.percentHint} required>
+            <Field label={d.percent} hint={d.percentHint} required error={errors.percent}>
               {(control) => (
                 <TextInput
                   {...control}
+                  name="percent"
                   inputMode="decimal"
                   autoComplete="off"
                   maxLength={6}
@@ -147,28 +184,34 @@ export function DiscountFormFields({
               )}
             </Field>
           ) : (
-            <Field label={d.fixedAmount} required>
+            // Money = the kit MoneyInput: grouped digits and the "₫" suffix in the field (not "(₫)" in the label). The form keeps
+            // the same digit string as before, so validation and the request body are unchanged.
+            <Field label={d.fixedAmount} required error={errors.fixedAmount}>
               {(control) => (
-                <TextInput
+                <MoneyInput
                   {...control}
-                  inputMode="numeric"
-                  autoComplete="off"
+                  name="fixed-amount"
+                  unit="₫"
+                  separator={separator}
                   maxLength={18}
-                  value={form.fixedAmount}
-                  onChange={(event) => change({ fixedAmount: event.target.value })}
+                  value={digits(form.fixedAmount)}
+                  onValueChange={(value) =>
+                    change({ fixedAmount: value === null ? '' : String(value) })
+                  }
                 />
               )}
             </Field>
           )}
-          <Field label={d.minSpend} hint={d.minSpendHint}>
+          <Field label={d.minSpend} hint={d.minSpendHint} error={errors.minSpend}>
             {(control) => (
-              <TextInput
+              <MoneyInput
                 {...control}
-                inputMode="numeric"
-                autoComplete="off"
+                name="min-spend"
+                unit="₫"
+                separator={separator}
                 maxLength={18}
-                value={form.minSpend}
-                onChange={(event) => change({ minSpend: event.target.value })}
+                value={digits(form.minSpend)}
+                onValueChange={(value) => change({ minSpend: value === null ? '' : String(value) })}
               />
             )}
           </Field>
@@ -177,23 +220,31 @@ export function DiscountFormFields({
 
       <FormSection title={d.sectionWindow} description={d.timeNote}>
         <FormGrid cols={columns}>
-          <Field label={d.validFrom} required>
+          {/* dd/mm/yyyy and a 24 h HH:mm (kit DateTimeInput), never the browser's datetime-local (US order, AM/PM on vi);
+              the value stays `YYYY-MM-DDTHH:mm`, read as Vietnam time exactly as before. */}
+          <Field label={d.validFrom} required error={errors.validFrom}>
             {(control) => (
-              <TextInput
-                {...control}
-                type="datetime-local"
+              <DateTimeInput
+                id={control.id}
+                aria-describedby={control['aria-describedby']}
+                invalid={Boolean(errors.validFrom)}
+                timeLabel={`${d.validFrom}, ${d.timeLabel}`}
+                timeError={d.timeError}
                 value={form.validFrom}
-                onChange={(event) => change({ validFrom: event.target.value })}
+                onValueChange={(validFrom) => change({ validFrom })}
               />
             )}
           </Field>
-          <Field label={d.validUntil} required>
+          <Field label={d.validUntil} required error={errors.validUntil}>
             {(control) => (
-              <TextInput
-                {...control}
-                type="datetime-local"
+              <DateTimeInput
+                id={control.id}
+                aria-describedby={control['aria-describedby']}
+                invalid={Boolean(errors.validUntil)}
+                timeLabel={`${d.validUntil}, ${d.timeLabel}`}
+                timeError={d.timeError}
                 value={form.validUntil}
-                onChange={(event) => change({ validUntil: event.target.value })}
+                onValueChange={(validUntil) => change({ validUntil })}
               />
             )}
           </Field>
@@ -215,7 +266,7 @@ export function DiscountFormFields({
               />
             )}
           </Field>
-          <Field label={d.selection}>
+          <Field label={d.selection} error={errors.scope}>
             {(control) => (
               <Select
                 {...control}
@@ -272,10 +323,11 @@ export function DiscountFormFields({
 
       <FormSection title={d.sectionLimits} description={d.limitHint}>
         <FormGrid cols={columns}>
-          <Field label={d.limitTotal}>
+          <Field label={d.limitTotal} error={errors.limitTotal}>
             {(control) => (
               <TextInput
                 {...control}
+                name="limitTotal"
                 inputMode="numeric"
                 autoComplete="off"
                 maxLength={10}
@@ -284,10 +336,11 @@ export function DiscountFormFields({
               />
             )}
           </Field>
-          <Field label={d.limitPerCustomer}>
+          <Field label={d.limitPerCustomer} error={errors.limitPerCustomer}>
             {(control) => (
               <TextInput
                 {...control}
+                name="limitPerCustomer"
                 inputMode="numeric"
                 autoComplete="off"
                 maxLength={10}

@@ -10,26 +10,40 @@ import {
   ButtonLink,
   CheckField,
   Cluster,
+  ConfirmDialog,
+  DEFAULT_PAGE_SIZE,
   DataTable,
   FacetedFilter,
+  Icon,
+  ListSection,
   ListToolbar,
   MediaThumb,
   SearchInput,
   Stack,
   VisuallyHidden,
   normalizeSearch,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useMemo, useState } from 'react';
 import { supplierImportsDictionary } from '../../../i18n/supplier-imports';
 import { fill } from '../../../i18n/workforce';
 import { formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import { confirmError } from '../../../lib/workforce/form-labels';
+import {
+  normalizePage,
+  normalizePageSize,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
+import { urlPaging } from '../../../lib/workforce/url-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { importErrorText, pictureUrl, warningText } from '../../../lib/workforce/supplier-imports';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
+import { Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
+import { AdminButtonLink } from './admin-button-link';
 
 const BASE = '/api/v1/supplier-imports';
 
@@ -64,11 +78,30 @@ export function SupplierImportAllScreen() {
     );
   }
   if (loaded.error && !loaded.data) {
-    return <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />;
+    return (
+      <>
+        <PageHeader title={text.all.title} intro={text.all.intro} />
+        <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />
+      </>
+    );
   }
   if (!loaded.data) return <Loading t={t} page />;
   return <Chooser data={loaded.data} />;
 }
+
+/** Several filter choices in one address-bar value; brand and category names never contain it. */
+const LIST_SEPARATOR = '|';
+const CHOOSER_VIEW = { q: '', cat: '', brand: '', p: 1, ps: DEFAULT_PAGE_SIZE };
+const CHOOSER_VIEW_OPTIONS = {
+  normalize: (state: typeof CHOOSER_VIEW) => ({
+    q: String(state.q),
+    cat: String(state.cat),
+    brand: String(state.brand),
+    p: normalizePage(Number(state.p)),
+    ps: normalizePageSize(Number(state.ps)),
+  }),
+  resetOnChange: ['p'],
+};
 
 export function Chooser({ data }: { data: SupplierImportAllPreview }) {
   const { api, t, locale, base } = useWorkforce();
@@ -82,10 +115,30 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
   const [checked, setChecked] = useState<Set<string>>(
     () => new Set(importable.map((row) => row.id)),
   );
-  const [q, setQ] = useState('');
-  const [categories, setCategories] = useState<string[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  // Search, filters and page live in the address bar (Back/Forward and a shared link keep the view); a filter change returns to page 1.
+  const [view, updateView] = useUrlState(CHOOSER_VIEW, CHOOSER_VIEW_OPTIONS);
+  const q = view.q;
+  const categories = useMemo(
+    () => (view.cat === '' ? [] : view.cat.split(LIST_SEPARATOR)),
+    [view.cat],
+  );
+  const brands = useMemo(
+    () => (view.brand === '' ? [] : view.brand.split(LIST_SEPARATOR)),
+    [view.brand],
+  );
+  const paging = urlPaging(
+    view.p,
+    view.ps,
+    (patch) =>
+      updateView({
+        ...(patch.page !== undefined ? { p: patch.page } : {}),
+        ...(patch.pageSize !== undefined ? { ps: patch.pageSize } : {}),
+      }),
+    t,
+    copy.table,
+  );
+  const blockedPaging = useUrlPaging('bp', t, copy.blockedHeading);
+  const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [result, setResult] = useState<{
     imported: number;
@@ -103,27 +156,37 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
       ].sort((a, b) => a.localeCompare(b, 'vi')),
     [importable],
   );
+  const searchable = useMemo(
+    () =>
+      new Map(
+        importable.map((row) => [
+          row.id,
+          [normalizeSearch(row.nameVi), normalizeSearch(row.sku ?? '')],
+        ]),
+      ),
+    [importable],
+  );
   const shown = useMemo(() => {
     const needle = normalizeSearch(q);
     return importable.filter(
       (row) =>
         (categories.length === 0 || categories.includes(row.category.key)) &&
         (brands.length === 0 || (row.brand !== null && brands.includes(row.brand.name))) &&
-        (needle === '' ||
-          [row.nameVi, row.sku ?? ''].some((field) => normalizeSearch(field).includes(needle))),
+        (needle === '' || (searchable.get(row.id) ?? []).some((field) => field.includes(needle))),
     );
-  }, [importable, q, categories, brands]);
+  }, [importable, searchable, q, categories, brands]);
+  // The categories that have something to import, for the filter (built once, js-index-maps).
+  const importableCategories = useMemo(
+    () => new Set(importable.map((row) => row.category.key)),
+    [importable],
+  );
   const active = (q ? 1 : 0) + (categories.length > 0 ? 1 : 0) + (brands.length > 0 ? 1 : 0);
 
   const ticked = importable.filter((row) => checked.has(row.id));
-  const perCategory = data.categories
-    .map((category) => ({
-      ...category,
-      count: ticked.filter((row) => row.category.key === category.key).length,
-    }))
-    .filter((category) => category.count > 0);
+  const categoryCounts = new Map<string, number>();
   const newBrandCounts = new Map<string, number>();
   for (const row of ticked) {
+    categoryCounts.set(row.category.key, (categoryCounts.get(row.category.key) ?? 0) + 1);
     if (row.brand?.isNew) {
       newBrandCounts.set(row.brand.name, (newBrandCounts.get(row.brand.name) ?? 0) + 1);
     }
@@ -211,14 +274,9 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
       width: 'lg',
       cell: (row) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-truncate" title={row.nameVi}>
-            {row.nameVi}
-          </span>
-          <span
-            className="ls-cell-sub ls-cell-truncate"
-            title={`${text.columns.sku}: ${row.sku ?? text.none}`}
-          >
-            {text.columns.sku}: {row.sku ?? text.none}
+          <span className="ls-adminb-wrap">{row.nameVi}</span>
+          <span className="ls-cell-sub ls-adminb-wrap">
+            {text.columns.sku}: <span translate="no">{row.sku ?? text.none}</span>
           </span>
         </span>
       ),
@@ -227,7 +285,7 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
       key: 'brand',
       header: copy.columns.brand,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) =>
         row.brand
@@ -238,7 +296,7 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
       key: 'category',
       header: copy.columns.category,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.category.name,
     },
@@ -274,20 +332,20 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
   ];
 
   const primary = finished ? (
-    <ButtonLink variant="primary" href={`${base}/supplier-imports`}>
+    <ButtonLink variant="primary" href={`${base}/supplier-imports`} LinkComponent={AdminButtonLink}>
       {copy.close}
     </ButtonLink>
   ) : (
     <Button
       variant="primary"
       icon="check"
-      onClick={() => void run()}
+      onClick={() => setConfirming(true)}
       disabled={running || importable.length === 0}
     >
       {running
         ? fill(copy.running, { done: String(progress.done), total: String(progress.total) })
         : ticked.length === 0
-          ? copy.submitNone
+          ? fill(copy.submitNone, { count: String(importable.length) })
           : fill(copy.submit, { count: String(ticked.length) })}
     </Button>
   );
@@ -306,6 +364,12 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
       <PageHeader title={copy.title} intro={copy.intro}>
         {primary}
       </PageHeader>
+      {/* The import's progress is announced as it moves (the button label changes too, but a label change is not read out). */}
+      <p className="ls-visually-hidden" role="status">
+        {running
+          ? fill(copy.running, { done: String(progress.done), total: String(progress.total) })
+          : ''}
+      </p>
       {failure ? <Notice tone="error">{failure}</Notice> : null}
       {finished ? (
         <Notice tone="success">
@@ -313,10 +377,16 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
           {result.skipped > 0 ? ` ${fill(copy.skipped, { count: String(result.skipped) })}` : ''}
         </Notice>
       ) : (
-        <Notice tone="info">
-          <Stack gap="block">
+        // What will happen, as muted lines under the header (no tinted box, no count pills: the category counts are in the "Nhóm"
+        // filter's choices).
+        <Stack gap="field">
+          <p className="ls-adminb-note">
+            <Icon name="info" size={16} />
             <span>{fill(copy.summary, { count: String(ticked.length) })}</span>
-            {newBrandCounts.size > 0 ? (
+          </p>
+          {newBrandCounts.size > 0 ? (
+            <p className="ls-adminb-note">
+              <Icon name="tag" size={16} />
               <span>
                 {fill(copy.newBrands, {
                   brands: [...newBrandCounts]
@@ -324,23 +394,22 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
                     .join(', '),
                 })}
               </span>
-            ) : null}
-            {data.categoriesToCreate.length > 0 ? (
+            </p>
+          ) : null}
+          {data.categoriesToCreate.length > 0 ? (
+            <p className="ls-adminb-note">
+              <Icon name="plus" size={16} />
               <span>
                 {fill(copy.categoriesToCreate, { names: data.categoriesToCreate.join(', ') })}
               </span>
-            ) : null}
+            </p>
+          ) : null}
+          <p className="ls-adminb-note">
+            <Icon name="wallet" size={16} />
             <span>{copy.priceNote}</span>
-          </Stack>
-        </Notice>
+          </p>
+        </Stack>
       )}
-      {perCategory.length > 0 && !finished ? (
-        <Cluster>
-          {perCategory.map((category) => (
-            <Badge key={category.key} tone="neutral">{`${category.name} ${category.count}`}</Badge>
-          ))}
-        </Cluster>
-      ) : null}
       {blocked.length > 0 ? (
         <Notice tone="warning">
           <strong>{fill(copy.blockedTitle, { count: String(blocked.length) })}</strong>{' '}
@@ -352,23 +421,15 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
         labels={toolbarLabels(t)}
         activeFilters={active}
         resultCount={resultsText(t, shown.length)}
-        onReset={() => {
-          setQ('');
-          setCategories([]);
-          setBrands([]);
-          setPage((state) => ({ ...state, page: 1 }));
-        }}
+        onReset={() => updateView({ q: '', cat: '', brand: '' })}
         search={
           <SearchInput
             id="import-all-q"
             value={q}
             label={copy.search}
-            placeholder={copy.search}
+            hint={copy.searchPlaceholder}
             clearLabel={t.common.list.clearSearch}
-            onSearch={(value) => {
-              setQ(value);
-              setPage((state) => ({ ...state, page: 1 }));
-            }}
+            onSearch={(value) => updateView({ q: value }, { replace: true })}
           />
         }
         filters={
@@ -378,13 +439,16 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
               clearLabel={t.common.list.clearChoice}
               multiple
               options={data.categories
-                .filter((category) => importable.some((row) => row.category.key === category.key))
-                .map((category) => ({ value: category.key, label: category.name }))}
+                .filter((category) => importableCategories.has(category.key))
+                .map((category) => {
+                  const count = categoryCounts.get(category.key) ?? 0;
+                  return {
+                    value: category.key,
+                    label: count > 0 ? `${category.name} (${count})` : category.name,
+                  };
+                })}
               selected={categories}
-              onChange={(value) => {
-                setCategories(value);
-                setPage((state) => ({ ...state, page: 1 }));
-              }}
+              onChange={(value) => updateView({ cat: value.join(LIST_SEPARATOR) })}
             />
             <FacetedFilter
               label={copy.filters.brand}
@@ -392,10 +456,7 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
               multiple
               options={brandNames.map((name) => ({ value: name, label: name }))}
               selected={brands}
-              onChange={(value) => {
-                setBrands(value);
-                setPage((state) => ({ ...state, page: 1 }));
-              }}
+              onChange={(value) => updateView({ brand: value.join(LIST_SEPARATOR) })}
             />
           </>
         }
@@ -426,48 +487,64 @@ export function Chooser({ data }: { data: SupplierImportAllPreview }) {
         rows={shown}
         rowKey={(row) => row.id}
         empty={<Empty>{active > 0 ? copy.emptyFiltered : copy.empty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, copy.table),
-        }}
+        paging={paging}
       />
       {blocked.length > 0 ? (
-        <DataTable
-          mode="client"
-          caption={fill(copy.blockedTitle, { count: String(blocked.length) })}
-          columns={[
-            {
-              key: 'name',
-              header: copy.columns.name,
-              mobileTitle: true,
-              width: 'lg',
-              cell: (row: SupplierImportAllRow) => (
-                <span className="ls-cell-stack">
-                  <span className="ls-cell-truncate" title={row.nameVi}>
-                    {row.nameVi}
+        <ListSection title={copy.blockedHeading}>
+          <DataTable
+            mode="client"
+            caption={fill(copy.blockedTitle, { count: String(blocked.length) })}
+            columns={[
+              {
+                key: 'name',
+                header: copy.columns.name,
+                mobileTitle: true,
+                width: 'lg',
+                cell: (row: SupplierImportAllRow) => (
+                  <span className="ls-cell-stack">
+                    <span className="ls-adminb-wrap">{row.nameVi}</span>
+                    <span className="ls-cell-sub ls-adminb-wrap">
+                      {text.columns.sku}: <span translate="no">{row.sku ?? text.none}</span>
+                    </span>
                   </span>
-                  <span
-                    className="ls-cell-sub ls-cell-truncate"
-                    title={`${text.columns.sku}: ${row.sku ?? text.none}`}
-                  >
-                    {text.columns.sku}: {row.sku ?? text.none}
-                  </span>
-                </span>
-              ),
-            },
-            {
-              key: 'note',
-              header: copy.columns.note,
-              wrap: true,
-              width: 'lg',
-              cell: (row: SupplierImportAllRow) => row.blockers.map(reasonText).join(' '),
-            },
-          ]}
-          rows={blocked}
-          rowKey={(row) => row.id}
-          paging={{ off: copy.blockedTitle }}
+                ),
+              },
+              {
+                key: 'note',
+                header: copy.columns.note,
+                wrap: true,
+                width: 'lg',
+                cell: (row: SupplierImportAllRow) => row.blockers.map(reasonText).join(' '),
+              },
+            ]}
+            rows={blocked}
+            rowKey={(row) => row.id}
+            paging={blockedPaging}
+          />
+        </ListSection>
+      ) : null}
+      {confirming ? (
+        <ConfirmDialog
+          title={copy.confirmTitle}
+          description={fill(copy.confirmBody, {
+            imported: String(ticked.length),
+            ignored: String(importable.length - ticked.length),
+          })}
+          tone="warning"
+          confirmLabel={
+            ticked.length === 0
+              ? fill(copy.submitNone, { count: String(importable.length) })
+              : fill(copy.submit, { count: String(ticked.length) })
+          }
+          busyLabel={fill(copy.running, { done: '0', total: String(importable.length) })}
+          cancelLabel={copy.confirmKeep}
+          referenceLabel={t.errors.reference}
+          describeError={confirmError(t)}
+          onConfirm={async () => {
+            setConfirming(false);
+            void run();
+          }}
+          onCancel={() => setConfirming(false)}
         />
       ) : null}
     </>

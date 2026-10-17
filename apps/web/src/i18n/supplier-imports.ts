@@ -9,7 +9,7 @@ const vi = {
   nav: 'Sản phẩm nhập',
   title: 'Duyệt sản phẩm nhập',
   intro:
-    'Sản phẩm lấy từ nhà cung cấp đang chờ bạn. "Nhập và đăng tất cả" nhập và đăng bán một lần; hoặc duyệt từng sản phẩm ở bảng bên dưới.',
+    'Sản phẩm lấy từ nhà cung cấp chờ bạn duyệt từng món, hoặc nhập và đăng bán tất cả một lần.',
   tabs: {
     label: 'Các mục của màn duyệt sản phẩm nhập',
     candidates: 'Chờ duyệt',
@@ -69,8 +69,9 @@ const vi = {
       returned: 'Đã có lại ở nguồn.',
     },
   },
-  noAccess: 'Bạn chưa được giao quyền duyệt sản phẩm nhập.',
-  empty: 'Chưa có sản phẩm nào chờ duyệt. Vào "Nguồn nhà cung cấp" để quét mẫu.',
+  noAccess:
+    'Bạn chưa được giao quyền duyệt sản phẩm nhập. Nhờ chủ spa hoặc quản lý cấp quyền nếu bạn cần dùng mục này.',
+  empty: 'Chưa có sản phẩm nào chờ duyệt. Vào “Nguồn nhà cung cấp” để quét mẫu.',
   emptyFiltered: 'Không có sản phẩm nào khớp bộ lọc.',
   approveReady: 'Duyệt sản phẩm sẵn sàng',
   filters: { state: 'Trạng thái', warning: 'Cần xử lý' },
@@ -214,10 +215,10 @@ const vi = {
       'Nếu viết hoa, SKU sẽ là {sku}. Hệ thống không tự đổi; hãy sửa ô SKU nếu bạn muốn dùng dạng đó.',
     skuTakenBy: 'SKU này đang là của sản phẩm {name}.',
     sourceTexts: 'Chữ ở nguồn: {texts}',
-    suggestion: 'Gợi ý: một thương hiệu Lucy trùng tên đã có; hãy chọn rồi bấm "Nhớ lựa chọn này".',
+    suggestion: 'Gợi ý: một thương hiệu Lucy trùng tên đã có; hãy chọn rồi bấm “Nhớ lựa chọn này”.',
   },
   map: {
-    button: 'Nhớ lựa chọn này',
+    button: 'Nhớ lựa chọn này…',
     titleBrand: 'Nhớ thương hiệu',
     titleCategory: 'Nhớ nhóm',
     body: 'Chữ ở nguồn bên dưới sẽ luôn được hiểu là lựa chọn này. Mọi sản phẩm nhập có chữ đó sẽ được cập nhật; sản phẩm đã có thương hiệu hay nhóm riêng thì giữ nguyên.',
@@ -259,10 +260,12 @@ const vi = {
     categoriesToCreate: 'Nhóm sản phẩm sẽ được tạo: {names}.',
     categoriesTitle: 'Số sản phẩm theo nhóm',
     blockedTitle: '{count} sản phẩm chưa nhập được',
-    blockedBody: 'Các sản phẩm này được giữ lại ở "Chờ duyệt" để bạn xử lý. Lý do: {reasons}.',
+    blockedHeading: 'Chưa nhập được',
+    blockedBody: 'Các sản phẩm này được giữ lại ở “Chờ duyệt” để bạn xử lý. Lý do: {reasons}.',
     selectAll: 'Chọn tất cả',
     clearAll: 'Bỏ chọn tất cả',
     search: 'Tìm theo tên hoặc SKU',
+    searchPlaceholder: 'Ví dụ: sữa rửa mặt hoặc SR-001…',
     filters: { category: 'Nhóm', brand: 'Thương hiệu' },
     table: 'Sản phẩm sẽ nhập và đăng',
     columns: {
@@ -279,7 +282,11 @@ const vi = {
     noBrand: 'Chưa có',
     blockers: { PRICE_MISSING: 'Nguồn không có giá', NOT_OPEN: 'Đã được xử lý' },
     submit: 'Nhập và đăng {count} sản phẩm',
-    submitNone: 'Chưa chọn sản phẩm nào',
+    submitNone: 'Bỏ qua {count} sản phẩm',
+    confirmTitle: 'Nhập và đăng sản phẩm?',
+    confirmBody:
+      'Sẽ nhập và đăng bán {imported} sản phẩm. {ignored} sản phẩm bỏ chọn sẽ được bỏ qua và không được đề xuất lại trừ khi nội dung ở nguồn đổi.',
+    confirmKeep: 'Xem lại',
     running: 'Đang nhập và đăng… {done}/{total}',
     doneTitle: 'Đã xong',
     done: 'Đã nhập và đăng {imported} sản phẩm. {ignored} sản phẩm bạn bỏ chọn được bỏ qua và sẽ không đề xuất lại trừ khi nội dung ở nguồn đổi.',
@@ -311,7 +318,7 @@ const en: SupplierImportsText = {
   nav: 'Review imports',
   title: 'Review imported products',
   intro:
-    'Products read from a supplier are waiting for you. "Import and publish all" imports and puts them on sale in one go; or review them one by one below.',
+    'Products read from a supplier wait for you to review one by one, or to import and put on sale all at once.',
   tabs: { label: 'Sections of the import review', candidates: 'To review', changes: 'Changes' },
   changes: {
     intro:
@@ -367,8 +374,9 @@ const en: SupplierImportsText = {
       returned: 'Back at the source.',
     },
   },
-  noAccess: 'You have not been given access to review imported products.',
-  empty: 'Nothing is waiting for review. Go to "Supplier sources" to run a sample scan.',
+  noAccess:
+    'You have not been given access to review imported products. Ask the spa owner or a manager for access if you need it.',
+  empty: 'Nothing is waiting for review. Go to “Supplier sources” to run a sample scan.',
   emptyFiltered: 'No product matches the filter.',
   approveReady: 'Approve ready products',
   filters: { state: 'Status', warning: 'Needs attention' },
@@ -462,7 +470,7 @@ const en: SupplierImportsText = {
       choose: 'Not chosen',
       price: 'Selling price (optional)',
       priceHint:
-        "The owner sets the price. The supplier's price is for reference and never becomes a cost.",
+        'The owner sets the price. The supplier’s price is for reference and never becomes a cost.',
     },
     problems: {
       nameVi: 'Enter the Vietnamese name (500 characters at most).',
@@ -475,7 +483,7 @@ const en: SupplierImportsText = {
       product: 'Product',
       sku: 'SKU',
       page: 'Product page',
-      openPage: "Open the source's page",
+      openPage: 'Open the source’s page',
       file: 'Picture address',
       variant: 'Variant',
       sharedWith: 'Same picture as',
@@ -515,10 +523,10 @@ const en: SupplierImportsText = {
     skuTakenBy: 'This SKU belongs to the product {name}.',
     sourceTexts: 'Texts at the source: {texts}',
     suggestion:
-      'Hint: a Lucy brand with the same name exists; choose it, then "Remember this choice".',
+      'Hint: a Lucy brand with the same name exists; choose it, then “Remember this choice”.',
   },
   map: {
-    button: 'Remember this choice',
+    button: 'Remember this choice…',
     titleBrand: 'Remember the brand',
     titleCategory: 'Remember the category',
     body: 'The source text below will always mean this choice. Every imported product showing that text is updated; a product that already has its own brand or category keeps it.',
@@ -553,17 +561,19 @@ const en: SupplierImportsText = {
     intro:
       'The system has already chosen the brand, category and selling price of each product. Untick the products you do not want: only ticked products are imported and put on sale.',
     priceNote:
-      "The selling price is the supplier's listed price, rounded to 1,000 VND. You can edit it later on the Products screen; the old price is kept.",
+      'The selling price is the supplier’s listed price, rounded to 1,000 VND. You can edit it later on the Products screen; the old price is kept.',
     loading: 'Preparing the list…',
     summary: '{count} products will be imported and published.',
     newBrands: 'New brands will be created: {brands}.',
     categoriesToCreate: 'Product categories will be created: {names}.',
     categoriesTitle: 'Products per category',
     blockedTitle: '{count} products cannot be imported yet',
-    blockedBody: 'These stay in "To review" for you to handle. Reasons: {reasons}.',
+    blockedHeading: 'Not imported yet',
+    blockedBody: 'These stay in “To review” for you to handle. Reasons: {reasons}.',
     selectAll: 'Select all',
     clearAll: 'Clear all',
     search: 'Search by name or SKU',
+    searchPlaceholder: 'For example: cleanser or SR-001…',
     filters: { category: 'Category', brand: 'Brand' },
     table: 'Products to import and publish',
     columns: {
@@ -580,7 +590,11 @@ const en: SupplierImportsText = {
     noBrand: 'None',
     blockers: { PRICE_MISSING: 'The source has no price', NOT_OPEN: 'Already handled' },
     submit: 'Import and publish {count} products',
-    submitNone: 'No product selected',
+    submitNone: 'Ignore {count} products',
+    confirmTitle: 'Import and publish the products?',
+    confirmBody:
+      '{imported} products will be imported and put on sale. The {ignored} unticked products will be ignored and not proposed again unless their content at the source changes.',
+    confirmKeep: 'Review again',
     running: 'Importing and publishing… {done}/{total}',
     doneTitle: 'Done',
     done: '{imported} products imported and published. The {ignored} products you unticked are ignored and will not be proposed again unless their content at the source changes.',

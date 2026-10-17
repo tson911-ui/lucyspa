@@ -12,6 +12,7 @@ import { PAY_MANUAL_ITEM_KINDS } from '@lucy-spa/contracts';
 import {
   Checkbox,
   DateTextInput,
+  focusFirstInvalid,
   Field,
   FormDialog,
   FormDrawer,
@@ -45,6 +46,15 @@ import { usePayrollCommand } from './payroll-command';
 
 /** The dialogs and drawers of one payroll run (Phase 7 P7-15). Every refusal is shown inside the dialog; the API decides all of it again. */
 
+/** After a refused submit, focus the first field marked invalid once React has drawn the errors (wig "focus first error"). */
+function focusInvalidField(): void {
+  if (typeof requestAnimationFrame !== 'function') return;
+  requestAnimationFrame(() => {
+    const dialogs = document.querySelectorAll('[role="dialog"]');
+    focusFirstInvalid(dialogs[dialogs.length - 1] ?? document);
+  });
+}
+
 export function PaymentDayDialog({
   run,
   onDone,
@@ -63,7 +73,7 @@ export function PaymentDayDialog({
   const invalid = checked && !validPaymentDay(day, run.month);
   async function submit() {
     setChecked(true);
-    if (!validPaymentDay(day, run.month)) return;
+    if (!validPaymentDay(day, run.month)) return focusInvalidField();
     await command.run(
       `/api/v1/pay/runs/${run.id}/payment-day`,
       { expectedVersion: run.version, paymentDay: day },
@@ -84,13 +94,14 @@ export function PaymentDayDialog({
       <FormGrid>
         <Field
           label={p.common.paymentDay}
-          error={invalid ? t.errors.validation : undefined}
+          error={invalid ? p.common.fieldErrors.day : undefined}
           required
           full
         >
           {(control) => (
             <DateTextInput
               {...control}
+              name="day"
               min={window.min}
               max={window.max}
               value={day}
@@ -135,13 +146,13 @@ export function ItemDialog({
   const [checked, setChecked] = useState(false);
   const command = usePayrollCommand();
   const problems = itemProblems(draft);
-  const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+  const invalid = (name: 'employee' | 'amount' | 'reason') =>
+    checked && problems.includes(name) ? p.common.fieldErrors[name] : undefined;
   const name = options.get(draft.employeeUserId) ?? '';
   async function submit() {
     setChecked(true);
     const body = itemBody(draft, command.requestId);
-    if (!body) return;
+    if (!body) return focusInvalidField();
     await command.run(`/api/v1/pay/runs/${run.id}/items`, body, onDone);
   }
   return (
@@ -161,7 +172,7 @@ export function ItemDialog({
             <Select
               {...control}
               value={draft.employeeUserId}
-              placeholder="…"
+              placeholder={p.common.placeholders.employee}
               options={[...options].map(([value, label]) => ({ value, label }))}
               onChange={(event) => setDraft({ ...draft, employeeUserId: event.target.value })}
             />
@@ -186,6 +197,7 @@ export function ItemDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="amount"
               inputMode="numeric"
               autoComplete="off"
               maxLength={20}
@@ -198,6 +210,8 @@ export function ItemDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={draft.reason}
@@ -231,7 +245,7 @@ export function VoidDialog({
   const command = usePayrollCommand();
   async function submit() {
     setChecked(true);
-    if (reasonMissing(reason)) return;
+    if (reasonMissing(reason)) return focusInvalidField();
     await command.run(
       `/api/v1/pay/runs/${run.id}/items/${item.id}/void`,
       { expectedVersion: run.version, reason: reason.trim() },
@@ -256,13 +270,15 @@ export function VoidDialog({
       <FormGrid>
         <Field
           label={p.common.reason}
-          error={checked && reasonMissing(reason) ? t.errors.validation : undefined}
+          error={checked && reasonMissing(reason) ? p.common.fieldErrors.reason : undefined}
           required
           full
         >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={reason}
@@ -300,11 +316,13 @@ export function CloseDialog({
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={fill(x.closeTitle, { month: monthLabel(view.run.month) })}
         description={x.closeDescription}
         labels={{ ...formOverlayLabels(t, x.closeSubmit), submitting: x.closeSubmitting }}
         busy={command.pending}
         dirty={false}
+        submitDisabled={blockers.length > 0}
         error={command.error ? <Notice tone="error">{command.error}</Notice> : undefined}
         onClose={onClose}
         onSubmit={submit}
@@ -367,7 +385,8 @@ export function PayDrawer({
   const missing = checked && (fundId === '' || selected.size === 0);
   async function submit() {
     setChecked(true);
-    if (fundId === '' || selected.size === 0 || !slips.payable) return;
+    if (fundId === '' || selected.size === 0) return focusInvalidField();
+    if (!slips.payable) return;
     await command.run(
       `/api/v1/pay/runs/${view.run.id}/pay`,
       {
@@ -382,6 +401,7 @@ export function PayDrawer({
   return (
     <>
       <FormDrawer
+        suspended={command.asking}
         title={fill(x.payTitle, { month: monthLabel(view.run.month) })}
         labels={{ ...formOverlayLabels(t, x.paySubmit), submitting: x.paySubmitting }}
         busy={command.pending}
@@ -401,7 +421,7 @@ export function PayDrawer({
         <FormGrid>
           <Field
             label={x.payFund}
-            error={missing && fundId === '' ? t.errors.validation : undefined}
+            error={missing && fundId === '' ? p.common.fieldErrors.fund : undefined}
             required
             full
           >
@@ -409,7 +429,7 @@ export function PayDrawer({
               <Select
                 {...control}
                 value={fundId}
-                placeholder="…"
+                placeholder={p.common.placeholders.fund}
                 options={slips.funds.map((fund) => ({
                   value: fund.id,
                   label: fill(x.payFundOption, {
@@ -435,7 +455,7 @@ export function PayDrawer({
           {pending.map((slip) => (
             <Checkbox
               key={slip.id}
-              label={`${slip.employee.name} · ${signedVnd(vndNumber(slip.netVnd), locale)}${
+              label={`${slip.employee.name}: ${signedVnd(vndNumber(slip.netVnd), locale)}${
                 slip.tipsVnd !== '0'
                   ? ` + ${signedVnd(vndNumber(slip.tipsVnd), locale)} ${p.common.tips.toLocaleLowerCase(locale)}`
                   : ''
@@ -481,7 +501,7 @@ export function ReverseDialog({
   const command = usePayrollCommand({ reauth: true });
   async function submit() {
     setChecked(true);
-    if (reasonMissing(reason)) return;
+    if (reasonMissing(reason)) return focusInvalidField();
     await command.run(
       `/api/v1/pay/payslips/${slipId}/reverse`,
       { expectedVersion: version, reason: reason.trim() },
@@ -491,6 +511,7 @@ export function ReverseDialog({
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={x.reverseTitle}
         description={`${name}. ${x.reverseDescription}`}
         labels={{ ...formOverlayLabels(t, x.reverseSubmit), submitting: x.reverseSubmitting }}
@@ -503,13 +524,15 @@ export function ReverseDialog({
         <FormGrid>
           <Field
             label={x.reverseReason}
-            error={checked && reasonMissing(reason) ? t.errors.validation : undefined}
+            error={checked && reasonMissing(reason) ? p.common.fieldErrors.reason : undefined}
             required
             full
           >
             {(control) => (
               <Textarea
                 {...control}
+                name="reason"
+                autoComplete="off"
                 rows={3}
                 maxLength={500}
                 value={reason}

@@ -282,11 +282,14 @@ test('12, 14–17. roles are bundles; assignment decides the scope; nothing is s
     'OFFICIAL_EMPLOYEE',
     'ENDED',
   ]);
-  // The page explains that the assignment, not the role, chooses the branch.
+  // The page header says what a role is in one line; the create/edit form explains that the assignment, not the role,
+  // chooses the branch (session 10: no multi-line explanations in a page header).
   const markup = view(catalog([role]));
-  assert.ok(markup.includes(vi.roleAdmin.intro));
+  assert.ok(markup.includes(vi.roleAdmin.introShort));
+  assert.ok(!markup.includes(vi.roleAdmin.intro));
   assert.match(vi.roleAdmin.intro, /khi gán cho từng nhân sự: toàn hệ thống hoặc một chi nhánh/);
   assert.match(vi.roleAdmin.intro, /không phải phân loại nhân sự/);
+  assert.ok(matrix(catalog([])).includes(vi.roleAdmin.intro));
   assert.ok(matrix(catalog([])).includes(vi.roleAdmin.scopeHelp));
   // The role payload has no branch or scope field.
   assert.deepEqual(Object.keys(createRequest({ ...role, permissions: [], reason: 'r' })).sort(), [

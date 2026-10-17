@@ -7,10 +7,12 @@ import type {
   LoyaltyWalletResponse,
 } from '@lucy-spa/contracts';
 import {
+  Badge as UiBadge,
   Breadcrumbs,
   Card,
   CardHeader,
   DataTable,
+  EmptyState,
   FacetedFilter,
   Grid,
   ListSection,
@@ -38,13 +40,12 @@ import {
   LOYALTY_RESET_KEYS,
   normalizeLedger,
 } from '../../../lib/workforce/loyalty-list';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useBranches } from '../data';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink } from '../link';
 import { useAccount, useWorkforce } from '../session';
 import {
-  Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -103,7 +104,9 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
     return (
       <>
         <PageHeader title={l.title} intro={l.intro} />
-        <Empty>{l.noBranch}</Empty>
+        <EmptyState icon="building" title={l.empty.noBranchTitle}>
+          {l.noBranch}
+        </EmptyState>
       </>
     );
   }
@@ -139,7 +142,7 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
     {
       key: 'kind',
       header: l.columns.kind,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (entry) => l.kinds[entry.kind],
     },
@@ -163,14 +166,14 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
       hideBelow: 'lg',
       cell: (entry) =>
         entry.invoiceCode
-          ? `${entry.invoiceCode}${entry.paidSeq && entry.paidSeq > 1 ? ` · #${entry.paidSeq}` : ''}`
+          ? `${entry.invoiceCode}${entry.paidSeq && entry.paidSeq > 1 ? ` (#${entry.paidSeq})` : ''}`
           : (entry.actorName ?? '—'),
     },
     {
       key: 'detail',
       header: l.columns.detail,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (entry) =>
         entry.reason ??
@@ -188,7 +191,7 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
                 items={[
                   {
                     id: 'correct',
-                    label: l.correct,
+                    label: opensInput(l.correct),
                     icon: 'edit',
                     disabled: !canCorrect(entry),
                     onSelect: () => setOverlay({ correcting: entry }),
@@ -206,18 +209,18 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
     <>
       <PageHeader
         title={customer.displayName}
-        intro={[customer.phoneMasked, customer.emailMasked].filter(Boolean).join(' · ')}
+        intro={[customer.phoneMasked, customer.emailMasked].filter(Boolean).join(', ')}
         breadcrumbs={
           <Breadcrumbs
             label={l.profile.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: l.title, href: `${base}/loyalty` }, { label: customer.displayName }]}
           />
         }
       >
         {canAdjust ? (
           <Button variant="primary" icon="plus" onClick={() => setOverlay({ correcting: null })}>
-            {l.profile.adjust}
+            {opensInput(l.profile.adjust)}
           </Button>
         ) : null}
       </PageHeader>
@@ -271,7 +274,20 @@ export function LoyaltyCustomerScreen({ userId }: { userId: string }) {
             }
             empty={
               ledger.data ? (
-                <Empty>{list.wallet ? l.profile.noEntriesFiltered : l.profile.noEntries}</Empty>
+                list.wallet ? (
+                  <EmptyState
+                    title={l.empty.filteredTitle}
+                    action={
+                      <Button variant="secondary" onClick={() => updateList({ wallet: '' })}>
+                        {l.empty.showAll}
+                      </Button>
+                    }
+                  >
+                    {l.profile.noEntriesFiltered}
+                  </EmptyState>
+                ) : (
+                  <EmptyState title={l.empty.ledgerTitle}>{l.empty.ledgerText}</EmptyState>
+                )
               ) : undefined
             }
             paging={{
@@ -319,10 +335,8 @@ function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
   const l = loyaltyDictionary(locale);
   return (
     <Card as="section" aria-label={l.wallets[wallet.wallet]}>
-      <CardHeader
-        title={l.wallets[wallet.wallet]}
-        actions={<Badge tone={tierTone(wallet.tier)}>{l.tiers[wallet.tier]}</Badge>}
-      />
+      {/* Headings are text only (Owner rule): the tier badge sits under the balance, not beside the card title. */}
+      <CardHeader title={l.wallets[wallet.wallet]} />
       <Stat
         label={l.profile.balance}
         value={wallet.balancePoints}
@@ -336,6 +350,11 @@ function WalletCard({ wallet }: { wallet: LoyaltyWalletResponse }) {
             : l.profile.topTier
         }
       />
+      <div>
+        <UiBadge tone={tierTone(wallet.tier)} icon={wallet.tier === 'NONE' ? false : 'award'}>
+          {l.tiers[wallet.tier]}
+        </UiBadge>
+      </div>
     </Card>
   );
 }

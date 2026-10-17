@@ -1,0 +1,198 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): admin-b pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages. */
+
+/* ---- A note in running prose (how a report is counted, who sees what, a scope limit): a muted line with its icon, never a tinted box
+   on the canvas or inside a card (FR1, B12). Status notices (errors, warnings that need action) stay kit `Notice` tints. ------------ */
+.ls-adminb-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ls-space-2);
+  margin: 0;
+  max-inline-size: 72ch;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-sm);
+  line-height: var(--ls-leading-sm);
+  overflow-wrap: break-word;
+}
+
+.ls-adminb-note > svg {
+  flex: none;
+  margin-block-start: var(--ls-icon-nudge);
+}
+
+.ls-adminb-note[data-tone='warning'] > svg {
+  color: var(--ls-warning);
+}
+
+/* A result line (a connection check passed or failed): the words in the text colour, the icon carries the status colour (C5). */
+.ls-adminb-note:is([data-tone='success'], [data-tone='danger']) {
+  color: var(--ls-text);
+}
+
+.ls-adminb-note[data-tone='success'] > svg {
+  color: var(--ls-success);
+}
+
+.ls-adminb-note[data-tone='danger'] > svg {
+  color: var(--ls-danger);
+}
+
+/* AI settings: the check result and its time as two lines, 4 px apart. */
+.ls-adminb-check {
+  display: grid;
+  gap: var(--ls-space-1);
+}
+
+/* A long settings form keeps a readable line (DESIGN 10 form page: one column, max 720 px). */
+.ls-adminb-form {
+  max-inline-size: calc(var(--ls-field-lg) * 1.5);
+}
+
+/* A second line under a name in a table cell (an employee code, an area, a reason): 12 px muted, never joined with a middle dot. */
+.ls-adminb-sub {
+  display: block;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+  line-height: var(--ls-leading-sm);
+  overflow-wrap: break-word;
+}
+
+/* Codes and identifiers (employee code, SKU, event code) read as tabular figures and never break inside. */
+.ls-adminb-code {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- A sub-heading inside a card or drawer (assistant answer, audit before/after): the compact heading role (17/600), not the browser h3
+   default. -------------------------------------------------------------------------------------------------------------------------- */
+.ls-adminb-heading {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* ---- Report KPI row (reports-kit.tsx KpiRow): equal cards, the column count follows the number of cards so no card is left alone on
+   a line and two cards are never stretched to half the page (plan PATTERN-REPORT, C18). Each card is at least 160 px (field-sm). ---- */
+.ls-adminb-kpis-frame {
+  container-type: inline-size;
+}
+
+.ls-adminb-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--ls-field-sm) * 1.25)), 1fr));
+  align-items: stretch;
+  gap: var(--ls-space-4);
+}
+
+.ls-adminb-kpis > * {
+  min-width: 0;
+}
+
+@container (min-width: 22rem) {
+  .ls-adminb-kpis:is([data-count='4'], [data-count='5'], [data-count='6']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Five cards: two, two and one full-width on a narrow row; three over two (the lower two wider) from 32rem; five from 52rem. Every
+     line ends at the same edge. */
+  .ls-adminb-kpis[data-count='5'] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ls-adminb-kpis[data-count='5'] > * {
+    grid-column: span 3;
+  }
+
+  .ls-adminb-kpis[data-count='5'] > :nth-child(5) {
+    grid-column: span 6;
+  }
+}
+
+@container (min-width: 32rem) {
+  .ls-adminb-kpis:is([data-count='3'], [data-count='6']) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ls-adminb-kpis[data-count='5'] > * {
+    grid-column: span 2;
+  }
+
+  .ls-adminb-kpis[data-count='5'] > :nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
+@container (min-width: 42rem) {
+  .ls-adminb-kpis[data-count='4'] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 52rem) {
+  .ls-adminb-kpis[data-count='5'] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ls-adminb-kpis[data-count='5'] > *,
+  .ls-adminb-kpis[data-count='5'] > :nth-child(n + 4) {
+    grid-column: auto;
+  }
+}
+
+@container (min-width: 62rem) {
+  .ls-adminb-kpis[data-count='6'] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* ---- Profit statement (reports-profit.tsx): a fixed seven-line statement; the total "Lãi tạm tính" has a hairline above it so the
+   result reads as the sum of the lines above (plan reports-profit). ------------------------------------------------------------- */
+.ls-adminb-statement tbody tr:last-child > td {
+  border-block-start: 1px solid var(--ls-border-control);
+}
+
+/* ---- Names and lines in a table cell that wrap by word (Owner answer 7; replaces the kit nowrap `.ls-cell-truncate` span where these
+   screens used it). ----------------------------------------------------------------------------------------------------------------- */
+.ls-adminb-wrap {
+  display: block;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Quiet text in a cell ("Không có", "Chưa ghi"): muted, no pill. */
+.ls-adminb-muted {
+  color: var(--ls-text-muted);
+}
+
+/* What still needs work on a row (supplier imports "Cần xử lý"): words in the text colour with a 16 px warning icon, so a row carries one
+   status badge only (C5: the icon and the word, never colour alone). */
+.ls-adminb-issue {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--ls-space-1);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.ls-adminb-issue > svg {
+  flex: none;
+  margin-block-start: var(--ls-icon-nudge);
+  color: var(--ls-warning);
+}
+
+/* The printed payslip (payroll-slip.tsx) carries the shop text logo above the employee name (print only, kit `.ls-print-only`). */
+.ls-adminb-slip-brand {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+}
+
+/* A file name under a picture field: a long name without spaces breaks anywhere instead of pushing the drawer wider. */
+.ls-adminb-file {
+  overflow-wrap: anywhere;
+}

@@ -42,6 +42,7 @@ export function RecoveryEmailView({
   const { confirm, dialog } = useReauthentication();
   const [flowToken, setFlowToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState(false);
   const submit = useSubmit();
   const state = recoveryEmailState(account);
   if (state === 'unknown' || !account) return null;
@@ -69,7 +70,14 @@ export function RecoveryEmailView({
 
   async function verify(event: FormEvent) {
     event.preventDefault();
-    if (!flowToken || !OTP_PATTERN.test(code.trim())) return;
+    if (!flowToken) return;
+    // A malformed code is said at the field and takes focus (wig recovery-email.tsx:72: it used to return silently).
+    if (!OTP_PATTERN.test(code.trim())) {
+      setCodeError(true);
+      document.getElementById('recovery-code')?.focus();
+      return;
+    }
+    setCodeError(false);
     const ok = await submit.run(async () => {
       try {
         await verifyRecoveryEmail(api, flowToken, code);
@@ -130,16 +138,19 @@ export function RecoveryEmailView({
                   required
                   requiredLabel={t.common.required}
                   width="sm"
+                  error={codeError ? texts.codeInvalid : undefined}
                 >
                   {(control) => (
                     <TextInput
                       {...control}
+                      name="recovery-code"
+                      spellCheck={false}
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       pattern="[0-9]{6}"
                       maxLength={6}
                       value={code}
-                      onChange={(event) => setCode(event.target.value)}
+                      onChange={(event) => (setCode(event.target.value), setCodeError(false))}
                     />
                   )}
                 </KitField>

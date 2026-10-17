@@ -7,9 +7,11 @@ import {
   type ChatRequestStatus,
 } from '@lucy-spa/contracts';
 import {
+  Button,
+  ConfirmDialog,
   DataTable,
+  EmptyState,
   FacetedFilter,
-  ListSection,
   ListToolbar,
   RowActions,
   useUrlState,
@@ -28,7 +30,8 @@ import {
   telHref,
 } from '../../../lib/workforce/chat-requests';
 import { formatDateTime } from '../../../lib/workforce/format';
-import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
+import { confirmError } from '../../../lib/workforce/form-labels';
+import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
@@ -50,20 +53,23 @@ export function ChatRequestsScreen() {
     return (
       <>
         <PageHeader title={text.title} intro={text.intro} />
-        <Empty>{text.noAccess}</Empty>
+        <Empty title={text.noAccessTitle}>{text.noAccess}</Empty>
       </>
     );
   }
   return <ChatRequestsPage />;
 }
 
+/** Stable options for the list's address-bar state (status filter and page). */
+const CHAT_REQUEST_LIST_OPTIONS = {
+  normalize: normalizeChatRequestList,
+  resetOnChange: CHAT_REQUEST_PAGE_KEYS,
+};
+
 function ChatRequestsPage() {
   const { api, t, locale } = useWorkforce();
   const text = chatRequestsDictionary(locale);
-  const [state, update] = useUrlState(CHAT_REQUEST_LIST_DEFAULTS, {
-    normalize: normalizeChatRequestList,
-    resetOnChange: CHAT_REQUEST_PAGE_KEYS,
-  });
+  const [state, update] = useUrlState(CHAT_REQUEST_LIST_DEFAULTS, CHAT_REQUEST_LIST_OPTIONS);
   const list = useResource(
     () => api.get<ChatRequestList>(BASE, { status: state.status || undefined, page: state.page }),
     [api, state.status, state.page],
@@ -71,6 +77,7 @@ function ChatRequestsPage() {
   const data = list.data;
   const notify = useSuccessToast();
   const [failure, setFailure] = useState<string | null>(null);
+  const [closing, setClosing] = useState<ChatRequestRow | null>(null);
 
   async function move(row: ChatRequestRow, status: 'CALLED' | 'CLOSED') {
     setFailure(null);
@@ -88,9 +95,9 @@ function ChatRequestsPage() {
       key: 'customer',
       header: text.columns.customer,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
-      cell: (row) => <span title={row.name ?? ''}>{row.name ?? text.noName}</span>,
+      cell: (row) => row.name ?? text.noName,
     },
     {
       key: 'phone',
@@ -113,9 +120,9 @@ function ChatRequestsPage() {
       key: 'note',
       header: text.columns.note,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
-      cell: (row) => <span title={row.note ?? ''}>{row.note ?? text.noName}</span>,
+      cell: (row) => row.note ?? text.noName,
     },
     {
       key: 'branch',
@@ -148,7 +155,8 @@ function ChatRequestsPage() {
               id: status,
               label: status === 'CALLED' ? text.menu.called : text.menu.closed,
               icon: status === 'CALLED' ? 'phone' : 'check',
-              onSelect: () => void move(row, status),
+              // Closing only moves forward and starts the 90-day purge: it is confirmed first (wig chat-requests.tsx:151).
+              onSelect: () => (status === 'CLOSED' ? setClosing(row) : void move(row, status)),
             }))}
           />
         );
@@ -160,20 +168,22 @@ function ChatRequestsPage() {
     <>
       <PageHeader title={text.title} intro={text.intro} />
       {failure ? <Notice tone="error">{failure}</Notice> : null}
-      <ListSection title={text.table}>
+      {/* The page's one list: no "Danh sách yêu cầu" h2 (the table caption keeps the name); no bare number in the toolbar. */}
+      <div className="ls-self-list">
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={state.status ? 1 : 0}
           onReset={() => update({ status: '' })}
           reload={{ label: t.common.reload, onClick: () => void list.reload() }}
-          resultCount={data ? String(data.total) : undefined}
+          resultCount={data && data.total > 0 ? resultsText(t, data.total) : undefined}
           filters={
             <FacetedFilter
               label={text.filterStatus}
               clearLabel={t.common.list.clearChoice}
               options={CHAT_REQUEST_STATUSES.map((value: ChatRequestStatus) => ({
                 value,
-                label: `${text.statuses[value]} (${data?.counts[value] ?? 0})`,
+                // No count in a filter label (Owner count rule); the table's line carries the total.
+                label: text.statuses[value],
               }))}
               selected={state.status ? [state.status] : []}
               onChange={([value]) => update({ status: value ?? '' })}
@@ -182,7 +192,6 @@ function ChatRequestsPage() {
         />
         <DataTable
           mode="server"
-          className="ls-cards-one-line"
           caption={fill(t.common.list.table, { list: text.table })}
           columns={columns}
           rows={data?.items ?? []}
@@ -194,7 +203,23 @@ function ChatRequestsPage() {
               <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
             ) : undefined
           }
-          empty={data ? <Empty>{state.status ? text.emptyFiltered : text.empty}</Empty> : undefined}
+          empty={
+            data ? (
+              <EmptyState
+                icon="phone"
+                title={state.status ? text.emptyFilteredTitle : text.emptyTitle}
+                action={
+                  state.status ? (
+                    <Button variant="secondary" onClick={() => update({ status: '' })}>
+                      {text.showAll}
+                    </Button>
+                  ) : undefined
+                }
+              >
+                {state.status ? text.emptyFiltered : text.empty}
+              </EmptyState>
+            ) : undefined
+          }
           paging={{
             page: state.page,
             pageSize: data?.pageSize ?? 20,
@@ -203,7 +228,27 @@ function ChatRequestsPage() {
             labels: paginationLabels(t, text.table),
           }}
         />
-      </ListSection>
+      </div>
+      {closing ? (
+        <ConfirmDialog
+          title={text.closeTitle}
+          description={text.closeBody}
+          tone="warning"
+          confirmLabel={text.menu.closed}
+          cancelLabel={text.closeKeep}
+          describeError={confirmError(t)}
+          onCancel={() => setClosing(null)}
+          onConfirm={async () => {
+            await api.post(`${BASE}/${closing.id}/status`, {
+              expectedRowVersion: closing.rowVersion,
+              status: 'CLOSED',
+            });
+            setClosing(null);
+            notify(text.closedToast);
+            await list.reload().catch(() => undefined);
+          }}
+        />
+      ) : null}
     </>
   );
 }

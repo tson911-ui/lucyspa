@@ -115,7 +115,9 @@ test('check-in is a button on the row only when the API offers it; the other dec
     <BookingsSection
       loading={false}
       empty={null}
-      time={(iso) => iso.slice(11, 16)}
+      time={Object.assign((iso: string) => iso.slice(11, 16), {
+        range: (start: string, end: string) => `${start.slice(11, 16)}–${end.slice(11, 16)}`,
+      })}
       onCommand={noop}
       bookings={[
         row('BK-OPEN', { arrive: true, noShow: false, advance: false }),
@@ -202,9 +204,10 @@ test('changing a waiting walk-in request: one select per service, nothing to sav
     'en',
   );
   assert.equal(html.match(/<select/g)?.length, 2);
-  assert.ok(html.includes('Hair wash · 30′') && html.includes('Massage · 60′'));
+  assert.ok(html.includes('Hair wash, 30 min') && html.includes('Massage, 60 min'));
   assert.ok(html.includes(`Thu ${en.walkIn.notCheckedIn}`));
-  assert.match(html, /<button[^>]*type="submit"[^>]*disabled/);
+  // Session 10 (wig :295): the save button stays enabled until a request starts; saving with nothing changed says so instead.
+  assert.doesNotMatch(html, /<button[^>]*type="submit"[^>]*disabled/);
 });
 
 test('open visits are listed as service lines; a visit without lines keeps one row for its actions', () => {
@@ -230,6 +233,9 @@ test('member lookup: exact phone or email only, one primary button', () => {
   );
   assert.ok(html.includes(en.walkIn.lookupHint));
   assert.ok(html.includes(en.walkIn.phone) && html.includes(en.walkIn.email));
+  // Two choices are a radio toggle, not a pop-up menu (HIG C47).
+  assert.equal(html.match(/type="radio"/g)?.length, 2);
+  assert.doesNotMatch(html, /<select/);
   assert.ok(html.includes(en.walkIn.search));
   assert.ok(!html.includes(en.walkIn.addMember), 'adding appears only after a member is found');
   assert.ok(html.indexOf(en.common.cancel) < html.lastIndexOf(en.walkIn.search), 'primary last');
@@ -249,7 +255,9 @@ test('add service dialog: loads the catalog allowed for the visit before showing
   );
   assert.ok(html.includes(vi.common.loading));
   assert.ok(html.includes('V-1'));
-  assert.match(html, /<button[^>]*type="submit"[^>]*disabled/);
+  // No choice is offered before the catalog loads; the submit stays enabled (validate on submit) and sends nothing until then.
+  assert.doesNotMatch(html, /<select/);
+  assert.doesNotMatch(html, /<button[^>]*type="submit"[^>]*disabled/);
 });
 
 const target = {
@@ -279,7 +287,7 @@ const options = (overrides: Partial<ReplacementOptionsResponse> = {}) =>
     ...overrides,
   }) as unknown as ReplacementOptionsResponse;
 
-test('reassignment dialog: scope, affected services, candidates, reason; confirm waits for a valid choice', () => {
+test('reassignment dialog: scope, affected services, candidates, reason; confirm stays enabled and a refused submit marks the fields', () => {
   const props = {
     anchor: target,
     scope: 'PARTICIPANT' as const,
@@ -299,12 +307,13 @@ test('reassignment dialog: scope, affected services, candidates, reason; confirm
     onClose: noop,
   };
   const html = render(<ReassignmentDialog {...props} options={options()} />, staff, 'en');
-  assert.ok(html.includes('BK-9 · Massage'));
+  assert.ok(html.includes('BK-9, Massage'));
   assert.ok(html.includes(en.reassignment.affected) && html.includes('03:00'));
-  assert.ok(html.includes(`Thu · ${en.reassignment.preferred}`));
+  assert.ok(html.includes(`Thu, ${en.reassignment.preferred}`));
   assert.ok(html.includes(en.reassignment.reasonHint));
   assert.ok(!html.includes(en.reassignment.acknowledge), 'only for a specific-KTV request');
-  assert.match(html, /<button[^>]*type="submit"[^>]*disabled/);
+  // Session 10 (wig reassignment-dialog.tsx:74): enabled until the request starts; a refused submit marks the missing fields.
+  assert.doesNotMatch(html, /<button[^>]*type="submit"[^>]*disabled/);
   const specific = render(
     <ReassignmentDialog
       {...props}

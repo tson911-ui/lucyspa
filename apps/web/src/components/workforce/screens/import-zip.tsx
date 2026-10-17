@@ -21,6 +21,7 @@ import { paginationLabels } from '../../../lib/workforce/list-view';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { ApiError } from '../../../lib/workforce/api';
 import { useWorkforce } from '../session';
+import { decimalSeparator } from './reports-format';
 import { Badge, Empty, Notice } from '../ui';
 
 const BASE = '/api/v1/product-image-imports';
@@ -43,7 +44,7 @@ export function ImageZipDialog({ onClose }: { onClose: () => void }) {
   const [done, setDone] = useState<number | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [page, setPage] = useState({ page: 1, pageSize: 20 });
-  const separator = locale === 'vi' ? ',' : '.';
+  const separator = decimalSeparator(locale);
   const size = megabytes(MAX_ZIP_BYTES);
 
   const problem = (error: unknown): string => {
@@ -103,14 +104,14 @@ export function ImageZipDialog({ onClose }: { onClose: () => void }) {
       key: 'file',
       header: text.columns.file,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (item) => item.fileName,
     },
     {
       key: 'product',
       header: text.columns.product,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'md',
       cell: (item) => item.product?.name ?? '—',
@@ -185,9 +186,8 @@ export function ImageZipDialog({ onClose }: { onClose: () => void }) {
                 {file ? (
                   <>
                     <span className="ls-dropzone-title">{file.name}</span>
-                    <span className="ls-dropzone-sub">
-                      {formatBytes(file.size, separator)} · {text.change}
-                    </span>
+                    <span className="ls-dropzone-sub">{formatBytes(file.size, separator)}</span>
+                    <span className="ls-dropzone-sub">{text.change}</span>
                   </>
                 ) : (
                   <>

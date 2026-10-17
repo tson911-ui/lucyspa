@@ -28,6 +28,7 @@ import { formatDate, formatDateTime } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { reasonProblem } from '../../../lib/workforce/pay';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { usePayCommand } from './pay-command';
@@ -63,7 +64,7 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
       key: 'employee',
       header: c.columns.employee,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       cell: (row) => row.employee.name,
     },
     {
@@ -106,7 +107,7 @@ export function InvoiceTipsCard({ invoiceId }: { invoiceId: string }) {
             items={[
               {
                 id: 'reverse',
-                label: c.reverse,
+                label: opensInput(c.reverse),
                 icon: 'refresh',
                 onSelect: () => setReversing(row),
               },
@@ -188,13 +189,15 @@ function ReverseTipDialog({
       <FormGrid>
         <Field
           label={c.reverseReason}
-          error={missing ? t.errors.validation : undefined}
+          error={missing ? payDictionary(locale).common.fieldErrors.reasonRequired : undefined}
           required
           full
         >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={reason}
@@ -247,18 +250,18 @@ function EarningsBody({ invoiceId }: { invoiceId: string }) {
       key: 'kind',
       header: c.columns.kind,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       cell: (item) => (
         <>
           {c.kinds[item.kind]}
-          <span className="ls-hint"> · {lineName(item)}</span>
+          <span className="ls-adminb-sub">{lineName(item)}</span>
         </>
       ),
     },
     {
       key: 'employee',
       header: c.columns.employee,
-      truncate: true,
+      wrap: true,
       hidePhone: true,
       cell: (item) => item.employee.name,
     },
@@ -299,13 +302,13 @@ function EarningsBody({ invoiceId }: { invoiceId: string }) {
       key: 'line',
       header: c.lineColumns.line,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       cell: (line) => line.name,
     },
     {
       key: 'person',
       header: c.lineColumns.person,
-      truncate: true,
+      wrap: true,
       cell: (line) =>
         line.person ? (
           <>
@@ -423,7 +426,12 @@ function SellerDialog({
       onSubmit={submit}
     >
       <FormGrid>
-        <Field label={c.seller} error={noPerson ? t.errors.validation : undefined} required full>
+        <Field
+          label={c.seller}
+          error={noPerson ? payDictionary(locale).common.fieldErrors.person : undefined}
+          required
+          full
+        >
           {(control) => (
             <Select
               {...control}
@@ -438,13 +446,15 @@ function SellerDialog({
         </Field>
         <Field
           label={c.sellerReason}
-          error={noReason ? t.errors.validation : undefined}
+          error={noReason ? payDictionary(locale).common.fieldErrors.reasonRequired : undefined}
           required
           full
         >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={reason}

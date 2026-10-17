@@ -23,6 +23,7 @@ interface Words {
     export: string;
     updated: string;
     rangeTooLong: string;
+    emptyTitle: string;
   };
   buckets: { day: string; week: string; month: string; quarter: string; year: string };
   bucketsBy: { day: string; week: string; month: string; quarter: string; year: string };
@@ -83,7 +84,7 @@ interface Words {
   refunds: {
     title: string;
     intro: string;
-    totals: string;
+    kpi: { refunds: string; exchanges: string; reversals: string };
     kinds: Record<string, string>;
     columns: {
       date: string;
@@ -153,9 +154,10 @@ const vi: Words = {
     compareVsPrevious: 'So với kỳ trước',
     vsPrevious: 'so với kỳ trước',
     reload: 'Tải lại',
-    export: 'Xuất file',
+    export: 'Xuất file…',
     updated: 'Số liệu lúc {time}',
     rangeTooLong: 'Chọn tối đa {days} ngày mỗi lần xem.',
+    emptyTitle: 'Chưa có số liệu',
   },
   buckets: { day: 'Ngày', week: 'Tuần', month: 'Tháng', quarter: 'Quý', year: 'Năm' },
   bucketsBy: {
@@ -242,7 +244,7 @@ const vi: Words = {
       'Có {amount} chưa biết thuộc nhóm Spa hay Mỹ phẩm. Số này vẫn nằm trong doanh thu.',
     definitionTitle: 'Cách tính doanh thu',
     definition:
-      'Doanh thu là tiền đã thu thực tế (tiền mặt và PayOS) trừ tiền đã hoàn lại cho khách, tính theo ngày tiền về. Không gồm tiền tip. Gói liệu trình tính lúc bán, các buổi dùng sau đó không tính lại. Đơn online tính vào ngày giao hàng; đã thu mà chưa giao thì nằm ở mục "Đã thu, chưa giao". Khoản thu bị đảo vì nhập nhầm không tính.',
+      'Doanh thu là tiền đã thu thực tế (tiền mặt và PayOS) trừ tiền đã hoàn lại cho khách, tính theo ngày tiền về. Không gồm tiền tip. Gói liệu trình tính lúc bán, các buổi dùng sau đó không tính lại. Đơn online tính vào ngày giao hàng; đã thu mà chưa giao thì nằm ở mục “Đã thu, chưa giao”. Khoản thu bị đảo vì nhập nhầm không tính.',
     empty: 'Chưa có khoản thu nào trong giai đoạn này.',
     emptyBranches: 'Chưa có chi nhánh nào để xem báo cáo.',
     donutTitle: 'Doanh thu theo nhóm',
@@ -253,7 +255,7 @@ const vi: Words = {
     title: 'Hoàn tiền và điều chỉnh',
     intro:
       'Tiền đã hoàn lại cho khách, tiền trả lại khi đổi hàng và các khoản thu bị đảo do nhập nhầm.',
-    totals: 'Hoàn tiền {refunds} · Đổi hàng {exchanges} · Khoản thu bị đảo {reversals}',
+    kpi: { refunds: 'Hoàn tiền', exchanges: 'Trả lại khi đổi hàng', reversals: 'Khoản thu bị đảo' },
     kinds: {
       REFUND: 'Hoàn tiền sản phẩm',
       EXCHANGE: 'Trả lại khi đổi hàng',
@@ -285,10 +287,10 @@ const vi: Words = {
     csv: 'CSV (.csv)',
     csvHint: 'Chỉ có số liệu, mở được bằng mọi phần mềm bảng tính.',
     pdf: 'PDF',
-    pdfHint: 'Mở hộp thoại in của trình duyệt, chọn "Lưu dưới dạng PDF".',
+    pdfHint: 'Mở hộp thoại in của trình duyệt, chọn “Lưu dưới dạng PDF”.',
     submit: 'Tải xuống',
     print: 'In trang',
-    submitting: 'Đang tạo file...',
+    submitting: 'Đang tạo file…',
     done: 'Đã tạo file {name}.',
     cap: 'Mỗi file tối đa 100.000 dòng.',
     scope: 'Chỉ gồm các chi nhánh bạn được phép xuất báo cáo.',
@@ -345,9 +347,10 @@ const en: Words = {
     compareVsPrevious: 'Compare with previous period',
     vsPrevious: 'compared with the previous period',
     reload: 'Reload',
-    export: 'Export',
+    export: 'Export…',
     updated: 'Data as of {time}',
     rangeTooLong: 'Choose at most {days} days at a time.',
+    emptyTitle: 'No figures yet',
   },
   buckets: { day: 'Day', week: 'Week', month: 'Month', quarter: 'Quarter', year: 'Year' },
   bucketsBy: {
@@ -434,7 +437,7 @@ const en: Words = {
     unclassified: '{amount} could not be placed in Spa or Cosmetics. It is still part of revenue.',
     definitionTitle: 'How revenue is counted',
     definition:
-      'Revenue is the money actually collected (cash and PayOS) minus the money given back to customers, on the day the money came in. Tips are not included. A combo counts when it is sold; sessions used later are not counted again. An online order counts on its delivery day; money collected but not delivered yet is under "Collected, not delivered". A payment reversed as a mistake is not counted.',
+      'Revenue is the money actually collected (cash and PayOS) minus the money given back to customers, on the day the money came in. Tips are not included. A combo counts when it is sold; sessions used later are not counted again. An online order counts on its delivery day; money collected but not delivered yet is under “Collected, not delivered”. A payment reversed as a mistake is not counted.',
     empty: 'No money was collected in this period.',
     emptyBranches: 'There is no branch to show a report for.',
     donutTitle: 'Revenue by group',
@@ -445,7 +448,11 @@ const en: Words = {
     title: 'Refunds and corrections',
     intro:
       'Money given back to customers, money paid back on exchanges and payments reversed as a mistake.',
-    totals: 'Refunds {refunds} · Exchanges {exchanges} · Reversed payments {reversals}',
+    kpi: {
+      refunds: 'Refunds',
+      exchanges: 'Paid back on exchanges',
+      reversals: 'Reversed payments',
+    },
     kinds: {
       REFUND: 'Product refund',
       EXCHANGE: 'Paid back on exchange',
@@ -478,10 +485,10 @@ const en: Words = {
     csv: 'CSV (.csv)',
     csvHint: 'Figures only; opens in any spreadsheet program.',
     pdf: 'PDF',
-    pdfHint: 'Opens the browser print dialog; choose "Save as PDF".',
+    pdfHint: 'Opens the browser print dialog; choose “Save as PDF”.',
     submit: 'Download',
     print: 'Print page',
-    submitting: 'Preparing the file...',
+    submitting: 'Preparing the file…',
     done: 'File {name} is ready.',
     cap: 'A file holds at most 100,000 rows.',
     scope: 'Only the branches you may export reports for.',

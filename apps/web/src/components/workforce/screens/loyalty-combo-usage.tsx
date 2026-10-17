@@ -8,12 +8,14 @@ import type {
 import {
   ConfirmDialog,
   DataTable,
+  EmptyState,
   ListSection,
   RowActions,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
+import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
 import {
   comboErrorText,
@@ -24,9 +26,11 @@ import {
 import { confirmError } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { LOYALTY_PAGE_SIZE } from '../../../lib/workforce/loyalty-list';
 import { posErrorMessage } from '../../../lib/workforce/pos';
 import { withReauthentication } from '../../../lib/workforce/reauth';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useReauthentication } from '../reauth-dialog';
 import { PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
@@ -49,8 +53,9 @@ export function LoyaltyComboUsage({
   const { api, t, locale, base } = useWorkforce();
   const c = comboDictionary(locale);
   const x = c.usage;
+  const l = loyaltyDictionary(locale);
   const notify = useSuccessToast();
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const list = useResource(
     () => api.get<ComboUsagePageResponse>('/api/v1/combos/usage', { page }),
     [api, page],
@@ -70,7 +75,7 @@ export function LoyaltyComboUsage({
     {
       key: 'owner',
       header: x.columns.owner,
-      truncate: true,
+      wrap: true,
       cell: (row) => (
         <Link className="ls-link" href={`${base}/loyalty/${row.owner.id}`}>
           {row.owner.displayName}
@@ -81,7 +86,7 @@ export function LoyaltyComboUsage({
       key: 'combo',
       header: x.columns.combo,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       cell: (row) => comboName({ nameVi: row.comboNameVi, nameEn: row.comboNameEn }, locale),
     },
     {
@@ -102,7 +107,7 @@ export function LoyaltyComboUsage({
       key: 'technician',
       header: x.columns.technician,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       cell: (row) => row.technicianName ?? '—',
     },
     {
@@ -130,7 +135,7 @@ export function LoyaltyComboUsage({
               ? [
                   {
                     id: 'restore',
-                    label: x.restore,
+                    label: opensInput(x.restore),
                     icon: 'swap' as const,
                     onSelect: () => setRestoring(row),
                   },
@@ -169,7 +174,11 @@ export function LoyaltyComboUsage({
               <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
             ) : undefined
           }
-          empty={list.data ? <Empty>{x.none}</Empty> : undefined}
+          empty={
+            list.data ? (
+              <EmptyState title={l.empty.comboUsageTitle}>{l.empty.comboUsageText}</EmptyState>
+            ) : undefined
+          }
           paging={{
             page,
             pageSize: LOYALTY_PAGE_SIZE,
@@ -181,6 +190,7 @@ export function LoyaltyComboUsage({
       </ListSection>
       {restoring ? (
         <ConfirmDialog
+          suspended={asking}
           title={x.restoreTitle}
           description={x.restoreBody}
           facts={[
@@ -220,7 +230,7 @@ export function LoyaltyComboUsage({
           }}
         />
       ) : null}
-      {/* Last, so the password confirmation sits above the confirmation dialog that asked for it. */}
+      {/* The password check (C60): the confirmation that asked for it is suspended while it is open, so only one modal shows. */}
       {dialog}
     </>
   );
@@ -235,14 +245,15 @@ export function FrozenCombos() {
   const c = comboDictionary(locale);
   const f = c.frozen;
   const list = useResource(() => api.get<ComboFrozenListResponse>('/api/v1/combos/frozen'), [api]);
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+  // The pager lives in the address bar under its own key, so Back/Forward and a shared link restore the page.
+  const paging = useUrlPaging('fzp', t, f.title);
   const rows = list.data?.items ?? [];
   const columns: DataTableColumn<ComboFrozenListResponse['items'][number]>[] = [
     {
       key: 'owner',
       header: f.columns.owner,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
         <Link className="ls-link" href={`${base}/loyalty/${row.owner.id}`}>
@@ -254,7 +265,7 @@ export function FrozenCombos() {
       key: 'combo',
       header: f.columns.combo,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       cell: (row) => comboName({ nameVi: row.comboNameVi, nameEn: row.comboNameEn }, locale),
     },
     { key: 'used', header: f.columns.used, numeric: true, cell: (row) => row.sessionsUsed },
@@ -292,12 +303,7 @@ export function FrozenCombos() {
           ) : undefined
         }
         empty={list.data ? <Empty>{f.none}</Empty> : undefined}
-        paging={{
-          ...paging,
-          onPageChange: (page) => setPaging((state) => ({ ...state, page })),
-          onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-          labels: paginationLabels(t, f.title),
-        }}
+        paging={paging}
       />
     </ListSection>
   );

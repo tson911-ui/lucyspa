@@ -57,11 +57,11 @@ test('a problem names the column exactly as the template shows it, in the chosen
   const issue = { code: 'PRICE_INVALID', field: 'price' } as const;
   assert.equal(
     issueText(issue, 'CATALOG', 'vi'),
-    'Cột "Giá bán (₫)" phải là số tiền nguyên lớn hơn 0.',
+    'Cột “Giá bán (₫)” phải là số tiền nguyên lớn hơn 0.',
   );
   assert.equal(
     issueText(issue, 'CATALOG', 'en'),
-    'Column "List price (VND)" must be a whole amount above 0.',
+    'Column “List price (VND)” must be a whole amount above 0.',
   );
   assert.equal(
     issueText({ code: 'SKU_DUPLICATE_IN_FILE', field: 'sku', params: { row: 7 } }, 'CATALOG', 'vi'),
@@ -176,7 +176,7 @@ test('error texts: the file reasons, the import codes and the shared fallback', 
   );
   assert.equal(
     importErrorText(new ApiError(422, 'IMPORT_FILE_INVALID', 'missingSku'), 'vi', fallback, limits),
-    'Tệp thiếu cột "Mã SKU". Hãy dùng tệp mẫu.',
+    'Tệp thiếu cột “Mã SKU”. Hãy dùng tệp mẫu.',
   );
   assert.equal(
     importErrorText(new ApiError(409, 'IMPORT_PREVIEW_STALE', null), 'en', fallback),

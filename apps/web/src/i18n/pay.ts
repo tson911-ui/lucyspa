@@ -49,11 +49,25 @@ const vi = {
     by: 'Người ghi',
     noRule: 'Chưa có',
     search: 'Tìm theo tên',
+    searchPeople: 'Ví dụ: Lan hoặc NV0004…',
+    searchServices: 'Ví dụ: gội đầu…',
+    searchName: 'Ví dụ: Lan…',
     onlyMissing: 'Chưa có quy tắc',
     all: 'Tất cả',
     choose: 'Chọn…',
     amount: 'Số tiền',
     loadError: 'Không tải được dữ liệu.',
+    noAccess:
+      'Bạn chưa có quyền xem lương và hoa hồng. Nhờ chủ spa hoặc quản lý cấp quyền nếu bạn cần dùng mục này.',
+    fieldErrors: {
+      amount: 'Nhập số tiền từ 0 ₫ trở lên.',
+      from: 'Chọn một ngày trong khoảng ở gợi ý.',
+      reason: 'Lý do tối đa 500 ký tự.',
+      reasonRequired: 'Nhập lý do (tối đa 500 ký tự).',
+      target: 'Chọn mục mà quy tắc áp dụng.',
+      percent: 'Nhập phần trăm từ 0 đến 100, tối đa 2 chữ số thập phân.',
+      person: 'Chọn người bán.',
+    },
     saved: 'Đã lưu.',
     close: 'Đóng',
     appendOnly: 'Dòng đã lưu không sửa được. Muốn đổi, hãy ghi một dòng mới với ngày bắt đầu mới.',
@@ -73,7 +87,7 @@ const vi = {
     perMonth: '/ tháng',
     unconfirmedNote:
       'Người chưa xác nhận lương chỉ có con số cũ trên hồ sơ. Hãy ghi mức lương đầu tiên để bảng lương dùng con số đã xác nhận.',
-    set: 'Ghi mức lương mới',
+    set: 'Ghi mức lương mới…',
     setTitle: 'Mức lương cơ bản mới',
     setDescription:
       'Mức lương theo tháng cho {name} từ ngày bắt đầu bên dưới. Không tự tính theo ngày.',
@@ -97,7 +111,7 @@ const vi = {
     missingBadge: 'Chưa có quy tắc',
     missingNote:
       'Dịch vụ chưa có quy tắc thì không phát sinh tiền tour. Đặt 0 nếu muốn ghi rõ là không trả.',
-    set: 'Đặt tiền tour',
+    set: 'Đặt tiền tour…',
     setTitle: 'Tiền tour mới',
     setDescription: 'Số tiền trả cho KTV mỗi lần làm dịch vụ “{name}”, từ ngày bắt đầu bên dưới.',
     amount: 'Tiền tour mỗi lượt làm',
@@ -124,7 +138,7 @@ const vi = {
     percent: '{value}% giá trị dòng hàng',
     perUnit: '{amount} mỗi sản phẩm',
     zero: 'Không trả',
-    add: 'Thêm quy tắc',
+    add: 'Thêm quy tắc…',
     addTitle: 'Quy tắc hoa hồng mới',
     addDescription:
       'Khi nhiều quy tắc cùng khớp, quy tắc cụ thể nhất được dùng: nhân viên và sản phẩm, rồi sản phẩm, danh mục, thương hiệu, cả cửa hàng. Mức 0 nghĩa là không trả.',
@@ -133,8 +147,9 @@ const vi = {
     targetBrand: 'Thương hiệu',
     targetCategory: 'Danh mục',
     targetProduct: 'Sản phẩm',
-    productSearch: 'Gõ ít nhất 2 chữ để tìm sản phẩm',
+    productSearch: 'Gõ ít nhất 2 chữ để tìm sản phẩm…',
     productNone: 'Không tìm thấy sản phẩm.',
+    productSearchFailed: 'Chưa tìm được sản phẩm lúc này. Gõ tiếp hoặc sửa từ khóa để thử lại.',
     employee: 'Người nhận',
     employeeHint: 'Để trống nếu áp dụng cho mọi nhân viên chính thức.',
     kind: 'Cách tính',
@@ -245,7 +260,7 @@ const vi = {
     claimed: 'Đã vào kỳ lương',
     lines: 'Người nhận theo từng dòng',
     lineColumns: { line: 'Dòng hàng', person: 'Người nhận', rule: 'Quy tắc', amount: 'Số tiền' },
-    changeSeller: 'Đổi người bán',
+    changeSeller: 'Đổi người bán…',
     sellerTitle: 'Đổi người bán',
     sellerDescription:
       'Chọn đúng người đã bán dòng hàng này. Khoản hoa hồng của người cũ được hoàn lại và người mới được tính, không sửa hóa đơn.',
@@ -292,11 +307,25 @@ const en: typeof vi = {
     by: 'Entered by',
     noRule: 'None',
     search: 'Search by name',
+    searchPeople: 'For example: Lan or NV0004…',
+    searchServices: 'For example: hair wash…',
+    searchName: 'For example: Lan…',
     onlyMissing: 'No rule yet',
     all: 'All',
     choose: 'Choose…',
     amount: 'Amount',
     loadError: 'The data could not be loaded.',
+    noAccess:
+      'You do not have access to pay and commission yet. Ask the spa owner or a manager for access if you need it.',
+    fieldErrors: {
+      amount: 'Type an amount of 0 ₫ or more.',
+      from: 'Choose a date within the range in the hint.',
+      reason: 'Keep the reason to 500 characters.',
+      reasonRequired: 'Type a reason (up to 500 characters).',
+      target: 'Choose what the rule applies to.',
+      percent: 'Type a percentage from 0 to 100, with at most 2 decimals.',
+      person: 'Choose the seller.',
+    },
     saved: 'Saved.',
     close: 'Close',
     appendOnly:
@@ -317,7 +346,7 @@ const en: typeof vi = {
     perMonth: '/ month',
     unconfirmedNote:
       'Someone with an unconfirmed salary only has the old figure on their profile. Enter the first salary so payroll uses a confirmed figure.',
-    set: 'Enter a new salary',
+    set: 'Enter a new salary…',
     setTitle: 'New base salary',
     setDescription:
       'The monthly salary for {name} from the start date below. It is never worked out by the day.',
@@ -341,7 +370,7 @@ const en: typeof vi = {
     missingBadge: 'No rule yet',
     missingNote:
       'A service without a rule earns no tour pay. Set 0 to state clearly that nothing is paid.',
-    set: 'Set tour pay',
+    set: 'Set tour pay…',
     setTitle: 'New tour pay',
     setDescription:
       'The amount paid to the KTV each time they perform “{name}”, from the start date below.',
@@ -369,7 +398,7 @@ const en: typeof vi = {
     percent: '{value}% of the line value',
     perUnit: '{amount} per unit',
     zero: 'Not paid',
-    add: 'Add a rule',
+    add: 'Add a rule…',
     addTitle: 'New commission rule',
     addDescription:
       'When several rules match, the most specific one is used: employee and product, then product, category, brand, whole shop. 0 means nothing is paid.',
@@ -378,8 +407,10 @@ const en: typeof vi = {
     targetBrand: 'Brand',
     targetCategory: 'Category',
     targetProduct: 'Product',
-    productSearch: 'Type at least 2 letters to find a product',
+    productSearch: 'Type at least 2 letters to find a product…',
     productNone: 'No product found.',
+    productSearchFailed:
+      'The products could not be searched right now. Keep typing or change the words to try again.',
     employee: 'Paid to',
     employeeHint: 'Leave empty to apply to every official employee.',
     kind: 'How it is worked out',
@@ -491,7 +522,7 @@ const en: typeof vi = {
     claimed: 'In a payroll period',
     lines: 'Who earns on each line',
     lineColumns: { line: 'Item', person: 'Paid to', rule: 'Rule', amount: 'Amount' },
-    changeSeller: 'Change seller',
+    changeSeller: 'Change seller…',
     sellerTitle: 'Change the seller',
     sellerDescription:
       'Choose the person who really sold this item. The old seller’s commission is reversed and the new seller earns it; the invoice is not edited.',

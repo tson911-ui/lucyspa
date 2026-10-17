@@ -10,6 +10,7 @@ import {
   ButtonLink,
   Cluster,
   DataTable,
+  EmptyState,
   Field,
   FileDropzone,
   FormDialog,
@@ -38,11 +39,13 @@ import {
   validateUpload,
   type ImportUploadDraft,
 } from '../../../lib/workforce/imports';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
+import { decimalSeparator } from './reports-format';
+import { Badge, Button, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 
@@ -66,7 +69,7 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
   const text = importDictionary(locale);
   const [uploading, setUploading] = useState(false);
   const [zipping, setZipping] = useState(false);
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const paging = useUrlPaging('p', t, text.list.table);
   const open = (job: ProductImportJobResponse) => `${base}/import/${job.id}`;
 
   const columns: DataTableColumn<ProductImportJobResponse>[] = [
@@ -74,7 +77,7 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
       key: 'file',
       header: text.list.columns.file,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (job) => (
         <Link className="ls-link" href={open(job)}>
@@ -86,7 +89,7 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
     {
       key: 'branch',
       header: text.list.columns.branch,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: 'lg',
       cell: (job) => job.branchName ?? text.none,
@@ -106,7 +109,7 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
     {
       key: 'createdBy',
       header: text.list.columns.createdBy,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: 'xl',
       cell: (job) => job.createdByName,
@@ -115,7 +118,9 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
       key: 'createdAt',
       header: text.list.columns.createdAt,
       hideBelow: 'lg',
-      cell: (job) => formatDateTime(job.createdAt, ZONE, locale),
+      cell: (job) => (
+        <span className="ls-adminb-code">{formatDateTime(job.createdAt, ZONE, locale)}</span>
+      ),
     },
     {
       key: 'actions',
@@ -124,14 +129,8 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
       cell: (job) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: job.filename })}
-          items={[
-            {
-              id: 'open',
-              label: text.list.open,
-              icon: 'eye',
-              onSelect: () => navigate?.(open(job)),
-            },
-          ]}
+          LinkComponent={Link}
+          items={[{ id: 'open', label: text.list.open, icon: 'eye', href: open(job) }]}
         />
       ),
     },
@@ -141,25 +140,36 @@ export function ImportsView({ data }: { data: ProductImportListResponse }) {
     <>
       <PageHeader title={text.title}>
         <Button variant="secondary" icon="upload" onClick={() => setZipping(true)}>
-          {text.zip.open}
+          {opensInput(text.zip.open)}
         </Button>
-        <Button variant="primary" icon="upload" onClick={() => setUploading(true)}>
-          {text.upload}
-        </Button>
+        {/* One primary per view: while the list is empty, the empty state carries "Tải tệp lên". */}
+        {data.jobs.length > 0 ? (
+          <Button variant="primary" icon="upload" onClick={() => setUploading(true)}>
+            {opensInput(text.upload)}
+          </Button>
+        ) : null}
       </PageHeader>
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: text.list.table })}
         columns={columns}
         rows={data.jobs}
         rowKey={(job) => `${job.id}:${job.rowVersion}`}
-        empty={<Empty>{text.list.empty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, text.list.table),
-        }}
+        empty={
+          <EmptyState
+            icon="upload"
+            title={text.list.emptyTitle}
+            action={
+              <Button variant="primary" icon="upload" onClick={() => setUploading(true)}>
+                {opensInput(text.upload)}
+              </Button>
+            }
+          >
+            {text.list.empty}
+          </EmptyState>
+        }
+        paging={paging}
       />
       {zipping ? <ImageZipDialog onClose={() => setZipping(false)} /> : null}
       {uploading ? (
@@ -200,7 +210,7 @@ export function UploadDialog({
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const errors = validateUpload(draft);
-  const separator = locale === 'vi' ? ',' : '.';
+  const separator = decimalSeparator(locale);
   const size = megabytes(data.limits.maxBytes);
   const rows = data.limits.maxRows.toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US');
   const set = (patch: Partial<ImportUploadDraft>) => {
@@ -348,9 +358,8 @@ export function UploadDialog({
               {draft.file ? (
                 <>
                   <span className="ls-dropzone-title">{draft.file.name}</span>
-                  <span className="ls-dropzone-sub">
-                    {formatBytes(draft.file.size, separator)} · {d.change}
-                  </span>
+                  <span className="ls-dropzone-sub">{formatBytes(draft.file.size, separator)}</span>
+                  <span className="ls-dropzone-sub">{d.change}</span>
                 </>
               ) : (
                 <>

@@ -13,6 +13,7 @@ import {
   FormDialog,
   ListSection,
   ListToolbar,
+  PageHeader,
   RowActions,
   SearchInput,
   Stack,
@@ -46,8 +47,10 @@ import {
 } from '../../../lib/workforce/imports';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { errorMessage } from '../../../lib/workforce/workflows';
-import { PrefetchLink as Link } from '../link';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { ListCrumbLink } from '../link';
 import { useWorkforce } from '../session';
+import { metaLine } from './pos-format';
 import {
   Badge,
   Button,
@@ -55,7 +58,6 @@ import {
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   Section,
   useResource,
   useSuccessToast,
@@ -79,8 +81,8 @@ export function ImportScreen({ id }: { id: string }) {
 type Overlay = 'apply' | 'cancel' | null;
 
 /**
- * One import. While it is PREVIEWED the page's one primary action is "Nhập vào hệ thống" (the confirmation) and the information
- * card has the menu with "Hủy lần nhập"; an applied or cancelled import is read-only history. Every row of the file is listed with
+ * One import. While it is PREVIEWED the page's one primary action is "Nhập vào hệ thống" (the confirmation), with "Hủy lần nhập" as a
+ * danger outline before it in the header (session 10: no card menu for a single action; the status badge sits under the title); an applied or cancelled import is read-only history. Every row of the file is listed with
  * its result and its problems in words, so the person sees exactly what would happen before confirming.
  */
 export function ImportView({
@@ -106,20 +108,29 @@ export function ImportView({
     <>
       <PageHeader
         title={job.filename}
+        status={<Badge tone={statusTone(job.status)}>{text.statuses[job.status]}</Badge>}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: text.title, href: `${base}/import` }, { label: job.filename }]}
           />
         }
-      >
-        {previewed && job.canApply ? (
-          <Button variant="primary" onClick={() => setOverlay('apply')}>
-            {d.apply}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          previewed ? (
+            <>
+              <Button variant="danger-outline" onClick={() => setOverlay('cancel')}>
+                {d.cancel}
+              </Button>
+              {job.canApply ? (
+                <Button variant="primary" onClick={() => setOverlay('apply')}>
+                  {opensInput(d.apply)}
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      />
       <Stack gap="page">
         {job.status === 'APPLIED' ? (
           <Notice tone="success">
@@ -132,24 +143,7 @@ export function ImportView({
         {previewed && !job.canApply ? (
           <Notice tone="warning">{job.validCount === 0 ? d.allInvalid : d.nothing}</Notice>
         ) : null}
-        <Section
-          title={d.summary}
-          actions={
-            previewed ? (
-              <RowActions
-                menuLabel={d.moreActions}
-                items={[
-                  {
-                    id: 'cancel',
-                    label: d.cancel,
-                    tone: 'danger',
-                    onSelect: () => setOverlay('cancel'),
-                  },
-                ]}
-              />
-            ) : undefined
-          }
-        >
+        <Section title={d.summary}>
           <Stack gap="block">
             {job.warnings.length > 0 ? (
               <Notice tone="warning">
@@ -168,19 +162,14 @@ export function ImportView({
                 { label: d.fields.file, value: job.filename },
                 { label: d.fields.kind, value: text.kinds[job.kind] },
                 ...(job.branchName ? [{ label: d.fields.branch, value: job.branchName }] : []),
-                {
-                  label: d.fields.status,
-                  value: <Badge tone={statusTone(job.status)}>{text.statuses[job.status]}</Badge>,
-                },
-                {
-                  label: d.fields.createdBy,
-                  value: `${job.createdByName} · ${formatDateTime(job.createdAt, ZONE, locale)}`,
-                },
+                { label: d.fields.createdBy, value: job.createdByName },
+                { label: d.fields.createdAt, value: formatDateTime(job.createdAt, ZONE, locale) },
                 ...(job.appliedAt
                   ? [
+                      { label: d.fields.appliedBy, value: job.appliedByName ?? text.none },
                       {
-                        label: d.fields.appliedBy,
-                        value: `${job.appliedByName ?? text.none} · ${formatDateTime(job.appliedAt, ZONE, locale)}`,
+                        label: d.fields.appliedAt,
+                        value: formatDateTime(job.appliedAt, ZONE, locale),
                       },
                     ]
                   : []),
@@ -349,6 +338,7 @@ function ApplyDialog({
                 {(control) => (
                   <Textarea
                     {...control}
+                    name="override-reason"
                     rows={3}
                     maxLength={300}
                     value={reason}
@@ -388,12 +378,18 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
 
   const columns: DataTableColumn<ProductImportRowResponse>[] = [
     { key: 'row', header: d.columns.row, numeric: true, cell: (row) => row.rowNo },
-    { key: 'sku', header: d.columns.sku, mobileTitle: true, cell: (row) => row.sku || text.none },
+    {
+      key: 'sku',
+      header: d.columns.sku,
+      mobileTitle: true,
+      cell: (row) => (row.sku ? <span translate="no">{row.sku}</span> : text.none),
+    },
     {
       key: 'name',
       header: d.columns.name,
-      truncate: true,
-      width: 'md',
+      wrap: true,
+      // The widest text of a row: `lg` keeps it a readable width (kit minimum) instead of a few letters a line (E4 review).
+      width: 'lg',
       // Opening stock has more columns (quantity, lot), so the name gives way to the notes on a tablet.
       hideBelow: opening ? 'lg' : 'md',
       cell: (row) => row.title ?? text.none,
@@ -411,8 +407,7 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
             header: d.columns.lot,
             hideBelow: 'lg' as const,
             cell: (row: ProductImportRowResponse) =>
-              [row.cells['lot_code'], row.cells['expiry_date']].filter(Boolean).join(' · ') ||
-              text.none,
+              metaLine(locale, [row.cells['lot_code'], row.cells['expiry_date']]) || text.none,
           },
         ]
       : []),
@@ -484,7 +479,7 @@ function ImportRows({ job }: { job: ProductImportDetailResponse }) {
             id="import-q"
             value={list.q}
             label={d.search}
-            placeholder={d.search}
+            hint={d.searchPlaceholder}
             clearLabel={t.common.list.clearSearch}
             onSearch={(q) => updateList({ q }, { replace: true })}
           />

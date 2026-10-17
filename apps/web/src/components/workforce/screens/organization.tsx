@@ -10,6 +10,7 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListToolbar,
   RowActions,
@@ -21,12 +22,7 @@ import {
 import { useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
-import {
-  paginationLabels,
-  resultsText,
-  sortLabels,
-  toolbarLabels,
-} from '../../../lib/workforce/list-view';
+import { paginationLabels, sortLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import {
   filterAppointments,
   filterAreas,
@@ -41,18 +37,14 @@ import {
   regionName,
   type OrgTab,
 } from '../../../lib/workforce/organization-list';
+import { formatDate, todayIn } from '../../../lib/workforce/format';
 import { canAnywhere } from '../../../lib/workforce/permissions';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+
+/** Every branch is in Vietnam today, so an appointment's start day is read in Vietnam time. */
+const ORG_ZONE = 'Asia/Ho_Chi_Minh';
+import { Badge, Button, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 import {
   AppointmentCreate,
   AppointmentEnd,
@@ -141,6 +133,7 @@ export function OrganizationScreen() {
 
   function toolbar(
     searchLabel: string,
+    example: string,
     total: number,
     shown: number,
     filter: { label: string; options: { value: string; label: string }[] } | null,
@@ -151,7 +144,6 @@ export function OrganizationScreen() {
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={list.filter ? 1 : 0}
-        resultCount={resultsText(t, shown)}
         onReset={() => updateList({ q: '', filter: '' })}
         reload={{ label: t.common.reload, onClick: () => void reload() }}
         search={
@@ -159,7 +151,7 @@ export function OrganizationScreen() {
             id="org-q"
             value={list.q}
             label={searchLabel}
-            placeholder={searchLabel}
+            hint={example}
             clearLabel={t.common.list.clearSearch}
             onSearch={(q) => updateList({ q }, { replace: true })}
           />
@@ -211,7 +203,11 @@ export function OrganizationScreen() {
         loading={loading}
         loadingLabel={t.common.loading}
         error={error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : undefined}
-        empty={<Empty>{total === 0 ? text.noRows : text.noMatch}</Empty>}
+        empty={
+          <EmptyState title={total === 0 ? text.emptyTitle : text.noMatchTitle}>
+            {total === 0 ? text.noRows : text.noMatch}
+          </EmptyState>
+        }
         paging={{
           page: list.page,
           pageSize: list.pageSize,
@@ -235,13 +231,17 @@ export function OrganizationScreen() {
       header: t.common.code,
       sortable: true,
       sortValue: (region) => region.code,
-      cell: (region) => region.code,
+      cell: (region) => (
+        <span className="ls-ppl-code" translate="no">
+          {region.code}
+        </span>
+      ),
     },
     {
       key: 'name',
       header: t.common.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (region) => region.name,
@@ -266,13 +266,13 @@ export function OrganizationScreen() {
                 items={[
                   {
                     id: 'rename',
-                    label: text.rename,
+                    label: opensInput(text.rename),
                     icon: 'edit',
                     onSelect: () => setOverlay({ kind: 'renameRegion', region }),
                   },
                   {
                     id: 'status',
-                    label: region.isActive ? t.common.deactivate : t.common.activate,
+                    label: opensInput(region.isActive ? t.common.deactivate : t.common.activate),
                     tone: region.isActive ? 'danger' : 'default',
                     onSelect: () => setOverlay({ kind: 'regionStatus', region }),
                   },
@@ -290,13 +290,17 @@ export function OrganizationScreen() {
       header: t.common.code,
       sortable: true,
       sortValue: (area) => area.code,
-      cell: (area) => area.code,
+      cell: (area) => (
+        <span className="ls-ppl-code" translate="no">
+          {area.code}
+        </span>
+      ),
     },
     {
       key: 'name',
       header: t.common.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (area) => area.name,
@@ -305,7 +309,7 @@ export function OrganizationScreen() {
     {
       key: 'region',
       header: text.region,
-      truncate: true,
+      wrap: true,
       sortable: true,
       sortValue: (area) => regionName(regions, area.regionId),
       cell: (area) => regionName(regions, area.regionId),
@@ -329,13 +333,13 @@ export function OrganizationScreen() {
                 items={[
                   {
                     id: 'edit',
-                    label: t.common.edit,
+                    label: opensInput(t.common.edit),
                     icon: 'edit',
                     onSelect: () => setOverlay({ kind: 'editArea', area }),
                   },
                   {
                     id: 'status',
-                    label: area.isActive ? t.common.deactivate : t.common.activate,
+                    label: opensInput(area.isActive ? t.common.deactivate : t.common.activate),
                     tone: area.isActive ? 'danger' : 'default',
                     onSelect: () => setOverlay({ kind: 'areaStatus', area }),
                   },
@@ -355,13 +359,17 @@ export function OrganizationScreen() {
       header: t.common.code,
       sortable: true,
       sortValue: (branch) => branch.code,
-      cell: (branch) => branch.code,
+      cell: (branch) => (
+        <span className="ls-ppl-code" translate="no">
+          {branch.code}
+        </span>
+      ),
     },
     {
       key: 'name',
       header: t.common.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (branch) => branch.name,
@@ -370,7 +378,7 @@ export function OrganizationScreen() {
     {
       key: 'area',
       header: text.area,
-      truncate: true,
+      wrap: true,
       sortable: true,
       sortValue: (branch) => areaName(branch),
       cell: (branch) => areaName(branch) || <span className="ls-hint">{text.unplaced}</span>,
@@ -387,7 +395,7 @@ export function OrganizationScreen() {
                 items={[
                   {
                     id: 'placement',
-                    label: text.placement,
+                    label: opensInput(text.placement),
                     icon: 'edit',
                     onSelect: () => setOverlay({ kind: 'placement', branch }),
                   },
@@ -404,7 +412,7 @@ export function OrganizationScreen() {
       key: 'employee',
       header: text.employee,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (item) => item.fullName,
@@ -415,12 +423,13 @@ export function OrganizationScreen() {
       header: text.level,
       sortable: true,
       sortValue: (item) => ORG_LEVELS.indexOf(item.level),
-      cell: (item) => <Badge tone="info">{text.levels[item.level]}</Badge>,
+      // A level is a fact, not a status: plain text (status colours only for status, A3).
+      cell: (item) => text.levels[item.level],
     },
     {
       key: 'scope',
       header: t.roles.scope,
-      truncate: true,
+      wrap: true,
       sortable: true,
       sortValue: (item) => (data ? formatScope(item.scope, data, text.system) : ''),
       cell: (item) => (data ? formatScope(item.scope, data, text.system) : ''),
@@ -430,7 +439,8 @@ export function OrganizationScreen() {
       header: t.common.from,
       sortable: true,
       sortValue: (item) => item.startedAt,
-      cell: (item) => item.startedAt.slice(0, 10),
+      // The business day of the instant in Vietnam time, through Intl (not the UTC day of the ISO string).
+      cell: (item) => formatDate(todayIn(ORG_ZONE, new Date(item.startedAt)), locale),
     },
     ...(manageAppointments
       ? [
@@ -448,7 +458,7 @@ export function OrganizationScreen() {
                   items={[
                     {
                       id: 'end',
-                      label: text.end,
+                      label: opensInput(text.end),
                       tone: 'danger',
                       onSelect: () => setOverlay({ kind: 'endAppointment', item }),
                     },
@@ -465,7 +475,14 @@ export function OrganizationScreen() {
 
   const regionsPanel = (
     <>
-      {toolbar(text.searchOrg, regions.length, visibleRegions.length, statusFilter, reloadSnapshot)}
+      {toolbar(
+        text.searchOrg,
+        text.exampleOrg,
+        regions.length,
+        visibleRegions.length,
+        statusFilter,
+        reloadSnapshot,
+      )}
       {table(
         text.regions,
         regionColumns,
@@ -481,7 +498,14 @@ export function OrganizationScreen() {
   const areasPanel = (
     <>
       {manageOrg && noActiveRegion ? <Notice tone="info">{text.needRegion}</Notice> : null}
-      {toolbar(text.searchAreas, areas.length, visibleAreas.length, statusFilter, reloadSnapshot)}
+      {toolbar(
+        text.searchAreas,
+        text.exampleOrg,
+        areas.length,
+        visibleAreas.length,
+        statusFilter,
+        reloadSnapshot,
+      )}
       {table(
         text.areas,
         areaColumns,
@@ -498,6 +522,7 @@ export function OrganizationScreen() {
     <>
       {toolbar(
         text.searchBranches,
+        text.exampleBranches,
         branches.length,
         visibleBranches.length,
         {
@@ -525,6 +550,7 @@ export function OrganizationScreen() {
     <>
       {toolbar(
         text.searchAppointments,
+        text.exampleAppointments,
         items.length,
         visibleAppointments.length,
         {
@@ -549,35 +575,34 @@ export function OrganizationScreen() {
   const headerAction =
     tab === 'regions' && manageOrg ? (
       <Button variant="primary" icon="plus" onClick={() => setOverlay({ kind: 'createRegion' })}>
-        {text.createRegion}
+        {opensInput(text.createRegion)}
       </Button>
     ) : tab === 'areas' && manageOrg && !noActiveRegion ? (
       <Button variant="primary" icon="plus" onClick={() => setOverlay({ kind: 'createArea' })}>
-        {text.createArea}
+        {opensInput(text.createArea)}
       </Button>
     ) : tab === 'appointments' && manageAppointments ? (
       <Button variant="primary" icon="plus" onClick={() => setOverlay({ kind: 'appoint' })}>
-        {text.appoint}
+        {opensInput(text.appoint)}
       </Button>
     ) : null;
 
   return (
     <>
-      <PageHeader title={text.title}>{headerAction}</PageHeader>
-      <Notice tone="info">{`${text.ownerNote} ${text.attendanceNote}`}</Notice>
+      {/* The ownership and attendance rules read as the page description, not a blue box pushing the data down (C41). */}
+      <PageHeader title={text.title} intro={`${text.ownerNote} ${text.attendanceNote}`}>
+        {headerAction}
+      </PageHeader>
       <Tabs
         label={text.title}
         value={tab}
         onChange={(next) => updateList({ tab: next, ...ORG_TAB_RESET })}
         tabs={[
-          { id: 'regions', label: `${text.regions} (${regions.length})`, panel: regionsPanel },
-          { id: 'areas', label: `${text.areas} (${areas.length})`, panel: areasPanel },
-          { id: 'branches', label: `${text.branches} (${branches.length})`, panel: branchesPanel },
-          {
-            id: 'appointments',
-            label: `${text.appointments} (${items.length})`,
-            panel: appointmentsPanel,
-          },
+          // No counts in tab labels (Owner rule): each table's "Hiển thị" line carries the number.
+          { id: 'regions', label: text.regions, panel: regionsPanel },
+          { id: 'areas', label: text.areas, panel: areasPanel },
+          { id: 'branches', label: text.branches, panel: branchesPanel },
+          { id: 'appointments', label: text.appointments, panel: appointmentsPanel },
         ]}
       />
       {overlay?.kind === 'createRegion' ? (

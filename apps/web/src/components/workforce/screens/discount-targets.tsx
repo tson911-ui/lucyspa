@@ -6,7 +6,7 @@ import type {
   ProductListResponse,
 } from '@lucy-spa/contracts';
 import { CheckField, Combobox, Field, FilterChips, FormGrid, normalizeSearch } from '@lucy-spa/ui';
-import { useId, useMemo, useState } from 'react';
+import { useDeferredValue, useId, useMemo, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
 import type { DiscountForm } from '../../../lib/workforce/discounts';
@@ -48,9 +48,6 @@ export function useProductCatalog(enabled: boolean) {
     ready: enabled && !!brands.data && !!categories.data && !!products.data,
   };
 }
-
-/** A chip stays one short line: a very long product name is cut (the search list and the detail page show it whole). */
-const shortName = (text: string) => (text.length > 60 ? `${text.slice(0, 57).trimEnd()}…` : text);
 
 /** How many matches the product search lists at once. */
 const PRODUCT_RESULTS = 30;
@@ -154,24 +151,28 @@ export function ProductTargetsFields({
     [catalog.products],
   );
   const productLabel = (product: { nameVi: string; nameEn: string; code: string }) =>
-    `${name(product)} · ${product.code}`;
-  // The catalog can hold thousands of products: the search shows the first matches only (typing narrows them down).
+    `${name(product)} (${product.code})`;
+  // The catalog can hold thousands of products: the search shows the first matches only (typing narrows them down). The scan
+  // reads a deferred copy of the query, so typing stays responsive (rerender-use-deferred-value), and the chosen ids are a Set
+  // (js-set-map-lookups).
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const options = useMemo(() => {
-    const words = normalizeSearch(query);
+    const words = normalizeSearch(deferredQuery);
+    const chosen = new Set(form.productIds);
     const out: { value: string; label: string }[] = [];
     for (const product of catalog.products) {
       if (out.length >= PRODUCT_RESULTS) break;
-      if (form.productIds.includes(product.id)) continue;
+      if (chosen.has(product.id)) continue;
       const label = productLabel(product);
       if (words !== '' && !normalizeSearch(`${label} ${product.nameEn}`).includes(words)) continue;
       out.push({ value: product.id, label });
     }
     return out;
-  }, [catalog.products, form.productIds, query, locale]);
+  }, [catalog.products, form.productIds, deferredQuery, locale]);
   const chips = form.productIds.map((id) => {
     const product = byId.get(id);
-    return { key: id, label: product ? shortName(name(product)) : id.slice(0, 8) };
+    return { key: id, label: product ? name(product) : id.slice(0, 8) };
   });
 
   if (catalog.loading) return <Loading t={t} />;

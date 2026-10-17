@@ -21,7 +21,15 @@ import {
   referralErrorMessage,
   tierTone,
 } from './loyalty';
-import { normalizeLedger, normalizeLoyaltyPage } from './loyalty-list';
+import {
+  LOYALTY_GROUPS,
+  LOYALTY_TAB_IDS,
+  loyaltyGroupOf,
+  loyaltyGroups,
+  normalizeLedger,
+  normalizeLoyaltyPage,
+} from './loyalty-list';
+import { moneyInputFormat } from './money-input';
 import { navigationFor } from './permissions';
 
 const vi = getWorkforceDictionary('vi');
@@ -157,6 +165,42 @@ test('loyalty branches and tabs follow the permissions, never role names', () =>
   assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY']]), branches).goLive, false);
   // The birthday gift setup is the Owner's alone too (Phase 5 P5-6): no staff grant opens the tab.
   assert.equal(loyaltyTabs(employee([['VIEW_LOYALTY']]), branches).birthday, false);
+});
+
+test('the ten loyalty sections group into at most six tabs and old ?tab= values still open their section', () => {
+  // Owner answer 5 (session 10): grouped by task, every section stays reachable, the URL keeps the section id.
+  assert.ok(LOYALTY_GROUPS.length <= 6);
+  assert.deepEqual(
+    LOYALTY_GROUPS.flatMap((group): string[] => [...group.tabs]).sort(),
+    [...LOYALTY_TAB_IDS].sort(),
+  );
+  for (const tab of LOYALTY_TAB_IDS) assert.ok(loyaltyGroupOf(tab));
+  assert.equal(loyaltyGroupOf('comboSold'), 'combos');
+  assert.equal(loyaltyGroupOf('rewardCatalog'), 'rewards');
+  assert.equal(loyaltyGroupOf('birthday'), 'referrals');
+  const all = loyaltyTabs(owner, branches);
+  const ownerView = loyaltyGroups(all, 'comboUsage');
+  assert.equal(ownerView.current, 'comboUsage');
+  assert.deepEqual(
+    ownerView.groups.map((group) => group.id),
+    ['members', 'rewards', 'combos', 'referrals', 'exceptions', 'goLive'],
+  );
+  // A viewer sees only the groups with an allowed section; an unknown or forbidden tab opens the first allowed one.
+  const viewer = loyaltyGroups(loyaltyTabs(employee([['VIEW_LOYALTY', 'b1']]), branches), 'goLive');
+  assert.deepEqual(
+    viewer.groups.map((group) => [group.id, group.tabs]),
+    [
+      ['members', ['customers']],
+      ['referrals', ['referrals']],
+    ],
+  );
+  assert.equal(viewer.current, 'customers');
+  for (const group of LOYALTY_GROUPS) assert.ok(l.groups[group.id]);
+});
+
+test('money fields take their grouping and currency sign from Intl, not hand-written', () => {
+  assert.deepEqual(moneyInputFormat('vi'), { separator: '.', unit: '₫' });
+  assert.equal(moneyInputFormat('en').separator, ',');
 });
 
 test('the sidebar offers the loyalty page to those who can use it', () => {

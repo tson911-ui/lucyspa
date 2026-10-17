@@ -2,6 +2,7 @@
 
 import type { SkillListResponse, SkillResponse } from '@lucy-spa/contracts';
 import {
+  Badge as UiBadge,
   ConfirmDialog,
   DataTable,
   FacetedFilter,
@@ -16,14 +17,10 @@ import {
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
+import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
-import {
-  paginationLabels,
-  resultsText,
-  sortLabels,
-  toolbarLabels,
-} from '../../../lib/workforce/list-view';
+import { paginationLabels, sortLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import {
   filterSkills,
@@ -33,9 +30,9 @@ import {
   skillSortValue,
 } from '../../../lib/workforce/skills-list';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
-  Badge,
   Button,
   Empty,
   ErrorState,
@@ -51,7 +48,8 @@ import {
  * client mode); their state lives in the address bar.
  */
 export function SkillsScreen() {
-  const { api, t } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
+  const org = organizationDictionary(locale);
   const { account } = useAccount();
   const manage = canGlobal(account, 'MANAGE_SKILLS');
   const skills = useResource(() => api.get<SkillListResponse>('/api/v1/skills'), [api]);
@@ -83,13 +81,17 @@ export function SkillsScreen() {
       header: t.common.code,
       sortable: true,
       sortValue: (skill) => skillSortValue(skill, 'code'),
-      cell: (skill) => skill.code,
+      cell: (skill) => (
+        <span className="ls-ppl-code" translate="no">
+          {skill.code}
+        </span>
+      ),
     },
     {
       key: 'nameVi',
       header: t.skills.nameVi,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (skill) => skillSortValue(skill, 'nameVi'),
@@ -99,7 +101,7 @@ export function SkillsScreen() {
       key: 'nameEn',
       header: t.skills.nameEn,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (skill) => skillSortValue(skill, 'nameEn'),
@@ -111,9 +113,13 @@ export function SkillsScreen() {
       sortable: true,
       sortValue: (skill) => skillSortValue(skill, 'status'),
       cell: (skill) => (
-        <Badge tone={skill.isActive ? 'success' : 'neutral'}>
+        // The usual state is quiet (neutral, check icon); only a switched-off skill stands out (no wall of green, C5).
+        <UiBadge
+          tone={skill.isActive ? 'neutral' : 'warning'}
+          icon={skill.isActive ? 'check' : undefined}
+        >
           {skill.isActive ? t.common.active : t.common.inactive}
-        </Badge>
+        </UiBadge>
       ),
     },
     ...(manage
@@ -128,13 +134,13 @@ export function SkillsScreen() {
                 items={[
                   {
                     id: 'edit',
-                    label: t.common.edit,
+                    label: opensInput(t.common.edit),
                     icon: 'edit',
                     onSelect: () => setOverlay({ kind: 'edit', skill }),
                   },
                   {
                     id: 'status',
-                    label: skill.isActive ? t.common.deactivate : t.common.activate,
+                    label: opensInput(skill.isActive ? t.common.deactivate : t.common.activate),
                     tone: skill.isActive ? 'danger' : 'default',
                     onSelect: () => setOverlay({ kind: 'status', skill }),
                   },
@@ -159,7 +165,6 @@ export function SkillsScreen() {
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={active}
-          resultCount={resultsText(t, rows.length)}
           onReset={() => updateList({ q: '', status: '' })}
           reload={{ label: t.common.reload, onClick: () => void skills.reload() }}
           search={
@@ -167,7 +172,7 @@ export function SkillsScreen() {
               id="skill-q"
               value={list.q}
               label={t.skills.search}
-              placeholder={t.skills.search}
+              hint={t.skills.searchExample}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -204,7 +209,20 @@ export function SkillsScreen() {
         }
         empty={
           skills.data ? (
-            <Empty>{all.length === 0 ? t.common.empty : t.skills.noMatch}</Empty>
+            all.length === 0 ? (
+              <Empty title={org.people.skillsEmptyTitle}>{org.people.skillsEmpty}</Empty>
+            ) : (
+              <Empty
+                title={org.noMatchTitle}
+                action={
+                  <Button variant="secondary" onClick={() => updateList({ q: '', status: '' })}>
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {t.skills.noMatch}
+              </Empty>
+            )
           ) : undefined
         }
         paging={{
@@ -260,7 +278,7 @@ function SkillCreate({
 
   return (
     <FormDialog
-      title={t.skills.create}
+      title={t.skills.createTitle}
       labels={formOverlayLabels(t, t.common.create)}
       busy={submit.pending}
       dirty={form.code !== '' || form.nameVi !== '' || form.nameEn !== ''}
@@ -273,7 +291,11 @@ function SkillCreate({
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="characters"
+              translate="no"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
@@ -283,6 +305,7 @@ function SkillCreate({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               maxLength={200}
               value={form.nameVi}
               onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
@@ -293,6 +316,7 @@ function SkillCreate({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               maxLength={200}
               value={form.nameEn}
               onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
@@ -338,7 +362,7 @@ function SkillEdit({
 
   return (
     <FormDialog
-      title={`${t.common.edit}: ${skill.code}`}
+      title={fill(t.skills.editTitle, { code: skill.code })}
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={changed}
@@ -352,6 +376,7 @@ function SkillEdit({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               maxLength={200}
               value={form.nameVi}
               onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
@@ -362,6 +387,7 @@ function SkillEdit({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               maxLength={200}
               value={form.nameEn}
               onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
@@ -389,10 +415,10 @@ function SkillStatus({
     <ConfirmDialog
       title={deactivating ? t.skills.deactivateTitle : t.skills.activateTitle}
       description={deactivating ? t.skills.deactivateBody : t.skills.activateBody}
-      facts={[{ label: t.common.code, value: `${skill.code} · ${skill.nameVi}` }]}
+      facts={[{ label: t.common.code, value: `${skill.nameVi} (${skill.code})` }]}
       tone={deactivating ? 'danger' : 'neutral'}
       confirmLabel={deactivating ? t.common.deactivate : t.common.activate}
-      busyLabel={t.common.saving}
+      busyLabel={deactivating ? t.common.deactivating : t.common.activating}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{

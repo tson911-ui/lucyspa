@@ -8,11 +8,14 @@ import type {
 import {
   ConfirmDialog,
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListSection,
   ListToolbar,
   RowActions,
   Tabs,
+  DEFAULT_PAGE_SIZE,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
@@ -20,7 +23,13 @@ import { productDictionary } from '../../../i18n/products';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  paginationLabels,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import {
   canEndPromotion,
   productErrorText,
@@ -29,9 +38,38 @@ import {
 } from '../../../lib/workforce/products';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
-import { Badge, Empty, useSuccessToast } from '../ui';
+import { Badge, useSuccessToast } from '../ui';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
+
+/**
+ * The history section's view in the address bar (Back/Forward and a shared link restore it): the SKU filter, the open table and the
+ * page of each table. The keys are the section's own, so they never clash with the variant table's `vpage`.
+ */
+const HISTORY_URL_DEFAULTS = {
+  hvariant: '',
+  htab: 'prices',
+  hprice: 1,
+  hpromo: 1,
+  hsize: DEFAULT_PAGE_SIZE,
+};
+type HistoryUrlState = typeof HISTORY_URL_DEFAULTS;
+const HISTORY_URL_OPTIONS = {
+  normalize: (state: HistoryUrlState): HistoryUrlState => ({
+    hvariant: state.hvariant.slice(0, 64),
+    htab: state.htab === 'promotions' ? 'promotions' : 'prices',
+    hprice: normalizePage(state.hprice),
+    hpromo: normalizePage(state.hpromo),
+    hsize: normalizePageSize(state.hsize),
+  }),
+  // A new filter or page size starts both tables on their first page.
+  resetOnChange: ['hprice', 'hpromo'],
+};
+
+/** The history view state; the product page uses it too ("Xem lịch sử giá" in a variant's menu sets the SKU filter). */
+export function useHistoryUrl() {
+  return useUrlState(HISTORY_URL_DEFAULTS, HISTORY_URL_OPTIONS);
+}
 
 type PriceRow = ProductPriceVersionResponse & { variantId: string; sku: string };
 type PromotionRow = ProductPromotionResponse & { variantId: string; sku: string };
@@ -44,21 +82,18 @@ type PromotionRow = ProductPromotionResponse & { variantId: string; sku: string 
 export function HistorySection({
   product,
   reload,
-  variantId,
-  onVariant,
 }: {
   product: ProductDetailResponse;
   reload: () => Promise<void>;
-  /** The SKU filter: a variant id, or '' for all. */
-  variantId: string;
-  onVariant: (variantId: string) => void;
 }) {
   const { api, t, locale } = useWorkforce();
   const p = productDictionary(locale);
   const h = p.history;
   const notify = useSuccessToast();
-  const [tab, setTab] = useState<'prices' | 'promotions'>('prices');
-  const [pages, setPages] = useState({ prices: 1, promotions: 1, pageSize: 20 });
+  const [view, updateView] = useHistoryUrl();
+  const variantId = view.hvariant;
+  const onVariant = (hvariant: string) => updateView({ hvariant });
+  const tab = view.htab === 'promotions' ? 'promotions' : 'prices';
   const [ending, setEnding] = useState<PromotionRow | null>(null);
   const selected = product.variants.filter(
     (variant) => variantId === '' || variant.id === variantId,
@@ -80,7 +115,7 @@ export function HistorySection({
       key: 'sku',
       header: h.sku,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.sku,
     },
@@ -101,7 +136,7 @@ export function HistorySection({
       key: 'reason',
       header: h.reason,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.reason ?? '—',
     },
@@ -109,7 +144,7 @@ export function HistorySection({
       key: 'by',
       header: h.by,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.createdByName,
     },
@@ -121,7 +156,7 @@ export function HistorySection({
       key: 'sku',
       header: h.sku,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.sku,
     },
@@ -146,7 +181,7 @@ export function HistorySection({
       key: 'by',
       header: h.by,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.createdByName,
     },
@@ -201,7 +236,7 @@ export function HistorySection({
       <Tabs
         label={h.tabsLabel}
         value={tab}
-        onChange={(next) => setTab(next === 'promotions' ? 'promotions' : 'prices')}
+        onChange={(next) => updateView({ htab: next === 'promotions' ? 'promotions' : 'prices' })}
         tabs={[
           {
             id: 'prices',
@@ -213,12 +248,12 @@ export function HistorySection({
                 columns={priceColumns}
                 rows={priceRows}
                 rowKey={(row) => `${row.variantId}:${row.versionNo}`}
-                empty={<Empty>{h.emptyPrices}</Empty>}
+                empty={<EmptyState title={h.emptyPricesTitle}>{h.emptyPrices}</EmptyState>}
                 paging={{
-                  page: pages.prices,
-                  pageSize: pages.pageSize,
-                  onPageChange: (page) => setPages((state) => ({ ...state, prices: page })),
-                  onPageSizeChange: (pageSize) => setPages({ prices: 1, promotions: 1, pageSize }),
+                  page: view.hprice,
+                  pageSize: view.hsize,
+                  onPageChange: (hprice) => updateView({ hprice }),
+                  onPageSizeChange: (hsize) => updateView({ hsize }),
                   labels: paginationLabels(t, h.tabs.prices),
                 }}
               />
@@ -234,12 +269,12 @@ export function HistorySection({
                 columns={promotionColumns}
                 rows={promotionRows}
                 rowKey={(row) => row.id}
-                empty={<Empty>{h.emptyPromotions}</Empty>}
+                empty={<EmptyState title={h.emptyPromotionsTitle}>{h.emptyPromotions}</EmptyState>}
                 paging={{
-                  page: pages.promotions,
-                  pageSize: pages.pageSize,
-                  onPageChange: (page) => setPages((state) => ({ ...state, promotions: page })),
-                  onPageSizeChange: (pageSize) => setPages({ prices: 1, promotions: 1, pageSize }),
+                  page: view.hpromo,
+                  pageSize: view.hsize,
+                  onPageChange: (hpromo) => updateView({ hpromo }),
+                  onPageSizeChange: (hsize) => updateView({ hsize }),
                   labels: paginationLabels(t, h.tabs.promotions),
                 }}
               />

@@ -18,6 +18,7 @@ import {
   DataTable,
   DateTextInput,
   DescriptionList,
+  EmptyState,
   FacetedFilter,
   Field,
   FormActions,
@@ -28,16 +29,18 @@ import {
   MoneyInput,
   NumberInput,
   Page,
+  PageHeader as KitPageHeader,
   RowActions,
   SearchInput,
   Select,
   Stack,
   Textarea,
   TextInput,
+  useOptionalToast,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { inventoryDictionary } from '../../../i18n/inventory';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
@@ -57,19 +60,19 @@ import {
   resolveBranch,
   todayInShop,
   validateReceiptDraft,
-  variantOptionLabel,
+  itemTitle,
   type InventoryListState,
   type ReceiptDraft,
   type ReceiptLineDraft,
 } from '../../../lib/workforce/inventory';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { errorMessage } from '../../../lib/workforce/workflows';
-import { PrefetchLink as Link } from '../link';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -79,7 +82,18 @@ import {
   useSuccessToast,
   type Resource,
 } from '../ui';
+import {
+  focusInvalidSoon,
+  RouterButtonLink,
+  RouterMenuLink,
+  urlPaging,
+  useLeaveGuard,
+} from './products-links';
+import { metaLine } from './pos-format';
 import { useInventoryContext } from './use-inventory-command';
+
+// Pagers kept in the address bar (Back/Forward and shared links restore them).
+const useLinesPaging = urlPaging('lnpage', 'lnsize');
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 
@@ -127,7 +141,7 @@ export function ReceiptsList({
   list: InventoryListState;
   updateList: (patch: Partial<InventoryListState>, change?: { replace?: boolean }) => void;
 }) {
-  const { t, locale, base, navigate } = useWorkforce();
+  const { t, locale, base } = useWorkforce();
   const text = inventoryDictionary(locale);
   const r = text.receipts;
   const all = receipts.data?.receipts ?? [];
@@ -142,7 +156,7 @@ export function ReceiptsList({
       header: r.columns.code,
       mobileTitle: true,
       cell: (receipt) => (
-        <Link className="ls-link" href={open(receipt)}>
+        <Link className="ls-link" href={open(receipt)} translate="no">
           {receipt.code}
         </Link>
       ),
@@ -155,7 +169,7 @@ export function ReceiptsList({
     {
       key: 'supplier',
       header: r.columns.supplier,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'lg',
       cell: (receipt) => receipt.supplierName ?? text.none,
@@ -197,7 +211,7 @@ export function ReceiptsList({
     {
       key: 'createdBy',
       header: r.columns.createdBy,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: 'xl',
       cell: (receipt) => receipt.createdByName,
@@ -209,14 +223,8 @@ export function ReceiptsList({
       cell: (receipt) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: receipt.code })}
-          items={[
-            {
-              id: 'open',
-              label: r.open,
-              icon: 'eye',
-              onSelect: () => navigate?.(open(receipt)),
-            },
-          ]}
+          LinkComponent={RouterMenuLink}
+          items={[{ id: 'open', label: r.open, icon: 'eye', href: open(receipt) }]}
         />
       ),
     },
@@ -236,7 +244,7 @@ export function ReceiptsList({
               id="receipt-q"
               value={list.q}
               label={r.search}
-              placeholder={r.search}
+              hint={r.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -261,6 +269,7 @@ export function ReceiptsList({
         <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
       ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: text.tabs.receipts })}
         columns={columns}
@@ -273,7 +282,27 @@ export function ReceiptsList({
             <ErrorState error={receipts.error} t={t} onRetry={() => void receipts.reload()} />
           ) : undefined
         }
-        empty={receipts.data ? <Empty>{all.length === 0 ? r.empty : r.noMatch}</Empty> : undefined}
+        empty={
+          receipts.data ? (
+            all.length === 0 ? (
+              <EmptyState icon="receipt" title={r.emptyTitle}>
+                {r.empty}
+              </EmptyState>
+            ) : (
+              <EmptyState
+                icon="search"
+                title={r.noMatchTitle}
+                action={
+                  <Button variant="secondary" onClick={() => updateList({ q: '', rstatus: '' })}>
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {r.noMatch}
+              </EmptyState>
+            )
+          ) : undefined
+        }
         paging={{
           page: list.rpage,
           pageSize: list.rpageSize,
@@ -305,7 +334,7 @@ type Overlay = 'confirm' | 'cancel' | null;
 
 /**
  * One receipt. A DRAFT carries the page's one primary action ("Xác nhận nhập kho") and, in the information card, "Sửa" and a menu
- * with "Hủy phiếu"; a confirmed or cancelled receipt is read-only. The status badge lives inside the card, never next to the title.
+ * with "Hủy phiếu"; a confirmed or cancelled receipt is read-only. The status badge sits in the header's status slot under the title.
  */
 export function ReceiptView({
   receipt,
@@ -314,7 +343,7 @@ export function ReceiptView({
   receipt: StockReceiptResponse;
   reload: () => Promise<void>;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const text = inventoryDictionary(locale);
   const d = text.receipt;
   const notify = useSuccessToast();
@@ -326,13 +355,16 @@ export function ReceiptView({
   });
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={receipt.code}
-        {...(draft ? { intro: d.draftHint } : {})}
+        status={
+          <Badge tone={receiptTone(receipt.status)}>{text.receipts.statuses[receipt.status]}</Badge>
+        }
+        {...(draft ? { description: d.draftHint } : {})}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               {
                 label: text.title,
@@ -342,32 +374,32 @@ export function ReceiptView({
             ]}
           />
         }
-      >
-        {draft ? (
-          <Button variant="primary" onClick={() => setOverlay('confirm')}>
-            {d.confirm}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          draft ? (
+            <Button variant="primary" onClick={() => setOverlay('confirm')}>
+              {d.confirm}
+            </Button>
+          ) : undefined
+        }
+      />
       <Stack gap="page">
         <Section
           title={d.info}
           actions={
             draft ? (
               <>
-                <Button
-                  variant="secondary"
+                <RouterButtonLink
+                  href={`${base}/inventory/receipts/${receipt.id}/edit`}
                   icon="edit"
-                  onClick={() => navigate?.(`${base}/inventory/receipts/${receipt.id}/edit`)}
                 >
                   {d.edit}
-                </Button>
+                </RouterButtonLink>
                 <RowActions
                   menuLabel={d.moreActions}
                   items={[
                     {
                       id: 'cancel',
-                      label: d.cancel,
+                      label: opensInput(d.cancel),
                       tone: 'danger',
                       onSelect: () => setOverlay('cancel'),
                     },
@@ -384,22 +416,19 @@ export function ReceiptView({
               { label: d.fields.supplier, value: receipt.supplierName ?? text.none },
               { label: d.fields.date, value: formatDate(receipt.receiptDate, locale) },
               {
-                label: d.fields.status,
-                value: (
-                  <Badge tone={receiptTone(receipt.status)}>
-                    {text.receipts.statuses[receipt.status]}
-                  </Badge>
-                ),
-              },
-              {
                 label: d.fields.createdBy,
-                value: `${receipt.createdByName} · ${formatDateTime(receipt.createdAt, ZONE, locale)}`,
+                value: <PersonAt name={receipt.createdByName} at={receipt.createdAt} />,
               },
               ...(receipt.confirmedAt
                 ? [
                     {
                       label: d.fields.confirmedBy,
-                      value: `${receipt.confirmedByName ?? text.none} · ${formatDateTime(receipt.confirmedAt, ZONE, locale)}`,
+                      value: (
+                        <PersonAt
+                          name={receipt.confirmedByName ?? text.none}
+                          at={receipt.confirmedAt}
+                        />
+                      ),
                     },
                   ]
                 : []),
@@ -407,7 +436,12 @@ export function ReceiptView({
                 ? [
                     {
                       label: d.fields.cancelledBy,
-                      value: `${receipt.cancelledByName ?? text.none} · ${formatDateTime(receipt.cancelledAt, ZONE, locale)}`,
+                      value: (
+                        <PersonAt
+                          name={receipt.cancelledByName ?? text.none}
+                          at={receipt.cancelledAt}
+                        />
+                      ),
                     },
                     { label: d.fields.cancelReason, value: receipt.cancelReason ?? text.none },
                   ]
@@ -483,18 +517,34 @@ export function ReceiptView({
   );
 }
 
+/** Who did it, then when, on two lines (the name, then the muted time): never one "name · time" string. */
+function PersonAt({ name, at }: { name: string; at: string }) {
+  const { locale } = useWorkforce();
+  return (
+    <span className="ls-adm-c-stack">
+      <span>{name}</span>
+      <span className="ls-adm-c-muted">{formatDateTime(at, ZONE, locale)}</span>
+    </span>
+  );
+}
+
 function ReceiptLines({ receipt }: { receipt: StockReceiptResponse }) {
   const { t, locale } = useWorkforce();
   const text = inventoryDictionary(locale);
   const d = text.receipt;
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const paging = useLinesPaging(t, d.lines);
   const columns: DataTableColumn<StockReceiptLineResponse>[] = [
     { key: 'no', header: d.lineColumns.no, numeric: true, cell: (line) => line.lineNo },
-    { key: 'sku', header: d.lineColumns.sku, mobileTitle: true, cell: (line) => line.sku },
+    {
+      key: 'sku',
+      header: d.lineColumns.sku,
+      mobileTitle: true,
+      cell: (line) => <span translate="no">{line.sku}</span>,
+    },
     {
       key: 'product',
       header: d.lineColumns.product,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'md',
       cell: (line) => {
@@ -514,7 +564,7 @@ function ReceiptLines({ receipt }: { receipt: StockReceiptResponse }) {
       key: 'lot',
       header: d.lineColumns.lot,
       hideBelow: 'lg',
-      cell: (line) => line.lotCode ?? text.none,
+      cell: (line) => (line.lotCode ? <span translate="no">{line.lotCode}</span> : text.none),
     },
     {
       key: 'expiry',
@@ -543,13 +593,8 @@ function ReceiptLines({ receipt }: { receipt: StockReceiptResponse }) {
         columns={columns}
         rows={receipt.lines}
         rowKey={(line) => String(line.lineNo)}
-        empty={<Empty>{d.linesEmpty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, d.lines),
-        }}
+        empty={<EmptyState title={d.linesEmptyTitle}>{d.linesEmpty}</EmptyState>}
+        paging={paging}
       />
     </ListSection>
   );
@@ -588,7 +633,7 @@ export function ReceiptFormScreen({ id }: { id?: string }) {
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               { label: text.title, href: `${base}/inventory?tab=receipts` },
               ...(id && existing.data ? [{ label: existing.data.code, href: back }] : []),
@@ -645,6 +690,8 @@ function ReceiptFormBody({
   const text = inventoryDictionary(locale);
   const f = text.form;
   const notify = useSuccessToast();
+  const toast = useOptionalToast();
+  const formRef = useRef<HTMLFormElement | null>(null);
   const today = todayInShop();
   const branch = receipt
     ? { id: receipt.branchId, name: receipt.branchName }
@@ -671,22 +718,50 @@ function ReceiptFormBody({
       ...state,
       lines: [...state.lines, emptyLineDraft(`line-${counter.current++}`)],
     }));
-  const removeLine = (key: string) =>
+  // C72: removing a line is undoable for 8 s from the toast ("Hoàn tác" puts it back at its place); nothing is sent until Save.
+  const removeLine = (key: string) => {
+    const index = draft.lines.findIndex((line) => line.key === key);
+    const removed = draft.lines[index];
+    if (!removed) return;
     setDraft((state) => ({ ...state, lines: state.lines.filter((line) => line.key !== key) }));
+    toast?.push({
+      tone: 'info',
+      message: fill(f.lineRemoved, { n: index + 1 }),
+      action: {
+        label: f.undo,
+        onAction: () =>
+          setDraft((state) =>
+            state.lines.some((line) => line.key === key)
+              ? state
+              : {
+                  ...state,
+                  lines: [...state.lines.slice(0, index), removed, ...state.lines.slice(index)],
+                },
+          ),
+      },
+    });
+  };
 
-  // Every variant a line may name, including one the receipt already holds that is no longer offered.
-  const variantOptions = [
-    ...variants.variants.map((variant) => ({
-      value: variant.variantId,
-      label: variantOptionLabel(variant, locale),
-    })),
-    ...(receipt?.lines ?? [])
-      .filter((line) => !variants.variants.some((variant) => variant.variantId === line.variantId))
-      .map((line) => ({
-        value: line.variantId,
-        label: variantOptionLabel(line, locale),
+  // Every variant a line may name, including one the receipt already holds that is no longer offered. Built once per catalog,
+  // not on every keystroke in a line (rbp inventory-receipts.tsx:679-688; a Set for the lookup, :684).
+  const variantOptions = useMemo(() => {
+    const offered = new Set(variants.variants.map((variant) => variant.variantId));
+    return [
+      ...variants.variants.map((variant) => ({
+        value: variant.variantId,
+        label: metaLine(locale, [variant.sku, itemTitle(variant, locale)]),
       })),
-  ];
+      ...(receipt?.lines ?? [])
+        .filter((line) => !offered.has(line.variantId))
+        .map((line) => ({
+          value: line.variantId,
+          label: metaLine(locale, [line.sku, itemTitle(line, locale)]),
+        })),
+    ];
+  }, [variants, receipt, locale]);
+  // Typed lines are never dropped silently: the tab asks before closing, Cancel asks before leaving (wig inventory-receipts.tsx:656).
+  const dirty = !pending && JSON.stringify(draft) !== JSON.stringify(initial);
+  const guard = useLeaveGuard(dirty, () => navigate?.(back), t);
   const supplierOptions = suppliers.suppliers
     .filter((supplier) => supplier.isActive || supplier.id === draft.supplierId)
     .map((supplier) => ({ value: supplier.id, label: supplier.name }));
@@ -703,6 +778,7 @@ function ReceiptFormBody({
         const body = receiptEditRequest(draft, receipt.rowVersion, mode);
         if (!body) {
           setPending(false);
+          focusInvalidSoon(formRef.current);
           return;
         }
         await api.post<StockReceiptResponse>(`/api/v1/stock-receipts/${receipt.id}/edit`, body);
@@ -712,6 +788,7 @@ function ReceiptFormBody({
         const body = receiptCreateRequest(draft, branch.id, mode);
         if (!body) {
           setPending(false);
+          focusInvalidSoon(formRef.current);
           return;
         }
         const created = await api.post<StockReceiptResponse>('/api/v1/stock-receipts', body);
@@ -725,10 +802,26 @@ function ReceiptFormBody({
   }
 
   if (!branch) return <Notice tone="info">{f.noBranch}</Notice>;
-  if (receipt && receipt.status !== 'DRAFT') return <Notice tone="info">{f.cannotEdit}</Notice>;
+  if (receipt && receipt.status !== 'DRAFT') {
+    // Not a dead end: say why and lead back to the receipt itself.
+    return (
+      <EmptyState
+        icon="receipt"
+        title={f.cannotEditTitle}
+        action={
+          <RouterButtonLink href={back}>
+            {fill(f.openReceipt, { code: receipt.code })}
+          </RouterButtonLink>
+        }
+      >
+        {f.cannotEdit}
+      </EmptyState>
+    );
+  }
   const linesInvalid = checked && !receiptDraftValid(errors);
   return (
     <form
+      ref={formRef}
       noValidate
       onSubmit={(event) => void submit(event)}
       aria-label={receipt ? f.editTitle : f.createTitle}
@@ -739,12 +832,16 @@ function ReceiptFormBody({
             <p className="ls-hint">{f.intro}</p>
             <FormGrid cols={2}>
               <Field label={f.branch}>
-                {(control) => <TextInput {...control} value={branch.name} readOnly disabled />}
+                {(control) => (
+                  <TextInput {...control} name="name" value={branch.name} readOnly disabled />
+                )}
               </Field>
               <Field label={f.supplier}>
                 {(control) => (
                   <Select
                     {...control}
+                    name="supplierId"
+                    autoComplete="off"
                     value={draft.supplierId}
                     placeholder={f.supplierNone}
                     options={supplierOptions}
@@ -760,6 +857,8 @@ function ReceiptFormBody({
                 {(control) => (
                   <DateTextInput
                     {...control}
+                    name="receiptDate"
+                    autoComplete="off"
                     value={draft.receiptDate}
                     onChange={(event) => set({ receiptDate: event.target.value })}
                   />
@@ -773,6 +872,8 @@ function ReceiptFormBody({
                 {(control) => (
                   <Textarea
                     {...control}
+                    name="notes"
+                    autoComplete="off"
                     rows={3}
                     maxLength={500}
                     value={draft.notes}
@@ -799,7 +900,7 @@ function ReceiptFormBody({
             {draft.lines.map((line, index) => {
               const issues = checked ? (errors.lines[line.key] ?? {}) : {};
               return (
-                <Stack gap="block" key={line.key}>
+                <Stack gap="block" key={line.key} className="ls-adm-c-line">
                   <CardHeader
                     title={fill(f.lineTitle, { n: index + 1 })}
                     headingLevel={3}
@@ -821,6 +922,7 @@ function ReceiptFormBody({
                       {(control) => (
                         <Combobox
                           {...control}
+                          name="variantId"
                           options={variantOptions}
                           value={line.variantId === '' ? null : line.variantId}
                           onValueChange={(value) => setLine(line.key, { variantId: value ?? '' })}
@@ -844,6 +946,8 @@ function ReceiptFormBody({
                       {(control) => (
                         <NumberInput
                           {...control}
+                          name="quantity"
+                          autoComplete="off"
                           inputMode="numeric"
                           min={1}
                           value={line.quantity}
@@ -859,6 +963,7 @@ function ReceiptFormBody({
                       {(control) => (
                         <TextInput
                           {...control}
+                          name="lotCode"
                           autoComplete="off"
                           maxLength={64}
                           value={line.lotCode}
@@ -870,6 +975,8 @@ function ReceiptFormBody({
                       {(control) => (
                         <DateTextInput
                           {...control}
+                          name="expiryDate"
+                          autoComplete="off"
                           min={today}
                           value={line.expiryDate}
                           onChange={(event) =>
@@ -886,6 +993,9 @@ function ReceiptFormBody({
                         {(control) => (
                           <MoneyInput
                             {...control}
+                            name="unitCost"
+                            locale={locale}
+                            autoComplete="off"
                             value={line.unitCost === '' ? null : Number(line.unitCost)}
                             onValueChange={(value) =>
                               setLine(line.key, { unitCost: value === null ? '' : String(value) })
@@ -904,7 +1014,7 @@ function ReceiptFormBody({
         </Card>
         <FormActions
           cancel={
-            <Button variant="secondary" onClick={() => navigate?.(back)} disabled={pending}>
+            <Button variant="secondary" onClick={guard.leave} disabled={pending}>
               {t.common.cancel}
             </Button>
           }
@@ -915,6 +1025,7 @@ function ReceiptFormBody({
           }
         />
       </Stack>
+      {guard.dialog}
     </form>
   );
 }

@@ -9,7 +9,8 @@ const vi = {
   intro:
     'Hỏi về doanh thu, lượt đến, tiền mặt, lương tổng hợp, lợi nhuận hay đánh giá. Trợ lý chỉ đọc số liệu của các báo cáo bạn được xem.',
   label: 'Câu hỏi về số liệu của tiệm',
-  placeholder: 'Ví dụ: Doanh thu tuần này so với tuần trước thế nào?',
+  placeholder: 'Ví dụ: doanh thu tuần này so với tuần trước…',
+  empty: 'Nhập câu hỏi rồi bấm Hỏi.',
   characters: '{count}/{max} ký tự',
   ask: 'Hỏi',
   asking: 'Đang tìm số liệu…',
@@ -51,7 +52,8 @@ const en: AssistantText = {
   intro:
     'Ask about revenue, visits, cash, payroll totals, profit or ratings. The assistant only reads the figures of the reports you may open.',
   label: 'Question about the shop’s figures',
-  placeholder: 'For example: How is revenue this week compared with last week?',
+  placeholder: 'For example: revenue this week against last week…',
+  empty: 'Type a question, then select Ask.',
   characters: '{count}/{max} characters',
   ask: 'Ask',
   asking: 'Looking up the figures…',

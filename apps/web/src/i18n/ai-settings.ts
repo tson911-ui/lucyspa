@@ -9,7 +9,8 @@ const vi = {
   title: 'Cài đặt AI',
   intro:
     'Bật hoặc tắt các tính năng AI, đặt hạn mức chi phí mỗi tháng và chọn mô hình. AI chỉ soạn bản nháp; không có gì lên trang web khi chưa có người bấm Áp dụng.',
-  noAccess: 'Bạn không có quyền quản lý cài đặt AI.',
+  noAccess:
+    'Bạn không có quyền quản lý cài đặt AI. Nhờ chủ spa hoặc quản lý cấp quyền nếu bạn cần dùng mục này.',
   loadFailed: 'Không tải được cài đặt AI.',
   save: 'Lưu cài đặt',
   saving: 'Đang lưu…',
@@ -113,7 +114,7 @@ const vi = {
   words: {
     title: 'Quy tắc chữ',
     hint: 'Hệ thống luôn chặn lời hứa chữa bệnh, cam kết tuyệt đối và từ không dùng cho spa. Bạn có thể thêm cụm từ của riêng mình.',
-    authenticity: 'Cho phép viết "chính hãng"',
+    authenticity: 'Cho phép viết “chính hãng”',
     authenticityHint:
       'Chỉ bật sau khi bạn xác nhận nhà cung cấp là nhà phân phối chính thức. Khi tắt, AI không viết chữ này và bản nháp có chữ này bị cảnh báo.',
     banned: 'Cụm từ bị chặn thêm',
@@ -137,7 +138,8 @@ const en: AiSettingsText = {
   title: 'AI settings',
   intro:
     'Switch the AI features on or off, set the monthly spending cap and choose the model. The AI only writes drafts; nothing reaches the website until a person presses Apply.',
-  noAccess: 'You do not have permission to manage the AI settings.',
+  noAccess:
+    'You do not have permission to manage the AI settings. Ask the spa owner or a manager for access if you need it.',
   loadFailed: 'The AI settings could not be loaded.',
   save: 'Save settings',
   saving: 'Saving…',
@@ -240,7 +242,7 @@ const en: AiSettingsText = {
   words: {
     title: 'Wording rules',
     hint: 'The system always blocks medical promises, absolute guarantees and words a spa never uses. You can add your own phrases.',
-    authenticity: 'Allow writing "chính hãng" (authentic)',
+    authenticity: 'Allow writing “chính hãng” (authentic)',
     authenticityHint:
       'Turn on only after you confirm the supplier is an official distributor. While off, the AI does not write it and a draft containing it gets a warning.',
     banned: 'Extra blocked phrases',

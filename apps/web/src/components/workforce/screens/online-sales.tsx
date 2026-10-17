@@ -18,6 +18,7 @@ import {
   Switch,
   Textarea,
   focusFirstInvalid,
+  useOptionalToast,
   useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -43,16 +44,7 @@ import {
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+import { Badge, Button, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 
 /**
  * "Bán online": the master switch of online ordering and its settings (Phase 6 P6-19). `MANAGE_PRODUCTS`, global. The switch is OFF
@@ -67,7 +59,7 @@ export function OnlineSalesScreen() {
     return (
       <>
         <PageHeader title={text.title} intro={text.intro} />
-        <Empty>{text.noAccess}</Empty>
+        <Notice tone="info">{text.noAccess}</Notice>
       </>
     );
   }
@@ -81,10 +73,13 @@ function OnlineSalesPage() {
     () => api.get<OnlineSalesSettingsResponse>('/api/v1/online-sales-settings'),
     [api],
   );
-  const [settings, setSettings] = useState<OnlineSalesSettingsResponse | null>(null);
-  useEffect(() => {
-    if (loaded.data) setSettings(loaded.data);
-  }, [loaded.data]);
+  // A saved answer is kept beside the load it replaced; a fresh load wins (derived in render, no mirror effect: rbp
+  // online-sales.tsx:85-87).
+  const [saved, setSaved] = useState<{
+    from: OnlineSalesSettingsResponse | null;
+    value: OnlineSalesSettingsResponse;
+  } | null>(null);
+  const settings = saved && saved.from === loaded.data ? saved.value : loaded.data;
 
   if (loaded.error && !settings) {
     return (
@@ -107,7 +102,7 @@ function OnlineSalesPage() {
       // A new row version is a new form: a saved or reloaded record starts clean.
       key={settings.rowVersion}
       settings={settings}
-      onSaved={setSettings}
+      onSaved={(value) => setSaved({ from: loaded.data, value })}
       reload={async () => {
         await loaded.reload();
       }}
@@ -127,6 +122,7 @@ function SettingsPanel({
   const { api, t, locale } = useWorkforce();
   const text = onlineSalesDictionary(locale);
   const notify = useSuccessToast();
+  const toast = useOptionalToast();
   const formRef = useRef<HTMLFormElement | null>(null);
   const [draft, setDraft] = useState<OnlineSalesDraft>(() => draftFromSettings(settings));
   const [problems, setProblems] = useState<Partial<Record<OnlineSalesField, true>>>({});
@@ -155,6 +151,12 @@ function SettingsPanel({
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
+    // The button stays enabled (wig: never disabled to signal 'nothing to do'); with nothing changed it says so instead of sending.
+    if (!dirty) {
+      setMessage(null);
+      toast?.push({ tone: 'info', message: text.nothingToSave });
+      return;
+    }
     const found = validateForSave(draft, settings);
     if (Object.keys(found).length > 0) {
       setProblems(found);
@@ -209,6 +211,8 @@ function SettingsPanel({
       {(control) => (
         <NumberInput
           {...control}
+          name={field}
+          autoComplete="off"
           min={NUMBER_RULES[field].min}
           max={NUMBER_RULES[field].max}
           step={1}
@@ -232,8 +236,9 @@ function SettingsPanel({
                 <Badge tone={settings.enabled ? 'success' : 'neutral'}>
                   {settings.enabled ? text.master.on : text.master.off}
                 </Badge>
+                {/* The settings form's "Lưu thay đổi" is the page's one filled button; the switch is the outline. */}
                 <Button
-                  variant={settings.enabled ? 'secondary' : 'primary'}
+                  variant="secondary"
                   disabled={blocked !== null || (settings.enabled && dirty)}
                   onClick={() => setAsking(true)}
                 >
@@ -243,9 +248,8 @@ function SettingsPanel({
             }
           />
           <Stack gap="block">
-            <Notice tone={settings.enabled ? 'success' : 'info'}>
-              {settings.enabled ? text.master.onBody : text.master.offBody}
-            </Notice>
+            {/* The badge in the card header says on or off; the sentence is plain text, not a second box in the card. */}
+            <p className="ls-hint">{settings.enabled ? text.master.onBody : text.master.offBody}</p>
             {blocked === 'PAYMENT' ? (
               <Notice tone="warning">{text.master.paymentMissing}</Notice>
             ) : null}
@@ -275,6 +279,8 @@ function SettingsPanel({
                       {(control) => (
                         <Select
                           {...control}
+                          name="fulfilmentBranchId"
+                          autoComplete="off"
                           options={settings.branches.map((branch) => ({
                             value: branch.id,
                             label: branch.name,
@@ -342,8 +348,10 @@ function SettingsPanel({
                         {(control) => (
                           <MoneyInput
                             {...control}
+                            name="shippingFeeVnd"
+                            autoComplete="off"
                             unit={text.fee.unit}
-                            separator={locale === 'vi' ? '.' : ','}
+                            locale={locale}
                             value={draft.shippingFeeVnd}
                             disabled={pending}
                             onValueChange={(value) => change({ shippingFeeVnd: value })}
@@ -358,8 +366,10 @@ function SettingsPanel({
                         {(control) => (
                           <MoneyInput
                             {...control}
+                            name="freeShippingThresholdVnd"
+                            autoComplete="off"
                             unit={text.fee.unit}
-                            separator={locale === 'vi' ? '.' : ','}
+                            locale={locale}
                             value={draft.freeShippingThresholdVnd}
                             disabled={pending}
                             onValueChange={(value) => change({ freeShippingThresholdVnd: value })}
@@ -383,6 +393,8 @@ function SettingsPanel({
                       {(control) => (
                         <Textarea
                           {...control}
+                          name="policyVi"
+                          autoComplete="off"
                           rows={8}
                           value={draft.policyVi}
                           disabled={pending}
@@ -399,6 +411,8 @@ function SettingsPanel({
                       {(control) => (
                         <Textarea
                           {...control}
+                          name="policyEn"
+                          autoComplete="off"
                           rows={8}
                           value={draft.policyEn}
                           disabled={pending}
@@ -427,7 +441,7 @@ function SettingsPanel({
                 </Button>
               }
               primary={
-                <Button type="submit" variant="primary" loading={pending} disabled={!dirty}>
+                <Button type="submit" variant="primary" loading={pending}>
                   {pending ? text.saving : text.save}
                 </Button>
               }

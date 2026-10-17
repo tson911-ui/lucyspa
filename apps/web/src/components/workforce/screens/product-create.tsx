@@ -6,10 +6,9 @@ import type {
   ProductDetailResponse,
 } from '@lucy-spa/contracts';
 import { Breadcrumbs, Card, FormActions, Page, Stack } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
-import { useState, type FormEvent } from 'react';
+import { ListCrumbLink } from '../link';
+import { useRef, useState, type FormEvent } from 'react';
 import { productDictionary } from '../../../i18n/products';
-import { fill } from '../../../i18n/workforce';
 import {
   emptyProductDraft,
   productErrorText,
@@ -29,6 +28,7 @@ import {
   useSuccessToast,
 } from '../ui';
 import { ProductFields } from './product-fields';
+import { focusInvalidSoon, useLeaveGuard } from './products-links';
 
 /**
  * "Add product" on its own page (a long form, FR9): `/products/new`. Only the general information is entered here; the product is
@@ -57,7 +57,7 @@ export function ProductCreateScreen() {
         breadcrumbs={
           <Breadcrumbs
             label={p.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: p.title, href: back }, { label: p.create.title }]}
           />
         }
@@ -102,17 +102,16 @@ export function ProductCreateForm({
 }) {
   const { api, t, locale } = useWorkforce();
   const p = productDictionary(locale);
-  const [draft, setDraft] = useState<ProductDraft>(emptyProductDraft);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const [initial] = useState<ProductDraft>(emptyProductDraft);
+  const [draft, setDraft] = useState<ProductDraft>(initial);
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const errors = validateProductDraft(draft);
-  const missing = [
-    ...(errors.nameVi ? [p.create.nameVi] : []),
-    ...(errors.nameEn ? [p.create.nameEn] : []),
-    ...(errors.descriptionVi ? [p.create.descriptionVi] : []),
-    ...(errors.descriptionEn ? [p.create.descriptionEn] : []),
-  ];
+  // Typed text is never dropped silently: the tab asks before closing, Cancel asks before leaving (wig product-create.tsx:105).
+  const dirty = !pending && JSON.stringify(draft) !== JSON.stringify(initial);
+  const guard = useLeaveGuard(dirty, onCancel, t);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -120,7 +119,11 @@ export function ProductCreateForm({
     setChecked(true);
     setError(null);
     const body = productRequest(draft);
-    if (!body) return;
+    if (!body) {
+      // The errors sit at their fields; focus moves to the first one (wig product-create.tsx:120).
+      focusInvalidSoon(formRef.current);
+      return;
+    }
     setPending(true);
     try {
       onCreated(await api.post<ProductDetailResponse>('/api/v1/products', body));
@@ -131,7 +134,12 @@ export function ProductCreateForm({
   }
 
   return (
-    <form noValidate onSubmit={(event) => void submit(event)} aria-label={p.create.title}>
+    <form
+      ref={formRef}
+      noValidate
+      onSubmit={(event) => void submit(event)}
+      aria-label={p.create.title}
+    >
       <Stack gap="block">
         <Card as="section" aria-label={p.create.title}>
           <Stack gap="page">
@@ -144,15 +152,12 @@ export function ProductCreateForm({
               brands={brands}
               categories={categories}
             />
-            {checked && missing.length > 0 ? (
-              <Notice tone="error">{fill(p.create.missing, { fields: missing.join(', ') })}</Notice>
-            ) : null}
             {error ? <Notice tone="error">{error}</Notice> : null}
           </Stack>
         </Card>
         <FormActions
           cancel={
-            <Button variant="secondary" onClick={onCancel} disabled={pending}>
+            <Button variant="secondary" onClick={guard.leave} disabled={pending}>
               {t.common.cancel}
             </Button>
           }
@@ -163,6 +168,7 @@ export function ProductCreateForm({
           }
         />
       </Stack>
+      {guard.dialog}
     </form>
   );
 }

@@ -171,6 +171,21 @@ test('the dashboard shortcut grid keeps listing the same management pages until 
   ]);
 });
 
+test('the browser tab names the staff page, brand last (HIG C41)', async () => {
+  const { staffPageName } = await import('../../components/workforce/shell');
+  const items = navigationFor(owner);
+  assert.equal(staffPageName(items, BASE, `${BASE}/employees`, vi), vi.nav.employees);
+  assert.equal(
+    staffPageName(items, BASE, `${BASE}/employees/e1`, vi),
+    vi.nav.employees,
+    'a record takes its list name',
+  );
+  assert.equal(staffPageName(items, BASE, BASE, vi), vi.nav.dashboard);
+  assert.equal(staffPageName(items, BASE, '/vi/elsewhere', vi), null);
+  // C41: the one title form, page first, a spaced en dash, the brand last.
+  assert.match(vi.meta.title, /^\S.* – Lucy Spa$/);
+});
+
 test('the workforce auth pages have a tagline in both languages', () => {
   assert.ok(vi.auth.tagline.length > 0 && en.auth.tagline.length > 0);
   assert.notEqual(vi.auth.tagline, en.auth.tagline);

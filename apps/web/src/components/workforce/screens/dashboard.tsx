@@ -1,11 +1,22 @@
 'use client';
 
-import { Button, Card, CardHeader, IconButton, SegmentedControl, SortableGrid } from '@lucy-spa/ui';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  IconButton,
+  SegmentedControl,
+  SortableGrid,
+  useUrlState,
+} from '@lucy-spa/ui';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { fill } from '../../../i18n/workforce';
+import { confirmError } from '../../../lib/workforce/form-labels';
 import {
   hideWidget,
-  readLayout,
+  layoutKey,
+  parseLayout,
   reorderVisible,
   resizeWidget,
   resolveLayout,
@@ -14,9 +25,15 @@ import {
   writeLayout,
   type PlacedWidget,
   type ResolvedLayout,
+  type SavedLayout,
 } from '../../../lib/workforce/dashboard/layout';
-import { availableWidgets, widgetBranchIds } from '../../../lib/workforce/dashboard/widgets';
+import {
+  availableWidgets,
+  widgetBranchIds,
+  type WidgetId,
+} from '../../../lib/workforce/dashboard/widgets';
 import { useBranchMap, DashboardDataProvider } from '../dashboard/data';
+import { preloadWidgets } from '../dashboard/registry';
 import { WidgetHost } from '../dashboard/widget-host';
 import { RecoveryEmailSection } from '../recovery-email';
 import { useAccount, useWorkforce } from '../session';
@@ -45,20 +62,55 @@ function storage(): Storage | null {
   }
 }
 
+/** Fired after this tab saves the layout (the `storage` event covers the other tabs). */
+const LAYOUT_EVENT = 'ls:dashboard-layout';
+
+function subscribeLayout(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange);
+  window.addEventListener(LAYOUT_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(LAYOUT_EVENT, onChange);
+  };
+}
+
+/**
+ * The saved layout, read from the browser through `useSyncExternalStore`: the server render and hydration use the
+ * default layout (no snapshot on the server), then the stored one applies without an effect that sets state after mount.
+ */
+function useStoredLayout(accountId: string): SavedLayout | null {
+  const raw = useSyncExternalStore(
+    subscribeLayout,
+    () => {
+      try {
+        return storage()?.getItem(layoutKey(accountId)) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  return useMemo(() => parseLayout(raw), [raw]);
+}
+
+/** Address-bar state of the dashboard: the branch the branch widgets show (`?branch=`). */
+const DASHBOARD_URL_DEFAULTS = { branch: '' };
+
 function Dashboard() {
   const { t, locale } = useWorkforce();
   const { account } = useAccount();
   const employee = account.kind === 'EMPLOYEE';
   const branches = useBranchMap();
   const available = useMemo(() => availableWidgets(account), [account]);
-  const [saved, setSaved] = useState<ReturnType<typeof readLayout>>(null);
+  const stored = useStoredLayout(account.id);
+  // A layout that could not be written (blocked storage) still applies for this visit.
+  const [unsaved, setUnsaved] = useState<SavedLayout | null | undefined>(undefined);
+  const saved = unsaved === undefined ? stored : unsaved;
   const [editing, setEditing] = useState(false);
-  const [branchId, setBranchId] = useState<string | null>(null);
-
-  // Read after mount so the server and first client render agree (the layout lives in the browser).
-  useEffect(() => {
-    setSaved(readLayout(storage(), account.id));
-  }, [account.id]);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [url, updateUrl] = useUrlState(DASHBOARD_URL_DEFAULTS);
+  const chosenBranch = url.branch || null;
+  const setBranchId = (branch: string) => updateUrl({ branch });
 
   const branchChoices = useMemo(() => {
     const active = [...(branches.data?.values() ?? [])]
@@ -72,21 +124,30 @@ function Dashboard() {
     );
     return active.filter((branch) => allowed.has(branch.id));
   }, [account, branches.data]);
-  useEffect(() => {
-    if (!branchChoices.some((branch) => branch.id === branchId)) {
-      setBranchId(branchChoices[0]?.id ?? null);
-    }
-  }, [branchChoices, branchId]);
+  // Derived in render (no effect): the chosen branch while it is still offered, else the first choice.
+  const branchId = branchChoices.some((branch) => branch.id === chosenBranch)
+    ? chosenBranch
+    : (branchChoices[0]?.id ?? null);
 
   const layout = useMemo(() => resolveLayout(available, saved), [available, saved]);
+  const visibleKey = layout.visible.map(({ meta }) => meta.id).join(',');
+  // The chunks of the widgets on screen start loading with the layout, not when each host renders (rbp bundle-preload).
+  useEffect(() => {
+    if (visibleKey) preloadWidgets(visibleKey.split(',') as WidgetId[]);
+  }, [visibleKey]);
+  // While the branch list loads, a branch widget shows its skeleton, not "no branch".
+  const branchesPending = branches.data === null && !branches.error;
   const commit = (next: ResolvedLayout) => {
     const value = toSaved(next);
-    setSaved(value);
+    setUnsaved(value);
     writeLayout(storage(), account.id, value);
+    window.dispatchEvent(new Event(LAYOUT_EVENT));
   };
-  const reset = () => {
-    setSaved(null);
+  const reset = async () => {
+    setUnsaved(null);
     writeLayout(storage(), account.id, null);
+    window.dispatchEvent(new Event(LAYOUT_EVENT));
+    setConfirmReset(false);
   };
 
   const showBranchWidgets = layout.visible.some(({ meta }) => meta.scope === 'branch');
@@ -126,7 +187,7 @@ function Dashboard() {
             title={copy.customize}
             description={copy.customizeHelp}
             actions={
-              <Button variant="secondary" onClick={reset}>
+              <Button variant="secondary" onClick={() => setConfirmReset(true)}>
                 {copy.customizeReset}
               </Button>
             }
@@ -184,10 +245,23 @@ function Dashboard() {
                 />
               </div>
             ) : null}
-            <WidgetHost placed={placed} branchId={branchId} />
+            <WidgetHost placed={placed} branchId={branchId} branchesPending={branchesPending} />
           </>
         )}
       />
+      {/* Resetting wipes the saved order, sizes and hidden cards: it asks first (wig dashboard.tsx:129). */}
+      {confirmReset ? (
+        <ConfirmDialog
+          tone="warning"
+          title={copy.resetTitle}
+          description={copy.resetText}
+          confirmLabel={copy.customizeReset}
+          cancelLabel={t.common.cancel}
+          describeError={confirmError(t)}
+          onConfirm={reset}
+          onCancel={() => setConfirmReset(false)}
+        />
+      ) : null}
     </>
   );
 }

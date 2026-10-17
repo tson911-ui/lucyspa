@@ -8,22 +8,24 @@ import {
   type PayrollMonthlyReport,
   type TipsReport,
 } from '@lucy-spa/contracts';
-import { Stack, type DataTableColumn } from '@lucy-spa/ui';
+import { Badge as KitBadge, Stack, type DataTableColumn } from '@lucy-spa/ui';
 import { reportsCDictionary, type ReportsCDictionary } from '../../../i18n/reports-c';
 import { formatDate } from '../../../lib/workforce/format';
-import { vnd, vndNumber } from '../../../lib/workforce/reports';
-import { formatCount, monthLabel, percentFromBp } from '../../../lib/workforce/reports-b';
+import { vndNumber } from '../../../lib/workforce/reports';
+import { formatCount, monthLabel } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
-import { Badge, Empty, Notice } from '../ui';
+import { Empty } from '../ui';
 import {
   Kpi,
   KpiRow,
   ReportData,
+  ReportNote,
   ReportScreen,
   ReportTable,
   type PanelContext,
   type ReportTabDef,
 } from './reports-kit';
+import { shareText, vndText } from './reports-format';
 
 /**
  * "Báo cáo lương" (Phase 8 P8-14, docs/PHASE8_REPORTS.md 4.6): tips by person, the payroll of each month by kind of item, labour cost against
@@ -129,7 +131,7 @@ export function TipsBody({ data }: { data: TipsReport }) {
       key: 'name',
       header: col['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.name,
     },
@@ -138,40 +140,40 @@ export function TipsBody({ data }: { data: TipsReport }) {
       header: col['code']!,
       hideBelow: 'lg',
       hidePhone: true,
-      cell: (row) => row.employeeCode ?? '—',
+      cell: (row) => (row.employeeCode ? <span translate="no">{row.employeeCode}</span> : '—'),
     },
     {
       key: 'cash',
       header: col['tipsCash']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.cashVnd, locale),
+      cell: (row) => vndText(row.cashVnd, locale),
     },
     {
       key: 'transfer',
       header: col['tipsTransfer']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.transferVnd, locale),
+      cell: (row) => vndText(row.transferVnd, locale),
     },
     {
       key: 'total',
       header: col['tipsTotal']!,
       numeric: true,
-      cell: (row) => vnd(row.totalVnd, locale),
+      cell: (row) => vndText(row.totalVnd, locale),
     },
     {
       key: 'inRun',
       header: col['tipsInRun']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => vnd(row.inRunVnd, locale),
+      cell: (row) => vndText(row.inRunVnd, locale),
     },
     {
       key: 'owed',
       header: col['tipsOwed']!,
       numeric: true,
-      cell: (row) => vnd(row.owedVnd, locale),
+      cell: (row) => vndText(row.owedVnd, locale),
     },
     {
       key: 'entries',
@@ -211,9 +213,12 @@ function StatusBadge({ status }: { status: 'DRAFT' | 'CLOSED' | 'PAID' }) {
   const { locale } = useWorkforce();
   const label = reportsCDictionary(locale).pay.status[status];
   return (
-    <Badge tone={status === 'PAID' ? 'success' : status === 'DRAFT' ? 'warning' : 'neutral'}>
+    <KitBadge
+      tone={status === 'PAID' ? 'success' : status === 'DRAFT' ? 'warning' : 'neutral'}
+      {...(status === 'CLOSED' ? { icon: 'check' as const } : {})}
+    >
       {label}
-    </Badge>
+    </KitBadge>
   );
 }
 
@@ -231,7 +236,7 @@ export function PayrollBody({ data }: { data: PayrollMonthlyReport }) {
       hideBelow:
         kind === 'BASE_SALARY' ? 'md' : kind === 'TOUR' || kind === 'COMMISSION' ? 'xl' : '2xl',
       hidePhone: kind !== 'BASE_SALARY',
-      cell: (row: PayrollMonthlyReport['rows'][number]) => vnd(row.byKind[kind], locale),
+      cell: (row: PayrollMonthlyReport['rows'][number]) => vndText(row.byKind[kind], locale),
     }),
   );
   const columns: DataTableColumn<PayrollMonthlyReport['rows'][number]>[] = [
@@ -250,13 +255,13 @@ export function PayrollBody({ data }: { data: PayrollMonthlyReport }) {
       cell: (row) => count(row.people),
     },
     ...kindColumns,
-    { key: 'net', header: col['net']!, numeric: true, cell: (row) => vnd(row.netVnd, locale) },
+    { key: 'net', header: col['net']!, numeric: true, cell: (row) => vndText(row.netVnd, locale) },
     {
       key: 'tips',
       header: col['tips']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => vnd(row.tipsVnd, locale),
+      cell: (row) => vndText(row.tipsVnd, locale),
     },
     {
       key: 'paid',
@@ -301,24 +306,24 @@ export function LabourBody({ data }: { data: LabourCostReport }) {
       key: 'labour',
       header: col['labour']!,
       numeric: true,
-      cell: (row) => vnd(row.labourVnd, locale),
+      cell: (row) => vndText(row.labourVnd, locale),
     },
     {
       key: 'revenue',
       header: col['revenue']!,
       numeric: true,
-      cell: (row) => vnd(row.revenueVnd, locale),
+      cell: (row) => vndText(row.revenueVnd, locale),
     },
     {
       key: 'share',
       header: col['share']!,
       numeric: true,
-      cell: (row) => (row.shareBp === null ? c.pay.noRevenue : percentFromBp(row.shareBp, locale)),
+      cell: (row) => (row.shareBp === null ? c.pay.noRevenue : shareText(locale, row.shareBp)),
     },
   ];
   return (
     <Stack gap="page">
-      <Notice tone="info">{c.pay.labourNote}</Notice>
+      <ReportNote>{c.pay.labourNote}</ReportNote>
       <ReportTable
         label={c.pay.tabs.labour}
         columns={columns}
@@ -341,7 +346,7 @@ export function AdvancesBody({ data }: { data: AdvancesReport }) {
       key: 'name',
       header: col['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.name,
     },
@@ -350,27 +355,27 @@ export function AdvancesBody({ data }: { data: AdvancesReport }) {
       header: col['code']!,
       hideBelow: 'lg',
       hidePhone: true,
-      cell: (row) => row.employeeCode ?? '—',
+      cell: (row) => (row.employeeCode ? <span translate="no">{row.employeeCode}</span> : '—'),
     },
     {
       key: 'paid',
       header: col['advPaid']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.paidVnd, locale),
+      cell: (row) => vndText(row.paidVnd, locale),
     },
     {
       key: 'recovered',
       header: col['advRecovered']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.recoveredVnd, locale),
+      cell: (row) => vndText(row.recoveredVnd, locale),
     },
     {
       key: 'outstanding',
       header: col['advOutstanding']!,
       numeric: true,
-      cell: (row) => vnd(row.outstandingVnd, locale),
+      cell: (row) => vndText(row.outstandingVnd, locale),
     },
     {
       key: 'pendingCount',
@@ -384,7 +389,7 @@ export function AdvancesBody({ data }: { data: AdvancesReport }) {
       header: col['advPending']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => vnd(row.pendingVnd, locale),
+      cell: (row) => vndText(row.pendingVnd, locale),
     },
   ];
   const k = c.pay.kpi;

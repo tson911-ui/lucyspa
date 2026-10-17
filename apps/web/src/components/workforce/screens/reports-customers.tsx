@@ -20,19 +20,21 @@ import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { reportsDictionary, type ReportsDictionary } from '../../../i18n/reports';
 import { reportsBDictionary, type ReportsBDictionary } from '../../../i18n/reports-b';
 import { fill } from '../../../i18n/workforce';
-import { vnd } from '../../../lib/workforce/reports';
+
 import { bpToPercent, formatCount } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
-import { Empty, Notice } from '../ui';
+import { Empty } from '../ui';
 import {
   Kpi,
   KpiRow,
   ReportData,
+  ReportNote,
   ReportScreen,
   ReportTable,
   type PanelContext,
   type ReportTabDef,
 } from './reports-kit';
+import { vndText } from './reports-format';
 
 /**
  * "Khách hàng" (Phase 8 P8-10, docs/PHASE8_REPORTS.md 4.3): visits (lượt đến) with new and returning customers, the booking funnel, loyalty
@@ -170,7 +172,7 @@ export function VisitsBody({ data }: { data: CustomerVisitsReport }) {
       key: 'branch',
       header: b.col['branch']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.branch.name,
     },
@@ -346,7 +348,7 @@ export function LoyaltyBody({ data }: { data: LoyaltyReport }) {
     {
       key: 'kind',
       header: b.col['kind']!,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => (loyalty.kinds as Record<string, string>)[row.kind] ?? row.kind,
     },
@@ -395,10 +397,10 @@ export function LoyaltyBody({ data }: { data: LoyaltyReport }) {
           label={k.birthday}
           value={data.birthday.redeemed}
           format="count"
-          asOf={vnd(data.birthday.amountVnd, locale)}
+          asOf={vndText(data.birthday.amountVnd, locale)}
         />
       </KpiRow>
-      {!data.includesBranchless ? <Notice tone="info">{b.customers.branchless}</Notice> : null}
+      {!data.includesBranchless ? <ReportNote>{b.customers.branchless}</ReportNote> : null}
       <ListSection title={b.customers.points}>
         <ReportTable
           label={b.customers.points}
@@ -410,6 +412,7 @@ export function LoyaltyBody({ data }: { data: LoyaltyReport }) {
       </ListSection>
       <ListSection title={b.customers.tiers}>
         <ReportTable
+          urlKey="tp2"
           label={b.customers.tiers}
           columns={tierColumns}
           rows={data.tiers}
@@ -430,7 +433,7 @@ export function TopBody({ data }: { data: TopCustomersReport }) {
       key: 'name',
       header: b.col['customer']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.name,
     },
@@ -453,12 +456,12 @@ export function TopBody({ data }: { data: TopCustomersReport }) {
       key: 'paid',
       header: b.col['paid']!,
       numeric: true,
-      cell: (row) => vnd(row.collectedVnd, locale),
+      cell: (row) => vndText(row.collectedVnd, locale),
     },
   ];
   return (
     <Stack gap="page">
-      <Notice tone="info">{fill(b.customers.topNote, { count: String(data.limit) })}</Notice>
+      <ReportNote>{fill(b.customers.topNote, { count: String(data.limit) })}</ReportNote>
       <ReportTable
         label={b.customers.top}
         columns={columns}

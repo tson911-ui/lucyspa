@@ -13,17 +13,20 @@ import {
   CardHeader,
   CheckField,
   DescriptionList,
+  EmptyState,
   Field,
   FormActions,
   FormDialog,
   FormGrid,
+  PageHeader,
   Stack,
   Tabs,
   Textarea,
   useUnsavedChangesGuard,
+  useUrlState,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { aiDraftsDictionary } from '../../../i18n/ai-drafts';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -35,6 +38,7 @@ import {
   readField,
   rowsFor,
   serverField,
+  statusTone,
   workingContent,
   writeField,
   type FieldSpec,
@@ -43,21 +47,20 @@ import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { errorMessage } from '../../../lib/workforce/workflows';
-import { PrefetchLink as Link } from '../link';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { ListCrumbLink } from '../link';
 import { useAccount, useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Loading,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+import { Badge, Button, ErrorState, Loading, Notice, useResource, useSuccessToast } from '../ui';
+import { listFormat } from './pos-format';
+import { focusInvalidSoon } from './products-links';
 
 const BASE = '/api/v1/ai/product-drafts';
+
+// The language tab lives in the address bar (Back/Forward and a shared link open the same language).
+const LANGUAGE_URL = { lang: 'vi' };
+const LANGUAGE_OPTIONS = {
+  normalize: (state: typeof LANGUAGE_URL) => ({ lang: state.lang === 'en' ? 'en' : 'vi' }),
+};
 const POLL_MS = 4000;
 const ZONE = 'Asia/Ho_Chi_Minh';
 
@@ -80,10 +83,17 @@ export function AiDraftScreen({ id }: { id: string }) {
       allowed ? api.get<AiDraftDetail>(`${BASE}/${encodeURIComponent(id)}`) : Promise.resolve(null),
     [api, id, allowed],
   );
-  const [detail, setDetail] = useState<AiDraftDetail | null>(null);
-  useEffect(() => {
-    if (loaded.data) setDetail(loaded.data);
-  }, [loaded.data]);
+  // A command's answer is kept beside the loaded draft it was made from; a fresh load replaces it (no mirror effect, rbp
+  // ai-draft-detail.tsx:84-86: the copy is derived in render).
+  const [local, setLocal] = useState<{ from: AiDraftDetail | null; value: AiDraftDetail } | null>(
+    null,
+  );
+  const detail = local && local.from === loaded.data ? local.value : loaded.data;
+  const loadedData = loaded.data;
+  const setDetail = useCallback(
+    (value: AiDraftDetail) => setLocal({ from: loadedData, value }),
+    [loadedData],
+  );
   // The first time a ready draft is opened by a reviewer it is recorded (the page approval of CI-R3 counts on it).
   const viewed = useRef(false);
   useEffect(() => {
@@ -94,19 +104,20 @@ export function AiDraftScreen({ id }: { id: string }) {
       .post<AiDraftDetail>(`${BASE}/${encodeURIComponent(id)}/view`, {})
       .then(setDetail)
       .catch(() => undefined);
-  }, [api, id, detail]);
+  }, [api, id, detail, setDetail]);
   const waiting = detail?.status === 'QUEUED' || detail?.status === 'GENERATING';
+  const reloadDraft = loaded.reload;
   useEffect(() => {
     if (!waiting) return;
-    const timer = setInterval(() => void loaded.reload(), POLL_MS);
+    const timer = setInterval(() => void reloadDraft(), POLL_MS);
     return () => clearInterval(timer);
-  }, [waiting, loaded]);
+  }, [waiting, reloadDraft]);
 
   if (!allowed) {
     return (
       <>
-        <PageHeader title={text.title} intro={text.intro} />
-        <Empty>{text.noAccess}</Empty>
+        <PageHeader title={text.title} description={text.intro} />
+        <Notice tone="info">{text.noAccess}</Notice>
       </>
     );
   }
@@ -205,8 +216,10 @@ function DraftPanel({
   const saved = workingContent(detail);
   const [working, setWorking] = useState<AiDraftContent | null>(saved);
   const [useName, setUseName] = useState(detail.useNameSuggestion);
-  const [language, setLanguage] = useState<'vi' | 'en'>('vi');
-  const [problem, setProblem] = useState<string | null>(null);
+  const [{ lang }, updateLang] = useUrlState(LANGUAGE_URL, LANGUAGE_OPTIONS);
+  const language = lang === 'en' ? 'en' : 'vi';
+  // A refused field from the server: shown at that field when the draft has one by that name, else above the form.
+  const [problem, setProblem] = useState<{ field: string; message: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<Overlay>(null);
@@ -224,7 +237,16 @@ function DraftPanel({
     }
     const field = serverField(error);
     if (field) {
-      setProblem((text.fieldErrors as Record<string, string>)[field] ?? text.fieldErrors.generic);
+      setProblem({
+        field,
+        message: (text.fieldErrors as Record<string, string>)[field] ?? text.fieldErrors.generic,
+      });
+      const target = [...fieldSpecs('vi'), ...fieldSpecs('en')].find((spec) => spec.path === field);
+      if (target) {
+        // Inline at the failing field (wig ai-draft-detail.tsx:373): open its language tab and move focus there.
+        updateLang({ lang: target.language });
+        focusInvalidSoon();
+      }
       return;
     }
     setMessage(errorMessage(error, t));
@@ -274,7 +296,7 @@ function DraftPanel({
       ? [
           {
             id: 'regenerate',
-            label: d.regenerate,
+            label: opensInput(d.regenerate),
             icon: 'refresh' as const,
             onSelect: () => setOverlay('regenerate'),
           },
@@ -294,7 +316,7 @@ function DraftPanel({
       ? [
           {
             id: 'reject',
-            label: d.reject,
+            label: opensInput(d.reject),
             icon: 'close' as const,
             tone: 'danger' as const,
             onSelect: () => setOverlay('reject'),
@@ -312,6 +334,9 @@ function DraftPanel({
         : undefined;
 
   const specs = fieldSpecs(language);
+  const problemAtField =
+    problem !== null &&
+    [...fieldSpecs('vi'), ...fieldSpecs('en')].some((spec) => spec.path === problem.field);
   const failureReason = (): string => {
     const key = errorKey(detail.errorCode, Object.keys(text.errors));
     return text.errors[key as keyof Text['errors']];
@@ -321,36 +346,39 @@ function DraftPanel({
     <>
       <PageHeader
         title={detail.product.nameVi}
+        status={<Badge tone={statusTone(detail.status)}>{text.statuses[detail.status]}</Badge>}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               { label: text.title, href: `${base}/product-rewrites` },
               { label: detail.product.code },
             ]}
           />
         }
-      >
-        <ActionBar
-          label={d.more}
-          moreLabel={d.more}
-          actions={menu}
-          primary={
-            ready ? (
-              <Button
-                variant="primary"
-                icon="check"
-                onClick={() => setOverlay('apply')}
-                disabled={applyBlockedReason !== undefined}
-                {...(applyBlockedReason ? { disabledReason: applyBlockedReason } : {})}
-              >
-                {d.apply}
-              </Button>
-            ) : undefined
-          }
-        />
-      </PageHeader>
+        actions={
+          <ActionBar
+            label={d.more}
+            moreLabel={d.more}
+            actions={menu}
+            primary={
+              ready ? (
+                <Button
+                  // While there are unsaved edits the form's "Lưu" is the one filled button; Apply waits as the outline.
+                  variant={dirty ? 'secondary' : 'primary'}
+                  icon="check"
+                  onClick={() => setOverlay('apply')}
+                  disabled={applyBlockedReason !== undefined}
+                  {...(applyBlockedReason ? { disabledReason: applyBlockedReason } : {})}
+                >
+                  {d.apply}
+                </Button>
+              ) : undefined
+            }
+          />
+        }
+      />
       <Stack gap="page">
         {detail.status === 'APPLIED' ? (
           <Notice tone="success">
@@ -370,7 +398,7 @@ function DraftPanel({
           <Notice tone="warning">{d.stale}</Notice>
         ) : null}
         {message ? <Notice tone="error">{message}</Notice> : null}
-        {problem ? <Notice tone="error">{problem}</Notice> : null}
+        {problem && !problemAtField ? <Notice tone="error">{problem.message}</Notice> : null}
 
         {detail.warnings.length > 0 && working !== null ? (
           <Card as="section" aria-label={d.warningsTitle}>
@@ -392,13 +420,13 @@ function DraftPanel({
         ) : null}
 
         {working === null ? (
-          <Empty>{d.noDraft}</Empty>
+          <EmptyState title={d.noDraftTitle}>{d.noDraft}</EmptyState>
         ) : (
           <>
             <Tabs
               label={d.languageTabs}
               value={language}
-              onChange={(value) => setLanguage(value === 'en' ? 'en' : 'vi')}
+              onChange={(value) => updateLang({ lang: value === 'en' ? 'en' : 'vi' })}
               tabs={[
                 { id: 'vi', label: d.vi, panel: null },
                 { id: 'en', label: d.en, panel: null },
@@ -409,21 +437,16 @@ function DraftPanel({
                 {language === 'vi' && detail.nameViSuggestion ? (
                   <Stack gap="field">
                     <FormGrid cols={2}>
-                      <Field label={`${d.current}: ${text.fields.nameVi}`}>
-                        {(control) => (
-                          <Textarea {...control} readOnly rows={2} value={detail.product.nameVi} />
-                        )}
-                      </Field>
-                      <Field label={`${d.draft}: ${d.nameSuggestion}`}>
-                        {(control) => (
-                          <Textarea
-                            {...control}
-                            readOnly
-                            rows={2}
-                            value={detail.nameViSuggestion ?? ''}
-                          />
-                        )}
-                      </Field>
+                      <ReadOnlyText
+                        label={`${d.current}: ${text.fields.nameVi}`}
+                        value={detail.product.nameVi}
+                        empty={d.emptyCurrent}
+                      />
+                      <ReadOnlyText
+                        label={`${d.draft}: ${d.nameSuggestion}`}
+                        value={detail.nameViSuggestion ?? ''}
+                        empty={d.emptyCurrent}
+                      />
                     </FormGrid>
                     <CheckField
                       label={d.useName}
@@ -440,6 +463,7 @@ function DraftPanel({
                     current={readField(detail.current, spec)}
                     value={readField(working, spec)}
                     text={text}
+                    serverError={problem?.field === spec.path ? problem.message : undefined}
                     disabled={!editable || pending}
                     onChange={(value) => {
                       setWorking(writeField(working, spec, value));
@@ -459,12 +483,12 @@ function DraftPanel({
                   {detail.suitableForInferred ? <p>{d.suitableInferred}</p> : null}
                   {detail.factsKept.length > 0 ? (
                     <p>
-                      <strong>{d.factsKept}:</strong> {detail.factsKept.join(', ')}
+                      <strong>{d.factsKept}:</strong> {listFormat(locale).format(detail.factsKept)}
                     </p>
                   ) : null}
                   {detail.uncertain.length > 0 ? (
                     <p>
-                      <strong>{d.uncertain}:</strong> {detail.uncertain.join(', ')}
+                      <strong>{d.uncertain}:</strong> {listFormat(locale).format(detail.uncertain)}
                     </p>
                   ) : null}
                 </Stack>
@@ -539,12 +563,28 @@ function DraftPanel({
   );
 }
 
+/**
+ * Reference text that cannot be edited (the product's current text, the suggested name): a label and the text itself, not a read-only
+ * textarea, so it is read as text and adds no tab stop (wig ai-draft-detail.tsx:414). Line breaks are kept; long words wrap.
+ */
+function ReadOnlyText({ label, value, empty }: { label: string; value: string; empty: string }) {
+  return (
+    <div className="ls-adm-c-ref">
+      <p className="ls-adm-c-ref-label">{label}</p>
+      <p className={value === '' ? 'ls-adm-c-ref-text ls-adm-c-muted' : 'ls-adm-c-ref-text'}>
+        {value === '' ? empty : value}
+      </p>
+    </div>
+  );
+}
+
 /** One field: what the product has now (read only) beside the draft (editable), with the length rule for the search texts. */
 function FieldRow({
   spec,
   current,
   value,
   text,
+  serverError,
   disabled,
   onChange,
 }: {
@@ -552,6 +592,8 @@ function FieldRow({
   current: string;
   value: string;
   text: Text;
+  /** The server's refusal of this field (after a save). */
+  serverError?: string | undefined;
   disabled: boolean;
   onChange: (value: string) => void;
 }) {
@@ -560,17 +602,7 @@ function FieldRow({
   const over = spec.limit !== undefined && value.length > spec.limit;
   return (
     <FormGrid cols={2}>
-      <Field label={`${d.current}: ${label}`}>
-        {(control) => (
-          <Textarea
-            {...control}
-            readOnly
-            rows={rowsFor(current)}
-            value={current}
-            placeholder={d.emptyCurrent}
-          />
-        )}
-      </Field>
+      <ReadOnlyText label={`${d.current}: ${label}`} value={current} empty={d.emptyCurrent} />
       <Field
         label={`${d.draft}: ${label}`}
         {...(spec.limit !== undefined && !over
@@ -578,11 +610,16 @@ function FieldRow({
           : {})}
         {...(over
           ? { error: fill(d.overLimit, { count: String(value.length), max: String(spec.limit) }) }
-          : {})}
+          : serverError
+            ? { error: serverError }
+            : {})}
       >
         {(control) => (
           <Textarea
             {...control}
+            // One name per field ("descriptionVi", "sections.usage.en"), not one shared name for every box.
+            name={spec.path}
+            autoComplete="off"
             rows={rowsFor(value)}
             value={value}
             disabled={disabled}
@@ -644,7 +681,7 @@ function ApplyDialog({
     <FormDialog
       title={d.applyTitle}
       description={d.applyBody}
-      labels={{ ...formOverlayLabels(t, d.applyConfirm), submitting: t.common.saving }}
+      labels={{ ...formOverlayLabels(t, d.applyConfirm), submitting: d.applying }}
       busy={pending}
       error={failure ? <Notice tone="error">{failure}</Notice> : undefined}
       onClose={onClose}
@@ -716,7 +753,7 @@ function TextDialog({
       }
       labels={{
         ...formOverlayLabels(t, rejecting ? d.rejectConfirm : d.regenerateConfirm),
-        submitting: t.common.saving,
+        submitting: rejecting ? d.rejecting : d.regenerating,
       }}
       busy={pending}
       dirty={value.trim() !== ''}
@@ -728,6 +765,8 @@ function TextDialog({
         {(control) => (
           <Textarea
             {...control}
+            name="reason"
+            autoComplete="off"
             rows={3}
             maxLength={300}
             value={value}

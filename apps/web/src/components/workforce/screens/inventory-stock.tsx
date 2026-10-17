@@ -12,6 +12,7 @@ import {
   Cluster,
   DataTable,
   DescriptionList,
+  EmptyState,
   FacetedFilter,
   Field,
   FormDialog,
@@ -20,6 +21,7 @@ import {
   ListToolbar,
   MediaThumb,
   NumberInput,
+  PageHeader,
   RowActions,
   SearchInput,
   Select,
@@ -28,7 +30,7 @@ import {
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState, type ReactNode } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import { inventoryDictionary } from '../../../i18n/inventory';
 import { fill } from '../../../i18n/workforce';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
@@ -57,22 +59,27 @@ import {
   toolbarLabels,
 } from '../../../lib/workforce/list-view';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
-import { PrefetchLink as Link } from '../link';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   Section,
   useResource,
   type Resource,
   useSuccessToast,
 } from '../ui';
+import { signedNumber } from './pos-format';
+import { focusInvalidSoon, RouterButtonLink, RouterMenuLink, urlPaging } from './products-links';
 import { useInventoryCommand } from './use-inventory-command';
+
+// Pagers kept in the address bar (Back/Forward and shared links restore them).
+const useLotsPaging = urlPaging('lpage', 'lsize');
+const useMovesPaging = urlPaging('mpage', 'msize');
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 
@@ -132,7 +139,7 @@ export function StockList({
   list: InventoryListState;
   updateList: (patch: Partial<InventoryListState>, change?: { replace?: boolean }) => void;
 }) {
-  const { t, locale, base, navigate } = useWorkforce();
+  const { t, locale, base } = useWorkforce();
   const text = inventoryDictionary(locale);
   const s = text.stock;
   const all = overview.data?.items ?? [];
@@ -154,12 +161,12 @@ export function StockList({
       key: 'name',
       header: s.columns.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       sortable: true,
       sortValue: (item) => stockSortValue(item, 'name', locale),
       cell: (item) => (
-        <Link className="ls-link" href={itemHref(item)} title={itemTitle(item, locale)}>
+        <Link className="ls-link" href={itemHref(item)}>
           {itemTitle(item, locale)}
         </Link>
       ),
@@ -167,10 +174,12 @@ export function StockList({
     {
       key: 'sku',
       header: s.columns.sku,
-      hideBelow: 'lg',
+      // The name keeps room to wrap by word (E4 review: at 1024-1279 px it was squeezed to two words a line): the SKU shows from 1280 px,
+      // the nearest expiry from 1440 px; search still finds by SKU and the item page shows both.
+      hideBelow: 'xl',
       sortable: true,
       sortValue: (item) => stockSortValue(item, 'sku', locale),
-      cell: (item) => item.sku,
+      cell: (item) => <span translate="no">{item.sku}</span>,
     },
     {
       key: 'onHand',
@@ -205,7 +214,7 @@ export function StockList({
     {
       key: 'expiry',
       header: s.columns.nextExpiry,
-      hideBelow: 'lg',
+      hideBelow: 'wide',
       sortable: true,
       sortValue: (item) => stockSortValue(item, 'expiry', locale),
       cell: (item) => (item.nextExpiry ? formatDate(item.nextExpiry, locale) : text.none),
@@ -222,14 +231,8 @@ export function StockList({
       cell: (item) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: itemTitle(item, locale) })}
-          items={[
-            {
-              id: 'details',
-              label: s.details,
-              icon: 'eye',
-              onSelect: () => navigate?.(itemHref(item)),
-            },
-          ]}
+          LinkComponent={RouterMenuLink}
+          items={[{ id: 'details', label: s.details, icon: 'eye', href: itemHref(item) }]}
         />
       ),
     },
@@ -249,7 +252,7 @@ export function StockList({
               id="stock-q"
               value={list.q}
               label={s.search}
-              placeholder={s.search}
+              hint={s.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -274,6 +277,7 @@ export function StockList({
         <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
       ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: text.tabs.stock })}
         columns={columns}
@@ -289,7 +293,27 @@ export function StockList({
             <ErrorState error={overview.error} t={t} onRetry={() => void overview.reload()} />
           ) : undefined
         }
-        empty={overview.data ? <Empty>{all.length === 0 ? s.empty : s.noMatch}</Empty> : undefined}
+        empty={
+          overview.data ? (
+            all.length === 0 ? (
+              <EmptyState icon="tag" title={s.emptyTitle}>
+                {s.empty}
+              </EmptyState>
+            ) : (
+              <EmptyState
+                icon="search"
+                title={s.noMatchTitle}
+                action={
+                  <Button variant="secondary" onClick={() => updateList({ q: '', status: '' })}>
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {s.noMatch}
+              </EmptyState>
+            )
+          ) : undefined
+        }
         paging={{
           page: list.page,
           pageSize: list.pageSize,
@@ -335,10 +359,42 @@ export function StockBadges({ item }: { item: InventoryItem }) {
 
 // ------------------------------------------------------------------------------------------------ the item page
 
-/** One variant at one branch: its stock, lots and history. The branch comes from `?branch=`. */
+const ITEM_URL_DEFAULTS = { branch: '' };
+const subscribeNothing = () => () => undefined;
+
+/**
+ * One variant at one branch: its stock, lots and history. The branch comes from `?branch=`. The address bar is read only after
+ * hydration (the server snapshot has no query), so the page waits for it instead of asking the API for branch '' (that request was
+ * `GET /api/v1/inventory/branches//variants/<id>`, a 404 on every direct visit: the E2 console errors of session 10).
+ */
 export function InventoryItemScreen({ variantId }: { variantId: string }) {
-  const { api, t, locale } = useWorkforce();
-  const [{ branch }] = useUrlState({ branch: '' });
+  const { t, locale, base } = useWorkforce();
+  const [{ branch }] = useUrlState(ITEM_URL_DEFAULTS);
+  const hydrated = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
+  if (branch === '') {
+    const s = inventoryDictionary(locale).stock;
+    // An item address without its branch: a heading, a sentence and the one way on (empty-state rule).
+    return hydrated ? (
+      <EmptyState
+        icon="search"
+        title={s.itemMissingTitle}
+        action={<RouterButtonLink href={`${base}/inventory`}>{s.backToStock}</RouterButtonLink>}
+      >
+        {s.itemMissing}
+      </EmptyState>
+    ) : (
+      <Loading t={t} page />
+    );
+  }
+  return <InventoryItemLoader branch={branch} variantId={variantId} />;
+}
+
+function InventoryItemLoader({ branch, variantId }: { branch: string; variantId: string }) {
+  const { api, t } = useWorkforce();
   const detail = useResource(
     () =>
       api.get<InventoryVariantDetailResponse>(
@@ -346,9 +402,6 @@ export function InventoryItemScreen({ variantId }: { variantId: string }) {
       ),
     [api, branch, variantId],
   );
-  if (branch === '') {
-    return <Notice tone="info">{inventoryDictionary(locale).notFound}</Notice>;
-  }
   if (detail.error && !detail.data) {
     return <ErrorState error={detail.error} t={t} onRetry={() => void detail.reload()} />;
   }
@@ -377,10 +430,11 @@ export function InventoryItemView({
     <>
       <PageHeader
         title={label ? `${name} (${label})` : name}
+        status={<StockBadges item={item} />}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               {
                 label: text.title,
@@ -390,21 +444,21 @@ export function InventoryItemView({
             ]}
           />
         }
-      >
-        {detail.canAdjust ? (
-          <Button variant="primary" disabled={!hasStockLot} onClick={() => setAdjusting(true)}>
-            {i.adjust}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          detail.canAdjust ? (
+            <Button variant="primary" disabled={!hasStockLot} onClick={() => setAdjusting(true)}>
+              {opensInput(i.adjust)}
+            </Button>
+          ) : undefined
+        }
+      />
       <Stack gap="page">
         <Section title={i.info}>
           <DescriptionList
             columns={2}
             items={[
               { label: i.branch, value: detail.branchName },
-              { label: i.sku, value: item.sku },
-              { label: i.status, value: <StockBadges item={item} /> },
+              { label: i.sku, value: <span translate="no">{item.sku}</span> },
               { label: i.onHand, value: item.onHand },
               { label: i.available, value: item.available },
               { label: i.expired, value: item.expiredQuantity },
@@ -445,10 +499,16 @@ function LotsSection({ detail }: { detail: InventoryVariantDetailResponse }) {
   const { t, locale } = useWorkforce();
   const text = inventoryDictionary(locale);
   const i = text.item;
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const paging = useLotsPaging(t, i.lots);
   const hasCost = detail.lots.some((lot) => 'unitCostVnd' in lot);
   const columns: DataTableColumn<InventoryLotResponse>[] = [
-    { key: 'code', header: i.lotColumns.code, mobileTitle: true, cell: (lot) => lot.lotCode },
+    {
+      key: 'code',
+      header: i.lotColumns.code,
+      mobileTitle: true,
+      wrap: true,
+      cell: (lot) => <span translate="no">{lot.lotCode}</span>,
+    },
     {
       key: 'expiry',
       header: i.lotColumns.expiry,
@@ -478,7 +538,7 @@ function LotsSection({ detail }: { detail: InventoryVariantDetailResponse }) {
       key: 'receipt',
       header: i.lotColumns.receipt,
       hideBelow: 'lg',
-      cell: (lot) => lot.receiptCode ?? text.none,
+      cell: (lot) => (lot.receiptCode ? <span translate="no">{lot.receiptCode}</span> : text.none),
     },
     {
       key: 'date',
@@ -507,25 +567,18 @@ function LotsSection({ detail }: { detail: InventoryVariantDetailResponse }) {
         columns={columns}
         rows={detail.lots}
         rowKey={(lot) => `${lot.id}:${lot.quantityOnHand}`}
-        empty={<Empty>{i.lotsEmpty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, i.lots),
-        }}
+        empty={<EmptyState title={i.lotsEmptyTitle}>{i.lotsEmpty}</EmptyState>}
+        paging={paging}
       />
     </ListSection>
   );
 }
 
-const signed = (value: number) => (value > 0 ? `+${value}` : String(value));
-
 function HistorySection({ movements }: { movements: InventoryMovementResponse[] }) {
   const { t, locale } = useWorkforce();
   const text = inventoryDictionary(locale);
   const i = text.item;
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const paging = useMovesPaging(t, i.history);
   const columns: DataTableColumn<InventoryMovementResponse>[] = [
     {
       key: 'time',
@@ -538,7 +591,7 @@ function HistorySection({ movements }: { movements: InventoryMovementResponse[] 
       key: 'delta',
       header: i.historyColumns.delta,
       numeric: true,
-      cell: (move) => signed(move.quantityDelta),
+      cell: (move) => signedNumber(locale, move.quantityDelta),
     },
     {
       key: 'reason',
@@ -546,12 +599,17 @@ function HistorySection({ movements }: { movements: InventoryMovementResponse[] 
       hideBelow: 'md',
       cell: (move) => (move.reason ? i.reasons[move.reason] : text.none),
     },
-    { key: 'lot', header: i.historyColumns.lot, hideBelow: 'lg', cell: (move) => move.lotCode },
+    {
+      key: 'lot',
+      header: i.historyColumns.lot,
+      hideBelow: 'lg',
+      cell: (move) => <span translate="no">{move.lotCode}</span>,
+    },
     {
       key: 'actor',
       header: i.historyColumns.actor,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       cell: (move) => move.actorName,
     },
     {
@@ -564,7 +622,7 @@ function HistorySection({ movements }: { movements: InventoryMovementResponse[] 
       key: 'note',
       header: i.historyColumns.note,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       cell: (move) => move.note ?? text.none,
     },
   ];
@@ -576,13 +634,8 @@ function HistorySection({ movements }: { movements: InventoryMovementResponse[] 
         columns={columns}
         rows={movements}
         rowKey={(move) => move.id}
-        empty={<Empty>{i.historyEmpty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, i.history),
-        }}
+        empty={<EmptyState title={i.historyEmptyTitle}>{i.historyEmpty}</EmptyState>}
+        paging={paging}
       />
     </ListSection>
   );
@@ -625,7 +678,10 @@ export function AdjustDialog({
       branchId: detail.branchId,
       variantId: detail.item.variantId,
     });
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     const result = await command.run('/api/v1/stock-adjustments', body);
     if (result.ok) onDone();
   }
@@ -649,6 +705,8 @@ export function AdjustDialog({
             {(control) => (
               <Select
                 {...control}
+                name="lotId"
+                autoComplete="off"
                 value={draft.lotId}
                 options={lots.map((entry) => ({
                   value: entry.id,
@@ -679,6 +737,8 @@ export function AdjustDialog({
             {(control) => (
               <NumberInput
                 {...control}
+                name="quantity"
+                autoComplete="off"
                 inputMode="numeric"
                 min={1}
                 {...(lot ? { max: lot.quantityOnHand } : {})}
@@ -691,6 +751,8 @@ export function AdjustDialog({
             {(control) => (
               <Select
                 {...control}
+                name="reason"
+                autoComplete="off"
                 value={draft.reason}
                 placeholder={a.reasonPlaceholder}
                 options={ADJUST_REASONS.map((reason) => ({
@@ -705,6 +767,8 @@ export function AdjustDialog({
             {(control) => (
               <Textarea
                 {...control}
+                name="note"
+                autoComplete="off"
                 rows={3}
                 maxLength={500}
                 value={draft.note}

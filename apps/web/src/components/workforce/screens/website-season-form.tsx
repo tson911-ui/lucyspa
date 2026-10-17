@@ -14,11 +14,13 @@ import {
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
+  buttonClass,
   Card,
   Cluster,
   DateTextInput,
   DescriptionList,
   Field,
+  Icon,
   focusFirstInvalid,
   FormActions,
   FormGrid,
@@ -33,10 +35,9 @@ import {
   Stack,
   Switch,
   TextInput,
-  useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
-import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
+import { Fragment, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
@@ -56,6 +57,7 @@ import {
 } from '../../../lib/workforce/seasons';
 import { slideName, slideTone } from '../../../lib/workforce/slides';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -69,6 +71,7 @@ import {
 } from '../ui';
 import { MediaPicker } from './media-picker';
 import { SeasonPreviewPanel } from './season-preview-panel';
+import { useWebsiteLeaveGuard } from './website-leave';
 import { SlideDrawer } from './website-slide-drawer';
 
 const PROBLEMS: ReadonlySet<string> = new Set<SeasonProblem>([
@@ -109,7 +112,7 @@ export function SeasonFormScreen({ id }: { id: string | null }) {
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: t.website.title, href: back }, { label: title }]}
           />
         }
@@ -125,6 +128,7 @@ export function SeasonFormScreen({ id }: { id: string | null }) {
 
 function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
   const { api, t, locale, navigate } = useWorkforce();
+  const enabledHintId = useId();
   const notify = useSuccessToast();
   const text = t.seasons.form;
   const loaded = useResource(
@@ -140,21 +144,22 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
   const [pending, setPending] = useState(false);
   const [picking, setPicking] = useState<SeasonSlot | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
-
-  useEffect(() => {
-    if (loaded.data) {
-      const next = formOfSeason(loaded.data);
-      setInitial(next);
-      setForm(next);
-      setVersion(loaded.data.rowVersion);
-    }
-  }, [loaded.data]);
+  // A newly loaded season (first load, or the reload after a conflict) resets the form while rendering, not in an effect
+  // (rerender-derived-state-no-effect): the old values never paint once.
+  const [seen, setSeen] = useState<WebsiteSeasonResponse | null>(null);
+  if (loaded.data && loaded.data !== seen) {
+    const next = formOfSeason(loaded.data);
+    setSeen(loaded.data);
+    setInitial(next);
+    setForm(next);
+    setVersion(loaded.data.rowVersion);
+  }
   useEffect(() => {
     if (problem && formRef.current) focusFirstInvalid(formRef.current);
   }, [problem]);
 
   const dirty = form !== null && initial !== null && seasonFormChanged(form, initial);
-  useUnsavedChangesGuard(dirty && !pending);
+  const { leave, dialog } = useWebsiteLeaveGuard(dirty && !pending, navigate, t);
 
   if (id && loaded.error) {
     return loaded.error instanceof ApiError && loaded.error.code === 'NOT_FOUND' ? (
@@ -323,250 +328,277 @@ function SeasonFormBody({ id, back }: { id: string | null; back: string }) {
   };
 
   return (
-    <form ref={formRef} noValidate onSubmit={(event) => void submit(event)} aria-label={heading}>
-      <Stack gap="block">
-        <Card as="section" aria-label={heading}>
-          <Stack gap="page">
-            <FormSection title={text.detailsSection}>
-              <FormGrid cols={2}>
-                <Field
-                  label={text.label}
-                  hint={text.labelHint}
-                  required
-                  requiredLabel={t.common.required}
-                  error={error('label')}
-                  full
-                >
-                  {(control) => (
-                    <TextInput
-                      {...control}
-                      value={form.label}
-                      onChange={(event) => change({ label: event.target.value })}
+    <>
+      <form ref={formRef} noValidate onSubmit={(event) => void submit(event)} aria-label={heading}>
+        <Stack gap="block">
+          <Card as="section" aria-label={heading}>
+            <Stack gap="page">
+              <FormSection title={text.detailsSection}>
+                <FormGrid cols={2}>
+                  <Field
+                    label={text.label}
+                    hint={text.labelHint}
+                    required
+                    requiredLabel={t.common.required}
+                    error={error('label')}
+                    full
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        name="label"
+                        value={form.label}
+                        onChange={(event) => change({ label: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                </FormGrid>
+              </FormSection>
+              <FormSection title={text.presetSection} description={text.presetHint}>
+                <SeasonPresetPicker
+                  name="season-preset"
+                  label={text.presetLabel}
+                  options={SEASON_PRESETS.map((preset) => ({
+                    key: preset.key,
+                    name: preset.name[locale],
+                    ornamentId: preset.ornament.id,
+                  }))}
+                  value={form.presetKey}
+                  onChange={choosePreset}
+                />
+                {error('presetKey') ? <Notice tone="error">{error('presetKey')}</Notice> : null}
+              </FormSection>
+              <FormSection
+                title={text.scheduleSection}
+                description={[text.scheduleHint, scheduleNote].filter(Boolean).join(' ')}
+              >
+                <FormGrid cols={2}>
+                  <Field
+                    label={text.startDate}
+                    required
+                    requiredLabel={t.common.required}
+                    error={error('startDate')}
+                  >
+                    {(control) => (
+                      <DateTextInput
+                        {...control}
+                        name="start-date"
+                        value={form.startDate}
+                        onChange={(event) => change({ startDate: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                  <Field
+                    label={text.lastDate}
+                    required
+                    requiredLabel={t.common.required}
+                    error={error('lastDate')}
+                  >
+                    {(control) => (
+                      <DateTextInput
+                        {...control}
+                        name="last-date"
+                        value={form.lastDate}
+                        onChange={(event) => change({ lastDate: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                </FormGrid>
+                {year ? (
+                  <p className="ls-adminb-note">
+                    <Icon name="calendar" size={16} />
+                    <span>
+                      {fill(text.yearName, { name: year.name, animal: year.animal })}
+                      {year.hasArt ? '' : ` ${text.yearNoArt}`}
+                    </span>
+                  </p>
+                ) : null}
+              </FormSection>
+              <FormSection
+                title={text.greetingSection}
+                description={fill(text.greetingHint, { max: SEASON_GREETING_MAX_LENGTH })}
+              >
+                <FormGrid cols={2}>
+                  <Field
+                    label={text.greetingVi}
+                    hint={fill(text.greetingLeft, { left: left(form.greetingVi) })}
+                    error={error('greetingVi')}
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        name="greeting-vi"
+                        placeholder={
+                          known
+                            ? greetingExample(text.greetingExample, known.greeting.vi)
+                            : undefined
+                        }
+                        value={form.greetingVi}
+                        onChange={(event) => change({ greetingVi: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                  <Field
+                    label={text.greetingEn}
+                    hint={fill(text.greetingLeft, { left: left(form.greetingEn) })}
+                    error={error('greetingEn')}
+                  >
+                    {(control) => (
+                      <TextInput
+                        {...control}
+                        name="greeting-en"
+                        placeholder={
+                          known
+                            ? greetingExample(text.greetingExample, known.greeting.en)
+                            : undefined
+                        }
+                        value={form.greetingEn}
+                        onChange={(event) => change({ greetingEn: event.target.value })}
+                      />
+                    )}
+                  </Field>
+                </FormGrid>
+                {siteArt ? (
+                  <Stack gap="field">
+                    <Switch
+                      checked={form.greetingStrip}
+                      onCheckedChange={(greetingStrip) => change({ greetingStrip })}
+                      label={text.greetingStrip}
                     />
-                  )}
-                </Field>
-              </FormGrid>
-            </FormSection>
-            <FormSection title={text.presetSection} description={text.presetHint}>
-              <SeasonPresetPicker
-                name="season-preset"
-                label={text.presetLabel}
-                options={SEASON_PRESETS.map((preset) => ({
-                  key: preset.key,
-                  name: preset.name[locale],
-                  ornamentId: preset.ornament.id,
-                }))}
-                value={form.presetKey}
-                onChange={choosePreset}
-              />
-              {error('presetKey') ? <Notice tone="error">{error('presetKey')}</Notice> : null}
-            </FormSection>
-            <FormSection
-              title={text.scheduleSection}
-              description={[text.scheduleHint, scheduleNote].filter(Boolean).join(' ')}
-            >
-              <FormGrid cols={2}>
-                <Field
-                  label={text.startDate}
-                  required
-                  requiredLabel={t.common.required}
-                  error={error('startDate')}
-                >
-                  {(control) => (
-                    <DateTextInput
-                      {...control}
-                      value={form.startDate}
-                      onChange={(event) => change({ startDate: event.target.value })}
+                    <Switch
+                      checked={form.greetingFooter}
+                      onCheckedChange={(greetingFooter) => change({ greetingFooter })}
+                      label={text.greetingFooter}
                     />
-                  )}
-                </Field>
-                <Field
-                  label={text.lastDate}
-                  required
-                  requiredLabel={t.common.required}
-                  error={error('lastDate')}
-                >
-                  {(control) => (
-                    <DateTextInput
-                      {...control}
-                      value={form.lastDate}
-                      onChange={(event) => change({ lastDate: event.target.value })}
-                    />
-                  )}
-                </Field>
-              </FormGrid>
-              {year ? (
-                <Notice tone="info">
-                  {fill(text.yearName, { name: year.name, animal: year.animal })}
-                  {year.hasArt ? '' : ` ${text.yearNoArt}`}
-                </Notice>
-              ) : null}
-            </FormSection>
-            <FormSection
-              title={text.greetingSection}
-              description={fill(text.greetingHint, { max: SEASON_GREETING_MAX_LENGTH })}
-            >
-              <FormGrid cols={2}>
-                <Field
-                  label={text.greetingVi}
-                  hint={fill(text.greetingLeft, { left: left(form.greetingVi) })}
-                  error={error('greetingVi')}
-                >
-                  {(control) => (
-                    <TextInput
-                      {...control}
-                      placeholder={known?.greeting.vi}
-                      value={form.greetingVi}
-                      onChange={(event) => change({ greetingVi: event.target.value })}
-                    />
-                  )}
-                </Field>
-                <Field
-                  label={text.greetingEn}
-                  hint={fill(text.greetingLeft, { left: left(form.greetingEn) })}
-                  error={error('greetingEn')}
-                >
-                  {(control) => (
-                    <TextInput
-                      {...control}
-                      placeholder={known?.greeting.en}
-                      value={form.greetingEn}
-                      onChange={(event) => change({ greetingEn: event.target.value })}
-                    />
-                  )}
-                </Field>
-              </FormGrid>
-              {siteArt ? (
+                  </Stack>
+                ) : null}
+              </FormSection>
+              <FormSection title={text.optionsSection} description={text.optionsHint}>
                 <Stack gap="field">
                   <Switch
-                    checked={form.greetingStrip}
-                    onCheckedChange={(greetingStrip) => change({ greetingStrip })}
-                    label={text.greetingStrip}
+                    checked={form.applyCustomer}
+                    onCheckedChange={(applyCustomer) => change({ applyCustomer })}
+                    label={text.customer}
                   />
                   <Switch
-                    checked={form.greetingFooter}
-                    onCheckedChange={(greetingFooter) => change({ greetingFooter })}
-                    label={text.greetingFooter}
+                    checked={form.applyAdmin}
+                    onCheckedChange={(applyAdmin) => change({ applyAdmin })}
+                    label={text.admin}
                   />
+                  {siteArt ? null : (
+                    <Switch
+                      checked={form.particlesEnabled}
+                      onCheckedChange={(particlesEnabled) => change({ particlesEnabled })}
+                      label={text.particles}
+                    />
+                  )}
                 </Stack>
-              ) : null}
-            </FormSection>
-            <FormSection title={text.optionsSection} description={text.optionsHint}>
-              <Stack gap="field">
-                <Switch
-                  checked={form.applyCustomer}
-                  onCheckedChange={(applyCustomer) => change({ applyCustomer })}
-                  label={text.customer}
-                />
-                <Switch
-                  checked={form.applyAdmin}
-                  onCheckedChange={(applyAdmin) => change({ applyAdmin })}
-                  label={text.admin}
-                />
-                {siteArt ? null : (
-                  <Switch
-                    checked={form.particlesEnabled}
-                    onCheckedChange={(particlesEnabled) => change({ particlesEnabled })}
-                    label={text.particles}
-                  />
-                )}
-              </Stack>
-            </FormSection>
-            <FormSection
-              title={text.decorationSection}
-              description={siteArt ? text.decorationHint : text.decorationNoArt}
-            >
-              {siteArt ? (
-                <Stack gap="field">
-                  {slots.map(({ slot, name, hint, on, set }) => {
-                    const mediaId = form.slotMedia[slot];
-                    return (
-                      <Fragment key={slot}>
-                        <SeasonSlotRow
-                          hint={mediaId ? text.imageChosen : hint}
-                          control={<Switch checked={on} onCheckedChange={set} label={name} />}
-                          image={
-                            <>
-                              {mediaId ? (
-                                <SeasonSlotThumb src={mediaVariantUrl(mediaId, 'thumb')} />
-                              ) : null}
-                              <Button variant="secondary" onClick={() => setPicking(slot)}>
-                                {mediaId ? text.imageChange : text.imageChoose}
-                              </Button>
-                              {mediaId ? (
-                                <Button variant="secondary" onClick={() => setImage(slot, null)}>
-                                  {text.imageRemove}
+              </FormSection>
+              <FormSection
+                title={text.decorationSection}
+                description={siteArt ? text.decorationHint : text.decorationNoArt}
+              >
+                {siteArt ? (
+                  <Stack gap="field">
+                    {slots.map(({ slot, name, hint, on, set }) => {
+                      const mediaId = form.slotMedia[slot];
+                      return (
+                        <Fragment key={slot}>
+                          <SeasonSlotRow
+                            hint={mediaId ? text.imageChosen : hint}
+                            control={<Switch checked={on} onCheckedChange={set} label={name} />}
+                            image={
+                              <>
+                                {mediaId ? (
+                                  <SeasonSlotThumb src={mediaVariantUrl(mediaId, 'thumb')} />
+                                ) : null}
+                                <Button variant="secondary" onClick={() => setPicking(slot)}>
+                                  {opensInput(mediaId ? text.imageChange : text.imageChoose)}
                                 </Button>
-                              ) : null}
-                            </>
-                          }
-                        />
-                        {slot === 'particles' && form.particlesEnabled ? (
-                          <Field label={text.density}>
-                            {() => (
-                              <SegmentedControl<SeasonDensity>
-                                label={text.density}
-                                options={[
-                                  { value: 'low', label: text.densityLow },
-                                  { value: 'medium', label: text.densityMedium },
-                                  { value: 'high', label: text.densityHigh },
-                                ]}
-                                value={form.particleDensity}
-                                onChange={(particleDensity) => change({ particleDensity })}
-                              />
-                            )}
-                          </Field>
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </Stack>
-              ) : null}
+                                {mediaId ? (
+                                  <Button variant="secondary" onClick={() => setImage(slot, null)}>
+                                    {text.imageRemove}
+                                  </Button>
+                                ) : null}
+                              </>
+                            }
+                          />
+                          {slot === 'particles' && form.particlesEnabled ? (
+                            <Field label={text.density}>
+                              {() => (
+                                <SegmentedControl<SeasonDensity>
+                                  label={text.density}
+                                  options={[
+                                    { value: 'low', label: text.densityLow },
+                                    { value: 'medium', label: text.densityMedium },
+                                    { value: 'high', label: text.densityHigh },
+                                  ]}
+                                  value={form.particleDensity}
+                                  onChange={(particleDensity) => change({ particleDensity })}
+                                />
+                              )}
+                            </Field>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
+                  </Stack>
+                ) : null}
+              </FormSection>
+              <FormSection title={text.statusSection}>
+                <Switch
+                  checked={form.isEnabled}
+                  onCheckedChange={(isEnabled) => change({ isEnabled })}
+                  label={text.enabled}
+                  aria-describedby={enabledHintId}
+                />
+                <p className="ls-hint" id={enabledHintId}>
+                  {text.enabledHint}
+                </p>
+              </FormSection>
+              {message ? <Notice tone="error">{message}</Notice> : null}
+            </Stack>
+          </Card>
+          {known ? (
+            <SeasonPreviewPanel form={form} />
+          ) : (
+            <FormSection title={text.previewSection}>
+              <Empty>{text.problems.presetKey}</Empty>
             </FormSection>
-            <FormSection title={text.statusSection}>
-              <Switch
-                checked={form.isEnabled}
-                onCheckedChange={(isEnabled) => change({ isEnabled })}
-                label={text.enabled}
-              />
-              <p className="ls-hint">{text.enabledHint}</p>
-            </FormSection>
-            {message ? <Notice tone="error">{message}</Notice> : null}
-          </Stack>
-        </Card>
-        {known ? (
-          <SeasonPreviewPanel form={form} />
-        ) : (
-          <FormSection title={text.previewSection}>
-            <Empty>{text.problems.presetKey}</Empty>
-          </FormSection>
-        )}
-        {id ? <HolidayContent seasonId={id} season={loaded.data} /> : null}
-        <FormActions
-          cancel={
-            <Button variant="secondary" onClick={() => navigate?.(back)} disabled={pending}>
-              {t.common.cancel}
-            </Button>
-          }
-          primary={
-            <Button type="submit" variant="primary" loading={pending}>
-              {pending ? text.saving : text.save}
-            </Button>
-          }
-        />
-      </Stack>
-      {picking ? (
-        <MediaPicker
-          decorative
-          onPick={(asset) => {
-            setImage(picking, asset.id);
-            setPicking(null);
-          }}
-          onClose={() => setPicking(null)}
-        />
-      ) : null}
-    </form>
+          )}
+          {id ? <HolidayContent seasonId={id} season={loaded.data} /> : null}
+          <FormActions
+            cancel={
+              <Button variant="secondary" onClick={() => leave(back)} disabled={pending}>
+                {t.common.cancel}
+              </Button>
+            }
+            primary={
+              <Button type="submit" variant="primary" loading={pending}>
+                {pending ? text.saving : text.save}
+              </Button>
+            }
+          />
+        </Stack>
+        {picking ? (
+          <MediaPicker
+            decorative
+            onPick={(asset) => {
+              setImage(picking, asset.id);
+              setPicking(null);
+            }}
+            onClose={() => setPicking(null)}
+          />
+        ) : null}
+      </form>
+      {dialog}
+    </>
   );
+}
+
+/** The theme's own greeting as an example placeholder: "Ví dụ: Chúc mừng năm mới…" (wig: an example pattern ending in "…"). */
+function greetingExample(template: string, greeting: string): string {
+  return fill(template, { text: greeting.replace(/[.!?…]+$/u, '') });
 }
 
 /** True while both days are still what a new form starts with (so a theme change may refill them). */
@@ -586,7 +618,7 @@ function HolidayContent({
   seasonId: string;
   season: WebsiteSeasonResponse | null;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const notify = useSuccessToast();
   const text = t.seasons.holiday;
   const popups = useResource(
@@ -607,15 +639,17 @@ function HolidayContent({
         description={text.hint}
         actions={
           <>
-            <Button
-              variant="secondary"
-              icon="plus"
-              onClick={() => navigate?.(`${base}/website/popups/new?season=${seasonId}`)}
+            {/* A real link styled as the secondary button (wig: navigation is a link); the season form's leave guard asks first
+                when the season has unsaved edits. */}
+            <Link
+              href={`${base}/website/popups/new?season=${seasonId}`}
+              className={buttonClass('secondary', 'md')}
             >
-              {text.createPopup}
-            </Button>
+              <Icon name="plus" />
+              <span className="ls-btn-label">{text.createPopup}</span>
+            </Link>
             <Button variant="secondary" icon="plus" onClick={() => setAdding(true)}>
-              {text.createSlide}
+              {opensInput(text.createSlide)}
             </Button>
           </>
         }
@@ -624,8 +658,11 @@ function HolidayContent({
           items={[
             {
               label: text.popups,
+              // A failed load says so with a retry; it is never shown as "none".
               value:
-                followingPopups.length === 0 ? (
+                popups.error && !popups.data ? (
+                  <ErrorState error={popups.error} t={t} onRetry={() => void popups.reload()} />
+                ) : followingPopups.length === 0 ? (
                   text.none
                 ) : (
                   <Stack gap="field">
@@ -648,7 +685,9 @@ function HolidayContent({
             {
               label: text.slides,
               value:
-                followingSlides.length === 0 ? (
+                slides.error && !slides.data ? (
+                  <ErrorState error={slides.error} t={t} onRetry={() => void slides.reload()} />
+                ) : followingSlides.length === 0 ? (
                   text.none
                 ) : (
                   <Stack gap="field">

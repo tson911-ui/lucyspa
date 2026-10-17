@@ -207,6 +207,59 @@ export function versionInputOf(
 
 const PROGRAM_CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
 
+/** The form fields that can carry an inline error, in the order the form shows them (the first one takes focus). */
+export const DISCOUNT_FIELDS = [
+  'code',
+  'nameVi',
+  'nameEn',
+  'percent',
+  'fixedAmount',
+  'minSpend',
+  'validFrom',
+  'validUntil',
+  'scope',
+  'limitTotal',
+  'limitPerCustomer',
+] as const;
+export type DiscountField = (typeof DISCOUNT_FIELDS)[number];
+
+/**
+ * Every problem of the form at once, keyed by the field that shows it (web-side checks only, so the screen can say what is wrong
+ * at each field; the API validates everything again). The value is the problem whose text the field shows.
+ */
+export function discountFieldProblems(
+  form: DiscountForm,
+  mode: 'create' | 'version',
+): Partial<Record<DiscountField, DiscountProblem>> {
+  const problems: Partial<Record<DiscountField, DiscountProblem>> = {};
+  if (mode === 'create' && !PROGRAM_CODE.test(form.code.trim().toUpperCase())) {
+    problems.code = 'code';
+  }
+  if (!form.nameVi.normalize('NFC').trim()) problems.nameVi = 'name';
+  if (!form.nameEn.normalize('NFC').trim()) problems.nameEn = 'name';
+  if (form.kind === 'PERCENT') {
+    if (percentToBp(form.percent) === null) problems.percent = 'percent';
+  } else {
+    const amount = form.fixedAmount.trim();
+    if (!isVndInput(amount) || amount === '0') problems.fixedAmount = 'amount';
+  }
+  if (!isVndInput(form.minSpend.trim() || '0')) problems.minSpend = 'minSpend';
+  const validFrom = vnLocalToIso(form.validFrom);
+  const validUntil = vnLocalToIso(form.validUntil);
+  if (!validFrom) problems.validFrom = 'window';
+  if (!validUntil || (validFrom && validUntil <= validFrom)) problems.validUntil = 'window';
+  const selected = form.scopeMode === 'SELECTED';
+  const services = selected && scopeHasServices(form.scope);
+  const products = selected && scopeHasProducts(form.scope);
+  const chosen =
+    (services ? form.serviceIds.length + form.categoryIds.length : 0) +
+    (products ? form.brandIds.length + form.productCategoryIds.length + form.productIds.length : 0);
+  if (selected && chosen === 0) problems.scope = 'scope';
+  if (limitOf(form.limitTotal) === 'invalid') problems.limitTotal = 'limit';
+  if (limitOf(form.limitPerCustomer) === 'invalid') problems.limitPerCustomer = 'limit';
+  return problems;
+}
+
 export function createRequestOf(
   form: DiscountForm,
 ): { body: DiscountCreateRequest } | { problem: DiscountProblem } {

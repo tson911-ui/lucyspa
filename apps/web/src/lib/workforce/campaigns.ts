@@ -331,7 +331,7 @@ export function itemProblems(row: CampaignItemRow): CampaignProblem[] {
 }
 
 export const productLine = (row: { productName: string; variantLabel: string | null }): string =>
-  row.variantLabel ? `${row.productName} · ${row.variantLabel}` : row.productName;
+  row.variantLabel ? `${row.productName} (${row.variantLabel})` : row.productName;
 
 export function discountText(percent: number | null): string {
   return percent === null ? '—' : `${percent}%`;

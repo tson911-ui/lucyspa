@@ -6,12 +6,14 @@ import {
   Card,
   CardHeader,
   Cluster,
+  ErrorState,
   Field,
   FormActions,
+  Icon,
   Stack,
   Textarea,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { assistantDictionary } from '../../../i18n/assistant';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -26,6 +28,7 @@ import {
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Notice, useResource } from '../ui';
+import { AdminButtonLink } from './admin-button-link';
 
 const BASE = '/api/v1/ai/assistant';
 
@@ -41,18 +44,27 @@ export function AssistantBox() {
 }
 
 function Box() {
-  const { api, locale, base } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const text = assistantDictionary(locale);
   const status = useResource(() => api.get<AssistantStatus>(BASE), [api]);
   const [question, setQuestion] = useState('');
   const [pending, setPending] = useState(false);
   const [answer, setAnswer] = useState<AssistantAnswer | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const box = useRef<HTMLTextAreaElement>(null);
   const info = status.data;
   const ready = readyQuestion(question);
+  // The button stays enabled; an empty question is explained at the field after a try (WIG Forms).
+  const missing = tried && !ready.ok;
 
   async function ask() {
-    if (pending || !ready.ok) return;
+    if (pending) return;
+    if (!ready.ok) {
+      setTried(true);
+      box.current?.focus();
+      return;
+    }
     setPending(true);
     setFailure(null);
     setAnswer(null);
@@ -67,6 +79,19 @@ function Box() {
   }
 
   const pages = answer ? reportPages(answer.reports) : [];
+  // Switched off (no key, no rate, AI off): the card says so in one line, with no dead question box or disabled button above the figures
+  // (plan reports-revenue: no dead UI).
+  if (info && !info.available) {
+    return (
+      <Card as="section" aria-label={text.title}>
+        <CardHeader title={text.title} />
+        <p className="ls-adminb-note" role="status">
+          <Icon name="info" size={16} />
+          <span>{text.blocked[blockKey(info.block)]}</span>
+        </p>
+      </Card>
+    );
+  }
   return (
     <Card as="section" aria-label={text.title}>
       <CardHeader title={text.title} description={text.intro} />
@@ -77,9 +102,12 @@ function Box() {
         }}
       >
         <Stack gap="field">
-          {status.error && !info ? <Notice tone="error">{text.loadFailed}</Notice> : null}
-          {info && !info.available ? (
-            <Notice tone="info">{text.blocked[blockKey(info.block)]}</Notice>
+          {status.error && !info ? (
+            <ErrorState
+              message={text.loadFailed}
+              onRetry={() => void status.reload()}
+              retryLabel={t.common.reload}
+            />
           ) : null}
           <Field
             label={text.label}
@@ -87,15 +115,19 @@ function Box() {
               count: String([...question].length),
               max: String(QUESTION_MAX),
             })}
+            error={missing ? text.empty : undefined}
           >
             {(control) => (
               <Textarea
                 {...control}
+                ref={box}
+                name="question"
+                autoComplete="off"
                 rows={2}
                 maxLength={QUESTION_MAX}
                 placeholder={text.placeholder}
                 value={question}
-                disabled={pending || info?.available === false}
+                disabled={pending}
                 onChange={(event) => setQuestion(event.target.value)}
               />
             )}
@@ -105,13 +137,7 @@ function Box() {
               ? { note: fill(text.left, { count: String(info.leftThisHour) }) }
               : {})}
             primary={
-              <Button
-                type="submit"
-                variant="secondary"
-                icon="sparkles"
-                loading={pending}
-                disabled={!ready.ok || info?.available !== true}
-              >
+              <Button type="submit" variant="secondary" icon="sparkles" loading={pending}>
                 {pending ? text.asking : text.ask}
               </Button>
             }
@@ -119,30 +145,38 @@ function Box() {
         </Stack>
       </form>
       {failure ? <Notice tone="error">{failure}</Notice> : null}
-      {answer ? (
-        <Stack gap="field">
-          <h3>{text.answerTitle}</h3>
-          <p aria-live="polite">{answer.status === 'ANSWERED' ? answer.answer : text.unsure}</p>
-          {answer.periods.length > 0 ? (
-            <p className="ls-hint">
-              {answer.periods
-                .map((period) =>
-                  fill(text.period, { from: dayText(period.from), to: dayText(period.to) }),
-                )
-                .join(' ')}
-            </p>
-          ) : null}
-          {pages.length > 0 ? (
-            <Cluster>
-              {pages.map((page) => (
-                <ButtonLink key={page} variant="secondary" href={reportHref(base, page)}>
-                  {`${text.openReport}: ${text.pages[page]}`}
-                </ButtonLink>
-              ))}
-            </Cluster>
-          ) : null}
-        </Stack>
-      ) : null}
+      {/* A live region that is always mounted, so the answer is announced when it arrives (WIG Accessibility). */}
+      <div aria-live="polite">
+        {answer ? (
+          <Stack gap="field">
+            <h3 className="ls-adminb-heading">{text.answerTitle}</h3>
+            <p>{answer.status === 'ANSWERED' ? answer.answer : text.unsure}</p>
+            {answer.periods.length > 0 ? (
+              <p className="ls-hint">
+                {answer.periods
+                  .map((period) =>
+                    fill(text.period, { from: dayText(period.from), to: dayText(period.to) }),
+                  )
+                  .join(' ')}
+              </p>
+            ) : null}
+            {pages.length > 0 ? (
+              <Cluster>
+                {pages.map((page) => (
+                  <ButtonLink
+                    key={page}
+                    variant="secondary"
+                    href={reportHref(base, page)}
+                    LinkComponent={AdminButtonLink}
+                  >
+                    {`${text.openReport}: ${text.pages[page]}`}
+                  </ButtonLink>
+                ))}
+              </Cluster>
+            ) : null}
+          </Stack>
+        ) : null}
+      </div>
     </Card>
   );
 }

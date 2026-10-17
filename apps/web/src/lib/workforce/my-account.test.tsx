@@ -90,7 +90,7 @@ test('My Account is in every workforce navigation, Owner included', () => {
     assert.deepEqual(item, { key: 'myAccount', group: 'personal', path: '/account' });
   }
   assert.equal(vi.nav.myAccount, 'Tài khoản của tôi');
-  assert.equal(en.nav.myAccount, 'My Account');
+  assert.equal(en.nav.myAccount, 'My account');
 });
 
 test('the view shows the authoritative profile, title, work and security, read-only where managed', () => {

@@ -67,7 +67,7 @@ test('the staff area links through PrefetchLink and wraps a navigation in RouteE
   assert.match(template, /<RouteEnter stack>/);
   const link = readFileSync(join(src, 'components', 'workforce', 'link.tsx'), 'utf8');
   assert.match(link, /prefetchAllowed\(readMotionEnvironment\(\)\)/);
-  assert.match(link, /prefetch=\{prefetch \?\? mayPrefetch\(\)\}/);
+  assert.match(link, /prefetch=\{prefetch \?\? \(mayPrefetch\(\) \? null : false\)\}/);
 });
 
 test('a page restored from the back/forward cache reloads, and the shell mounts the motion gate', () => {

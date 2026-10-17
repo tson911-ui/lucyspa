@@ -12,6 +12,7 @@ import {
 import {
   Card,
   DataTable,
+  EmptyState,
   FacetedFilter,
   Grid,
   ListSection,
@@ -20,9 +21,9 @@ import {
   Stat,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
 import { comboSoldDictionary } from '../../../i18n/combo-sold';
 import type { Locale } from '../../../i18n/locales';
+import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { rewardDictionary } from '../../../i18n/reward';
 import { fill, getWorkforceDictionary } from '../../../i18n/workforce';
 import { formatDay } from '../../../lib/customer/loyalty';
@@ -30,8 +31,10 @@ import { formatVnd } from '../../../lib/workforce/format';
 import { comboName } from '../../../lib/workforce/combo';
 import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import { LOYALTY_PAGE_SIZE } from '../../../lib/workforce/loyalty-list';
+import { useUrlPage } from '../../../lib/workforce/use-url-paging';
+import { PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
-import { Badge, Empty, ErrorState, useResource } from '../ui';
+import { Badge, Button, Empty, ErrorState, useResource } from '../ui';
 
 type Tone = 'success' | 'info' | 'warning' | 'neutral' | 'error';
 
@@ -62,19 +65,10 @@ export function soldReason(item: ComboSoldItemResponse, locale: Locale): string 
   return item.event ? s.cause[item.event.cause] : s.noDetail;
 }
 
-/** A value that may be cut by the column (one line, ellipsis); the full text is its title (the kit's clamp pattern). */
-function Clamped({ text }: { text: string }) {
-  return (
-    <span className="ls-cell-title" title={text}>
-      {text}
-    </span>
-  );
-}
-
 function soldColumns(
   locale: Locale,
   withBuyer: boolean,
-  open: ((row: ComboSoldItemResponse) => void) | null,
+  openHref: ((row: ComboSoldItemResponse) => string) | null,
   rowName: (row: ComboSoldItemResponse) => string,
 ): DataTableColumn<ComboSoldItemResponse>[] {
   const s = comboSoldDictionary(locale);
@@ -89,9 +83,7 @@ function soldColumns(
           mobileTitle: true,
           cell: (row) => (
             <span className="ls-cell-stack">
-              <span className="ls-cell-main" title={row.buyer.displayName}>
-                {row.buyer.displayName}
-              </span>
+              <span className="ls-cell-main">{row.buyer.displayName}</span>
               <span className="ls-cell-sub">{row.buyer.phoneMasked ?? '—'}</span>
             </span>
           ),
@@ -106,23 +98,10 @@ function soldColumns(
       mobileTitle: !withBuyer,
       cell: (row) => (
         <span className="ls-cell-stack">
-          {withBuyer ? (
-            <Clamped text={name(row)} />
-          ) : (
-            <span className="ls-cell-main" title={name(row)}>
-              {name(row)}
-            </span>
-          )}
-          {withBuyer ? (
-            <>
-              <span className="ls-cell-sub">{formatDay(row.soldAt, locale)}</span>
-              <span className="ls-cell-sub">{row.branchName}</span>
-            </>
-          ) : (
-            <span className="ls-cell-sub">
-              {formatDay(row.soldAt, locale)} · {row.branchName}
-            </span>
-          )}
+          {/* The name wraps in full (Owner answer 7); date and branch are two muted lines, never joined by a middle dot. */}
+          <span className="ls-cell-main">{name(row)}</span>
+          <span className="ls-cell-sub">{formatDay(row.soldAt, locale)}</span>
+          <span className="ls-cell-sub">{row.branchName}</span>
         </span>
       ),
     },
@@ -158,7 +137,7 @@ function soldColumns(
         </span>
       ),
     },
-    ...(open
+    ...(openHref
       ? [
           {
             key: 'actions',
@@ -166,13 +145,14 @@ function soldColumns(
             actions: true as const,
             cell: (row: ComboSoldItemResponse) => (
               <RowActions
+                LinkComponent={Link}
                 menuLabel={fill(t.common.list.actionsFor, { name: rowName(row) })}
                 items={[
                   {
                     id: 'open',
                     label: s.openCustomer,
                     icon: 'eye' as const,
-                    onSelect: () => open(row),
+                    href: openHref(row),
                   },
                 ]}
               />
@@ -198,8 +178,9 @@ export function LoyaltyComboSold({
   onPage: (page: number) => void;
   onStatus: (status: string) => void;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const s = comboSoldDictionary(locale);
+  const l = loyaltyDictionary(locale);
   const list = useResource(
     () =>
       api.get<ComboSoldPageResponse>('/api/v1/combos/sold', { page, status: status || undefined }),
@@ -290,7 +271,7 @@ export function LoyaltyComboSold({
           columns={soldColumns(
             locale,
             true,
-            (row) => navigate?.(`${base}/loyalty/${row.buyer.id}`),
+            (row) => `${base}/loyalty/${row.buyer.id}`,
             (row) => row.buyer.displayName,
           )}
           rows={rows}
@@ -302,7 +283,24 @@ export function LoyaltyComboSold({
               <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
             ) : undefined
           }
-          empty={list.data ? <Empty>{status ? s.noneFiltered : s.none}</Empty> : undefined}
+          empty={
+            list.data ? (
+              status ? (
+                <EmptyState
+                  title={l.empty.filteredTitle}
+                  action={
+                    <Button variant="secondary" onClick={() => onStatus('')}>
+                      {l.empty.showAll}
+                    </Button>
+                  }
+                >
+                  {s.noneFiltered}
+                </EmptyState>
+              ) : (
+                <EmptyState title={l.empty.comboSoldTitle}>{l.empty.comboSoldText}</EmptyState>
+              )
+            ) : undefined
+          }
           paging={{
             page,
             pageSize: LOYALTY_PAGE_SIZE,
@@ -320,7 +318,8 @@ export function LoyaltyComboSold({
 export function ProfileCombos({ branchId, userId }: { branchId: string; userId: string }) {
   const { api, t, locale } = useWorkforce();
   const s = comboSoldDictionary(locale);
-  const [page, setPage] = useState(1);
+  // The page is in the address bar (?pcp=), next to the profile it belongs to.
+  const [page, setPage] = useUrlPage('pcp');
   const list = useResource(
     () =>
       api.get<ComboSoldCustomerPageResponse>(
@@ -365,7 +364,8 @@ export function ProfileGifts({ branchId, userId }: { branchId: string; userId: s
   const { api, t, locale } = useWorkforce();
   const s = comboSoldDictionary(locale);
   const r = rewardDictionary(locale);
-  const [page, setPage] = useState(1);
+  // The page is in the address bar (?pgp=), next to the profile it belongs to.
+  const [page, setPage] = useUrlPage('pgp');
   const list = useResource(
     () =>
       api.get<CustomerGiftPageResponse>(
@@ -380,7 +380,7 @@ export function ProfileGifts({ branchId, userId }: { branchId: string; userId: s
       key: 'gift',
       header: s.profile.gift,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       cell: (row) => (locale === 'vi' ? row.nameVi : row.nameEn),
     },
     {

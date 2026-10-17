@@ -9,6 +9,7 @@ import {
   CheckField,
   ConfirmDialog,
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListSection,
   ListToolbar,
@@ -34,8 +35,9 @@ import {
 import { formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { useWorkforce } from '../session';
-import { Button, Empty, ErrorState, useResource, useSuccessToast } from '../ui';
+import { Button, ErrorState, useResource, useSuccessToast } from '../ui';
 import { useConfirmError, type SendCampaign } from './campaign-dialogs';
+import { listFormat, metaLine } from './pos-format';
 
 /** The 20 products of a page and how many pages there are: when a removal empties the last page, the list steps back. */
 function useStepBack(page: number, rows: number, total: number, set: (page: number) => void) {
@@ -85,29 +87,28 @@ export function ItemsPanel({
       key: 'product',
       header: c.items.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => {
         const name = productLine(row);
         return editable ? (
           <CheckField
             aria-label={fill(c.items.select, { name })}
-            label={
-              <span className="ls-cell-title" title={name}>
-                {name}
-              </span>
-            }
+            label={<span className="ls-adm-c-name">{name}</span>}
             checked={selected.includes(row.variantId)}
             onChange={() => setSelected(toggleSelected(selected, row.variantId))}
           />
         ) : (
-          <span className="ls-cell-title" title={name}>
-            {name}
-          </span>
+          <span className="ls-adm-c-name">{name}</span>
         );
       },
     },
-    { key: 'sku', header: c.items.sku, hideBelow: 'xl', cell: (row) => row.sku },
+    {
+      key: 'sku',
+      header: c.items.sku,
+      hideBelow: 'xl',
+      cell: (row) => <span translate="no">{row.sku}</span>,
+    },
     {
       key: 'group',
       header: c.items.inGroup,
@@ -137,13 +138,16 @@ export function ItemsPanel({
       key: 'notes',
       header: c.items.notes,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => {
         const problems = itemProblems(row);
         if (problems.length === 0) return null;
-        const names = row.otherCampaigns.map((other) => other.nameVi).join(', ');
-        const text = problems.map((problem) => c.items.problems[problem]).join(' · ');
+        const names = listFormat(locale).format(row.otherCampaigns.map((other) => other.nameVi));
+        const text = metaLine(
+          locale,
+          problems.map((problem) => c.items.problems[problem]),
+        );
         return names === '' ? text : `${text} (${fill(c.items.overlapWith, { names })})`;
       },
     },
@@ -187,7 +191,7 @@ export function ItemsPanel({
             id="campaign-items-q"
             value={list.iq}
             label={c.items.search}
-            placeholder={c.items.search}
+            hint={c.items.searchPlaceholder}
             clearLabel={t.common.list.clearSearch}
             onSearch={(iq) => updateList({ iq }, { replace: true })}
           />
@@ -239,9 +243,15 @@ export function ItemsPanel({
         }
         empty={
           items.data ? (
-            <Empty>
-              {active > 0 ? c.items.noMatch : editable ? c.items.emptyDraft : c.items.empty}
-            </Empty>
+            active > 0 ? (
+              <EmptyState icon="search" title={c.items.noMatchTitle}>
+                {c.items.noMatch}
+              </EmptyState>
+            ) : (
+              <EmptyState icon="tag" title={c.items.emptyTitle}>
+                {editable ? c.items.emptyDraft : c.items.empty}
+              </EmptyState>
+            )
           ) : undefined
         }
         paging={{

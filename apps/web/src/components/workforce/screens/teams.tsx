@@ -14,7 +14,9 @@ import {
   Combobox,
   ConfirmDialog,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DescriptionList,
+  EmptyState,
   FacetedFilter,
   Field,
   FormDialog,
@@ -29,16 +31,23 @@ import {
   Tabs,
   Textarea,
   TextInput,
+  PageHeader as UiPageHeader,
   useUrlState,
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
-import { useState } from 'react';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
+import { useMemo, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  paginationLabels,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import { canAnywhere, canAt } from '../../../lib/workforce/permissions';
 import {
   bulkSelection,
@@ -58,6 +67,9 @@ import {
   teamListQuery,
 } from '../../../lib/workforce/teams-list';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { EMPLOYEE_STATUS_TONE } from './employees';
+import { focusFirstInvalidSoon } from './service-price-fields';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
@@ -107,15 +119,28 @@ export function TeamsScreen() {
       wrap: true,
       width: 'lg',
       cell: (team) => (
-        <>
+        // The status sits under the name (never squeezed beside it, so it cannot overlap a wrapped name at 200 % text).
+        <span className="ls-cell-stack">
           <Link className="ls-link" href={`${base}/teams/${team.id}`}>
             {team.name}
-          </Link>{' '}
-          {!team.isActive ? <Badge tone="neutral">{text.inactive}</Badge> : null}
-        </>
+          </Link>
+          {!team.isActive ? (
+            <span>
+              <Badge tone="neutral">{text.inactive}</Badge>
+            </span>
+          ) : null}
+        </span>
       ),
     },
-    { key: 'code', header: t.common.code, cell: (team) => team.code },
+    {
+      key: 'code',
+      header: t.common.code,
+      cell: (team) => (
+        <span className="ls-ppl-code" translate="no">
+          {team.code}
+        </span>
+      ),
+    },
     {
       key: 'branch',
       header: t.common.branch,
@@ -127,8 +152,10 @@ export function TeamsScreen() {
       key: 'leader',
       header: text.leader,
       hideBelow: 'lg',
-      truncate: true,
-      cell: (team) => team.leader?.fullName ?? text.noLeader,
+      wrap: true,
+      // No leader is an empty value, muted, not a sentence in ink with the weight of a real name.
+      cell: (team) =>
+        team.leader?.fullName ?? <span className="ls-ppl-muted">{text.noLeader}</span>,
     },
     {
       key: 'members',
@@ -150,7 +177,6 @@ export function TeamsScreen() {
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={active}
-        resultCount={teams.data ? resultsText(t, teams.data.page.total) : undefined}
         onReset={() => updateList({ q: '', branch: '' })}
         reload={{ label: t.common.reload, onClick: () => void teams.reload() }}
         search={
@@ -158,7 +184,7 @@ export function TeamsScreen() {
             id="team-q"
             value={list.q}
             label={text.searchTeams}
-            placeholder={text.searchTeams}
+            hint={text.exampleTeams}
             clearLabel={t.common.list.clearSearch}
             onSearch={(q) => updateList({ q }, { replace: true })}
           />
@@ -177,6 +203,7 @@ export function TeamsScreen() {
         }
       />
       <DataTable
+        drillDown
         mode="server"
         caption={fill(t.common.list.table, { list: text.teams })}
         columns={columns}
@@ -189,7 +216,13 @@ export function TeamsScreen() {
             <ErrorState error={teams.error} t={t} onRetry={() => void teams.reload()} />
           ) : undefined
         }
-        empty={teams.data ? <Empty>{text.noRows}</Empty> : undefined}
+        empty={
+          teams.data ? (
+            <EmptyState icon="users" title={active > 0 ? text.noMatchTitle : text.teamsEmptyTitle}>
+              {active > 0 ? text.noRows : text.teamsEmpty}
+            </EmptyState>
+          ) : undefined
+        }
         paging={{
           page: list.page,
           pageSize: list.pageSize,
@@ -233,8 +266,16 @@ function TeamCreate({
     form.name.trim() !== '' &&
     form.reason.trim() !== '';
 
+  // Validate on submit: the button stays enabled, each missing field says so where it is.
+  const [tried, setTried] = useState(false);
+  const missing = (value: string) =>
+    tried && value.trim() === '' ? t.common.form.fieldRequired : undefined;
+
   async function save() {
-    if (!ready) return;
+    if (!ready) {
+      setTried(true);
+      return;
+    }
     const ok = await submit.run(
       () => runMutation(() => api.post('/api/v1/teams', form), onCreated),
       '',
@@ -244,17 +285,20 @@ function TeamCreate({
 
   return (
     <FormDialog
-      title={text.createTeam}
+      title={text.createTeamTitle}
       labels={formOverlayLabels(t, t.common.create)}
       busy={submit.pending}
       dirty={form.code !== '' || form.name !== '' || form.reason !== '' || form.branchId !== ''}
-      submitDisabled={!ready}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={t.common.branch} required>
+        <Field
+          label={t.common.branch}
+          required
+          error={tried && form.branchId === '' ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Select
               {...control}
@@ -267,30 +311,36 @@ function TeamCreate({
             />
           )}
         </Field>
-        <Field label={t.common.code} required width="md">
+        <Field label={t.common.code} required width="md" error={missing(form.code)}>
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="none"
+              translate="no"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.common.name} required>
+        <Field label={t.common.name} required error={missing(form.name)}>
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={200}
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required>
+        <Field label={t.common.reason} required error={missing(form.reason)}>
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}
@@ -333,7 +383,7 @@ export function TeamDetailScreen({ id }: { id: string }) {
       ? [
           {
             id: 'removeLeader',
-            label: text.removeLeader,
+            label: opensInput(text.removeLeader),
             icon: 'user' as const,
             onSelect: () => setOverlay('removeLeader'),
           },
@@ -343,7 +393,7 @@ export function TeamDetailScreen({ id }: { id: string }) {
       ? [
           {
             id: 'delete',
-            label: text.deleteTeam,
+            label: opensInput(text.deleteTeam),
             icon: 'trash' as const,
             tone: 'danger' as const,
             onSelect: () => setOverlay('delete'),
@@ -353,29 +403,33 @@ export function TeamDetailScreen({ id }: { id: string }) {
   ];
   return (
     <>
-      <PageHeader
+      <UiPageHeader
         title={current.name}
+        // An inactive team says so under the title (kit status slot), not in a separate notice box.
+        status={!current.isActive ? <Badge tone="neutral">{text.inactive}</Badge> : undefined}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: text.teams, href: `${base}/teams` }, { label: current.name }]}
           />
         }
-      >
-        {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
-        {current.isActive && current.canAssignLeader ? (
-          <Button variant="secondary" onClick={() => setOverlay('leader')}>
-            {text.changeLeader}
-          </Button>
-        ) : null}
-        {current.isActive && current.canManage ? (
-          <Button variant="primary" icon="edit" onClick={() => setOverlay('edit')}>
-            {text.editTeam}
-          </Button>
-        ) : null}
-      </PageHeader>
-      {!current.isActive ? <Notice tone="info">{text.inactive}</Notice> : null}
+        actions={
+          <>
+            {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
+            {current.isActive && current.canAssignLeader ? (
+              <Button variant="secondary" onClick={() => setOverlay('leader')}>
+                {text.changeLeader}
+              </Button>
+            ) : null}
+            {current.isActive && current.canManage ? (
+              <Button variant="primary" icon="edit" onClick={() => setOverlay('edit')}>
+                {text.editTeam}
+              </Button>
+            ) : null}
+          </>
+        }
+      />
       <Card as="section" aria-label={current.name}>
         <DescriptionList
           columns={2}
@@ -384,8 +438,13 @@ export function TeamDetailScreen({ id }: { id: string }) {
               label: t.common.branch,
               value: branches.data?.get(current.branchId)?.name ?? t.common.unknownBranch,
             },
-            { label: t.common.code, value: current.code },
-            { label: text.leader, value: current.leader?.fullName ?? text.noLeader },
+            { label: t.common.code, value: <span translate="no">{current.code}</span> },
+            {
+              label: text.leader,
+              value: current.leader?.fullName ?? (
+                <span className="ls-ppl-muted">{text.noLeader}</span>
+              ),
+            },
             { label: text.members, value: current.memberCount },
           ]}
         />
@@ -450,8 +509,15 @@ function TeamEdit({
   const [reason, setReason] = useState('');
   const submit = useSubmit();
   const changed = name.trim() !== team.name;
+  // Validate on submit: a missing name or reason is reported at its field (the button is off only while nothing changed).
+  const [tried, setTried] = useState(false);
 
   async function save() {
+    if (name.trim() === '' || reason.trim() === '') {
+      setTried(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -466,30 +532,40 @@ function TeamEdit({
 
   return (
     <FormDialog
-      title={text.editTeam}
+      title={text.editTeamTitle}
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={changed || reason !== ''}
-      submitDisabled={!changed || name.trim() === '' || reason.trim() === ''}
+      submitDisabled={!changed}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={t.common.name} required>
+        <Field
+          label={t.common.name}
+          required
+          error={tried && name.trim() === '' ? t.common.form.fieldRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={200}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required>
+        <Field
+          label={t.common.reason}
+          required
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -530,8 +606,14 @@ function LeaderDialog({
     [api, team.id, q],
   );
   const submit = useSubmit();
+  const [tried, setTried] = useState(false);
 
   async function save() {
+    if (leader === null || reason.trim() === '') {
+      setTried(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -556,17 +638,20 @@ function LeaderDialog({
   const options = leader ? [leader, ...fetched.filter((o) => o.value !== leader.value)] : fetched;
   return (
     <FormDialog
-      title={text.changeLeader}
+      title={text.changeLeaderTitle}
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={leader !== null || reason !== ''}
-      submitDisabled={leader === null || reason.trim() === ''}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={text.leaderField} required>
+        <Field
+          label={text.leaderField}
+          required
+          error={tried && leader === null ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Combobox
               {...control}
@@ -576,16 +661,22 @@ function LeaderDialog({
               onQueryChange={setQ}
               loading={candidates.loading}
               loadingLabel={t.common.loading}
-              emptyLabel={text.noRows}
-              placeholder={text.leaderPlaceholder}
+              // A failed search says so; "no match" only when the search worked.
+              emptyLabel={candidates.error ? t.errors.network : text.noRows}
+              placeholder={text.exampleEmployee}
               resultsLabel={(count) => resultsText(t, count)}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required>
+        <Field
+          label={t.common.reason}
+          required
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -618,10 +709,10 @@ function TeamConfirm({
     <ConfirmDialog
       title={removing ? text.removeLeaderTitle : text.deleteTitle}
       description={removing ? text.removeLeaderBody : text.deleteWarning}
-      facts={[{ label: text.teams, value: `${team.name} · ${team.code}` }]}
+      facts={[{ label: text.teams, value: `${team.name} (${team.code})` }]}
       tone="danger"
       confirmLabel={removing ? text.removeLeader : text.deleteTeam}
-      busyLabel={t.common.saving}
+      busyLabel={removing ? t.common.removing : t.common.deleting}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{
@@ -658,6 +749,40 @@ function TeamConfirm({
 type BulkAction = 'ADD' | 'REMOVE' | 'TRANSFER';
 type MemberMode = 'members' | 'add' | 'view';
 
+const MEMBER_STATUSES: readonly string[] = ['ACTIVE', 'INACTIVE', 'PENDING_SETUP'];
+const MEMBER_CLASSIFICATIONS: readonly string[] = ['OFFICIAL_EMPLOYEE', 'COLLABORATOR', 'TRAINEE'];
+const MEMBERSHIPS: readonly string[] = ['MEMBERS', 'ALL', 'UNASSIGNED', 'OTHER_TEAM'];
+
+/**
+ * The members view lives in the address bar so Back/Forward and a shared link restore it: the tab (`mtab`), search (`mq`),
+ * status (`mst`), classification (`mcl`), the read-only "current team" filter (`mteam`), page (`mpage`) and page size
+ * (`msize`). The `m` prefix keeps them apart from any other list's keys.
+ */
+const MEMBER_URL_DEFAULTS = {
+  mtab: 'members',
+  mq: '',
+  mst: '',
+  mcl: '',
+  mteam: '',
+  mpage: 1,
+  msize: DEFAULT_PAGE_SIZE,
+};
+type MemberUrlState = typeof MEMBER_URL_DEFAULTS;
+const MEMBER_URL_OPTIONS = {
+  normalize: (state: MemberUrlState): MemberUrlState => ({
+    mtab: state.mtab === 'add' ? 'add' : 'members',
+    mq: state.mq,
+    mst: MEMBER_STATUSES.includes(state.mst) ? state.mst : '',
+    mcl: MEMBER_CLASSIFICATIONS.includes(state.mcl) ? state.mcl : '',
+    mteam: MEMBERSHIPS.includes(state.mteam) ? state.mteam : '',
+    mpage: normalizePage(state.mpage),
+    msize: normalizePageSize(state.msize),
+  }),
+  resetOnChange: ['mpage'],
+};
+/** Filters cleared when the members tab changes (each tab starts from its own default view). */
+const MEMBER_FILTERS_CLEARED: Partial<MemberUrlState> = { mq: '', mst: '', mcl: '', mteam: '' };
+
 /**
  * Members of one team. Managers get two tabs: the current members (select some to remove or
  * transfer them) and the employees without a team (select some to add them). Everyone else sees
@@ -666,33 +791,64 @@ type MemberMode = 'members' | 'add' | 'view';
 function TeamMembers({ team, reload }: { team: TeamSummary; reload: () => Promise<void> }) {
   const { locale } = useWorkforce();
   const text = organizationDictionary(locale);
-  const [tab, setTab] = useState<'members' | 'add'>('members');
+  const [url, updateUrl] = useUrlState(MEMBER_URL_DEFAULTS, MEMBER_URL_OPTIONS);
   if (!team.canManage) {
     return (
       <ListSection title={text.members}>
-        <MemberList team={team} reload={reload} mode="view" />
+        <MemberList team={team} reload={reload} mode="view" url={url} updateUrl={updateUrl} />
       </ListSection>
     );
   }
   return (
     <Tabs
       label={text.members}
-      value={tab}
-      onChange={(id) => setTab(id === 'add' ? 'add' : 'members')}
+      value={url.mtab}
+      onChange={(id) =>
+        updateUrl({ ...MEMBER_FILTERS_CLEARED, mtab: id === 'add' ? 'add' : 'members' })
+      }
       tabs={[
         {
           id: 'members',
-          label: `${text.members} (${team.memberCount})`,
-          panel: <MemberList team={team} reload={reload} mode="members" />,
+          // No count in a tab label (Owner rule): the number lives in the summary and the table's "Hiển thị" line.
+          label: text.members,
+          panel: (
+            <MemberList
+              team={team}
+              reload={reload}
+              mode="members"
+              url={url}
+              updateUrl={updateUrl}
+            />
+          ),
         },
         {
           id: 'add',
           label: text.addTab,
-          panel: <MemberList team={team} reload={reload} mode="add" />,
+          panel: (
+            <MemberList team={team} reload={reload} mode="add" url={url} updateUrl={updateUrl} />
+          ),
         },
       ]}
     />
   );
+}
+
+/** The API filters of a members view, from its URL state (the tab fixes the membership outside the read-only view). */
+function memberFilters(
+  mode: MemberMode,
+  url: Pick<MemberUrlState, 'mq' | 'mst' | 'mcl' | 'mteam'>,
+): TeamEmployeeFilters {
+  return {
+    membership:
+      mode === 'add'
+        ? 'UNASSIGNED'
+        : mode === 'members'
+          ? 'MEMBERS'
+          : ((url.mteam || 'MEMBERS') as TeamMembershipFilter),
+    ...(url.mq ? { q: url.mq } : {}),
+    ...(url.mst ? { status: url.mst as EmployeeStatus } : {}),
+    ...(url.mcl ? { classification: url.mcl as Exclude<EmploymentClassification, 'ENDED'> } : {}),
+  };
 }
 
 /** One members table: filters, row selection and the bulk actions that fit the mode. */
@@ -700,20 +856,34 @@ function MemberList({
   team,
   reload,
   mode,
+  url,
+  updateUrl,
 }: {
   team: TeamSummary;
   reload: () => Promise<void>;
   mode: MemberMode;
+  url: MemberUrlState;
+  updateUrl: (patch: Partial<MemberUrlState>, change?: { replace?: boolean }) => void;
 }) {
   const { api, t, locale } = useWorkforce();
   const text = organizationDictionary(locale);
   const notify = useSuccessToast();
-  const [filters, setFilters] = useState<TeamEmployeeFilters>({
-    membership: mode === 'add' ? 'UNASSIGNED' : 'MEMBERS',
+  const page = url.mpage;
+  const pageSize = url.msize;
+  // Rebuilt only when a filter value changes (primitive keys), so the resource does not reload on every render.
+  const { mq, mst, mcl, mteam } = url;
+  const filterKey = `${mode}|${mq}|${mst}|${mcl}|${mteam}`;
+  const filters = useMemo(
+    () => memberFilters(mode, { mq, mst, mcl, mteam }),
+    [mode, mq, mst, mcl, mteam],
+  );
+  // A selection belongs to the filters it was made under: a filter change (also by Back/Forward) clears it, derived in render.
+  const [picked, setPicked] = useState<{ key: string; value: MemberSelection }>({
+    key: filterKey,
+    value: EMPTY_SELECTION,
   });
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [selection, setSelection] = useState<MemberSelection>(EMPTY_SELECTION);
+  const selection = picked.key === filterKey ? picked.value : EMPTY_SELECTION;
+  const setSelection = (value: MemberSelection) => setPicked({ key: filterKey, value });
   const [bulk, setBulk] = useState<{ action: BulkAction; count: number } | null>(null);
   const selectable = mode !== 'view';
   const candidates = useResource(
@@ -723,10 +893,9 @@ function MemberList({
   const total = candidates.data?.page.total ?? 0;
   const count = selectionCount(selection, total);
 
-  function filter(next: TeamEmployeeFilters) {
-    setFilters(next);
-    setPage(1);
-    setSelection(EMPTY_SELECTION);
+  /** A new filter goes to the address bar (page back to 1 via `resetOnChange`); typing replaces the entry. */
+  function filter(next: Partial<MemberUrlState>, replace = false) {
+    updateUrl(next, { replace });
   }
 
   const items = candidates.data?.items ?? [];
@@ -758,7 +927,12 @@ function MemberList({
     {
       key: 'status',
       header: t.common.status,
-      cell: (employee) => t.employees.statuses[employee.status],
+      // The same status badge as the staff list (icon + word), not plain text on this page only.
+      cell: (employee) => (
+        <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
+          {t.employees.statuses[employee.status]}
+        </Badge>
+      ),
     },
     {
       key: 'classification',
@@ -797,7 +971,7 @@ function MemberList({
           {mode === 'members' ? (
             <>
               <Button variant="secondary" onClick={() => setBulk({ action: 'TRANSFER', count })}>
-                {text.transfer}
+                {text.transferOpen}
               </Button>
               <Button variant="danger-outline" onClick={() => setBulk({ action: 'REMOVE', count })}>
                 {text.remove}
@@ -813,17 +987,16 @@ function MemberList({
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={activeFilters}
-          resultCount={resultsText(t, total)}
-          onReset={() => filter({ membership: filters.membership ?? 'MEMBERS' })}
+          onReset={() => filter(MEMBER_FILTERS_CLEARED)}
           reload={{ label: t.common.reload, onClick: () => void candidates.reload() }}
           search={
             <SearchInput
               id={`member-q-${mode}`}
-              value={filters.q ?? ''}
+              value={mq}
               label={text.search}
-              placeholder={text.search}
+              hint={text.exampleEmployee}
               clearLabel={t.common.list.clearSearch}
-              onSearch={(q) => filter({ ...filters, q })}
+              onSearch={(q) => filter({ mq: q }, true)}
             />
           }
           filters={
@@ -835,12 +1008,8 @@ function MemberList({
                   value: status,
                   label: t.employees.statuses[status],
                 }))}
-                selected={filters.status ? [filters.status] : []}
-                onChange={([status]) => {
-                  const rest = { ...filters };
-                  delete rest.status;
-                  filter(status ? { ...rest, status: status as EmployeeStatus } : rest);
-                }}
+                selected={mst ? [mst] : []}
+                onChange={([status]) => filter({ mst: status ?? '' })}
               />
               <FacetedFilter
                 label={text.classification}
@@ -851,22 +1020,8 @@ function MemberList({
                     label: t.employees.classifications[classification],
                   }),
                 )}
-                selected={filters.classification ? [filters.classification] : []}
-                onChange={([classification]) => {
-                  const rest = { ...filters };
-                  delete rest.classification;
-                  filter(
-                    classification
-                      ? {
-                          ...rest,
-                          classification: classification as Exclude<
-                            EmploymentClassification,
-                            'ENDED'
-                          >,
-                        }
-                      : rest,
-                  );
-                }}
+                selected={mcl ? [mcl] : []}
+                onChange={([classification]) => filter({ mcl: classification ?? '' })}
               />
               {mode === 'view' ? (
                 <FacetedFilter
@@ -880,10 +1035,7 @@ function MemberList({
                   ]}
                   selected={[filters.membership ?? 'MEMBERS']}
                   onChange={([membership]) =>
-                    filter({
-                      ...filters,
-                      membership: (membership ?? 'MEMBERS') as TeamMembershipFilter,
-                    })
+                    filter({ mteam: membership && membership !== 'MEMBERS' ? membership : '' })
                   }
                 />
               ) : null}
@@ -933,16 +1085,28 @@ function MemberList({
             <ErrorState error={candidates.error} t={t} onRetry={() => void candidates.reload()} />
           ) : undefined
         }
-        empty={candidates.data ? <Empty>{text.noRows}</Empty> : undefined}
+        empty={
+          candidates.data ? (
+            <Empty
+              title={text.people.noCandidatesTitle}
+              action={
+                mq || mst || mcl || mteam ? (
+                  <Button variant="secondary" onClick={() => filter(MEMBER_FILTERS_CLEARED)}>
+                    {t.common.list.reset}
+                  </Button>
+                ) : undefined
+              }
+            >
+              {text.noRows}
+            </Empty>
+          ) : undefined
+        }
         paging={{
           page,
           pageSize,
           total,
-          onPageChange: (next) => setPage(next),
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-          },
+          onPageChange: (next) => updateUrl({ mpage: next }),
+          onPageSizeChange: (size) => updateUrl({ msize: size }),
           labels: paginationLabels(t, text.members),
         }}
       />
@@ -1001,6 +1165,7 @@ function BulkDialog({
   const [target, setTarget] = useState<{ value: string; label: string } | null>(null);
   const [targetQuery, setTargetQuery] = useState('');
   const [progress, setProgress] = useState({ processed: 0, changed: 0 });
+  const [tried, setTried] = useState(false);
   const submit = useSubmit();
   const targets = useResource(
     () =>
@@ -1023,6 +1188,11 @@ function BulkDialog({
     : fetchedTargets;
 
   async function save() {
+    if (reason.trim() === '' || (needsTarget && target === null)) {
+      setTried(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     setProgress({ processed: 0, changed: 0 });
     const ok = await submit.run(
       () =>
@@ -1054,14 +1224,17 @@ function BulkDialog({
       labels={formOverlayLabels(t, label)}
       busy={submit.pending}
       dirty={reason !== '' || target !== null}
-      submitDisabled={reason.trim() === '' || (needsTarget && target === null)}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid>
         {needsTarget ? (
-          <Field label={text.target} required>
+          <Field
+            label={text.target}
+            required
+            error={tried && target === null ? t.common.form.choiceRequired : undefined}
+          >
             {(control) => (
               <Combobox
                 {...control}
@@ -1074,16 +1247,21 @@ function BulkDialog({
                 loading={targets.loading}
                 loadingLabel={t.common.loading}
                 emptyLabel={text.noRows}
-                placeholder={text.targetPlaceholder}
+                placeholder={text.exampleTarget}
                 resultsLabel={(n) => resultsText(t, n)}
               />
             )}
           </Field>
         ) : null}
-        <Field label={t.common.reason} required>
+        <Field
+          label={t.common.reason}
+          required
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
               maxLength={500}
               rows={3}
               value={reason}
@@ -1094,7 +1272,7 @@ function BulkDialog({
       </FormGrid>
       {submit.pending ? (
         <p role="status" className="ls-hint">
-          {text.progress}: {progress.processed} · {text.changed}: {progress.changed}
+          {text.progress}: {progress.processed}. {text.changed}: {progress.changed}.
         </p>
       ) : null}
     </FormDialog>

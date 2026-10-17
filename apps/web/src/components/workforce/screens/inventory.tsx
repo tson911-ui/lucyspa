@@ -14,6 +14,7 @@ import {
   resolveTab,
   type InventoryTab,
 } from '../../../lib/workforce/inventory';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Button, ErrorState, Loading, Notice, PageHeader } from '../ui';
 import { CountCreateDialog, CountsTab } from './inventory-counts';
@@ -21,6 +22,7 @@ import { ReceiptsTab } from './inventory-receipts';
 import { StockTab } from './inventory-stock';
 import { SuppliersTab } from './inventory-suppliers';
 import { ProductSettingsDialog } from './product-settings-dialog';
+import { RouterButtonLink } from './products-links';
 import { useInventoryContext } from './use-inventory-command';
 
 type Dialog = 'count' | 'supplier' | 'settings' | null;
@@ -42,7 +44,7 @@ export function InventoryScreen() {
 
 /** The page's content (also rendered on its own by the tests). */
 export function InventoryView({ context }: { context: InventoryContextResponse }) {
-  const { locale, base, navigate } = useWorkforce();
+  const { locale, base } = useWorkforce();
   const text = inventoryDictionary(locale);
   const [list, updateList] = useUrlState(INVENTORY_LIST_DEFAULTS, {
     normalize: normalizeInventoryList,
@@ -123,28 +125,27 @@ export function InventoryView({ context }: { context: InventoryContextResponse }
       <PageHeader title={text.title}>
         {context.manageProducts ? (
           <Button variant="secondary" icon="settings" onClick={() => setDialog('settings')}>
-            {text.settings}
+            {opensInput(text.settings)}
           </Button>
         ) : null}
         {tab === 'receipts' && branch?.receipts ? (
-          <Button
+          // A new receipt is a page of its own: the action is a real link to it (wig inventory.tsx:134).
+          <RouterButtonLink
+            href={`${base}/inventory/receipts/new?branch=${encodeURIComponent(branch.id)}`}
             variant="primary"
             icon="plus"
-            onClick={() =>
-              navigate?.(`${base}/inventory/receipts/new?branch=${encodeURIComponent(branch.id)}`)
-            }
           >
             {text.receipts.add}
-          </Button>
+          </RouterButtonLink>
         ) : null}
         {tab === 'counts' && branch?.adjust ? (
           <Button variant="primary" icon="plus" onClick={() => setDialog('count')}>
-            {text.counts.add}
+            {opensInput(text.counts.add)}
           </Button>
         ) : null}
         {tab === 'suppliers' && context.manageProducts ? (
           <Button variant="primary" icon="plus" onClick={() => setDialog('supplier')}>
-            {text.suppliers.add}
+            {opensInput(text.suppliers.add)}
           </Button>
         ) : null}
       </PageHeader>

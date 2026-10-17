@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardHeader, EmptyState, IconButton, Skeleton, buttonClass } from '@lucy-spa/ui';
+import { Card, CardHeader, EmptyState, IconButton, Skeleton } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
 import { Component, useId, type ErrorInfo, type ReactNode } from 'react';
 import type { WidgetSize } from '../../../lib/workforce/dashboard/widgets';
@@ -30,7 +30,7 @@ export function WidgetSkeleton({ title, size }: { title: string; size: WidgetSiz
   const { t } = useWorkforce();
   return (
     <Card as="section" className="ls-widget" data-size={size} aria-busy="true">
-      <CardHeader title={title} clamp />
+      <CardHeader title={title} />
       <div role="status">
         <span className="ls-visually-hidden">{t.dashboard.widgetLoading}</span>
         <Skeleton lines={3} />
@@ -71,14 +71,14 @@ export function WidgetFrame<T>({
     <Card as="section" className="ls-widget" data-size={size} aria-labelledby={headingId}>
       <CardHeader
         title={title}
-        clamp
         id={headingId}
         actions={info ? <IconButton icon="info" label={info} /> : undefined}
       />
       {body}
       {link && data !== null ? (
+        // One quiet text link at the card's end (pinned there, so the actions of a row line up), never a button per widget.
         <div className="ls-widget-footer">
-          <Link className={buttonClass('secondary', 'md')} href={`${base}${link.path}`}>
+          <Link className="ls-link ls-dash-open" href={`${base}${link.path}`}>
             {link.label}
           </Link>
         </div>
@@ -101,7 +101,7 @@ export function WidgetMessage({
 }) {
   return (
     <Card as="section" className="ls-widget" data-size={size}>
-      <CardHeader title={title} clamp />
+      <CardHeader title={title} />
       <EmptyState icon={icon}>{message}</EmptyState>
     </Card>
   );
@@ -140,7 +140,7 @@ function BoundaryFallback({
   const { t } = useWorkforce();
   return (
     <Card as="section" className="ls-widget" data-size={size}>
-      <CardHeader title={title} clamp />
+      <CardHeader title={title} />
       <ErrorState error={new Error('widget')} t={t} onRetry={onRetry} />
     </Card>
   );

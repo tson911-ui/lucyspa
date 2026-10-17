@@ -16,6 +16,7 @@ import {
 import { supplierSourcesDictionary } from '../../i18n/supplier-sources';
 import type { Locale } from '../../i18n/locales';
 import { ApiError } from './api';
+import { todayIn } from './format';
 
 /**
  * Phase 9 P9-2: the pure side of the supplier source screen. The server is the authority for every rule (address, permission gate,
@@ -165,12 +166,8 @@ export const permissionDraftOf = (item: SupplierSourceItem): PermissionDraft => 
 
 /** Today's date in the shop's time zone (`YYYY-MM-DD`): the latest day a permission may be dated. */
 export function shopToday(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+  // The cached formatter of format.ts (rbp js-cache-function-results).
+  return todayIn('Asia/Ho_Chi_Minh', now);
 }
 
 export type PermissionProblems = Partial<Record<'givenBy' | 'method' | 'date', true>>;

@@ -9,13 +9,18 @@ const vi = {
   intro:
     'Bật bán mỹ phẩm online cho thành viên, đặt giới hạn đơn hàng, lời hẹn giao hàng và chính sách khách phải đồng ý.',
   noAccess: 'Bạn không có quyền xem cài đặt bán online.',
+  /** The empty carrier list (screens/shipping-carriers.tsx; the carrier texts live in online-fulfilment.ts, owned by the counter). */
+  carriers: {
+    emptyTitle: 'Chưa có đơn vị vận chuyển',
+    empty: 'Thêm đơn vị vận chuyển đầu tiên để gửi được đơn hàng online.',
+  },
   master: {
     title: 'Công tắc bán online',
     on: 'Đang bật',
     off: 'Đang tắt',
     onBody: 'Thành viên thấy nút mua trên website, thêm vào giỏ và thanh toán online bằng PayOS.',
     offBody:
-      'Website không có nút mua. Khách chỉ thấy "Mua tại cửa hàng". Công tắc luôn tắt cho đến khi bạn bật.',
+      'Website không có nút mua. Khách chỉ thấy “Mua tại cửa hàng”. Công tắc luôn tắt cho đến khi bạn bật.',
     turnOn: 'Bật bán online',
     turnOff: 'Tắt bán online',
     confirmOnTitle: 'Bật bán online?',
@@ -118,6 +123,7 @@ const vi = {
   saving: 'Đang lưu…',
   revert: 'Hoàn tác',
   saved: 'Đã lưu cài đặt bán online.',
+  nothingToSave: 'Chưa có thay đổi nào để lưu.',
 };
 
 export type OnlineSalesText = typeof vi;
@@ -127,6 +133,11 @@ const en: OnlineSalesText = {
   intro:
     'Open online selling of cosmetics to members, and set the order limits, the delivery promise and the policy customers must accept.',
   noAccess: 'You are not allowed to see the online sales settings.',
+  /** The empty carrier list (screens/shipping-carriers.tsx; the carrier texts live in online-fulfilment.ts, owned by the counter). */
+  carriers: {
+    emptyTitle: 'No carriers yet',
+    empty: 'Add the first carrier so online orders can be shipped.',
+  },
   master: {
     title: 'Online sales switch',
     on: 'On',
@@ -134,7 +145,7 @@ const en: OnlineSalesText = {
     onBody:
       'Members see the buy button on the website, add products to the cart and pay online with PayOS.',
     offBody:
-      'The website has no buy button. Visitors only see "Buy in store". The switch stays off until you turn it on.',
+      'The website has no buy button. Visitors only see “Buy in store”. The switch stays off until you turn it on.',
     turnOn: 'Turn on online sales',
     turnOff: 'Turn off online sales',
     confirmOnTitle: 'Turn on online sales?',
@@ -234,6 +245,7 @@ const en: OnlineSalesText = {
   saving: 'Saving…',
   revert: 'Revert',
   saved: 'Online sales settings saved.',
+  nothingToSave: 'There is no change to save.',
 };
 
 export function onlineSalesDictionary(locale: Locale): OnlineSalesText {

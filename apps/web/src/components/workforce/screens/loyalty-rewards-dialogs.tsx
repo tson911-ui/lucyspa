@@ -129,7 +129,7 @@ export function IssueRewardDialog({
               placeholder={d.itemPlaceholder}
               options={items.map((item) => ({
                 value: item.id,
-                label: `${rewardName(item, locale)} · ${r.kind[item.kind]}`,
+                label: `${rewardName(item, locale)} (${r.kind[item.kind]})`,
               }))}
               onChange={(event) => set({ catalogItemId: event.target.value })}
             />
@@ -139,6 +139,7 @@ export function IssueRewardDialog({
           {(control) => (
             <NumberInput
               {...control}
+              name="quantity"
               inputMode="numeric"
               min={1}
               max={50}
@@ -151,6 +152,7 @@ export function IssueRewardDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
               rows={3}
               maxLength={500}
               value={draft.reason}
@@ -315,7 +317,7 @@ export function RestoreUseDialog({
               value={useId}
               options={open.map((use) => ({
                 value: use.id,
-                label: `${formatDateTime(use.usedAt, ZONE, locale)} · ${use.branchName} · ${use.usedByName}`,
+                label: `${formatDateTime(use.usedAt, ZONE, locale)}, ${use.branchName}, ${use.usedByName}`,
               }))}
               placeholder={d.use}
               onChange={(event) => setUseId(event.target.value)}
@@ -326,6 +328,7 @@ export function RestoreUseDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
               rows={3}
               maxLength={500}
               value={reason}
@@ -360,8 +363,14 @@ export function RewardHistoryDialog({
     {
       key: 'by',
       header: h.columns.by,
-      truncate: true,
-      cell: (use) => `${use.usedByName} · ${use.branchName}`,
+      wrap: true,
+      // The person, then the branch on a second muted line (no middle-dot meta string).
+      cell: (use) => (
+        <span className="ls-cell-stack">
+          <span>{use.usedByName}</span>
+          <span className="ls-cell-sub">{use.branchName}</span>
+        </span>
+      ),
     },
     {
       key: 'state',
@@ -375,7 +384,7 @@ export function RewardHistoryDialog({
     {
       key: 'note',
       header: h.columns.note,
-      truncate: true,
+      wrap: true,
       cell: (use) => use.note ?? '—',
     },
   ];
@@ -403,7 +412,7 @@ export function RewardHistoryDialog({
           },
           {
             label: h.facts.issued,
-            value: `${formatDateTime(entitlement.issuedAt, ZONE, locale)} · ×${entitlement.quantityIssued}`,
+            value: `${formatDateTime(entitlement.issuedAt, ZONE, locale)} (×${entitlement.quantityIssued})`,
           },
           { label: h.facts.by, value: entitlement.issuedByName },
           { label: h.facts.reason, value: entitlement.reason },

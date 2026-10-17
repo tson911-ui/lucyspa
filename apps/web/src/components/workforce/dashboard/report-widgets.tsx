@@ -86,7 +86,7 @@ export function RefundsTodayWidget({ size, title }: WidgetProps) {
             ...(data.totals.paymentAnomalies > 0
               ? [fill(d.refundsAnomalies, { count: String(data.totals.paymentAnomalies) })]
               : []),
-          ].join(' · ')}
+          ].join(', ')}
         />
       )}
     </WidgetFrame>

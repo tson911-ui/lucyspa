@@ -164,10 +164,12 @@ test('services: the total, each service with its share, and the row of money no 
   const html = render(<ServicesBody data={services} />, owner);
   assert.match(html, /1\.000\.000/);
   assert.match(html, /Massage thư giãn/);
-  assert.match(html, /80%/);
+  // Shares through Intl with one decimal everywhere (session 10: "77%" and "12,7%" no longer mix in one column).
+  assert.match(html, /80,0%/);
   assert.match(html, new RegExp(`>${b.sales.other}<`));
   const cut = render(<ServicesBody data={{ ...services, truncated: true }} />, owner);
-  assert.match(cut, /Chỉ hiện 5000 dòng đầu/);
+  // The row limit is grouped like every other count (Intl): "5.000".
+  assert.match(cut, /Chỉ hiện 5\.000 dòng đầu/);
 });
 
 test('products: the SKU, brand and group columns only when viewed by item', () => {

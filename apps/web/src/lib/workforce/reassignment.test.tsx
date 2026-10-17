@@ -1,6 +1,8 @@
 import type { BranchSummary, ReplacementOptionsResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { ReassignmentScreen } from '../../components/workforce/screens/reassignment';
 import { getWorkforceDictionary } from '../../i18n/workforce';
 import { employee, owner, render } from '../../test/support';
@@ -58,6 +60,25 @@ test('confirmation sends exact displayed versions; SPECIFIC intent requires ackn
   assert.ok(!('assignmentMode' in body));
   assert.ok(!('plannedStartAt' in body));
   assert.ok(!('occurredAt' in body));
+});
+
+test('C47: the conflicts filter is a segmented control with the same address state, blocked while saving', () => {
+  const source = readFileSync(
+    fileURLToPath(new URL('../../components/workforce/screens/reassignment.tsx', import.meta.url)),
+    'utf8',
+  );
+  const control = /<SegmentedControl[\s\S]*?\/>/.exec(source)?.[0] ?? '';
+  assert.match(control, /label=\{r\.showLabel\}/);
+  assert.match(control, /value=\{conflictsOnly \? 'conflicts' : 'all'\}/);
+  assert.match(control, /disabled=\{saving\}/);
+  assert.match(control, /onChange=\{\(show\) => setView\(\{ show \}\)\}/);
+  assert.doesNotMatch(source, /reassignment-conflicts/, 'the Select is gone');
+  assert.match(source, /const REASSIGN_SHOW = \['conflicts', 'all'\] as const;/);
+  assert.match(source, /show: 'conflicts',/, 'the default view is unchanged');
+  for (const locale of ['vi', 'en'] as const) {
+    const r = getWorkforceDictionary(locale).reassignment;
+    assert.ok(r.showLabel && r.showLabel !== r.conflictsOnly, 'the group has its own name');
+  }
 });
 
 test('VI/EN render and map safe reassignment outcomes without exposing codes', () => {

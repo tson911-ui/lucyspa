@@ -136,21 +136,21 @@ test('update request: only what changed, and nothing at all is "unchanged"', () 
 });
 
 test('labels: the product and its variant, the price, and "Hết hàng" when nothing is left', () => {
-  assert.equal(productTitle(option(), 'vi'), 'Kem dưỡng da · 50 ml');
+  assert.equal(productTitle(option(), 'vi'), 'Kem dưỡng da (50 ml)');
   assert.equal(productTitle(option({ variantLabelEn: null }), 'en'), 'Skin cream');
   // An invoice line's name already ends with " - <label>": the label is shown once, the same way as in a search result.
   assert.equal(
     productTitle(option({ nameVi: 'Kem dưỡng da - 50 ml' }), 'vi'),
-    'Kem dưỡng da · 50 ml',
+    'Kem dưỡng da (50 ml)',
   );
-  assert.equal(optionLabel(option(), 'vi'), 'Kem dưỡng da · 50 ml — 200.000\u00a0₫ — còn 5');
+  assert.equal(optionLabel(option(), 'vi'), 'Kem dưỡng da (50 ml), 200.000\u00a0₫, còn 5');
   assert.equal(
     optionLabel(option({ available: 0 }), 'vi'),
-    'Kem dưỡng da · 50 ml — 200.000\u00a0₫ — Hết hàng',
+    'Kem dưỡng da (50 ml), 200.000\u00a0₫, Hết hàng',
   );
   assert.equal(
     optionLabel(option({ available: 0 }), 'en'),
-    'Skin cream · 50 ml — 200,000\u00a0₫ — Out of stock',
+    'Skin cream (50 ml), 200,000\u00a0₫, Out of stock',
   );
   assert.equal(stockTone('CONSUMED'), 'success');
   assert.equal(stockTone('RESERVED'), 'info');
@@ -175,11 +175,12 @@ test("a refused finalization names the lines that are out of stock, in the cashi
   );
   const fallback = () => 'FALLBACK';
   const vi = productErrorText(error, 'vi', { productLines: lines }, fallback);
-  assert.match(vi, /Kem dưỡng da · 50 ml, Tinh chất/);
+  // The names are an Intl list ("A và B"), not a hand-joined string.
+  assert.match(vi, /Kem dưỡng da \(50 ml\) và Tinh chất/);
   assert.match(vi, /Không đủ hàng/);
   assert.match(
     productErrorText(error, 'en', { productLines: lines }, fallback),
-    /Skin cream · 50 ml, Serum/,
+    /Skin cream \(50 ml\) and Serum/,
   );
   // An id the invoice no longer holds, or no id at all, still says what happened.
   assert.match(
@@ -224,15 +225,34 @@ test('the product lines card: names, seller, price and stock state; actions only
     owner,
     'vi',
   );
-  assert.ok(draft.includes('Kem dưỡng da · 50 ml'));
+  assert.ok(draft.includes('Kem dưỡng da (50 ml)'));
   assert.ok(draft.includes('Lan'));
   assert.ok(draft.includes('200.000\u00a0₫'));
   assert.ok(draft.includes('400.000\u00a0₫'));
-  assert.ok(draft.includes('Thêm sản phẩm'), 'a draft offers the add action');
+  assert.ok(draft.includes('Thêm sản phẩm…'), 'a draft offers the add action');
   const rowMenu = fill(getWorkforceDictionary('vi').common.list.actionsFor, {
-    name: 'Kem dưỡng da · 50 ml',
+    name: 'Kem dưỡng da (50 ml)',
   });
   assert.ok(draft.includes(rowMenu), 'a draft has the row menu (edit, remove)');
+  // C72 (session 10): the "removed, undo" line the invoice passes in sits right above the table, inside the same card.
+  const withUndo = render(
+    <ProductLinesCard
+      invoice={invoice()}
+      idle
+      onAdd={() => undefined}
+      onEdit={() => undefined}
+      onRemove={() => undefined}
+      undo={<div className="ls-pos-undo">UNDO-SLOT</div>}
+    />,
+    owner,
+    'vi',
+  );
+  assert.ok(withUndo.includes('UNDO-SLOT'));
+  assert.ok(
+    withUndo.indexOf('UNDO-SLOT') < withUndo.indexOf('<table'),
+    'the undo line comes before the lines',
+  );
+  assert.ok(!draft.includes('UNDO-SLOT'), 'no undo line until a line was removed');
   const paid = render(
     <ProductLinesCard
       invoice={invoice({
@@ -314,7 +334,8 @@ test('the sides card: one row per side that has lines, the offer that won and th
   assert.ok(html.includes('Spa'));
   assert.ok(html.includes('Lucy Beauty'));
   assert.ok(html.includes('270.000\u00a0₫'));
-  assert.ok(html.includes('− 30.000\u00a0₫'));
+  // The minus sign comes from Intl (signDisplay), not a hand-typed "− ".
+  assert.ok(html.includes('-30.000\u00a0₫'));
   assert.ok(html.includes('Không có ưu đãi'));
   // A product-only invoice has one side with lines; a service-only invoice has no sides at all.
   const only = render(

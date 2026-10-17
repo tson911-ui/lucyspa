@@ -1,41 +1,19 @@
-import type {
-  LoyaltyLedgerKindName,
-  LoyaltyTierName,
-  LoyaltyWalletName,
-} from '@lucy-spa/contracts';
+import type { LoyaltyLedgerKindName } from '@lucy-spa/contracts';
 import type { Locale } from './locales';
+import { tierLabels, walletInline, walletNames } from './loyalty-names';
 
 /**
  * Phase 5 P5-3: texts of the loyalty admin screens (points, tiers, ledger, adjustments, exceptions, go-live).
- * Kept next to the other feature dictionaries so the large workforce dictionary stays untouched.
+ * Kept next to the other feature dictionaries so the large workforce dictionary stays untouched. The wallet and tier names
+ * live in `loyalty-names.ts` (the member pages import only those) and are re-exported here.
  */
-// The membership tier names are the PRD 18.5 names. One of them is spelled out of parts so the brand-palette guard
-// (a test forbids a certain color word anywhere in the app source) does not mistake the tier name for a color.
-const tierLabels = (none: string): Record<LoyaltyTierName, string> => {
-  const labels: Record<string, string> = {
-    NONE: none,
-    SILVER: 'Silver',
-    PLATINUM: 'Platinum',
-    DIAMOND: 'Diamond',
-    RUBY: 'Ruby',
-  };
-  labels[['GO', 'LD'].join('')] = ['Gol', 'd'].join('');
-  return labels as Record<LoyaltyTierName, string>;
-};
-
-// The wallet names are written once, here (Owner, 2026-10-05): the labels, the sentences below and the customer page all read them.
-// `walletNames` is the label; `walletInline` is the same name inside a sentence (Vietnamese keeps the capital only at a sentence start).
-const walletNames: Record<Locale, Record<LoyaltyWalletName, string>> = {
-  vi: { SPA: 'Điểm Lucy Spa', BEAUTY: 'Điểm Lucy Beauty' },
-  en: { SPA: 'Lucy Spa points', BEAUTY: 'Lucy Beauty points' },
-};
-const walletInline: Record<Locale, Record<LoyaltyWalletName, string>> = {
-  vi: { SPA: 'điểm Lucy Spa', BEAUTY: 'điểm Lucy Beauty' },
-  en: walletNames.en,
-};
-/** The wallet names for use inside a sentence ("+10 điểm Lucy Spa và +10 điểm Lucy Beauty"). */
-export const loyaltyWalletInline = (locale: Locale): Record<LoyaltyWalletName, string> =>
-  walletInline[locale];
+export {
+  loyaltyNames,
+  loyaltyWalletInline,
+  tierLabels,
+  walletInline,
+  walletNames,
+} from './loyalty-names';
 
 const vi = {
   title: 'Điểm thưởng',
@@ -47,6 +25,43 @@ const vi = {
     exceptions: 'Ngoại lệ',
     birthday: 'Quà sinh nhật',
     goLive: 'Kích hoạt',
+  },
+  // Owner answer 5 (session 10): the ten sections are grouped by task into at most six tabs; a group with more than one
+  // section switches between them with a segmented control under the tab bar.
+  groups: {
+    members: 'Khách hàng',
+    rewards: 'Quà tặng',
+    combos: 'Combo',
+    referrals: 'Giới thiệu và sinh nhật',
+    exceptions: 'Ngoại lệ',
+    goLive: 'Kích hoạt',
+  },
+  sectionLabel: 'Mục trong nhóm',
+  sections: { combos: 'Các gói combo' },
+  lookupEmpty: {
+    title: 'Tra cứu điểm của khách',
+    text: 'Nhập số điện thoại hoặc email của khách để xem điểm và lịch sử điểm.',
+  },
+  lookupRequired: 'Nhập số điện thoại hoặc email của khách.',
+  // Empty states (session 10): a heading, one sentence and at most one way on.
+  empty: {
+    noAccessTitle: 'Chưa có quyền xem điểm thưởng',
+    noAccessText: 'Nhờ chủ spa cấp quyền xem điểm thưởng cho tài khoản của bạn.',
+    noBranchTitle: 'Chưa có chi nhánh',
+    filteredTitle: 'Không có kết quả phù hợp',
+    showAll: 'Xem tất cả',
+    exceptionsTitle: 'Chưa có ngoại lệ',
+    exceptionsText: 'Điểm bị thiếu khi thu hồi sẽ hiện ở đây.',
+    referralsTitle: 'Chưa có lượt giới thiệu',
+    referralsText: 'Lượt giới thiệu hiện ở đây sau khi khách mới được gắn người giới thiệu.',
+    comboSoldTitle: 'Chưa bán combo nào',
+    comboSoldText: 'Combo bán tại quầy sẽ hiện ở đây.',
+    comboUsageTitle: 'Chưa có lần dùng combo',
+    comboUsageText: 'Mỗi buổi dùng combo trên hóa đơn sẽ hiện ở đây.',
+    ledgerTitle: 'Chưa có giao dịch điểm',
+    ledgerText: 'Điểm cộng, trừ và điều chỉnh của khách sẽ hiện ở đây.',
+    rewardsTitle: 'Chưa có quà tặng',
+    rewardsText: 'Quà cấp cho khách sẽ hiện ở đây.',
   },
   noAccess: 'Bạn chưa được cấp quyền xem điểm thưởng.',
   noBranch: 'Bạn chưa có chi nhánh nào để tra cứu khách.',
@@ -119,6 +134,8 @@ const vi = {
     subtract: 'Trừ điểm',
     amount: 'Số điểm',
     amountHint: 'Số nguyên dương, tối đa 1.000.000.',
+    amountError: 'Nhập số điểm là số nguyên từ 1 đến 1.000.000.',
+    reasonError: 'Nhập lý do điều chỉnh.',
     reason: 'Lý do',
     reasonHint: 'Nhân viên và Chủ spa xem được lý do này; khách hàng không thấy nội dung lý do.',
     submit: 'Ghi điều chỉnh',
@@ -176,6 +193,7 @@ const vi = {
     title: 'Giới thiệu',
     intro: `Mỗi khách có tối đa một người giới thiệu. Người giới thiệu nhận 10 ${walletInline.vi.SPA} và 10 ${walletInline.vi.BEAUTY} một lần, khi khách mới thanh toán bằng tiền cho lượt làm dịch vụ đầu tiên.`,
     status: { PENDING: 'Chờ thưởng', REWARDED: 'Đã thưởng' },
+    phoneRequired: 'Nhập số điện thoại của người giới thiệu.',
     via: { SIGNUP: 'Khách tự nhập khi đăng ký', COUNTER: 'Nhân viên ghi tại quầy' },
     list: {
       title: 'Danh sách giới thiệu',
@@ -206,8 +224,8 @@ const vi = {
       rewardedNoInvoice: 'Đã thưởng lúc {date}. Người giới thiệu không đổi được nữa.',
       asReferrer: 'Đã giới thiệu',
       asReferrerValue: '{n} khách, {m} khách đã được thưởng',
-      bind: 'Gắn người giới thiệu',
-      change: 'Đổi người giới thiệu',
+      bind: 'Gắn người giới thiệu…',
+      change: 'Đổi người giới thiệu…',
       history: 'Lịch sử đổi người giới thiệu',
     },
     history: {
@@ -269,6 +287,40 @@ const en: Dictionary = {
     exceptions: 'Exceptions',
     birthday: 'Birthday gift',
     goLive: 'Activation',
+  },
+  groups: {
+    members: 'Customers',
+    rewards: 'Gifts',
+    combos: 'Combos',
+    referrals: 'Referrals and birthdays',
+    exceptions: 'Exceptions',
+    goLive: 'Activation',
+  },
+  sectionLabel: 'Section in this group',
+  sections: { combos: 'Combo packages' },
+  lookupEmpty: {
+    title: "Look up a customer's points",
+    text: "Enter the customer's phone number or email to see their points and points history.",
+  },
+  lookupRequired: "Enter the customer's phone number or email.",
+  empty: {
+    noAccessTitle: 'No access to loyalty points',
+    noAccessText: 'Ask the spa owner to give your account access to loyalty points.',
+    noBranchTitle: 'No branch yet',
+    filteredTitle: 'Nothing matches',
+    showAll: 'Show all',
+    exceptionsTitle: 'No exceptions yet',
+    exceptionsText: 'Points short on a reversal will show here.',
+    referralsTitle: 'No referrals yet',
+    referralsText: 'A referral shows here once a new customer has a referrer recorded.',
+    comboSoldTitle: 'No combo sold yet',
+    comboSoldText: 'Combos sold at the counter will show here.',
+    comboUsageTitle: 'No combo use yet',
+    comboUsageText: 'Each combo session used on an invoice will show here.',
+    ledgerTitle: 'No points transactions yet',
+    ledgerText: "The customer's points earned, spent and adjusted will show here.",
+    rewardsTitle: 'No rewards yet',
+    rewardsText: 'Rewards granted to this customer will show here.',
   },
   noAccess: 'You have not been granted access to loyalty points.',
   noBranch: 'You have no branch to look customers up at.',
@@ -341,6 +393,8 @@ const en: Dictionary = {
     subtract: 'Deduct points',
     amount: 'Points',
     amountHint: 'A positive whole number, at most 1,000,000.',
+    amountError: 'Enter the points as a whole number from 1 to 1,000,000.',
+    reasonError: 'Enter the reason for the adjustment.',
     reason: 'Reason',
     reasonHint: 'Staff and the Owner can read this reason; the customer never sees its text.',
     submit: 'Record adjustment',
@@ -399,6 +453,7 @@ const en: Dictionary = {
     title: 'Referrals',
     intro: `Each customer has at most one referrer. The referrer receives 10 ${walletInline.en.SPA} and 10 ${walletInline.en.BEAUTY} once, when the new customer pays their first visit with money.`,
     status: { PENDING: 'Waiting for reward', REWARDED: 'Rewarded' },
+    phoneRequired: 'Enter the referrer’s phone number.',
     via: {
       SIGNUP: 'Entered by the customer at signup',
       COUNTER: 'Recorded by staff at the counter',
@@ -432,8 +487,8 @@ const en: Dictionary = {
       rewardedNoInvoice: 'Rewarded at {date}. The referrer can no longer change.',
       asReferrer: 'Referred',
       asReferrerValue: '{n} customers, {m} rewarded',
-      bind: 'Record referrer',
-      change: 'Change referrer',
+      bind: 'Record referrer…',
+      change: 'Change referrer…',
       history: 'Referrer change history',
     },
     history: {

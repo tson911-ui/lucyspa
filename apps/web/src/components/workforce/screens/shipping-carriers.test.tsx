@@ -2,6 +2,7 @@ import type { ShippingCarrierResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { onlineFulfilmentDictionary } from '../../../i18n/online-fulfilment';
+import { onlineSalesDictionary } from '../../../i18n/online-sales';
 import { employee, owner, render } from '../../../test/support';
 import { CarriersView, ShippingCarriersScreen } from './shipping-carriers';
 
@@ -42,8 +43,13 @@ test('the page has one primary action, the list with its template and status, an
   assert.doesNotMatch(html, /khám/i);
 });
 
-test('an empty list says that no carrier is invented', () => {
-  assert.match(view([]), re(text.empty));
+test('an empty list says that no carrier is invented: a heading, one sentence and the next step', () => {
+  const empty = onlineSalesDictionary('vi').carriers;
+  const html = view([]);
+  assert.match(html, re(empty.emptyTitle));
+  assert.match(html, re(empty.empty));
+  assert.match(html, /ls-empty-action[^>]*>(?:<[^>]*>)*[^<]*Thêm đơn vị/);
+  assert.equal((html.match(/ls-btn-primary/g) ?? []).length, 1, 'the next step is the outline');
 });
 
 test('only a person with the global product permission may manage carriers', () => {

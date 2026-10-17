@@ -190,7 +190,7 @@ export function returnOpenRequest(
 
 // -------------------------------------------------------------------------------------------------- case display
 
-/** "Kem dưỡng · 50 ml": the product of a line in the reader's language, with its variant when it has one. */
+/** "Kem dưỡng (50 ml)": the product of a line in the reader's language, with its variant when it has one. */
 export function returnProductName(
   product: {
     productNameVi: string;
@@ -202,7 +202,8 @@ export function returnProductName(
 ): string {
   const name = locale === 'en' ? product.productNameEn : product.productNameVi;
   const label = locale === 'en' ? product.variantLabelEn : product.variantLabelVi;
-  return label ? `${name} · ${label}` : name;
+  // The variant in brackets, like the sale screens (session 10: no " · " meta string).
+  return label ? `${name} (${label})` : name;
 }
 
 /** True when a wrong or damaged case still lacks a photo that counts: one present and taken before the window ended. */

@@ -5,8 +5,9 @@ import { REPORT_LIMITS } from '@lucy-spa/contracts';
 import {
   DataTable,
   DateRangePicker,
+  EmptyState,
   ListToolbar,
-  Grid,
+  Icon,
   KpiCard,
   Select,
   Stack,
@@ -16,12 +17,13 @@ import {
   type DateRange,
   type ValueFormat,
 } from '@lucy-spa/ui';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Children, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { reportsDictionary } from '../../../i18n/reports';
 import { reportsBDictionary } from '../../../i18n/reports-b';
 import { fill } from '../../../i18n/workforce';
-import { todayIn } from '../../../lib/workforce/format';
-import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
+import { formatDate, todayIn } from '../../../lib/workforce/format';
+import { toolbarLabels } from '../../../lib/workforce/list-view';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import {
   exportRequest,
   REPORT_ZONE,
@@ -32,6 +34,7 @@ import {
   normalizeReportPage,
   REPORT_PAGE_DEFAULTS,
   REPORT_RESET_KEYS,
+  formatCount,
   STOCK_DAY_CHOICES,
   type ReportPageState,
 } from '../../../lib/workforce/reports-b';
@@ -223,7 +226,13 @@ export function ReportView({
           }
         />
         <div className="ls-print-only">
-          {range ? <p>{fill(w.print.period, { period: `${range.from} → ${range.to}` })}</p> : null}
+          {range ? (
+            <p>
+              {fill(w.print.period, {
+                period: `${formatDate(range.from, locale)} – ${formatDate(range.to, locale)}`,
+              })}
+            </p>
+          ) : null}
           <p>{fill(w.print.branches, { names: branchNames })}</p>
         </div>
         {visible.length > 1 ? (
@@ -306,17 +315,20 @@ export function ReportTable<Row>({
   rows,
   rowKey,
   empty,
+  urlKey = 'tp',
 }: {
   label: string;
   columns: DataTableColumn<Row>[];
   rows: readonly Row[];
   rowKey: (row: Row) => string;
   empty: string;
+  /** The address-bar key of the page number; a second table on one panel passes its own ("tp2"). */
+  urlKey?: string | undefined;
 }) {
-  const { t } = useWorkforce();
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
-  const last = Math.max(1, Math.ceil(rows.length / paging.pageSize));
-  const page = Math.min(paging.page, last);
+  const { t, locale } = useWorkforce();
+  const w = reportsDictionary(locale);
+  // The page lives in the address bar (Back/Forward and a shared link keep it); the table clamps it to the rows it has.
+  const paging = useUrlPaging(urlKey, t, label);
   return (
     <DataTable
       mode="client"
@@ -324,14 +336,12 @@ export function ReportTable<Row>({
       columns={columns}
       rows={[...rows]}
       rowKey={rowKey}
-      empty={<Empty>{empty}</Empty>}
-      paging={{
-        page,
-        pageSize: paging.pageSize,
-        onPageChange: (next) => setPaging((current) => ({ ...current, page: next })),
-        onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-        labels: paginationLabels(t, label),
-      }}
+      empty={
+        <EmptyState icon="bar-chart" title={w.common.emptyTitle}>
+          {empty}
+        </EmptyState>
+      }
+      paging={paging}
     />
   );
 }
@@ -341,8 +351,28 @@ export function TruncatedNote({ truncated, count }: { truncated: boolean; count:
   const { locale } = useWorkforce();
   const b = reportsBDictionary(locale);
   return truncated ? (
-    <Notice tone="info">{fill(b.common.truncated, { count: String(count) })}</Notice>
+    <ReportNote>{fill(b.common.truncated, { count: formatCount(count, locale) })}</ReportNote>
   ) : null;
+}
+
+/**
+ * A note in the report's prose (how it is counted, who sees what, a scope limit): one muted line with an icon, not a tinted box above
+ * or between the figures (FR1, B12). Errors and warnings that ask for an action stay a `Notice`.
+ */
+export function ReportNote({
+  children,
+  tone = 'info',
+}: {
+  children: ReactNode;
+  /** `warning`: a limit of the figures (a month only partly counted, goods without cost); the icon takes the warning colour. */
+  tone?: 'info' | 'warning' | undefined;
+}) {
+  return (
+    <p className="ls-adminb-note" data-tone={tone}>
+      <Icon name={tone === 'warning' ? 'alert-triangle' : 'info'} size={16} />
+      <span>{children}</span>
+    </p>
+  );
 }
 
 /** One headline figure of a report (no comparison): a count, an amount, a percent or a duration in minutes. */
@@ -373,11 +403,17 @@ export function Kpi({
   );
 }
 
-/** The figures of a report, in a row of cards that wraps on a narrow screen. */
+/**
+ * The figures of a report in one row of equal cards. The column count follows the number of cards (s10-admin-b.css), so a row never
+ * leaves one orphan card on a line of its own and two cards are not stretched to half the page each (plan PATTERN-REPORT).
+ */
 export function KpiRow({ children }: { children: ReactNode }) {
+  const count = Children.toArray(children).length;
   return (
-    <Grid min="sm" gap="page">
-      {children}
-    </Grid>
+    <div className="ls-adminb-kpis-frame">
+      <div className="ls-adminb-kpis" data-count={count}>
+        {children}
+      </div>
+    </div>
   );
 }

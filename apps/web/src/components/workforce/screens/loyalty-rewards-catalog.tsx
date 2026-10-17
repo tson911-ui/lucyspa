@@ -14,8 +14,9 @@ import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { rewardDictionary } from '../../../i18n/reward';
 import { formatDateTime } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { expiryText, rewardName } from '../../../lib/workforce/reward';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -47,7 +48,8 @@ export function LoyaltyRewardCatalog() {
   );
   // `undefined` = closed, `null` = a new item, an item = editing it.
   const [editing, setEditing] = useState<RewardCatalogItemResponse | null | undefined>(undefined);
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+  // The pager lives in the address bar under its own key, so Back/Forward and a shared link restore the page.
+  const paging = useUrlPaging('rcp', t, c.title);
 
   if (list.error && !list.data) {
     return <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />;
@@ -60,7 +62,7 @@ export function LoyaltyRewardCatalog() {
       key: 'name',
       header: c.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (item) => rewardName(item, locale),
     },
@@ -69,7 +71,7 @@ export function LoyaltyRewardCatalog() {
       key: 'service',
       header: c.service,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (item) =>
         item.service
@@ -104,7 +106,14 @@ export function LoyaltyRewardCatalog() {
       cell: (item) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: rewardName(item, locale) })}
-          items={[{ id: 'edit', label: c.edit, icon: 'edit', onSelect: () => setEditing(item) }]}
+          items={[
+            {
+              id: 'edit',
+              label: opensInput(c.edit),
+              icon: 'edit',
+              onSelect: () => setEditing(item),
+            },
+          ]}
         />
       ),
     },
@@ -112,7 +121,7 @@ export function LoyaltyRewardCatalog() {
 
   const add = (
     <Button variant="primary" icon="plus" onClick={() => setEditing(null)}>
-      {c.add}
+      {opensInput(c.add)}
     </Button>
   );
   return (
@@ -133,12 +142,7 @@ export function LoyaltyRewardCatalog() {
             rows={items}
             rowKey={(item) => `${item.id}:${item.rowVersion}`}
             empty={<Empty>{c.emptyBody}</Empty>}
-            paging={{
-              ...paging,
-              onPageChange: (page) => setPaging((state) => ({ ...state, page })),
-              onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-              labels: paginationLabels(t, c.title),
-            }}
+            paging={paging}
           />
         </ListSection>
       )}

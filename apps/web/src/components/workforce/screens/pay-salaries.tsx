@@ -12,7 +12,6 @@ import {
   Field,
   FormDialog,
   FormGrid,
-  ListSection,
   ListToolbar,
   MoneyInput,
   RowActions,
@@ -27,6 +26,7 @@ import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import {
   salaryBody,
   salaryProblems,
@@ -71,12 +71,14 @@ export function PaySalaries({
       key: 'employee',
       header: s.columns.employee,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (item) => (
         <>
           {item.employee.name}
-          <span className="ls-hint"> · {item.employee.code}</span>
+          <span className="ls-adminb-sub" translate="no">
+            {item.employee.code}
+          </span>
         </>
       ),
     },
@@ -147,10 +149,11 @@ export function PaySalaries({
     },
   ];
   const unconfirmed = all.some((item) => !item.confirmed);
-  const paging1 = useClientPaging(t, s.title);
+  const paging1 = useUrlPaging('sap', t, s.title);
   return (
     <>
-      <ListSection title={s.title}>
+      {/* The tab already names the list: no h2 repeating it (FR "a heading never repeats its control"). */}
+      <div className="ls-list-section">
         {unconfirmed && data.data ? <p className="ls-hint">{s.unconfirmedNote}</p> : null}
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -161,7 +164,7 @@ export function PaySalaries({
               id="pay-salary-q"
               value={state.q}
               label={p.common.search}
-              placeholder={p.common.search}
+              hint={p.common.searchPeople}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => update({ q })}
             />
@@ -183,7 +186,7 @@ export function PaySalaries({
           empty={data.data ? <Empty>{query ? s.noneFiltered : s.none}</Empty> : undefined}
           paging={paging1}
         />
-      </ListSection>
+      </div>
       {setting && data.data ? (
         <SalaryDialog
           item={setting}
@@ -220,8 +223,8 @@ function SalaryDialog({
   const [checked, setChecked] = useState(false);
   const command = usePayCommand();
   const problems = salaryProblems(draft, today);
-  const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+  const invalid = (name: 'amount' | 'from' | 'reason') =>
+    checked && problems.includes(name) ? p.common.fieldErrors[name] : undefined;
 
   async function submit() {
     setChecked(true);
@@ -246,8 +249,9 @@ function SalaryDialog({
           {(control) => (
             <MoneyInput
               {...control}
+              name="amount"
               unit="₫"
-              separator={locale === 'vi' ? '.' : ','}
+              locale={locale}
               value={draft.amount}
               onValueChange={(amount) => setDraft({ ...draft, amount })}
             />
@@ -257,6 +261,7 @@ function SalaryDialog({
           {(control) => (
             <DateTextInput
               {...control}
+              name="from"
               min={window.min}
               max={window.max}
               value={draft.from}
@@ -268,6 +273,8 @@ function SalaryDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={draft.reason}
@@ -305,7 +312,7 @@ function SalaryHistory({ item, onClose }: { item: SalaryItem; onClose: () => voi
             cell: (row) => (
               <>
                 {formatDate(row.effectiveFrom, locale)}
-                {row.reason ? <span className="ls-hint"> · {row.reason}</span> : null}
+                {row.reason ? <span className="ls-adminb-sub">{row.reason}</span> : null}
               </>
             ),
           },
@@ -319,7 +326,7 @@ function SalaryHistory({ item, onClose }: { item: SalaryItem; onClose: () => voi
           {
             key: 'by',
             header: p.common.by,
-            truncate: true,
+            wrap: true,
             hidePhone: true,
             cell: (row) => row.recordedBy.name,
           },

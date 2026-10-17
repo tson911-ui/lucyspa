@@ -27,10 +27,12 @@ import {
 } from '../../../lib/workforce/campaigns';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Badge, Button, Notice, Section, useSuccessToast } from '../ui';
 import { useCampaignAction, type SendCampaign } from './campaign-dialogs';
 import { MediaPicker } from './media-picker';
+import { focusInvalidSoon } from './products-links';
 
 /**
  * What customers see while the campaign runs: the badge on product cards, the headline, message and button text of the sale page
@@ -57,7 +59,7 @@ export function DisplaySection({
         actions={
           campaign.can.editPresentation ? (
             <Button variant="secondary" icon="edit" onClick={() => setEditing(true)}>
-              {d.edit}
+              {opensInput(d.edit)}
             </Button>
           ) : undefined
         }
@@ -154,7 +156,10 @@ function DisplayDrawer({
 
   async function submit() {
     setChecked(true);
-    if (tooLong.size > 0) return;
+    if (tooLong.size > 0) {
+      focusInvalidSoon();
+      return;
+    }
     const body = presentationEditRequest(draft, campaign);
     if (!body) {
       onClose();
@@ -177,6 +182,8 @@ function DisplayDrawer({
           multiline ? (
             <Textarea
               {...control}
+              name="name"
+              autoComplete="off"
               rows={3}
               value={draft[name]}
               onChange={(event) => set({ [name]: event.target.value })}
@@ -184,6 +191,8 @@ function DisplayDrawer({
           ) : (
             <TextInput
               {...control}
+              name="name"
+              autoComplete="off"
               value={draft[name]}
               onChange={(event) => set({ [name]: event.target.value })}
             />
@@ -224,7 +233,7 @@ function DisplayDrawer({
             )}
             <Cluster>
               <Button variant="secondary" onClick={() => setPicking(true)}>
-                {draft.bannerMediaId ? d.bannerChange : d.bannerChoose}
+                {opensInput(draft.bannerMediaId ? d.bannerChange : d.bannerChoose)}
               </Button>
               {draft.bannerMediaId ? (
                 <Button variant="ghost" onClick={() => set({ bannerMediaId: null })}>

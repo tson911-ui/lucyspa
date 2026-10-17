@@ -2,6 +2,7 @@
 
 import type { PermissionCodeName, RoleListResponse, RoleResponse } from '@lucy-spa/contracts';
 import {
+  Badge as UiBadge,
   ConfirmDialog,
   DataTable,
   Drawer,
@@ -18,14 +19,10 @@ import {
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
+import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
-import {
-  paginationLabels,
-  resultsText,
-  sortLabels,
-  toolbarLabels,
-} from '../../../lib/workforce/list-view';
+import { paginationLabels, sortLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import {
   activationRequest,
   canBundle,
@@ -48,7 +45,9 @@ import {
   roleSortValue,
 } from '../../../lib/workforce/roles-list';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
+import { focusFirstInvalidSoon } from './service-price-fields';
 import {
   Badge,
   Button,
@@ -98,6 +97,7 @@ export function RolesAdminView({
   reload: () => Promise<void>;
 }) {
   const { t, locale } = useWorkforce();
+  const org = organizationDictionary(locale);
   const { account } = useAccount();
   const texts = t.roleAdmin;
   const editable = canEditRoles(account);
@@ -128,10 +128,12 @@ export function RolesAdminView({
       sortable: true,
       sortValue: (role) => roleSortValue(role, 'name', locale),
       cell: (role) => (
-        <>
-          {roleDisplayName(role, locale)}{' '}
-          {role.isManagerGroup ? <Badge tone="info">{texts.managerGroup}</Badge> : null}
-        </>
+        // "Nhóm quản lý" is a fact about the role: a muted second line, not a decorative badge beside the name
+        // (it overlapped the wrapped name at 200 % text).
+        <span className="ls-cell-stack">
+          <span className="ls-cell-main">{roleDisplayName(role, locale)}</span>
+          {role.isManagerGroup ? <span className="ls-cell-sub">{texts.managerGroup}</span> : null}
+        </span>
       ),
     },
     {
@@ -140,7 +142,11 @@ export function RolesAdminView({
       hideBelow: 'md',
       sortable: true,
       sortValue: (role) => roleSortValue(role, 'code', locale),
-      cell: (role) => role.code,
+      cell: (role) => (
+        <span className="ls-ppl-code" translate="no">
+          {role.code}
+        </span>
+      ),
     },
     {
       key: 'permissions',
@@ -156,9 +162,13 @@ export function RolesAdminView({
       sortable: true,
       sortValue: (role) => roleSortValue(role, 'status', locale),
       cell: (role) => (
-        <Badge tone={role.isActive ? 'success' : 'neutral'}>
+        // The usual state is quiet (neutral, check icon); a switched-off role stands out (no wall of green, C5).
+        <UiBadge
+          tone={role.isActive ? 'neutral' : 'warning'}
+          icon={role.isActive ? 'check' : undefined}
+        >
           {role.isActive ? texts.active : texts.inactive}
-        </Badge>
+        </UiBadge>
       ),
     },
     {
@@ -172,7 +182,7 @@ export function RolesAdminView({
             editable
               ? {
                   id: 'edit',
-                  label: t.common.edit,
+                  label: opensInput(t.common.edit),
                   icon: 'edit',
                   onSelect: () => setOverlay({ kind: 'edit', role }),
                 }
@@ -186,7 +196,7 @@ export function RolesAdminView({
               ? [
                   {
                     id: 'status',
-                    label: role.isActive ? texts.deactivate : texts.activate,
+                    label: opensInput(role.isActive ? texts.deactivate : texts.activate),
                     tone: role.isActive ? ('danger' as const) : ('default' as const),
                     onSelect: () => setOverlay({ kind: 'status', role }),
                   },
@@ -200,7 +210,7 @@ export function RolesAdminView({
 
   return (
     <>
-      <PageHeader title={texts.title} intro={texts.intro}>
+      <PageHeader title={texts.title} intro={texts.introShort}>
         {editable && catalog ? (
           <Button variant="primary" icon="plus" onClick={() => setOverlay({ kind: 'create' })}>
             {texts.create}
@@ -212,7 +222,6 @@ export function RolesAdminView({
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={active}
-          resultCount={resultsText(t, rows.length)}
           onReset={() => updateList({ q: '', status: '' })}
           reload={{ label: t.common.reload, onClick: () => void reload() }}
           search={
@@ -220,7 +229,7 @@ export function RolesAdminView({
               id="role-q"
               value={list.q}
               label={texts.search}
-              placeholder={texts.search}
+              hint={texts.searchExample}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -252,7 +261,22 @@ export function RolesAdminView({
         loadingLabel={t.common.loading}
         error={error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : undefined}
         empty={
-          catalog ? <Empty>{all.length === 0 ? texts.empty : texts.noMatch}</Empty> : undefined
+          catalog ? (
+            all.length === 0 ? (
+              <Empty title={org.people.rolesEmptyTitle}>{texts.empty}</Empty>
+            ) : (
+              <Empty
+                title={org.noMatchTitle}
+                action={
+                  <Button variant="secondary" onClick={() => updateList({ q: '', status: '' })}>
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {texts.noMatch}
+              </Empty>
+            )
+          ) : undefined
         }
         paging={{
           page: list.page,
@@ -351,12 +375,14 @@ export function PermissionMatrix({
                     ) : null}
                   </span>
                 }
-                hint={blocked ? `${entry.code} · ${texts.notHeld}` : entry.code}
+                hint={blocked ? `${entry.code}, ${texts.notHeld}` : entry.code}
               />
             );
           })}
         </FormSection>
       ))}
+      {/* The full explanation of a role lives here, in the create/edit form; the page header keeps one line. */}
+      <p className="ls-hint">{texts.intro}</p>
       <p className="ls-hint">{texts.scopeHelp}</p>
     </>
   );
@@ -399,6 +425,9 @@ export function RoleForm({
       form.displayNameEn !== '' ||
       form.isManagerGroup ||
       permissions.length > 0;
+  const [tried, setTried] = useState(false);
+  const missing = (value: string) =>
+    tried && value.trim() === '' ? t.common.form.fieldRequired : undefined;
   const ready = role
     ? changed && form.reason.trim() !== ''
     : code.valid &&
@@ -407,7 +436,13 @@ export function RoleForm({
       form.reason.trim() !== '';
 
   async function save() {
-    if (!ready) return;
+    if (role && !changed) return;
+    if (!ready) {
+      // Validate on submit: each missing field says so and the first one takes focus (WIG Forms).
+      setTried(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const result: { role?: RoleResponse } = {};
     const ok = await submit.run(
       () =>
@@ -436,11 +471,11 @@ export function RoleForm({
 
   return (
     <FormDrawer
-      title={role ? `${texts.edit}: ${roleDisplayName(role, locale)}` : texts.create}
+      title={role ? `${texts.edit}: ${roleDisplayName(role, locale)}` : texts.createTitle}
       labels={formOverlayLabels(t, role ? t.common.save : t.common.create)}
       busy={submit.pending}
       dirty={changed}
-      submitDisabled={!ready}
+      submitDisabled={role ? !changed : false}
       error={
         submit.error ? (
           <Notice tone="error">{roleAdminErrorMessage(submit.error, t)}</Notice>
@@ -452,7 +487,7 @@ export function RoleForm({
       <FormGrid>
         {role ? (
           <p className="ls-hint">
-            {texts.code}: <strong>{role.code}</strong> — {texts.codeReadonly}
+            {texts.code}: <strong translate="no">{role.code}</strong>. {texts.codeReadonly}
           </p>
         ) : (
           <Field
@@ -460,33 +495,39 @@ export function RoleForm({
             required
             hint={texts.codeHint}
             width="md"
-            {...(form.code !== '' && !code.valid ? { error: texts.invalidCode } : {})}
+            error={form.code !== '' && !code.valid ? texts.invalidCode : missing(form.code)}
           >
             {(control) => (
               <TextInput
                 {...control}
+                name="code"
                 maxLength={64}
                 autoComplete="off"
+                spellCheck={false}
+                autoCapitalize="characters"
+                translate="no"
                 value={form.code}
                 onChange={(event) => setForm({ ...form, code: event.target.value })}
               />
             )}
           </Field>
         )}
-        <Field label={texts.nameVi} required>
+        <Field label={texts.nameVi} required error={missing(form.displayNameVi)}>
           {(control) => (
             <TextInput
               {...control}
+              name="displayNameVi"
               maxLength={100}
               value={form.displayNameVi}
               onChange={(event) => setForm({ ...form, displayNameVi: event.target.value })}
             />
           )}
         </Field>
-        <Field label={texts.nameEn} required>
+        <Field label={texts.nameEn} required error={missing(form.displayNameEn)}>
           {(control) => (
             <TextInput
               {...control}
+              name="displayNameEn"
               maxLength={100}
               value={form.displayNameEn}
               onChange={(event) => setForm({ ...form, displayNameEn: event.target.value })}
@@ -513,10 +554,16 @@ export function RoleForm({
         />
       </FormSection>
       {role ? <p className="ls-hint">{texts.changeNote}</p> : null}
-      <Field label={t.common.reason} required hint={texts.reasonHint}>
+      <Field
+        label={t.common.reason}
+        required
+        hint={texts.reasonHint}
+        error={tried && form.reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+      >
         {(control) => (
           <TextInput
             {...control}
+            name="reason"
             maxLength={500}
             value={form.reason}
             onChange={(event) => setForm({ ...form, reason: event.target.value })}
@@ -582,10 +629,10 @@ function RoleStatus({
     <ConfirmDialog
       title={deactivating ? texts.deactivateTitle : texts.activateTitle}
       description={texts.activationHint}
-      facts={[{ label: t.common.code, value: `${role.code} · ${roleDisplayName(role, locale)}` }]}
+      facts={[{ label: t.common.code, value: `${roleDisplayName(role, locale)} (${role.code})` }]}
       tone={deactivating ? 'danger' : 'neutral'}
       confirmLabel={deactivating ? texts.deactivate : texts.activate}
-      busyLabel={t.common.saving}
+      busyLabel={deactivating ? t.common.deactivating : t.common.activating}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{

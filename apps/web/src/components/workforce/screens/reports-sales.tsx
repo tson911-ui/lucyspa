@@ -9,20 +9,22 @@ import {
   type ProductRevenueReport,
   type ServiceRevenueReport,
 } from '@lucy-spa/contracts';
-import { DataTable, ListSection, Select, Stack, type DataTableColumn } from '@lucy-spa/ui';
+import {
+  Badge as KitBadge,
+  DataTable,
+  ListSection,
+  Select,
+  Stack,
+  type DataTableColumn,
+} from '@lucy-spa/ui';
 import { reportsBDictionary, type ReportsBDictionary } from '../../../i18n/reports-b';
 import { fill } from '../../../i18n/workforce';
 import { formatDate } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
-import { vnd, vndNumber } from '../../../lib/workforce/reports';
-import {
-  bpToPercent,
-  percentFromBp,
-  pickName,
-  formatCount,
-} from '../../../lib/workforce/reports-b';
+import { vndNumber } from '../../../lib/workforce/reports';
+import { bpToPercent, pickName, formatCount } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
-import { Badge, Empty } from '../ui';
+import { Empty } from '../ui';
 import {
   Kpi,
   KpiRow,
@@ -33,6 +35,7 @@ import {
   type PanelContext,
   type ReportTabDef,
 } from './reports-kit';
+import { shareText, vndText } from './reports-format';
 import type { Locale } from '../../../i18n/locales';
 
 /**
@@ -168,7 +171,7 @@ export function ServicesBody({ data }: { data: ServiceRevenueReport }) {
       key: 'name',
       header: c['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => (row.serviceId === null ? b.sales.other : nameOf(locale, row)),
     },
@@ -176,7 +179,7 @@ export function ServicesBody({ data }: { data: ServiceRevenueReport }) {
       key: 'category',
       header: c['category']!,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) =>
         row.categoryNameVi === null
@@ -184,13 +187,13 @@ export function ServicesBody({ data }: { data: ServiceRevenueReport }) {
           : pickName(locale, row.categoryNameVi, row.categoryNameEn ?? ''),
     },
     { key: 'quantity', header: c['quantity']!, numeric: true, cell: (row) => count(row.quantity) },
-    { key: 'net', header: c['net']!, numeric: true, cell: (row) => vnd(row.netVnd, locale) },
+    { key: 'net', header: c['net']!, numeric: true, cell: (row) => vndText(row.netVnd, locale) },
     {
       key: 'share',
       header: c['share']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => percentFromBp(row.shareBp, locale),
+      cell: (row) => shareText(locale, row.shareBp),
     },
   ];
   return (
@@ -224,7 +227,8 @@ export function ProductsBody({ data }: { data: ProductRevenueReport }) {
             key: 'sku',
             header: c['sku']!,
             hideBelow: 'md' as const,
-            cell: (row: ProductRevenueReport['rows'][number]) => row.sku ?? '—',
+            cell: (row: ProductRevenueReport['rows'][number]) =>
+              row.sku ? <span translate="no">{row.sku}</span> : '—',
           },
         ]
       : []),
@@ -232,7 +236,7 @@ export function ProductsBody({ data }: { data: ProductRevenueReport }) {
       key: 'name',
       header: c['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => (row.key === null ? b.sales.other : nameOf(locale, row)),
     },
@@ -242,7 +246,7 @@ export function ProductsBody({ data }: { data: ProductRevenueReport }) {
             key: 'brand',
             header: c['brand']!,
             hideBelow: 'lg' as const,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             cell: (row: ProductRevenueReport['rows'][number]) =>
               row.brandNameVi === null
@@ -254,7 +258,7 @@ export function ProductsBody({ data }: { data: ProductRevenueReport }) {
             header: c['category']!,
             hideBelow: 'xl' as const,
             hidePhone: true,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             cell: (row: ProductRevenueReport['rows'][number]) =>
               row.categoryNameVi === null
@@ -271,13 +275,13 @@ export function ProductsBody({ data }: { data: ProductRevenueReport }) {
       hideBelow: 'md',
       cell: (row) => count(row.unitsRefunded),
     },
-    { key: 'net', header: c['net']!, numeric: true, cell: (row) => vnd(row.netVnd, locale) },
+    { key: 'net', header: c['net']!, numeric: true, cell: (row) => vndText(row.netVnd, locale) },
     {
       key: 'share',
       header: c['share']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => percentFromBp(row.shareBp, locale),
+      cell: (row) => shareText(locale, row.shareBp),
     },
   ];
   return (
@@ -309,7 +313,7 @@ export function CombosBody({ data }: { data: ComboReport }) {
       key: 'name',
       header: c['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => nameOf(locale, row),
     },
@@ -327,13 +331,13 @@ export function CombosBody({ data }: { data: ComboReport }) {
       numeric: true,
       hideBelow: 'xl',
       hidePhone: true,
-      cell: (row) => vnd(row.soldPriceVnd, locale),
+      cell: (row) => vndText(row.soldPriceVnd, locale),
     },
     {
       key: 'revenue',
       header: c['revenue']!,
       numeric: true,
-      cell: (row) => vnd(row.revenueVnd, locale),
+      cell: (row) => vndText(row.revenueVnd, locale),
     },
     {
       key: 'sessionsSold',
@@ -398,14 +402,14 @@ export function DiscountsBody({ data }: { data: DiscountReport }) {
       key: 'type',
       header: c['type']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => b.sales.discountTypes[row.type] ?? row.type,
     },
     {
       key: 'name',
       header: c['name']!,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => (row.nameVi === '' && row.nameEn === '' ? '—' : nameOf(locale, row)),
     },
@@ -413,7 +417,7 @@ export function DiscountsBody({ data }: { data: DiscountReport }) {
       key: 'code',
       header: c['code']!,
       hideBelow: 'md',
-      cell: (row) => row.code ?? '—',
+      cell: (row) => (row.code ? <span translate="no">{row.code}</span> : '—'),
     },
     {
       key: 'invoices',
@@ -425,7 +429,7 @@ export function DiscountsBody({ data }: { data: DiscountReport }) {
       key: 'amount',
       header: c['amount']!,
       numeric: true,
-      cell: (row) => vnd(row.amountVnd, locale),
+      cell: (row) => vndText(row.amountVnd, locale),
     },
   ];
   const campaignColumns: DataTableColumn<DiscountReport['campaigns'][number]>[] = [
@@ -433,12 +437,12 @@ export function DiscountsBody({ data }: { data: DiscountReport }) {
       key: 'name',
       header: c['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => nameOf(locale, row),
     },
     { key: 'units', header: c['units']!, numeric: true, cell: (row) => count(row.units) },
-    { key: 'net', header: c['net']!, numeric: true, cell: (row) => vnd(row.netVnd, locale) },
+    { key: 'net', header: c['net']!, numeric: true, cell: (row) => vndText(row.netVnd, locale) },
   ];
   return (
     <Stack gap="page">
@@ -466,6 +470,7 @@ export function DiscountsBody({ data }: { data: DiscountReport }) {
       {data.campaigns.length > 0 ? (
         <ListSection title={b.sales.campaigns}>
           <ReportTable
+            urlKey="tp2"
             label={b.sales.campaigns}
             columns={campaignColumns}
             rows={data.campaigns}
@@ -491,41 +496,62 @@ export function OnlineBody({
   const b = reportsBDictionary(locale);
   const c = b.col;
   const k = b.sales.kpi;
+  // Every state shows its icon with the word (C5): delivered check, cancelled cross, the rest waiting.
   const tone = (state: OnlineOrderRow['state']) =>
     state === 'DELIVERED' ? 'success' : state === 'CANCELLED' ? 'neutral' : 'warning';
   const columns: DataTableColumn<OnlineOrderRow>[] = [
     { key: 'date', header: c['date']!, cell: (row) => formatDate(row.date, locale) },
-    { key: 'order', header: c['order']!, mobileTitle: true, cell: (row) => row.orderCode },
+    {
+      key: 'order',
+      header: c['order']!,
+      mobileTitle: true,
+      cell: (row) => <span translate="no">{row.orderCode}</span>,
+    },
     {
       key: 'invoice',
       header: c['invoice']!,
       hideBelow: '2xl',
       hidePhone: true,
-      cell: (row) => row.invoiceCode,
+      cell: (row) => <span translate="no">{row.invoiceCode}</span>,
     },
     {
       key: 'state',
       header: c['state']!,
       cell: (row) => (
-        <Badge tone={tone(row.state)}>{b.sales.onlineStates[row.state] ?? row.state}</Badge>
+        <KitBadge
+          tone={tone(row.state)}
+          {...(row.state === 'CANCELLED' ? { icon: 'x-circle' as const } : {})}
+        >
+          {b.sales.onlineStates[row.state] ?? row.state}
+        </KitBadge>
       ),
     },
     {
       key: 'customer',
       header: c['customer']!,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.contactName ?? '—',
     },
-    { key: 'phone', header: c['phone']!, hideBelow: 'lg', cell: (row) => row.contactPhone },
-    { key: 'total', header: c['total']!, numeric: true, cell: (row) => vnd(row.totalVnd, locale) },
+    {
+      key: 'phone',
+      header: c['phone']!,
+      hideBelow: 'lg',
+      cell: (row) => <span translate="no">{row.contactPhone}</span>,
+    },
+    {
+      key: 'total',
+      header: c['total']!,
+      numeric: true,
+      cell: (row) => vndText(row.totalVnd, locale),
+    },
     {
       key: 'collected',
       header: c['collected']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => vnd(row.collectedVnd, locale),
+      cell: (row) => vndText(row.collectedVnd, locale),
     },
     {
       key: 'refunded',
@@ -533,7 +559,7 @@ export function OnlineBody({
       numeric: true,
       hideBelow: '2xl',
       hidePhone: true,
-      cell: (row) => vnd(row.refundedVnd, locale),
+      cell: (row) => vndText(row.refundedVnd, locale),
     },
     {
       key: 'delivered',
@@ -546,7 +572,7 @@ export function OnlineBody({
       header: c['staffCode']!,
       hideBelow: '2xl',
       hidePhone: true,
-      cell: (row) => row.staffCode ?? '—',
+      cell: (row) => (row.staffCode ? <span translate="no">{row.staffCode}</span> : '—'),
     },
   ];
   const s = data.summary;

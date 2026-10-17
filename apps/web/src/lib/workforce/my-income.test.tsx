@@ -115,7 +115,7 @@ test('My Income is in every workforce navigation, Owner included', () => {
     );
   }
   assert.equal(vi.nav.myIncome, 'Thu nhập của tôi');
-  assert.equal(en.nav.myIncome, 'My Income');
+  assert.equal(en.nav.myIncome, 'My income');
 });
 
 test('CTV: agreed total, count, unagreed, branch attribution; precise wording', () => {

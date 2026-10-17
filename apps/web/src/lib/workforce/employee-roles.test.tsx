@@ -195,8 +195,10 @@ const optionsOf = (markup: string, label: string) =>
 
 test('1–3. assignments show role name, code and a distinct GLOBAL or branch scope', () => {
   const markup = view();
-  assert.ok(markup.includes('<strong>Kỹ thuật viên</strong>'));
-  assert.ok(markup.includes('<strong>Quản lý chi nhánh</strong>'));
+  // The name leads the cell; the code is its muted second line (no parenthesised code beside the name).
+  assert.ok(markup.includes('<span class="ls-cell-main">Kỹ thuật viên</span>'));
+  assert.ok(markup.includes('<span class="ls-cell-main">Quản lý chi nhánh</span>'));
+  assert.match(markup, /<span class="ls-cell-sub" translate="no">KTV<\/span>/);
   // A status badge draws its icon before the word (DESIGN.md B18).
   assert.match(
     markup,
@@ -360,7 +362,7 @@ test('18–19. ended employment: no new roles; existing ones stay and can be rem
   const markup = view(owner, { ended: true });
   assert.ok(markup.includes(vi.roles.endedNoNewRoles));
   assert.ok(!markup.includes(`>${vi.roles.assign}<`), 'no assign action');
-  assert.ok(markup.includes('<strong>Kỹ thuật viên</strong>'), 'not silently removed');
+  assert.ok(markup.includes('>Kỹ thuật viên<'), 'not silently removed');
   assert.ok(markup.includes('Thao tác cho'), 'removal still possible');
   assert.equal(
     roleErrorMessage(new ApiError(409, 'CONFLICT', 'employment'), vi),

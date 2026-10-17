@@ -24,7 +24,7 @@ test('a system CEO appointment is shown with its level and scope', () => {
       [{ id: '1', level: 'CEO', scope: { kind: 'GLOBAL' }, teamId: null, teamName: null }],
       names,
     ),
-    ['CEO / Quản lý cấp cao · Toàn hệ thống'],
+    ['CEO / Quản lý cấp cao, Toàn hệ thống'],
   );
 });
 
@@ -56,7 +56,7 @@ test('several appointments are all kept in order; teams and unknown scopes are l
       ],
       names,
     ),
-    ['Quản lý cửa hàng · Chi nhánh A', 'Trưởng nhóm · Chi nhánh A (Nhóm 1)', 'Quản lý khu vực · —'],
+    ['Quản lý cửa hàng, Chi nhánh A', 'Trưởng nhóm, Chi nhánh A (Nhóm 1)', 'Quản lý khu vực, —'],
   );
 });
 

@@ -16,7 +16,7 @@ const vi = {
     bonus: 'Buổi tặng còn lại',
     note: 'Chỉ tính combo đang dùng được',
     frozen: 'Buổi đang bị khóa',
-    frozenNote: 'Mua {paid} · Tặng {bonus}',
+    frozenNote: 'Mua {paid}, tặng {bonus}',
   },
   value: {
     active: 'Tiền trả trước chưa dùng',
@@ -86,7 +86,7 @@ const en: Dictionary = {
     bonus: 'Bonus left',
     note: 'Only combos that can be used now',
     frozen: 'Sessions frozen',
-    frozenNote: 'Purchased {paid} · Bonus {bonus}',
+    frozenNote: 'Purchased {paid}, bonus {bonus}',
   },
   value: {
     active: 'Unused prepaid money',

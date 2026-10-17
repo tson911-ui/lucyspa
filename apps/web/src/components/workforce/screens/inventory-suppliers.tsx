@@ -4,6 +4,7 @@ import type { SupplierListResponse, SupplierResponse } from '@lucy-spa/contracts
 import {
   CheckField,
   DataTable,
+  EmptyState,
   Field,
   FormDialog,
   FormGrid,
@@ -29,9 +30,11 @@ import {
   type SupplierDraft,
 } from '../../../lib/workforce/inventory';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
-import { Badge, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
+import { Badge, Button, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { useInventoryCommand } from './use-inventory-command';
+import { focusInvalidSoon } from './products-links';
 
 /**
  * The "Nhà cung cấp" tab. Everyone who may receive goods reads the list; adding and editing need MANAGE_PRODUCTS (the API's `manage`).
@@ -71,14 +74,14 @@ export function SuppliersTab({
       key: 'name',
       header: s.columns.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (supplier) => supplier.name,
     },
     {
       key: 'contact',
       header: s.columns.contact,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: 'md',
       cell: (supplier) => supplier.contactName ?? text.none,
@@ -87,15 +90,23 @@ export function SuppliersTab({
       key: 'phone',
       header: s.columns.phone,
       hideBelow: 'md',
-      cell: (supplier) => supplier.phone ?? text.none,
+      cell: (supplier) =>
+        supplier.phone ? <span className="ls-adm-c-nowrap">{supplier.phone}</span> : text.none,
     },
     {
       key: 'email',
       header: s.columns.email,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'xl',
-      cell: (supplier) => supplier.email ?? text.none,
+      cell: (supplier) =>
+        supplier.email ? (
+          <span className="ls-adm-c-url" translate="no">
+            {supplier.email}
+          </span>
+        ) : (
+          text.none
+        ),
     },
     {
       key: 'receipts',
@@ -125,7 +136,7 @@ export function SuppliersTab({
                 items={[
                   {
                     id: 'edit',
-                    label: s.edit,
+                    label: opensInput(s.edit),
                     icon: 'edit' as const,
                     onSelect: () => setEditing(supplier),
                   },
@@ -151,7 +162,7 @@ export function SuppliersTab({
               id="supplier-q"
               value={list.q}
               label={s.search}
-              placeholder={s.search}
+              hint={s.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -171,7 +182,27 @@ export function SuppliersTab({
             <ErrorState error={suppliers.error} t={t} onRetry={() => void suppliers.reload()} />
           ) : undefined
         }
-        empty={suppliers.data ? <Empty>{all.length === 0 ? s.empty : s.noMatch}</Empty> : undefined}
+        empty={
+          suppliers.data ? (
+            all.length === 0 ? (
+              <EmptyState icon="truck" title={s.emptyTitle}>
+                {s.empty}
+              </EmptyState>
+            ) : (
+              <EmptyState
+                icon="search"
+                title={s.noMatchTitle}
+                action={
+                  <Button variant="secondary" onClick={() => updateList({ q: '' })}>
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {s.noMatch}
+              </EmptyState>
+            )
+          ) : undefined
+        }
         paging={{
           page: list.spage,
           pageSize: list.spageSize,
@@ -243,7 +274,10 @@ export function SupplierDialog({
   async function submit() {
     setChecked(true);
     const body = supplier ? supplierEditRequest(draft, supplier) : supplierCreateRequest(draft);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     const path = supplier ? `/api/v1/suppliers/${supplier.id}/edit` : '/api/v1/suppliers';
     const result = await command.run(path, body);
     if (result.ok) await onSaved();
@@ -266,6 +300,7 @@ export function SupplierDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               autoComplete="off"
               maxLength={200}
               value={draft.name}
@@ -277,6 +312,7 @@ export function SupplierDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="contactName"
               autoComplete="off"
               maxLength={200}
               value={draft.contactName}
@@ -288,6 +324,7 @@ export function SupplierDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="phone"
               type="tel"
               autoComplete="off"
               maxLength={40}
@@ -300,8 +337,10 @@ export function SupplierDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="email"
               type="email"
               autoComplete="off"
+              spellCheck={false}
               maxLength={254}
               value={draft.email}
               onChange={(event) => set({ email: event.target.value })}
@@ -312,6 +351,7 @@ export function SupplierDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="address"
               autoComplete="off"
               maxLength={500}
               value={draft.address}
@@ -323,6 +363,8 @@ export function SupplierDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="notes"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={draft.notes}

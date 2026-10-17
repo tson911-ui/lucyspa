@@ -7,6 +7,7 @@ import type {
   MediaUploadResponse,
 } from '@lucy-spa/contracts';
 import {
+  ConfirmDialog,
   Dialog,
   Field,
   ListToolbar,
@@ -18,7 +19,7 @@ import {
   Spinner,
   TextInput,
 } from '@lucy-spa/ui';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { paginationLabels, toolbarLabels, resultsText } from '../../../lib/workforce/list-view';
 import {
@@ -33,8 +34,10 @@ import {
   uploadMedia,
 } from '../../../lib/workforce/media';
 import { errorMessage, runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, ErrorState, Notice, useResource, useSubmit } from '../ui';
+import { focusInvalidSoon } from './products-links';
 
 type Step = { kind: 'list' } | { kind: 'describe'; asset: MediaAssetSummary };
 
@@ -65,7 +68,6 @@ export function MediaPicker({
     [api, q, page],
   );
   const text = t.popups.picker;
-  const separator = locale === 'vi' ? ',' : '.';
   const items = library.data?.items ?? [];
   const total = library.data?.total ?? 0;
 
@@ -135,7 +137,7 @@ export function MediaPicker({
             id="picker-q"
             value={q}
             label={text.search}
-            placeholder={text.search}
+            hint={text.searchPlaceholder}
             clearLabel={t.common.list.clearSearch}
             onSearch={(value) => {
               setQ(value);
@@ -150,7 +152,7 @@ export function MediaPicker({
             loading={uploading}
             onClick={() => input.current?.click()}
           >
-            {uploading ? text.uploading : text.upload}
+            {uploading ? text.uploading : opensInput(text.upload)}
           </Button>
         }
       />
@@ -167,7 +169,7 @@ export function MediaPicker({
               key={asset.id}
               src={mediaVariantUrl(asset.id, 'thumb')}
               title={asset.originalFilename}
-              meta={mediaMeta(asset, separator)}
+              meta={mediaMeta(asset, locale)}
               badge={
                 !decorative && missingAlt(asset) ? (
                   <Badge tone="warning">{t.media.missingAlt}</Badge>
@@ -209,11 +211,18 @@ function Describe({
   const [altVi, setAltVi] = useState('');
   const [missing, setMissing] = useState(false);
   const submit = useSubmit();
+  const formId = useId();
+  const formRef = useRef<HTMLFormElement | null>(null);
+  // A typed description is never dropped silently: Back and Close ask first (wig media-picker.tsx:239).
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
+  const dirty = altVi.trim() !== '' && !submit.pending;
+  const leave = (go: () => void) => (dirty ? setLeaving(() => go) : go());
 
   async function save() {
     const description = trimmedAlt(altVi);
     if (description === null) {
       setMissing(true);
+      focusInvalidSoon(formRef.current);
       return;
     }
     setMissing(false);
@@ -243,39 +252,69 @@ function Describe({
       description={text.altBody}
       closeLabel={t.common.close}
       busy={submit.pending}
-      onClose={onClose}
+      onClose={() => leave(onClose)}
       footer={
         <>
-          <Button variant="secondary" onClick={onBack} disabled={submit.pending}>
+          <Button variant="secondary" onClick={() => leave(onBack)} disabled={submit.pending}>
             {text.back}
           </Button>
-          <Button variant="primary" loading={submit.pending} onClick={() => void save()}>
+          {/* A real form: Enter in the description field saves it. */}
+          <Button type="submit" form={formId} variant="primary" loading={submit.pending}>
             {text.altSave}
           </Button>
         </>
       }
     >
-      {submit.error ? <ErrorState error={submit.error} t={t} /> : null}
-      <MediaPreview
-        src={mediaVariantUrl(asset.id, 'md')}
-        alt={fill(t.media.detail.preview, { name: asset.originalFilename })}
-      />
-      <Field
-        label={t.media.detail.altVi}
-        hint={t.media.detail.altViHint}
-        required
-        requiredLabel={t.common.required}
-        error={missing ? text.altRequired : undefined}
+      <form
+        id={formId}
+        ref={formRef}
+        noValidate
+        aria-label={text.altTitle}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
       >
-        {(control) => (
-          <TextInput
-            {...control}
-            maxLength={MEDIA_ALT_MAX}
-            value={altVi}
-            onChange={(event) => setAltVi(event.target.value)}
-          />
-        )}
-      </Field>
+        {submit.error ? <ErrorState error={submit.error} t={t} /> : null}
+        <MediaPreview
+          src={mediaVariantUrl(asset.id, 'md')}
+          alt={fill(t.media.detail.preview, { name: asset.originalFilename })}
+        />
+        <Field
+          label={t.media.detail.altVi}
+          hint={t.media.detail.altViHint}
+          required
+          requiredLabel={t.common.required}
+          error={missing ? text.altRequired : undefined}
+        >
+          {(control) => (
+            <TextInput
+              {...control}
+              name="altVi"
+              autoComplete="off"
+              maxLength={MEDIA_ALT_MAX}
+              value={altVi}
+              onChange={(event) => setAltVi(event.target.value)}
+            />
+          )}
+        </Field>
+      </form>
+      {leaving ? (
+        <ConfirmDialog
+          title={t.common.form.discardTitle}
+          description={t.common.form.discardBody}
+          tone="warning"
+          confirmLabel={t.common.form.discardConfirm}
+          cancelLabel={t.common.form.discardKeep}
+          describeError={() => ({ message: '' })}
+          onConfirm={async () => {
+            const go = leaving;
+            setLeaving(null);
+            go();
+          }}
+          onCancel={() => setLeaving(null)}
+        />
+      ) : null}
     </Dialog>
   );
 }

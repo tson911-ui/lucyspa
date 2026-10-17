@@ -18,6 +18,7 @@ import {
 } from '../../../lib/workforce/campaigns';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Badge, Button, Notice, Section, useSuccessToast } from '../ui';
 import { useCampaignAction, type SendCampaign } from './campaign-dialogs';
@@ -44,7 +45,7 @@ export function InfoSection({
         actions={
           campaign.can.edit ? (
             <Button variant="secondary" icon="edit" onClick={() => setEditing(true)}>
-              {i.edit}
+              {opensInput(i.edit)}
             </Button>
           ) : undefined
         }
@@ -148,6 +149,8 @@ function InfoDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
+              autoComplete="off"
               value={draft.nameVi}
               onChange={(event) => setDraft({ ...draft, nameVi: event.target.value })}
             />
@@ -157,6 +160,8 @@ function InfoDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
+              autoComplete="off"
               value={draft.nameEn}
               onChange={(event) => setDraft({ ...draft, nameEn: event.target.value })}
             />
@@ -172,6 +177,7 @@ function InfoDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="slug"
               autoComplete="off"
               spellCheck={false}
               value={draft.slug}
@@ -192,6 +198,8 @@ function InfoDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="startsAt"
+              autoComplete="off"
               type="datetime-local"
               value={draft.startsAt}
               onChange={(event) => setDraft({ ...draft, startsAt: event.target.value })}
@@ -202,6 +210,8 @@ function InfoDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="endsAt"
+              autoComplete="off"
               type="datetime-local"
               value={draft.endsAt}
               onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })}
@@ -217,6 +227,8 @@ function InfoDrawer({
           {(control) => (
             <Textarea
               {...control}
+              name="note"
+              autoComplete="off"
               rows={3}
               value={draft.note}
               onChange={(event) => setDraft({ ...draft, note: event.target.value })}

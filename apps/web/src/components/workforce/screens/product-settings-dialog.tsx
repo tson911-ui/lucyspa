@@ -16,6 +16,7 @@ import {
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { ErrorState, Loading, Notice, useResource, useSuccessToast } from '../ui';
+import { focusInvalidSoon } from './products-links';
 
 /**
  * "Cài đặt sản phẩm": the one settings row of the product module as a short form (a dialog). The same dialog serves the products
@@ -75,6 +76,14 @@ const issue = (
   f: readonly SettingsField[],
 ) => (shown ? validateSettingsDraft(draft, f)[field] : undefined);
 
+/** The waiting-time range is refused because of its "to" value: empty, outside 1-90 or below the "from" value. */
+const leadMaxAtFault = (draft: SettingsDraft): boolean => {
+  const max = Number(draft.leadMax);
+  if (draft.leadMax.trim() === '' || !Number.isInteger(max) || max < 1 || max > 90) return true;
+  const min = Number(draft.leadMin);
+  return Number.isInteger(min) && max < min;
+};
+
 function SettingsForm({
   settings,
   fields,
@@ -104,7 +113,10 @@ function SettingsForm({
     if (pending) return;
     setChecked(true);
     onError(null);
-    if (Object.keys(validateSettingsDraft(draft, fields)).length > 0) return;
+    if (Object.keys(validateSettingsDraft(draft, fields)).length > 0) {
+      focusInvalidSoon();
+      return;
+    }
     const body = settingsRequest(draft, settings, fields);
     if (!body) {
       onClose();
@@ -143,6 +155,8 @@ function SettingsForm({
               {(control) => (
                 <NumberInput
                   {...control}
+                  name="leadMin"
+                  autoComplete="off"
                   inputMode="numeric"
                   min={1}
                   max={90}
@@ -151,10 +165,22 @@ function SettingsForm({
                 />
               )}
             </Field>
-            <Field label={s.leadMax} hint={s.leadHint} required>
+            <Field
+              label={s.leadMax}
+              hint={s.leadHint}
+              // The range message also marks the "to" field when that is the one at fault (wig product-settings-dialog.tsx:154).
+              error={
+                issue(checked, 'lead', draft, fields) && leadMaxAtFault(draft)
+                  ? s.leadInvalid
+                  : undefined
+              }
+              required
+            >
               {(control) => (
                 <NumberInput
                   {...control}
+                  name="leadMax"
+                  autoComplete="off"
                   inputMode="numeric"
                   min={1}
                   max={90}
@@ -175,6 +201,8 @@ function SettingsForm({
             {(control) => (
               <NumberInput
                 {...control}
+                name="badge"
+                autoComplete="off"
                 inputMode="numeric"
                 min={1}
                 max={365}
@@ -194,6 +222,8 @@ function SettingsForm({
             {(control) => (
               <NumberInput
                 {...control}
+                name="expiry"
+                autoComplete="off"
                 inputMode="numeric"
                 min={1}
                 max={730}

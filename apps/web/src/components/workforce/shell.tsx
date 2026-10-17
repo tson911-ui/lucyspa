@@ -13,23 +13,68 @@ import {
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from './link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { invalidateCachedReads } from '../../lib/customer/fetch-cache';
+import { pageTitle } from '../../lib/page-title';
 import { SESSION_WATCH_INTERVAL_MS, createSessionCheck } from '../../lib/workforce/session-watch';
 import { NAV_ICONS, personalEntries, sidebarGroups } from '../../lib/workforce/nav-groups';
 import { navigationFor } from '../../lib/workforce/permissions';
 import { PageBack } from '../navigation/page-back';
 import { NotificationIndicator } from '../notifications/inbox';
 import { LanguageSwitch } from './language-switch';
+import { onPageReturn } from './data';
 import { useAccount, useSessionNotice, useWorkforce } from './session';
-import { Notice } from './ui';
+import { Notice, STAFF_READ_PREFIX } from './ui';
+
+/** The deepest navigation entry the address is in (a record page takes its list's name), or null outside every entry. */
+export function staffPageName(
+  items: ReturnType<typeof navigationFor>,
+  base: string,
+  pathname: string,
+  t: ReturnType<typeof useWorkforce>['t'],
+): string | null {
+  let best: { label: string; length: number } | null = null;
+  for (const item of items) {
+    const href = `${base}${item.path}`;
+    if (!isPathActive(pathname, href, item.path === '')) continue;
+    if (!best || href.length > best.length) best = { label: t.nav[item.key], length: href.length };
+  }
+  return best?.label ?? null;
+}
 
 export function WorkforceShell({ children }: { children: ReactNode }) {
   const { t, base, locale, api } = useWorkforce();
   const { account, signOut } = useAccount();
   const pathname = usePathname();
   const [signingOut, setSigningOut] = useState(false);
-  // Which entries exist is decided by `navigationFor` (permissions); the shell only presents them.
-  const items = navigationFor(account);
+  // Which entries exist is decided by `navigationFor` (permissions); the shell only presents them. Both lists are rebuilt only
+  // when the account, the language or the page changes (rbp rerender-memo), so the memoised sidebar skips other renders.
+  const items = useMemo(() => navigationFor(account), [account]);
+  const nav = useMemo(
+    () => sidebarGroups(items, t, base, (href, exact) => isPathActive(pathname, href, exact)),
+    [items, t, base, pathname],
+  );
+  const labels = useMemo(
+    () => ({
+      nav: t.nav.label,
+      menu: t.nav.menu,
+      closeMenu: t.nav.closeMenu,
+      collapse: t.nav.collapse,
+      expand: t.nav.expand,
+    }),
+    [t],
+  );
+  // Leaving the staff area (sign-out, an ended session) forgets the shared reference reads (branches, names).
+  useEffect(() => () => invalidateCachedReads(STAFF_READ_PREFIX), []);
+  // HIG C41: the browser tab names the page, short, with the brand after it ("Chấm công – Lucy Spa", the one title form of every
+  // area, `pageTitle`), never the brand alone.
+  const pageName = useMemo(
+    () => staffPageName(items, base, pathname, t),
+    [items, base, pathname, t],
+  );
+  useEffect(() => {
+    document.title = pageName ? pageTitle(pageName) : t.meta.title;
+  }, [pageName, t]);
   const title = account.workforceTitle
     ? t.employees.titles[account.workforceTitle]
     : account.kind === 'OWNER'
@@ -44,21 +89,15 @@ export function WorkforceShell({ children }: { children: ReactNode }) {
       <AppShell
         LinkComponent={Link}
         brand={
-          <Link href={base} aria-label="Lucy Spa">
+          <Link href={base} aria-label="Lucy Spa" translate="no">
             <BrandWordmark serif />
           </Link>
         }
-        nav={sidebarGroups(items, t, base, (href, exact) => isPathActive(pathname, href, exact))}
-        labels={{
-          nav: t.nav.label,
-          menu: t.nav.menu,
-          closeMenu: t.nav.closeMenu,
-          collapse: t.nav.collapse,
-          expand: t.nav.expand,
-        }}
+        nav={nav}
+        labels={labels}
         topbarExtras={
           <>
-            <LanguageSwitch />
+            <LanguageSwitch short />
           </>
         }
         topbar={<NotificationIndicator api={api} base={base} locale={locale} />}
@@ -143,12 +182,11 @@ export function SessionWatch() {
     const visibleCheck = () => {
       if (document.visibilityState === 'visible') void check();
     };
-    window.addEventListener('focus', visibleCheck);
-    document.addEventListener('visibilitychange', visibleCheck);
+    // The shared page-return signal (one focus/visibility pair for the whole staff area), not a pair of its own.
+    const stopReturn = onPageReturn(visibleCheck);
     const timer = window.setInterval(visibleCheck, SESSION_WATCH_INTERVAL_MS);
     return () => {
-      window.removeEventListener('focus', visibleCheck);
-      document.removeEventListener('visibilitychange', visibleCheck);
+      stopReturn();
       window.clearInterval(timer);
     };
   }, [api, report]);

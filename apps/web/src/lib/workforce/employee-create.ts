@@ -138,7 +138,10 @@ export function businessToday(
     .map((id) => branches?.get(id)?.timezone)
     .filter((zone): zone is string => Boolean(zone))
     .map((zone) => todayIn(zone, now));
-  return dates.length > 0 ? dates.sort().at(-1)! : todayIn('UTC', now);
+  // The latest date in one pass (rbp js-min-max-loop); ISO dates compare as strings.
+  let latest: string | null = null;
+  for (const date of dates) if (latest === null || date > latest) latest = date;
+  return latest ?? todayIn('UTC', now);
 }
 
 const DATE = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;

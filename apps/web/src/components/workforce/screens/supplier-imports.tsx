@@ -10,10 +10,12 @@ import {
   ConfirmDialog,
   DataTable,
   FacetedFilter,
+  Icon,
   ListToolbar,
   MediaThumb,
   RowActions,
   Tabs,
+  serializeUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
@@ -41,6 +43,7 @@ import {
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, ErrorState, PageHeader, useResource, useSuccessToast } from '../ui';
+import { AdminButtonLink } from './admin-button-link';
 import { ChangesPanel } from './supplier-import-changes';
 import { ReviewDrawer } from './supplier-import-review';
 import { useUrlState } from '@lucy-spa/ui';
@@ -109,11 +112,11 @@ function ImportsPage() {
       width: 'lg',
       cell: (row) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-truncate">
+          <span className="ls-adminb-wrap">
             <a
               className="ls-link"
-              href={`?review=${row.id}`}
-              title={row.nameVi}
+              // The link keeps the tab, filters and page, so Ctrl/Cmd+click opens the same view with the review drawer.
+              href={serializeUrlState({ ...list, review: row.id }, IMPORT_LIST_DEFAULTS) || '?'}
               onClick={(event) => {
                 if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
                 event.preventDefault();
@@ -123,11 +126,8 @@ function ImportsPage() {
               {row.nameVi}
             </a>
           </span>
-          <span
-            className="ls-cell-sub ls-cell-truncate"
-            title={`${text.columns.sku}: ${row.sku ?? text.none}`}
-          >
-            {text.columns.sku}: {row.sku ?? text.none}
+          <span className="ls-cell-sub ls-adminb-wrap">
+            {text.columns.sku}: <span translate="no">{row.sku ?? text.none}</span>
           </span>
         </span>
       ),
@@ -136,7 +136,7 @@ function ImportsPage() {
       key: 'brand',
       header: text.columns.brand,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.brand?.name ?? text.none,
     },
@@ -144,7 +144,7 @@ function ImportsPage() {
       key: 'category',
       header: text.columns.category,
       hideBelow: 'wide',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.category?.name ?? text.none,
     },
@@ -153,15 +153,19 @@ function ImportsPage() {
       header: text.columns.issues,
       hideBelow: 'lg',
       cell: (row) =>
+        // One status badge per row ("Trạng thái"); what needs work is plain text with its warning icon (plan: no second pill column).
         row.warnings.length === 0 ? (
-          <Badge tone="neutral">{text.noIssues}</Badge>
+          <span className="ls-adminb-muted">{text.noIssues}</span>
         ) : (
-          <Badge tone="warning">
-            {warningText(sortWarnings(row.warnings)[0] ?? '', locale)}
-            {row.warnings.length > SHOWN_WARNINGS
-              ? ` +${row.warnings.length - SHOWN_WARNINGS}`
-              : ''}
-          </Badge>
+          <span className="ls-adminb-issue">
+            <Icon name="alert-triangle" size={16} />
+            <span>
+              {warningText(sortWarnings(row.warnings)[0] ?? '', locale)}
+              {row.warnings.length > SHOWN_WARNINGS
+                ? ` +${row.warnings.length - SHOWN_WARNINGS}`
+                : ''}
+            </span>
+          </span>
         ),
     },
     ...(prices
@@ -267,7 +271,12 @@ function ImportsPage() {
     <>
       <PageHeader title={text.title} intro={text.intro}>
         {canImportAll && list.tab === 'candidates' && (data?.total ?? 0) > 0 ? (
-          <ButtonLink variant="primary" icon="check" href={`${base}/supplier-imports/all`}>
+          <ButtonLink
+            variant="primary"
+            icon="check"
+            href={`${base}/supplier-imports/all`}
+            LinkComponent={AdminButtonLink}
+          >
             {text.all.open}
           </ButtonLink>
         ) : null}

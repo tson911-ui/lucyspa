@@ -44,6 +44,7 @@ export function ProductFields({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               autoComplete="off"
               maxLength={NAME_MAX}
               value={draft.nameVi}
@@ -55,6 +56,7 @@ export function ProductFields({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               autoComplete="off"
               maxLength={NAME_MAX}
               value={draft.nameEn}
@@ -66,6 +68,8 @@ export function ProductFields({
           {(control) => (
             <Select
               {...control}
+              name="brandId"
+              autoComplete="off"
               value={draft.brandId}
               options={[
                 { value: '', label: c.choose },
@@ -82,6 +86,8 @@ export function ProductFields({
           {(control) => (
             <Select
               {...control}
+              name="categoryId"
+              autoComplete="off"
               value={draft.categoryId}
               options={[
                 { value: '', label: c.choose },
@@ -98,6 +104,8 @@ export function ProductFields({
           {(control) => (
             <Textarea
               {...control}
+              name="descriptionVi"
+              autoComplete="off"
               maxLength={DESCRIPTION_MAX}
               value={draft.descriptionVi}
               onChange={(event) => onChange({ descriptionVi: event.target.value })}
@@ -108,6 +116,8 @@ export function ProductFields({
           {(control) => (
             <Textarea
               {...control}
+              name="descriptionEn"
+              autoComplete="off"
               maxLength={DESCRIPTION_MAX}
               value={draft.descriptionEn}
               onChange={(event) => onChange({ descriptionEn: event.target.value })}

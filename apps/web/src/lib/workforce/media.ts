@@ -46,12 +46,26 @@ export function normalizeMediaList(state: MediaListState): MediaListState {
 export const mediaVariantUrl = (id: string, variant: MediaVariantName) =>
   `/api/v1/website/media/${id}/${variant}`;
 
-/** "1,2 MB · 1920 × 800" */
+const decimalMarks = new Map<string, string>();
+
+/** The decimal mark of a locale from Intl (vi ",", en "."), cached per locale (wig: no separator hardcoded per locale). */
+export function decimalMark(locale: string): string {
+  let mark = decimalMarks.get(locale);
+  if (mark === undefined) {
+    mark =
+      new Intl.NumberFormat(locale).formatToParts(1.5).find((part) => part.type === 'decimal')
+        ?.value ?? '.';
+    decimalMarks.set(locale, mark);
+  }
+  return mark;
+}
+
+/** "1,5 MB (1920 × 800)": the size, then the dimensions in brackets (no middle-dot meta string, session 10). */
 export function mediaMeta(
   asset: Pick<MediaAssetSummary, 'bytes' | 'width' | 'height'>,
-  decimalSeparator: string,
+  locale: string,
 ): string {
-  return `${formatBytes(asset.bytes, decimalSeparator)} · ${asset.width} × ${asset.height}`;
+  return `${formatBytes(asset.bytes, decimalMark(locale))} (${asset.width} × ${asset.height})`;
 }
 
 /** Vietnamese alt text is required before an image is used on the website (Q-CM10). */

@@ -37,6 +37,6 @@ export function appointmentLabels(
 ): string[] {
   return (appointments ?? []).map((appointment) => {
     const team = appointment.teamName ? ` (${appointment.teamName})` : '';
-    return `${names.levels[appointment.level]} · ${appointmentScopeName(appointment.scope, names)}${team}`;
+    return `${names.levels[appointment.level]}, ${appointmentScopeName(appointment.scope, names)}${team}`;
   });
 }

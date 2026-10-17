@@ -17,6 +17,7 @@ import {
   type ReactNode,
 } from 'react';
 import { IDLE, SharedResources, type Loader } from '../../../lib/workforce/dashboard/shared-data';
+import { onPageReturn } from '../data';
 import { useWorkforce } from '../session';
 import type { Resource } from '../ui';
 
@@ -26,17 +27,8 @@ const StoreContext = createContext<SharedResources | null>(null);
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const store = useMemo(() => new SharedResources(), []);
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState !== 'hidden') store.refreshStale();
-    };
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    return () => {
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
-    };
-  }, [store]);
+  // The area's one focus/visibility pair (shared with the session check); it skips a hidden page and calls once per return.
+  useEffect(() => onPageReturn(() => store.refreshStale()), [store]);
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
 

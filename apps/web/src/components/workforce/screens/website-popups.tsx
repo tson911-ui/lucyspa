@@ -8,6 +8,7 @@ import {
   RowActions,
   scheduleLayout,
   ScheduleStrip,
+  type MenuLinkComponent,
   type ScheduleItem,
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
@@ -16,12 +17,16 @@ import { fill } from '../../../i18n/workforce';
 import { formatVnInstant } from '../../../lib/workforce/discounts';
 import { confirmError } from '../../../lib/workforce/form-labels';
 import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPage } from '../../../lib/workforce/use-url-paging';
 import { overlapId, popupName, popupTone } from '../../../lib/workforce/popups';
 import { errorMessage, runMutation } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { Badge, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 
 const PAGE_SIZE = 20;
+
+/** The row menu's "Sửa" is a router link (Ctrl/Cmd/middle-click work, wig: links use <a>). */
+const RouterMenuLink: MenuLinkComponent = (props) => <Link {...props} />;
 
 const stripTone = (status: WebsitePopupResponse['status']): ScheduleItem['tone'] =>
   status === 'ACTIVE' ? 'success' : status === 'SCHEDULED' ? 'info' : 'neutral';
@@ -32,13 +37,14 @@ const stripTone = (status: WebsitePopupResponse['status']): ScheduleItem['tone']
  * their own pages because the form is long and carries a live preview.
  */
 export function PopupsPanel() {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const notify = useSuccessToast();
   const popups = useResource(
     () => api.get<WebsitePopupListResponse>('/api/v1/website/popups'),
     [api],
   );
-  const [page, setPage] = useState(1);
+  // The page number lives in the address bar under `pop` (no clash with the media page's `page`).
+  const [page, setPage] = useUrlPage('pop');
   const [problem, setProblem] = useState<string | null>(null);
   const [removing, setRemoving] = useState<WebsitePopupResponse | null>(null);
   const items = popups.data?.items ?? [];
@@ -74,7 +80,7 @@ export function PopupsPanel() {
       key: 'popup',
       header: t.popups.columns.popup,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (popup) => (
         <Link className="ls-link" href={`${base}/website/popups/${popup.id}`}>
@@ -99,7 +105,7 @@ export function PopupsPanel() {
       key: 'image',
       header: t.popups.columns.image,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (popup) => popup.media?.filename ?? t.popups.noImage,
     },
@@ -110,12 +116,13 @@ export function PopupsPanel() {
       cell: (popup) => (
         <RowActions
           menuLabel={fill(t.popups.actionsFor, { name: nameOf(popup) })}
+          LinkComponent={RouterMenuLink}
           items={[
             {
               id: 'edit',
               label: t.popups.edit,
               icon: 'edit',
-              onSelect: () => navigate?.(`${base}/website/popups/${popup.id}`),
+              href: `${base}/website/popups/${popup.id}`,
             },
             {
               id: 'toggle',
@@ -145,7 +152,7 @@ export function PopupsPanel() {
     start: Date.parse(popup.startsAt),
     end: Date.parse(popup.endsAt),
     tone: stripTone(popup.status),
-    label: `${nameOf(popup)} · ${t.popups.status[popup.status]}`,
+    label: `${nameOf(popup)} (${t.popups.status[popup.status]})`,
   }));
   const range = scheduleLayout(strip, now);
 
@@ -163,6 +170,7 @@ export function PopupsPanel() {
         />
       ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: t.popups.listLabel })}
         columns={columns}
@@ -194,7 +202,7 @@ export function PopupsPanel() {
           facts={[{ label: t.popups.remove.fact, value: nameOf(removing) }]}
           tone="danger"
           confirmLabel={t.popups.remove.confirm}
-          busyLabel={t.common.saving}
+          busyLabel={t.popups.remove.busy}
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}
           describeError={confirmError(t)}

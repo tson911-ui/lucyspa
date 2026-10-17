@@ -46,7 +46,7 @@ export function ExportDialog({
   const [format, setFormat] = useState<Format>('xlsx');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const notify = useSuccessToast();
   const hint = format === 'xlsx' ? e.xlsxHint : format === 'csv' ? e.csvHint : e.pdfHint;
 
@@ -80,6 +80,7 @@ export function ExportDialog({
   return (
     <>
       <FormDialog
+        suspended={asking}
         size="sm"
         title={e.title}
         description={e.intro}

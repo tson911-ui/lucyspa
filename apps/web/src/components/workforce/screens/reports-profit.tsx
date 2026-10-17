@@ -1,26 +1,23 @@
 'use client';
 
 import type { ProfitReport } from '@lucy-spa/contracts';
-import { ListSection, Stack, type DataTableColumn } from '@lucy-spa/ui';
+import { DataTable, ListSection, Stack, type DataTableColumn } from '@lucy-spa/ui';
 import { reportsCDictionary } from '../../../i18n/reports-c';
 import { fill } from '../../../i18n/workforce';
-import { vnd, vndNumber } from '../../../lib/workforce/reports';
-import {
-  bpToPercent,
-  formatCount,
-  percentFromBp,
-  pickName,
-} from '../../../lib/workforce/reports-b';
+import { vndNumber } from '../../../lib/workforce/reports';
+import { bpToPercent, formatCount, pickName } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
 import { Notice } from '../ui';
 import {
   Kpi,
   KpiRow,
   ReportData,
+  ReportNote,
   ReportScreen,
   ReportTable,
   type ReportTabDef,
 } from './reports-kit';
+import { shareText, vndText } from './reports-format';
 
 /**
  * "Lãi tạm tính" (Phase 8 P8-14, docs/PHASE8_REPORTS.md 4.7): revenue minus the costs the system holds, line by line, with how much of it is
@@ -60,7 +57,7 @@ interface StatementRow {
   strong: boolean;
 }
 
-/** An amount that is taken off: shown with a minus sign, nothing for zero. */
+/** An amount that is taken off: shown with a true minus sign ("−45.000 ₫", vndText), nothing for zero. */
 const minus = (value: string): string => (value === '0' ? '0' : `-${value}`);
 
 export function ProfitBody({ data }: { data: ProfitReport }) {
@@ -69,7 +66,7 @@ export function ProfitBody({ data }: { data: ProfitReport }) {
   const p = c.profit;
   const col = c.col;
   const l = data.lines;
-  const coverage = percentFromBp(data.goods.coverageBp, locale);
+  const coverage = shareText(locale, data.goods.coverageBp);
   const s = data.salaries;
   const salaryExtras = [
     ...(s.monthsMissing > 0 ? [fill(p.notes.missingMonths, { count: s.monthsMissing })] : []),
@@ -121,24 +118,29 @@ export function ProfitBody({ data }: { data: ProfitReport }) {
       header: col['amount']!,
       numeric: true,
       cell: (row) =>
-        row.strong ? <strong>{vnd(row.amount, locale)}</strong> : vnd(row.amount, locale),
+        row.strong ? <strong>{vndText(row.amount, locale)}</strong> : vndText(row.amount, locale),
     },
     {
       key: 'note',
       header: col['note']!,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.note || '—',
     },
   ];
   const missingColumns: DataTableColumn<ProfitReport['withoutCost'][number]>[] = [
-    { key: 'sku', header: col['sku']!, hideBelow: 'md', cell: (row) => row.sku },
+    {
+      key: 'sku',
+      header: col['sku']!,
+      hideBelow: 'md',
+      cell: (row) => <span translate="no">{row.sku}</span>,
+    },
     {
       key: 'name',
       header: col['product']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => pickName(locale, row.nameVi, row.nameEn),
     },
@@ -166,23 +168,28 @@ export function ProfitBody({ data }: { data: ProfitReport }) {
           format="percent"
         />
       </KpiRow>
-      <Notice tone="info">
+      <ReportNote>
         <strong>{p.disclaimerTitle}.</strong> {p.disclaimer}
-      </Notice>
+      </ReportNote>
       {!data.started ? <Notice tone="warning">{p.notStarted}</Notice> : null}
-      {salaryExtras.length > 0 ? <Notice tone="warning">{salaryExtras.join('. ')}.</Notice> : null}
+      {salaryExtras.length > 0 ? (
+        <ReportNote tone="warning">{salaryExtras.join('. ')}.</ReportNote>
+      ) : null}
       <ListSection title={p.statement}>
-        <ReportTable
-          label={p.statement}
+        {/* A fixed seven-line statement: no pager line under it; the total line has a rule above it (s10-admin-b.css). */}
+        <DataTable
+          mode="client"
+          className="ls-adminb-statement"
+          caption={p.statement}
           columns={columns}
           rows={rows}
           rowKey={(row) => row.key}
-          empty={p.statement}
+          paging={{ off: 'a fixed seven-line statement' }}
         />
       </ListSection>
       {data.goods.coverageBp < 10_000 || data.withoutCost.length > 0 ? (
         <Stack gap="page">
-          <Notice tone="warning">{p.coverageWarning}</Notice>
+          <ReportNote tone="warning">{p.coverageWarning}</ReportNote>
           <ListSection title={p.withoutCost}>
             <ReportTable
               label={p.withoutCost}

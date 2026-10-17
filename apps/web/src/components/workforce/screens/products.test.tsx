@@ -5,6 +5,7 @@ import { productDictionary } from '../../../i18n/products';
 import { owner, render } from '../../../test/support';
 import { ProductCreateForm } from './product-create';
 import { ProductDetailView } from './product-detail';
+import { metaLine } from './pos-format';
 
 const p = productDictionary('vi');
 const noop = () => Promise.resolve();
@@ -106,13 +107,15 @@ test('the variant table shows the pre-order badge, the own waiting time and the 
   assert.ok(on.includes(p.variants.preOrder), 'the column header');
   assert.ok(on.includes(p.variants.preOrderOn));
   assert.ok(!on.includes(p.variants.preOrderOff));
+  // The badge joins its two facts through Intl.ListFormat (no middle-dot meta string, session 10).
   const own = withVariants({ ...base, leadTimeDaysMin: 2, leadTimeDaysMax: 4 });
-  assert.ok(own.includes(`${p.variants.preOrderOn} · 2-4 ngày`));
+  assert.ok(own.includes(metaLine('vi', [p.variants.preOrderOn, '2-4 ngày'])));
+  assert.ok(!own.includes(' · '), 'no middle dot');
   const same = withVariants({ ...base, leadTimeDaysMin: 3, leadTimeDaysMax: 3 });
-  assert.ok(same.includes(`${p.variants.preOrderOn} · 3 ngày`));
+  assert.ok(same.includes(metaLine('vi', [p.variants.preOrderOn, '3 ngày'])));
   const off = withVariants({ ...base, sellOnOrder: false });
   assert.ok(off.includes(p.variants.preOrderOff));
-  assert.ok(!off.includes(`${p.variants.preOrderOn} ·`));
+  assert.ok(!off.includes(metaLine('vi', [p.variants.preOrderOn, '3 ngày'])));
   // The badge is a cell of the table, never next to the page heading (Owner rule of 2026-10-05).
   const heading = on.slice(on.indexOf('<h1'), on.indexOf('</h1>'));
   assert.ok(!heading.includes(p.variants.preOrderOn));
@@ -124,7 +127,11 @@ test('a draft has one primary action in the header, one h1, no status next to th
   assert.ok(markup.includes(`ls-btn-label">${p.actions.publish}</span>`));
   const heading = markup.slice(markup.indexOf('<h1'), markup.indexOf('</h1>'));
   assert.ok(!heading.includes(p.status.DRAFT), 'the status badge is not inside the heading');
-  assert.ok(markup.includes(p.status.DRAFT), 'the status is shown in the information card');
+  assert.ok(markup.includes(p.status.DRAFT), 'the status is the header badge under the title');
+  assert.ok(markup.includes('ls-page-status'), 'the header has a status slot');
+  const status = markup.slice(markup.indexOf('ls-page-status'));
+  const at = status.indexOf(p.status.DRAFT);
+  assert.ok(at >= 0 && at < status.indexOf('</div>'), 'the badge is in the header status slot');
   assert.ok(markup.includes(p.detail.draftHint), 'the draft guidance is the header description');
   assert.ok(!markup.includes('ls-notice'), 'no page-level notice box');
   assert.ok(!markup.includes('<details'));

@@ -6,7 +6,7 @@ import type {
   LoyaltyWalletName,
 } from '@lucy-spa/contracts';
 import { Field, FormDialog, FormGrid, Select, Textarea, TextInput } from '@lucy-spa/ui';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import {
@@ -44,21 +44,21 @@ export function AdjustDialog({
   const { api, t, locale } = useWorkforce();
   const l = loyaltyDictionary(locale);
   const a = l.adjust;
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const [draft, setDraft] = useState<AdjustDraft>(correcting ? correctionDraft(correcting) : EMPTY);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // One id per dialog, made once (rbp rerender-lazy-state-init): a retry after an error repeats the same request.
+  const [requestId] = useState(() => globalThis.crypto.randomUUID());
   const dirty = draft.amount !== '' || draft.reason !== '';
-  const amountError =
-    checked && parseAmount(draft.amount) === null ? t.errors.validation : undefined;
-  const reasonError = checked && draft.reason.trim().length === 0 ? t.errors.validation : undefined;
+  const amountError = checked && parseAmount(draft.amount) === null ? a.amountError : undefined;
+  const reasonError = checked && draft.reason.trim().length === 0 ? a.reasonError : undefined;
 
   async function submit() {
     if (pending) return;
     setChecked(true);
-    const body = adjustmentBody(draft, requestId.current, correcting?.id);
+    const body = adjustmentBody(draft, requestId, correcting?.id);
     if (!body) return;
     setPending(true);
     setError(null);
@@ -84,6 +84,7 @@ export function AdjustDialog({
   return (
     <>
       <FormDialog
+        suspended={asking}
         title={correcting ? a.correctTitle : a.title}
         description={correcting ? a.correctDescription : a.description}
         labels={{ ...formOverlayLabels(t, a.submit), submitting: a.submitting }}
@@ -129,6 +130,7 @@ export function AdjustDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="amount"
                 inputMode="numeric"
                 autoComplete="off"
                 maxLength={7}
@@ -141,6 +143,7 @@ export function AdjustDialog({
             {(control) => (
               <Textarea
                 {...control}
+                name="reason"
                 rows={3}
                 maxLength={500}
                 value={draft.reason}

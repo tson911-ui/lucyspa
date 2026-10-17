@@ -13,7 +13,6 @@ import {
   Field,
   FormDialog,
   FormGrid,
-  ListSection,
   ListToolbar,
   MoneyInput,
   RowActions,
@@ -28,6 +27,7 @@ import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import {
   startWindow,
   tourBody,
@@ -74,7 +74,7 @@ export function PayTour({
       key: 'service',
       header: c.columns.service,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (item) => name(item),
     },
@@ -147,10 +147,11 @@ export function PayTour({
     },
   ];
   const missing = all.filter((item) => item.current === null).length;
-  const paging1 = useClientPaging(t, c.title);
+  const paging1 = useUrlPaging('tup', t, c.title);
   return (
     <>
-      <ListSection title={c.title}>
+      {/* The tab already names the list: no h2 repeating it (FR "a heading never repeats its control"). */}
+      <div className="ls-list-section">
         {missing > 0 && data.data ? <p className="ls-hint">{c.missingNote}</p> : null}
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -163,7 +164,7 @@ export function PayTour({
               id="pay-tour-q"
               value={state.q}
               label={p.common.search}
-              placeholder={p.common.search}
+              hint={p.common.searchServices}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => update({ q })}
             />
@@ -196,7 +197,7 @@ export function PayTour({
           }
           paging={paging1}
         />
-      </ListSection>
+      </div>
       {setting && data.data ? (
         <TourDialog
           item={setting}
@@ -233,8 +234,8 @@ function TourDialog({
   const [checked, setChecked] = useState(false);
   const command = usePayCommand();
   const problems = tourProblems(draft, today);
-  const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+  const invalid = (name: 'amount' | 'from' | 'reason') =>
+    checked && problems.includes(name) ? p.common.fieldErrors[name] : undefined;
   const serviceName = locale === 'vi' ? item.service.nameVi : item.service.nameEn;
 
   async function submit() {
@@ -260,8 +261,9 @@ function TourDialog({
           {(control) => (
             <MoneyInput
               {...control}
+              name="amount"
               unit="₫"
-              separator={locale === 'vi' ? '.' : ','}
+              locale={locale}
               value={draft.amount}
               onValueChange={(amount) => setDraft({ ...draft, amount })}
             />
@@ -271,6 +273,7 @@ function TourDialog({
           {(control) => (
             <DateTextInput
               {...control}
+              name="from"
               min={window.min}
               max={window.max}
               value={draft.from}
@@ -282,6 +285,8 @@ function TourDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={draft.reason}
@@ -317,7 +322,7 @@ function TourHistory({ item, onClose }: { item: TourRuleServiceItem; onClose: ()
             cell: (row) => (
               <>
                 {formatDate(row.effectiveFrom, locale)}
-                {row.reason ? <span className="ls-hint"> · {row.reason}</span> : null}
+                {row.reason ? <span className="ls-adminb-sub">{row.reason}</span> : null}
               </>
             ),
           },
@@ -331,7 +336,7 @@ function TourHistory({ item, onClose }: { item: TourRuleServiceItem; onClose: ()
           {
             key: 'by',
             header: p.common.by,
-            truncate: true,
+            wrap: true,
             hidePhone: true,
             cell: (row) => row.createdBy.name,
           },

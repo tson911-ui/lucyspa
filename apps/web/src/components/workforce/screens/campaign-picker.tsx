@@ -10,6 +10,7 @@ import type {
 import {
   CheckField,
   DataTable,
+  EmptyState,
   Field,
   FacetedFilter,
   FormDialog,
@@ -44,9 +45,11 @@ import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { localizedName } from '../../../lib/workforce/products';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
+import { Badge, Button, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { useCampaignAction, type SendCampaign } from './campaign-dialogs';
+import { metaLine } from './pos-format';
 
 type Adding = { mode: 'selected'; count: number } | { mode: 'filtered'; count: number };
 
@@ -54,21 +57,29 @@ type Adding = { mode: 'selected'; count: number } | { mode: 'filtered'; count: n
 function PriceBound({
   id,
   label,
+  placeholder,
   value,
   onCommit,
 }: {
   id: string;
   label: string;
+  /** A toolbar control has no label above it (FR rule): the placeholder names the bound and shows an example amount. */
+  placeholder: string;
   value: string;
   onCommit: (value: string) => void;
 }) {
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
+  const { locale } = useWorkforce();
+  // What is typed belongs to the bound it was typed over; a new bound from the address bar replaces it (derived in render, no
+  // mirror effect).
+  const [typed, setTyped] = useState({ from: value, text: value });
+  const text = typed.from === value ? typed.text : value;
+  const setText = (next: string) => setTyped({ from: value, text: next });
   return (
     <MoneyInput
       id={id}
       aria-label={label}
-      placeholder={label}
+      placeholder={placeholder}
+      locale={locale}
       unit="₫"
       value={text === '' ? null : Number(text)}
       onValueChange={(next) => setText(next === null ? '' : String(next))}
@@ -157,18 +168,14 @@ export function PickerPanel({
       key: 'product',
       header: c.picker.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => {
         const name = productLine(row);
         return (
           <CheckField
             aria-label={fill(c.picker.select, { name })}
-            label={
-              <span className="ls-cell-title" title={name}>
-                {name}
-              </span>
-            }
+            label={<span className="ls-adm-c-name">{name}</span>}
             checked={selected.includes(row.variantId)}
             onChange={() => setSelected(toggleSelected(selected, row.variantId))}
           />
@@ -179,7 +186,7 @@ export function PickerPanel({
       key: 'brand',
       header: c.picker.brandCol,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.brandName,
     },
@@ -187,7 +194,7 @@ export function PickerPanel({
       key: 'category',
       header: c.picker.categoryCol,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.categoryName,
     },
@@ -244,10 +251,10 @@ export function PickerPanel({
           {c.picker.clear}
         </Button>
         <Button variant="secondary" disabled={!hasGroups || total === 0} onClick={startFiltered}>
-          {c.picker.addFiltered}
+          {opensInput(c.picker.addFiltered)}
         </Button>
         <Button variant="primary" disabled={!hasGroups} onClick={startSelected}>
-          {c.picker.addSelected}
+          {opensInput(c.picker.addSelected)}
         </Button>
       </SelectionBar>
     ) : (
@@ -262,7 +269,7 @@ export function PickerPanel({
             id="campaign-picker-q"
             value={list.pq}
             label={c.picker.search}
-            placeholder={c.picker.search}
+            hint={c.picker.searchPlaceholder}
             clearLabel={t.common.list.clearSearch}
             onSearch={(pq) => updateList({ pq }, { replace: true })}
           />
@@ -292,12 +299,14 @@ export function PickerPanel({
             <PriceBound
               id="campaign-picker-min"
               label={c.picker.priceFrom}
+              placeholder={c.picker.priceFromPlaceholder}
               value={list.min}
               onCommit={(min) => updateList({ min })}
             />
             <PriceBound
               id="campaign-picker-max"
               label={c.picker.priceTo}
+              placeholder={c.picker.priceToPlaceholder}
               value={list.max}
               onCommit={(max) => updateList({ max })}
             />
@@ -330,7 +339,7 @@ export function PickerPanel({
               },
               {
                 id: 'filtered',
-                label: c.picker.addFiltered,
+                label: opensInput(c.picker.addFiltered),
                 icon: 'plus',
                 disabled: !hasGroups || total === 0,
                 onSelect: startFiltered,
@@ -364,7 +373,15 @@ export function PickerPanel({
         }
         empty={
           picker.data || badRange ? (
-            <Empty>{active > 0 ? c.picker.noMatch : c.picker.empty}</Empty>
+            active > 0 ? (
+              <EmptyState icon="search" title={c.picker.noMatchTitle}>
+                {c.picker.noMatch}
+              </EmptyState>
+            ) : (
+              <EmptyState icon="tag" title={c.picker.emptyTitle}>
+                {c.picker.empty}
+              </EmptyState>
+            )
           ) : undefined
         }
         paging={{
@@ -471,10 +488,15 @@ function AddToGroupDialog({
           {(control) => (
             <Select
               {...control}
+              name="groupId"
+              autoComplete="off"
               value={groupId}
               options={groups.map((group) => ({
                 value: group.id,
-                label: `${fill(c.groups.name, { n: numbers.get(group.id) ?? group.position })} · ${ruleText(group.rule, locale)}`,
+                label: metaLine(locale, [
+                  fill(c.groups.name, { n: numbers.get(group.id) ?? group.position }),
+                  ruleText(group.rule, locale),
+                ]),
               }))}
               onChange={(event) => setGroupId(event.target.value)}
             />

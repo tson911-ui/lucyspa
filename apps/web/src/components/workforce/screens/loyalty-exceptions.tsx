@@ -1,7 +1,7 @@
 'use client';
 
 import type { LoyaltyExceptionPageResponse, LoyaltyExceptionResponse } from '@lucy-spa/contracts';
-import { DataTable, ListSection, RowActions, type DataTableColumn } from '@lucy-spa/ui';
+import { DataTable, EmptyState, ListSection, RowActions, type DataTableColumn } from '@lucy-spa/ui';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
 import { formatDateTime } from '../../../lib/workforce/format';
@@ -10,7 +10,7 @@ import { formatPoints } from '../../../lib/workforce/loyalty';
 import { LOYALTY_PAGE_SIZE } from '../../../lib/workforce/loyalty-list';
 import { PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
-import { Empty, ErrorState, useResource } from '../ui';
+import { ErrorState, useResource } from '../ui';
 
 /**
  * The P5-Q5 shortfall list (OQ-3): every time a reversal or a deduction was larger than the balance, the balance
@@ -24,7 +24,7 @@ export function LoyaltyExceptions({
   page: number;
   onPage: (page: number) => void;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const l = loyaltyDictionary(locale);
   const x = l.exceptions;
   const list = useResource(
@@ -37,7 +37,7 @@ export function LoyaltyExceptions({
       key: 'customer',
       header: l.columns.customer,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
         <Link className="ls-link" href={`${base}/loyalty/${row.customer.id}`}>
@@ -83,13 +83,14 @@ export function LoyaltyExceptions({
       actions: true,
       cell: (row) => (
         <RowActions
+          LinkComponent={Link}
           menuLabel={fill(t.common.list.actionsFor, { name: row.customer.displayName })}
           items={[
             {
               id: 'open',
               label: x.open,
               icon: 'eye',
-              onSelect: () => navigate?.(`${base}/loyalty/${row.customer.id}`),
+              href: `${base}/loyalty/${row.customer.id}`,
             },
           ]}
         />
@@ -112,7 +113,11 @@ export function LoyaltyExceptions({
             <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
           ) : undefined
         }
-        empty={list.data ? <Empty>{x.none}</Empty> : undefined}
+        empty={
+          list.data ? (
+            <EmptyState title={l.empty.exceptionsTitle}>{l.empty.exceptionsText}</EmptyState>
+          ) : undefined
+        }
         paging={{
           page,
           pageSize: LOYALTY_PAGE_SIZE,

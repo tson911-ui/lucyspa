@@ -203,10 +203,10 @@ test('the request carries the shown figures and nothing the person cannot decide
 });
 
 test('a search result shows the name, today’s price and the stock in the language of the person', () => {
-  assert.equal(exchangeOptionLabel(option(), 'vi'), 'Serum · 30 ml — 150.000\u00a0₫ — 5 có sẵn');
+  assert.equal(exchangeOptionLabel(option(), 'vi'), 'Serum (30 ml), 150.000\u00a0₫, 5 có sẵn');
   assert.equal(
     exchangeOptionLabel(option({ available: 0 }), 'en'),
-    'Serum · 30 ml — 150,000\u00a0₫ — sold out',
+    'Serum (30 ml), 150,000\u00a0₫, sold out',
   );
 });
 

@@ -30,6 +30,7 @@ import {
 import { runMutation } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { ErrorState, useResource, useSubmit } from '../ui';
+import { focusFirstInvalidSoon } from './service-price-fields';
 
 /**
  * Dialogs of the Organization screen. Each is mounted only while open (so its fields reset on
@@ -39,13 +40,27 @@ import { ErrorState, useResource, useSubmit } from '../ui';
 
 type Saved = () => Promise<void>;
 
-function ReasonField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ReasonField({
+  value,
+  onChange,
+  tried,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  /** After a refused submit an empty reason says so at the field. */
+  tried: boolean;
+}) {
   const { t } = useWorkforce();
   return (
-    <Field label={t.common.reason} required>
+    <Field
+      label={t.common.reason}
+      required
+      error={required(tried, value, t.common.form.reasonRequired)}
+    >
       {(control) => (
         <TextInput
           {...control}
+          name="reason"
           maxLength={500}
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -55,56 +70,88 @@ function ReasonField({ value, onChange }: { value: string; onChange: (value: str
   );
 }
 
-/** Shared frame: submit state, dirty guard, error line. `save` returns the request to send. */
+/** The message of a required field after a refused submit (empty or only spaces), else nothing. */
+function required(tried: boolean, value: string, message: string): string | undefined {
+  return tried && value.trim() === '' ? message : undefined;
+}
+
+/**
+ * Shared frame: submit state, error line and validate-on-submit. The button stays enabled (it is disabled only while nothing
+ * changed in an edit); `send(complete, request)` with an incomplete form shows the field errors and focuses the first one.
+ */
 function useOrgForm(onSaved: Saved) {
   const { t } = useWorkforce();
   const submit = useSubmit();
-  async function send(request: () => Promise<unknown>) {
+  const [tried, setTried] = useState(false);
+  async function send(complete: boolean, request: () => Promise<unknown>) {
+    if (!complete) {
+      setTried(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const ok = await submit.run(() => runMutation(request, onSaved), '');
     if (ok) await onSaved();
   }
   const error = submit.error ? <ErrorState error={submit.error} t={t} /> : undefined;
-  return { submit, send, error };
+  return { submit, send, error, tried };
 }
 
 export function RegionCreate({ onClose, onSaved }: { onClose: () => void; onSaved: Saved }) {
   const { api, t, locale } = useWorkforce();
   const text = organizationDictionary(locale);
   const [form, setForm] = useState({ code: '', name: '', reason: '' });
-  const { submit, send, error } = useOrgForm(onSaved);
+  const { submit, send, error, tried } = useOrgForm(onSaved);
+  const complete = Boolean(form.code.trim() && form.name.trim() && form.reason.trim());
   return (
     <FormDialog
       title={text.createRegion}
       labels={formOverlayLabels(t, t.common.create)}
       busy={submit.pending}
       dirty={form.code !== '' || form.name !== '' || form.reason !== ''}
-      submitDisabled={!form.code.trim() || !form.name.trim() || !form.reason.trim()}
       error={error}
       onClose={onClose}
-      onSubmit={() => send(() => api.post('/api/v1/organization/regions', form))}
+      onSubmit={() => send(complete, () => api.post('/api/v1/organization/regions', form))}
     >
       <FormGrid>
-        <Field label={t.common.code} required width="md">
+        <Field
+          label={t.common.code}
+          required
+          width="md"
+          error={required(tried, form.code, t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="characters"
+              translate="no"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.common.name} required>
+        <Field
+          label={t.common.name}
+          required
+          error={required(tried, form.name, t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={150}
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
             />
           )}
         </Field>
-        <ReasonField value={form.reason} onChange={(reason) => setForm({ ...form, reason })} />
+        <ReasonField
+          value={form.reason}
+          tried={tried}
+          onChange={(reason) => setForm({ ...form, reason })}
+        />
       </FormGrid>
     </FormDialog>
   );
@@ -123,19 +170,20 @@ export function RegionRename({
   const text = organizationDictionary(locale);
   const [name, setName] = useState(region.name);
   const [reason, setReason] = useState('');
-  const { submit, send, error } = useOrgForm(onSaved);
-  const changed = name.trim() !== '' && name !== region.name;
+  const { submit, send, error, tried } = useOrgForm(onSaved);
+  // Nothing to save while the name is unchanged; a missing name or reason is reported at the field on submit.
+  const changed = name !== region.name;
   return (
     <FormDialog
       title={`${text.renameRegion}: ${region.code}`}
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={name !== region.name || reason !== ''}
-      submitDisabled={!changed || !reason.trim()}
+      submitDisabled={!changed}
       error={error}
       onClose={onClose}
       onSubmit={() =>
-        send(() =>
+        send(Boolean(name.trim() && reason.trim()), () =>
           api.post(`/api/v1/organization/regions/${region.id}`, {
             name,
             expectedVersion: region.version,
@@ -145,17 +193,22 @@ export function RegionRename({
       }
     >
       <FormGrid>
-        <Field label={t.common.name} required>
+        <Field
+          label={t.common.name}
+          required
+          error={required(tried, name, t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={150}
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
           )}
         </Field>
-        <ReasonField value={reason} onChange={setReason} />
+        <ReasonField value={reason} tried={tried} onChange={setReason} />
       </FormGrid>
     </FormDialog>
   );
@@ -179,22 +232,26 @@ export function AreaCreate({
   const { api, t, locale } = useWorkforce();
   const text = organizationDictionary(locale);
   const [form, setForm] = useState({ regionId: '', code: '', name: '', reason: '' });
-  const { submit, send, error } = useOrgForm(onSaved);
+  const { submit, send, error, tried } = useOrgForm(onSaved);
+  const complete = Boolean(
+    form.regionId && form.code.trim() && form.name.trim() && form.reason.trim(),
+  );
   return (
     <FormDialog
       title={text.createArea}
       labels={formOverlayLabels(t, t.common.create)}
       busy={submit.pending}
       dirty={Object.values(form).some((value) => value !== '')}
-      submitDisabled={
-        !form.regionId || !form.code.trim() || !form.name.trim() || !form.reason.trim()
-      }
       error={error}
       onClose={onClose}
-      onSubmit={() => send(() => api.post('/api/v1/organization/areas', form))}
+      onSubmit={() => send(complete, () => api.post('/api/v1/organization/areas', form))}
     >
       <FormGrid>
-        <Field label={text.region} required>
+        <Field
+          label={text.region}
+          required
+          error={required(tried, form.regionId, t.common.form.choiceRequired)}
+        >
           {(control) => (
             <Select
               {...control}
@@ -205,27 +262,45 @@ export function AreaCreate({
             />
           )}
         </Field>
-        <Field label={t.common.code} required width="md">
+        <Field
+          label={t.common.code}
+          required
+          width="md"
+          error={required(tried, form.code, t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="characters"
+              translate="no"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.common.name} required>
+        <Field
+          label={t.common.name}
+          required
+          error={required(tried, form.name, t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={150}
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
             />
           )}
         </Field>
-        <ReasonField value={form.reason} onChange={(reason) => setForm({ ...form, reason })} />
+        <ReasonField
+          value={form.reason}
+          tried={tried}
+          onChange={(reason) => setForm({ ...form, reason })}
+        />
       </FormGrid>
     </FormDialog>
   );
@@ -247,7 +322,7 @@ export function AreaEdit({
   const [name, setName] = useState(area.name);
   const [regionId, setRegionId] = useState(area.regionId);
   const [reason, setReason] = useState('');
-  const { submit, send, error } = useOrgForm(onSaved);
+  const { submit, send, error, tried } = useOrgForm(onSaved);
   const changed = name !== area.name || regionId !== area.regionId;
   return (
     <FormDialog
@@ -255,11 +330,11 @@ export function AreaEdit({
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={changed || reason !== ''}
-      submitDisabled={!changed || !name.trim() || !reason.trim()}
+      submitDisabled={!changed}
       error={error}
       onClose={onClose}
       onSubmit={() =>
-        send(() =>
+        send(Boolean(name.trim() && reason.trim()), () =>
           api.post(`/api/v1/organization/areas/${area.id}`, {
             name,
             regionId,
@@ -270,10 +345,15 @@ export function AreaEdit({
       }
     >
       <FormGrid>
-        <Field label={t.common.name} required>
+        <Field
+          label={t.common.name}
+          required
+          error={required(tried, name, t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={150}
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -290,7 +370,7 @@ export function AreaEdit({
             />
           )}
         </Field>
-        <ReasonField value={reason} onChange={setReason} />
+        <ReasonField value={reason} tried={tried} onChange={setReason} />
       </FormGrid>
     </FormDialog>
   );
@@ -311,7 +391,7 @@ export function BranchPlacement({
   const text = organizationDictionary(locale);
   const [areaId, setAreaId] = useState(branch.areaId ?? '');
   const [reason, setReason] = useState('');
-  const { submit, send, error } = useOrgForm(onSaved);
+  const { submit, send, error, tried } = useOrgForm(onSaved);
   const changed = areaId !== (branch.areaId ?? '');
   return (
     <FormDialog
@@ -319,11 +399,11 @@ export function BranchPlacement({
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={changed || reason !== ''}
-      submitDisabled={!changed || !reason.trim()}
+      submitDisabled={!changed}
       error={error}
       onClose={onClose}
       onSubmit={() =>
-        send(() =>
+        send(reason.trim() !== '', () =>
           api.post(`/api/v1/organization/branches/${branch.id}`, {
             areaId: areaId || null,
             expectedVersion: branch.version,
@@ -346,7 +426,7 @@ export function BranchPlacement({
             />
           )}
         </Field>
-        <ReasonField value={reason} onChange={setReason} />
+        <ReasonField value={reason} tried={tried} onChange={setReason} />
       </FormGrid>
     </FormDialog>
   );
@@ -387,10 +467,10 @@ export function OrgStatusConfirm({
     <ConfirmDialog
       title={title}
       description={body}
-      facts={[{ label: t.common.code, value: `${record.code} · ${record.name}` }]}
+      facts={[{ label: t.common.code, value: `${record.name} (${record.code})` }]}
       tone={deactivating ? 'danger' : 'neutral'}
       confirmLabel={deactivating ? t.common.deactivate : t.common.activate}
-      busyLabel={t.common.saving}
+      busyLabel={deactivating ? t.common.deactivating : t.common.activating}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{
@@ -446,7 +526,7 @@ export function AppointmentEnd({
       ]}
       tone="danger"
       confirmLabel={text.end}
-      busyLabel={t.common.saving}
+      busyLabel={t.common.ending}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{
@@ -491,7 +571,7 @@ export function AppointmentCreate({
   const [reason, setReason] = useState('');
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
-  const { submit, send, error } = useOrgForm(onSaved);
+  const { submit, send, error, tried } = useOrgForm(onSaved);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(query.trim()), 250);
@@ -535,20 +615,17 @@ export function AppointmentCreate({
       labels={formOverlayLabels(t, text.appoint)}
       busy={submit.pending}
       dirty={employee !== null || scopeId !== '' || reason !== '' || level !== 'STORE_MANAGER'}
-      submitDisabled={!ready}
       error={error}
       onClose={onClose}
       onSubmit={() =>
-        employee
-          ? send(() =>
-              api.post('/api/v1/organization/appointments', {
-                userId: employee.value,
-                level,
-                scope: appointmentScope(level, scopeId),
-                reason,
-              }),
-            )
-          : Promise.resolve()
+        send(ready, () =>
+          api.post('/api/v1/organization/appointments', {
+            userId: employee?.value,
+            level,
+            scope: appointmentScope(level, scopeId),
+            reason,
+          }),
+        )
       }
     >
       <FormGrid>
@@ -573,7 +650,11 @@ export function AppointmentCreate({
             {t.roles.scope}: {text.system}
           </p>
         ) : (
-          <Field label={scopeLabel} required>
+          <Field
+            label={scopeLabel}
+            required
+            error={required(tried, scopeId, t.common.form.choiceRequired)}
+          >
             {(control) => (
               <Select
                 {...control}
@@ -588,7 +669,11 @@ export function AppointmentCreate({
             )}
           </Field>
         )}
-        <Field label={text.employee} required>
+        <Field
+          label={text.employee}
+          required
+          error={tried && employee === null ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Combobox
               {...control}
@@ -598,13 +683,14 @@ export function AppointmentCreate({
               onQueryChange={setQuery}
               loading={employees.loading}
               loadingLabel={t.common.loading}
-              emptyLabel={text.employeeEmpty}
-              placeholder={text.search}
+              // A failed search says so; "no match" only when the search worked (wig :599).
+              emptyLabel={employees.error ? t.errors.network : text.employeeEmpty}
+              placeholder={text.exampleEmployee}
               resultsLabel={(count) => resultsText(t, count)}
             />
           )}
         </Field>
-        <ReasonField value={reason} onChange={setReason} />
+        <ReasonField value={reason} tried={tried} onChange={setReason} />
       </FormGrid>
     </FormDialog>
   );

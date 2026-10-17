@@ -11,6 +11,7 @@ import { withReauthentication } from '../../../lib/workforce/reauth';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import { Notice } from '../ui';
+import { focusFirstInvalidSoon } from './service-price-fields';
 
 /**
  * Records a brand-new customer's referrer at the counter (Phase 5 P5-5, `MANAGE_REFERRALS`): the staff member types the exact
@@ -30,18 +31,23 @@ export function BindReferrerDialog({
 }) {
   const { api, t, locale } = useWorkforce();
   const b = loyaltyDictionary(locale).referral.bind;
+  // Say what to fix (WIG copy), not the generic validation line.
+  const phoneRequired = loyaltyDictionary(locale).referral.phoneRequired;
   const [phone, setPhone] = useState('');
   const [member, setMember] = useState<ReferralLookupResponse['members'][number] | null>(null);
   const [searched, setSearched] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
-  const phoneError = checked && phone.trim().length === 0 ? t.errors.validation : undefined;
+  const phoneError = checked && phone.trim().length === 0 ? phoneRequired : undefined;
 
   async function submit() {
     if (pending) return;
     setChecked(true);
-    if (phone.trim().length === 0) return;
+    if (phone.trim().length === 0) {
+      focusFirstInvalidSoon();
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -85,6 +91,7 @@ export function BindReferrerDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="phone"
               type="tel"
               inputMode="tel"
               autoComplete="off"
@@ -125,19 +132,24 @@ export function ChangeReferrerDialog({
 }) {
   const { api, t, locale } = useWorkforce();
   const c = loyaltyDictionary(locale).referral.changeDialog;
-  const { confirm, dialog } = useReauthentication();
+  const phoneRequired = loyaltyDictionary(locale).referral.phoneRequired;
+  const { confirm, dialog, asking } = useReauthentication();
   const [phone, setPhone] = useState('');
   const [reason, setReason] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
-  const phoneError = checked && phone.trim().length === 0 ? t.errors.validation : undefined;
-  const reasonError = checked && reason.trim().length === 0 ? t.errors.validation : undefined;
+  const phoneError = checked && phone.trim().length === 0 ? phoneRequired : undefined;
+  const reasonError =
+    checked && reason.trim().length === 0 ? t.common.form.reasonRequired : undefined;
 
   async function submit() {
     if (pending) return;
     setChecked(true);
-    if (phone.trim().length === 0 || reason.trim().length === 0) return;
+    if (phone.trim().length === 0 || reason.trim().length === 0) {
+      focusFirstInvalidSoon();
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -162,6 +174,7 @@ export function ChangeReferrerDialog({
   return (
     <>
       <FormDialog
+        suspended={asking}
         title={c.title}
         description={c.description}
         labels={{ ...formOverlayLabels(t, c.submit), submitting: c.submitting }}
@@ -176,6 +189,7 @@ export function ChangeReferrerDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="phone"
                 type="tel"
                 inputMode="tel"
                 autoComplete="off"
@@ -189,6 +203,7 @@ export function ChangeReferrerDialog({
             {(control) => (
               <Textarea
                 {...control}
+                name="reason"
                 rows={3}
                 maxLength={500}
                 value={reason}

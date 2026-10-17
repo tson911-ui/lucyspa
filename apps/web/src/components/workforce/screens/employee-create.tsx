@@ -7,6 +7,7 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
+  ButtonLink,
   Card,
   CheckField,
   DateTextInput,
@@ -21,8 +22,10 @@ import {
   Stack,
   Textarea,
   TextInput,
+  focusFirstInvalid,
+  useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink } from '../link';
 import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -49,7 +52,27 @@ import {
 import { useBranches } from '../data';
 import { useReauthentication } from '../reauth-dialog';
 import { useAccount, useWorkforce } from '../session';
-import { Button, ErrorState, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
+import { Button, Empty, ErrorState, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
+import { AdminButtonLink } from './admin-button-link';
+
+/** Something was typed or chosen (the preselected single branch and the language do not count). */
+function isDirty(form: CreateForm): boolean {
+  return (
+    [
+      form.employeeId,
+      form.fullName,
+      form.dateOfBirth,
+      form.address,
+      form.phone,
+      form.email,
+      form.classification,
+      form.employmentStartDate,
+      form.employmentReason,
+      form.initialPassword,
+      form.confirmPassword,
+    ].some((value) => value !== '') || form.provisionAccess
+  );
+}
 
 /**
  * "Add workforce member" on its own page (long form, contract FR9): `/employees/new`. After a
@@ -70,13 +93,23 @@ export function EmployeeCreateScreen() {
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: t.employees.title, href: back }, { label: t.employees.create.title }]}
           />
         }
       />
       {!canOfferCreate(account) ? (
-        <Notice tone="info">{t.errors.forbidden}</Notice>
+        // Not allowed: say so, say who can do it, and offer the way back (a heading, a sentence, one action).
+        <Empty
+          title={text.people.forbiddenTitle}
+          action={
+            <ButtonLink LinkComponent={AdminButtonLink} variant="secondary" href={back}>
+              {text.people.backToEmployees}
+            </ButtonLink>
+          }
+        >
+          {text.people.forbiddenNext}
+        </Empty>
       ) : branches.error ? (
         <ErrorState error={branches.error} t={t} onRetry={() => void branches.reload()} />
       ) : branches.data ? (
@@ -86,7 +119,7 @@ export function EmployeeCreateScreen() {
             notify(createdMessage(employee, classification, t));
             navigate?.(`${base}/employees/${employee.id}`);
           }}
-          onCancel={() => navigate?.(back)}
+          cancelHref={back}
         />
       ) : (
         <Loading t={t} />
@@ -105,11 +138,12 @@ export function EmployeeCreateScreen() {
 export function EmployeeCreateForm({
   branches,
   onCreated,
-  onCancel,
+  cancelHref,
 }: {
   branches: ReadonlyMap<string, BranchSummary> | null;
   onCreated: (employee: EmployeeResponse, classification: InitialEmploymentClassification) => void;
-  onCancel: () => void;
+  /** Where Cancel leads (a real link, so it also opens in a new tab). */
+  cancelHref: string;
 }) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
@@ -132,6 +166,9 @@ export function EmployeeCreateForm({
   const accessAllowed = canProvisionAccess(account, form.branchIds);
   const { confirm, dialog } = useReauthentication();
   // The submitter below is created once; it always reads the latest values from here.
+  const formRef = useRef<HTMLFormElement>(null);
+  // A started form asks before the tab closes (wig: long page form without a guard).
+  useUnsavedChangesGuard(isDirty(form) && !pending);
   const latest = useRef({ form, api, t, branches, onCreated, confirm });
   latest.current = { form, api, t, branches, onCreated, confirm };
 
@@ -165,7 +202,13 @@ export function EmployeeCreateForm({
     event.preventDefault();
     const found = createProblems(form, availability, today, accessAllowed);
     setProblems(found);
-    if (found.length > 0) return;
+    if (found.length > 0) {
+      // Inline errors at the fields; the first invalid one takes focus after this render.
+      requestAnimationFrame(() => {
+        if (formRef.current) focusFirstInvalid(formRef.current);
+      });
+      return;
+    }
     void submitOnce.current();
   }
 
@@ -189,7 +232,7 @@ export function EmployeeCreateForm({
     <>
       {/* Outside the form: the confirmation dialog has its own form. */}
       {dialog}
-      <form noValidate onSubmit={submit} aria-label={texts.title}>
+      <form ref={formRef} noValidate onSubmit={submit} aria-label={texts.title}>
         <Stack gap="block">
           <Card as="section" aria-label={texts.title}>
             <Stack gap="page">
@@ -197,22 +240,36 @@ export function EmployeeCreateForm({
 
               <FormSection title={texts.personal}>
                 <FormGrid cols={2}>
-                  <Field label={texts.fields.employeeId} required hint={texts.employeeIdHint}>
+                  <Field
+                    label={texts.fields.employeeId}
+                    required
+                    hint={texts.employeeIdHint}
+                    error={invalid('employeeId') ? texts.fieldProblem : undefined}
+                  >
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="employeeId"
                         maxLength={64}
                         autoComplete="off"
+                        spellCheck={false}
+                        autoCapitalize="none"
+                        translate="no"
                         invalid={invalid('employeeId')}
                         value={form.employeeId}
                         onChange={(event) => set('employeeId', event.target.value)}
                       />
                     )}
                   </Field>
-                  <Field label={texts.fields.fullName} required>
+                  <Field
+                    label={texts.fields.fullName}
+                    required
+                    error={invalid('fullName') ? texts.fieldProblem : undefined}
+                  >
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="fullName"
                         maxLength={200}
                         autoComplete="off"
                         invalid={invalid('fullName')}
@@ -221,10 +278,15 @@ export function EmployeeCreateForm({
                       />
                     )}
                   </Field>
-                  <Field label={texts.fields.dateOfBirth} required>
+                  <Field
+                    label={texts.fields.dateOfBirth}
+                    required
+                    error={invalid('dateOfBirth') ? texts.fieldProblem : undefined}
+                  >
                     {(control) => (
                       <DateTextInput
                         {...control}
+                        name="dateOfBirth"
                         min="1900-01-01"
                         invalid={invalid('dateOfBirth')}
                         value={form.dateOfBirth}
@@ -232,10 +294,16 @@ export function EmployeeCreateForm({
                       />
                     )}
                   </Field>
-                  <Field label={texts.fields.phone} required hint={texts.phoneHint}>
+                  <Field
+                    label={texts.fields.phone}
+                    required
+                    hint={texts.phoneHint}
+                    error={invalid('phone') ? texts.fieldProblem : undefined}
+                  >
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="phone"
                         type="tel"
                         maxLength={32}
                         autoComplete="off"
@@ -249,9 +317,11 @@ export function EmployeeCreateForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="email"
                         type="email"
                         maxLength={254}
                         autoComplete="off"
+                        spellCheck={false}
                         value={form.email}
                         onChange={(event) => set('email', event.target.value)}
                       />
@@ -272,10 +342,16 @@ export function EmployeeCreateForm({
                       />
                     )}
                   </Field>
-                  <Field label={texts.fields.address} required full>
+                  <Field
+                    label={texts.fields.address}
+                    required
+                    full
+                    error={invalid('address') ? texts.fieldProblem : undefined}
+                  >
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="address"
                         maxLength={500}
                         autoComplete="off"
                         invalid={invalid('address')}
@@ -334,10 +410,12 @@ export function EmployeeCreateForm({
                     required
                     width="md"
                     hint={texts.startHint}
+                    error={invalid('employmentStartDate') ? texts.fieldProblem : undefined}
                   >
                     {(control) => (
                       <DateTextInput
                         {...control}
+                        name="employmentStartDate"
                         min="2000-01-01"
                         max="2100-12-31"
                         invalid={invalid('employmentStartDate')}
@@ -347,10 +425,16 @@ export function EmployeeCreateForm({
                     )}
                   </Field>
                   {askReason ? (
-                    <Field label={texts.fields.employmentReason} required hint={texts.reasonHint}>
+                    <Field
+                      label={texts.fields.employmentReason}
+                      required
+                      hint={texts.reasonHint}
+                      error={invalid('employmentReason') ? texts.fieldProblem : undefined}
+                    >
                       {(control) => (
                         <Textarea
                           {...control}
+                          name="employmentReason"
                           maxLength={500}
                           rows={2}
                           invalid={invalid('employmentReason')}
@@ -411,9 +495,9 @@ export function EmployeeCreateForm({
           </Card>
           <FormActions
             cancel={
-              <Button variant="secondary" onClick={onCancel} disabled={pending}>
+              <ButtonLink LinkComponent={AdminButtonLink} variant="secondary" href={cancelHref}>
                 {t.common.cancel}
-              </Button>
+              </ButtonLink>
             }
             primary={
               <Button type="submit" variant="primary" loading={pending}>
@@ -471,6 +555,7 @@ export function AccessFields({
               {(control) => (
                 <PasswordInput
                   {...control}
+                  name="initialPassword"
                   showLabel={t.auth.showPassword}
                   hideLabel={t.auth.hidePassword}
                   minLength={PASSWORD_LENGTH.min}
@@ -486,6 +571,7 @@ export function AccessFields({
               {(control) => (
                 <PasswordInput
                   {...control}
+                  name="confirmPassword"
                   showLabel={t.auth.showPassword}
                   hideLabel={t.auth.hidePassword}
                   autoComplete="new-password"

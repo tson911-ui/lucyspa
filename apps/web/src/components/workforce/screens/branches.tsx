@@ -9,15 +9,22 @@ import {
   FormGrid,
   RowActions,
   TextInput,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
-import { useState } from 'react';
-import { fill } from '../../../i18n/workforce';
+import { useState, type ReactNode } from 'react';
+import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  paginationLabels,
+} from '../../../lib/workforce/list-view';
+import { organizationDictionary } from '../../../i18n/organization';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -30,30 +37,60 @@ import {
   useSubmit,
 } from '../ui';
 
+/** A branch time zone in words ("Giờ Việt Nam (UTC+7)"); another zone keeps its IANA id, untranslated. */
+export function timezoneLabel(zone: string, t: WorkforceDictionary): ReactNode {
+  return zone === 'Asia/Ho_Chi_Minh' ? (
+    t.branches.timezoneVietnam
+  ) : (
+    <span translate="no">{zone}</span>
+  );
+}
+
+/** Page and page size live in the address bar (`?page=`, `?size=`): Back/Forward and a shared link restore the view. */
+const BRANCH_LIST_DEFAULTS = { page: 1, size: DEFAULT_PAGE_SIZE };
+const BRANCH_LIST_OPTIONS = {
+  normalize: (state: typeof BRANCH_LIST_DEFAULTS) => ({
+    page: normalizePage(state.page),
+    size: normalizePageSize(state.size),
+  }),
+  resetOnChange: ['page'],
+};
+
 /**
  * Branch list: `DataTable` (client paging, 20 per page), the name is the link to the detail page and
  * the row `⋮` menu repeats it. Creating a branch (4 fields) is a dialog opened from the page header.
  */
 export function BranchesScreen() {
-  const { api, t, base, navigate } = useWorkforce();
+  const { api, t, base, locale } = useWorkforce();
   const { account } = useAccount();
   const list = useResource(() => api.get<BranchListResponse>('/api/v1/branches'), [api]);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [{ page, size: pageSize }, updateList] = useUrlState(
+    BRANCH_LIST_DEFAULTS,
+    BRANCH_LIST_OPTIONS,
+  );
+  const people = organizationDictionary(locale).people;
   const manage = canGlobal(account, 'MANAGE_BRANCHES');
 
   const columns: DataTableColumn<BranchSummary>[] = [
-    { key: 'code', header: t.common.code, cell: (branch) => branch.code },
+    {
+      key: 'code',
+      header: t.common.code,
+      cell: (branch) => (
+        <span className="ls-ppl-code" translate="no">
+          {branch.code}
+        </span>
+      ),
+    },
     {
       key: 'name',
       header: t.common.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (branch) => (
-        <Link className="ls-link" href={`${base}/branches/${branch.id}`} title={branch.name}>
+        <Link className="ls-link" href={`${base}/branches/${branch.id}`}>
           {branch.name}
         </Link>
       ),
@@ -62,7 +99,7 @@ export function BranchesScreen() {
       key: 'timezone',
       header: t.branches.timezone,
       hideBelow: 'md',
-      cell: (branch) => branch.timezone,
+      cell: (branch) => timezoneLabel(branch.timezone, t),
     },
     {
       key: 'status',
@@ -79,13 +116,14 @@ export function BranchesScreen() {
       actions: true,
       cell: (branch) => (
         <RowActions
+          LinkComponent={Link}
           menuLabel={fill(t.common.list.actionsFor, { name: branch.name })}
           items={[
             {
               id: 'details',
               label: t.common.details,
               icon: 'eye',
-              onSelect: () => navigate?.(`${base}/branches/${branch.id}`),
+              href: `${base}/branches/${branch.id}`,
             },
           ]}
         />
@@ -98,12 +136,13 @@ export function BranchesScreen() {
       <PageHeader title={t.branches.title}>
         {manage ? (
           <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-            {t.branches.create}
+            {opensInput(t.branches.create)}
           </Button>
         ) : null}
       </PageHeader>
       {created ? <Notice tone="success">{t.branches.created}</Notice> : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: t.branches.title })}
         columns={columns}
@@ -116,15 +155,16 @@ export function BranchesScreen() {
             <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
           ) : undefined
         }
-        empty={list.data ? <Empty>{t.common.empty}</Empty> : undefined}
+        empty={
+          list.data ? (
+            <Empty title={people.branchesEmptyTitle}>{people.branchesEmpty}</Empty>
+          ) : undefined
+        }
         paging={{
           page,
           pageSize,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-          },
+          onPageChange: (next) => updateList({ page: next }),
+          onPageSizeChange: (size) => updateList({ size }),
           labels: paginationLabels(t, t.branches.title),
         }}
       />
@@ -188,7 +228,11 @@ function CreateBranch({
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="characters"
+              translate="no"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
@@ -198,6 +242,7 @@ function CreateBranch({
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               maxLength={200}
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
@@ -208,7 +253,11 @@ function CreateBranch({
           {(control) => (
             <TextInput
               {...control}
+              name="timezone"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="none"
+              translate="no"
               value={form.timezone}
               onChange={(event) => setForm({ ...form, timezone: event.target.value })}
             />
@@ -218,6 +267,7 @@ function CreateBranch({
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}

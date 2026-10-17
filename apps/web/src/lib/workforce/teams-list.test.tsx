@@ -28,7 +28,7 @@ test('the teams page: create is the one header action for managers; no legacy ma
   assert.doesNotMatch(manager, /<details|<fieldset|wf-table|wf-filters/);
   assert.ok(manager.includes('role="search"'), 'one list toolbar');
   const viewer = render(<TeamsScreen />, employee([['VIEW_TEAMS']]));
-  assert.ok(!viewer.includes('>Tạo nhóm<'));
+  assert.ok(!viewer.includes('>Tạo nhóm…<'));
   const nobody = render(<TeamsScreen />, employee([]));
   assert.ok(nobody.includes('Bạn không có quyền xem nội dung này.'));
   assert.ok(vi.common.toastRegion.length > 0);

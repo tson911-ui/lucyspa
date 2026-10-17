@@ -10,11 +10,13 @@ import type {
 import {
   buttonClass,
   CheckField,
+  ConfirmDialog,
   Dialog,
   DescriptionList,
   Drawer,
   Field,
   FormSection,
+  focusFirstInvalid,
   Icon,
   PictureReview,
   Select,
@@ -43,6 +45,7 @@ import {
   warningText,
   type ReviewDraft,
 } from '../../../lib/workforce/supplier-imports';
+import { confirmError } from '../../../lib/workforce/form-labels';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { Badge, Button, ErrorState, Loading, Notice, useResource, useSuccessToast } from '../ui';
@@ -96,6 +99,7 @@ export function ReviewDrawer({
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [mapping, setMapping] = useState<'BRAND' | 'CATEGORY' | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const first = useRef(true);
 
   useEffect(() => {
@@ -138,6 +142,15 @@ export function ReviewDrawer({
   const problems = validateDraft(draft);
   const body = editRequest(draft, item);
   const dirty = body !== null;
+  // Unsaved edits are not dropped silently: closing asks first (wig Forms), as the kit form drawers do.
+  const requestClose = () => (dirty && open ? setLeaving(true) : onClose());
+  // After a refused save, the first invalid field takes the focus (wig "focus first error on submit").
+  const focusProblem = (): void => {
+    requestAnimationFrame(() => {
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      focusFirstInvalid(dialogs[dialogs.length - 1] ?? document);
+    });
+  };
   const needsConflictReload = (failure: unknown) => isImportConflict(failure);
 
   async function fail(failure: unknown) {
@@ -172,14 +185,14 @@ export function ReviewDrawer({
   async function save() {
     if (!body || !item) return;
     setChecked(true);
-    if (Object.keys(problems).some((key) => key !== 'listPriceVnd')) return;
+    if (Object.keys(problems).some((key) => key !== 'listPriceVnd')) return focusProblem();
     await run('save', 'edit', body, copy.saved);
   }
 
   async function approve() {
     if (busy || !item) return;
     setChecked(true);
-    if (Object.keys(problems).length > 0) return;
+    if (Object.keys(problems).length > 0) return focusProblem();
     setBusy('approve');
     setError(null);
     try {
@@ -251,7 +264,7 @@ export function ReviewDrawer({
             value: image.sharedWith
               .map(
                 (other) =>
-                  `${other.name}${other.sku ? ` (${other.sku})` : ''} · ${copy.kinds[other.kind]}`,
+                  `${other.name}${other.sku ? ` (${other.sku})` : ''}: ${copy.kinds[other.kind]}`,
               )
               .join('; '),
           },
@@ -266,16 +279,17 @@ export function ReviewDrawer({
       closeLabel={t.common.close}
       className="ls-drawer-form"
       busy={busy !== null}
-      onClose={onClose}
+      onClose={requestClose}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={busy !== null}>
+          <Button variant="secondary" onClick={requestClose} disabled={busy !== null}>
             {t.common.close}
           </Button>
           {open ? (
             <Button
               variant="secondary"
               onClick={() => void save()}
+              loading={busy === 'save'}
               disabled={busy !== null || !dirty}
             >
               {busy === 'save' ? copy.saving : copy.save}
@@ -285,6 +299,7 @@ export function ReviewDrawer({
             <Button
               variant="primary"
               onClick={() => void approve()}
+              loading={busy === 'approve'}
               disabled={busy !== null || dirty || !item.approval.canApprove}
               title={dirty ? copy.saveFirst : undefined}
             >
@@ -446,6 +461,7 @@ export function ReviewDrawer({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="name-vi"
                   value={draft.nameVi}
                   disabled={!open}
                   onChange={(event) => setDraft({ ...draft, nameVi: event.target.value })}
@@ -461,6 +477,7 @@ export function ReviewDrawer({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="name-en"
                   value={draft.nameEn}
                   disabled={!open}
                   onChange={(event) => setDraft({ ...draft, nameEn: event.target.value })}
@@ -477,6 +494,8 @@ export function ReviewDrawer({
               {(control) => (
                 <Textarea
                   {...control}
+                  name="description-vi"
+                  autoComplete="off"
                   value={draft.descriptionVi}
                   disabled={!open}
                   onChange={(event) => setDraft({ ...draft, descriptionVi: event.target.value })}
@@ -492,7 +511,10 @@ export function ReviewDrawer({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="proposed-sku"
                   autoComplete="off"
+                  spellCheck={false}
+                  translate="no"
                   maxLength={64}
                   value={draft.proposedSku}
                   disabled={!open}
@@ -579,6 +601,7 @@ export function ReviewDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="list-price-vnd"
                     inputMode="numeric"
                     autoComplete="off"
                     value={draft.listPriceVnd}
@@ -660,6 +683,23 @@ export function ReviewDrawer({
           }}
         />
       ) : null}
+      {leaving ? (
+        <ConfirmDialog
+          title={t.common.form.discardTitle}
+          description={t.common.form.discardBody}
+          tone="warning"
+          confirmLabel={t.common.form.discardConfirm}
+          busyLabel={t.common.saving}
+          cancelLabel={t.common.form.discardKeep}
+          referenceLabel={t.errors.reference}
+          describeError={confirmError(t)}
+          onConfirm={async () => {
+            setLeaving(false);
+            onClose();
+          }}
+          onCancel={() => setLeaving(false)}
+        />
+      ) : null}
     </Drawer>
   );
 }
@@ -722,6 +762,7 @@ function MappingDialog({
           <Button
             variant="primary"
             onClick={() => void submit()}
+            loading={pending}
             disabled={pending || chosen === ''}
           >
             {pending ? text.map.busy : text.map.submit}

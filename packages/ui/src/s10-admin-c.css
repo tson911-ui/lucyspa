@@ -1,0 +1,93 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): admin-c pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages. */
+
+/* ---- Owner answer 7: a product or campaign name inside a custom cell (a CheckField label, a two-line name/code stack) wraps by word
+   and is never cut; replaces the kit's nowrap/ellipsis `.ls-cell-title` / `.ls-cell-truncate` spans these screens used. ----------- */
+.ls-adm-c-name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* A tracking-link template or an e-mail address has no spaces: it breaks anywhere rather than pushing the table wider. */
+.ls-adm-c-url {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A phone number stays on one line (a numeric value, C58b). */
+.ls-adm-c-nowrap {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Who and when on two lines (inventory receipt): the name, then the time in the caption role; replaces "name · time". */
+.ls-adm-c-stack {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+.ls-adm-c-muted {
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An in-page target (product price history) stops below the sticky staff top bar when it is scrolled into view. */
+.ls-adm-c-anchor {
+  scroll-margin-top: calc(var(--ls-topbar-h) + var(--ls-space-4));
+}
+
+/* Campaign review: a problem count is a link to the filtered product list; the digit alone was a 10 px target (E2 hit-target).
+   The link keeps its text but gets the 40 px staff target; hover/pressed come from `.ls-link`. */
+.ls-adm-c-count-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--ls-control-h-compact, var(--ls-control-h));
+  min-block-size: var(--ls-control-h-compact, var(--ls-control-h));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Online sales: the default policy drafts read as plain muted text under the policy fields, not as sunken boxes with their own
+   scroll inside the card (B12, plan online-sales). `.ls-policy-default-text` is used only by screens/online-sales.tsx. */
+[data-ui='v2'] .ls-policy-default-text {
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ls-text-subtle);
+  overflow-wrap: break-word;
+}
+
+/* Rewrite detail: the product's current text (and the suggested name) is reference text, not a read-only textarea: the field's label
+   role above, the text in the body role below, line breaks kept, long words wrapped; nothing bordered inside the card. */
+.ls-adm-c-ref {
+  display: grid;
+  gap: var(--ls-space-2);
+  align-content: start;
+  min-width: 0;
+}
+
+.ls-adm-c-ref-label {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+.ls-adm-c-ref-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* A long receipt (dozens of lines): the browser skips laying out the line blocks that are off screen (rbp
+   rendering-content-visibility) instead of a virtualiser; the intrinsic size is about one line block, remembered once drawn. */
+.ls-adm-c-line {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--ls-space-10) * 5);
+}

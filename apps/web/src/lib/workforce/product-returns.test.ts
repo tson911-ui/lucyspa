@@ -267,8 +267,8 @@ test('the product reads in the reader’s language, with its variant', () => {
     variantLabelVi: '50 ml',
     variantLabelEn: '1.7 oz',
   };
-  assert.equal(returnProductName(product, 'vi'), 'Kem dưỡng · 50 ml');
-  assert.equal(returnProductName(product, 'en'), 'Moisturizer · 1.7 oz');
+  assert.equal(returnProductName(product, 'vi'), 'Kem dưỡng (50 ml)');
+  assert.equal(returnProductName(product, 'en'), 'Moisturizer (1.7 oz)');
   assert.equal(
     returnProductName({ ...product, variantLabelVi: null, variantLabelEn: null }, 'vi'),
     'Kem dưỡng',

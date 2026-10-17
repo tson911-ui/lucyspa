@@ -2,6 +2,7 @@
 
 import type { WebsiteShopInfoResponse } from '@lucy-spa/contracts';
 import {
+  buttonClass,
   Card,
   Cluster,
   DescriptionList,
@@ -16,7 +17,6 @@ import {
   Stack,
   Textarea,
   TextInput,
-  useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { getSiteText } from '../../../i18n/site';
@@ -34,9 +34,12 @@ import {
   type ShopInfoProblem,
 } from '../../../lib/workforce/shop-info';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
+import { useWebsiteLeaveGuard } from './website-leave';
 import {
   FooterBlockDrawer,
   FooterBlocksEditor,
@@ -80,21 +83,23 @@ function ShopInfoForm_() {
   const [listEditor, setListEditor] = useState<ShopListEditor>(null);
   const [footerEditor, setFooterEditor] = useState<FooterBlockEditor>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
-
-  useEffect(() => {
-    if (loaded.data) {
-      const next = formOfShopInfo(loaded.data);
-      setInfo(loaded.data);
-      setInitial(next);
-      setForm(next);
-    }
-  }, [loaded.data]);
+  // A newly loaded answer (first load, a reload) resets the form while rendering, not in an effect
+  // (rerender-derived-state-no-effect). `seen` is the loaded answer, apart from `info`, which a save replaces.
+  const [seen, setSeen] = useState<WebsiteShopInfoResponse | null>(null);
+  if (loaded.data && loaded.data !== seen) {
+    const next = formOfShopInfo(loaded.data);
+    setSeen(loaded.data);
+    setInfo(loaded.data);
+    setInitial(next);
+    setForm(next);
+  }
   useEffect(() => {
     if (problem && formRef.current) focusFirstInvalid(formRef.current);
   }, [problem]);
 
   const dirty = form !== null && initial !== null && shopInfoChanged(form, initial);
-  useUnsavedChangesGuard(dirty && !pending);
+  // Unsaved edits: the browser asks before closing, and a link clicked meanwhile (sidebar, header) asks "Bỏ thay đổi?" first.
+  const { dialog } = useWebsiteLeaveGuard(dirty && !pending, navigate, t);
 
   if (loaded.error && !info) {
     return <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />;
@@ -174,6 +179,7 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="tagline-vi"
                         value={form.taglineVi}
                         onChange={(event) => change({ taglineVi: event.target.value })}
                       />
@@ -188,6 +194,7 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="tagline-en"
                         value={form.taglineEn}
                         onChange={(event) => change({ taglineEn: event.target.value })}
                       />
@@ -201,6 +208,8 @@ function ShopInfoForm_() {
                     {(control) => (
                       <Textarea
                         {...control}
+                        name="intro-vi"
+                        autoComplete="off"
                         rows={3}
                         value={form.introVi}
                         onChange={(event) => change({ introVi: event.target.value })}
@@ -211,6 +220,8 @@ function ShopInfoForm_() {
                     {(control) => (
                       <Textarea
                         {...control}
+                        name="intro-en"
+                        autoComplete="off"
                         rows={3}
                         value={form.introEn}
                         onChange={(event) => change({ introEn: event.target.value })}
@@ -254,6 +265,7 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="address"
                         autoComplete="off"
                         value={form.address}
                         onChange={(event) => change({ address: event.target.value })}
@@ -270,6 +282,7 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="hotline"
                         type="tel"
                         inputMode="tel"
                         autoComplete="off"
@@ -282,6 +295,9 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="map-url"
+                        type="url"
+                        spellCheck={false}
                         inputMode="url"
                         autoComplete="off"
                         value={form.mapUrl}
@@ -297,6 +313,9 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="facebook-url"
+                        type="url"
+                        spellCheck={false}
                         inputMode="url"
                         autoComplete="off"
                         value={form.facebookUrl}
@@ -312,6 +331,7 @@ function ShopInfoForm_() {
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="zalo-contact"
                         autoComplete="off"
                         value={form.zaloContact}
                         onChange={(event) => change({ zaloContact: event.target.value })}
@@ -332,7 +352,7 @@ function ShopInfoForm_() {
                 {error('heroMediaId') ? <Notice tone="error">{error('heroMediaId')}</Notice> : null}
                 <Cluster>
                   <Button variant="secondary" onClick={() => setPicking(true)}>
-                    {form.heroMediaId !== '' ? text.imageChange : text.imageChoose}
+                    {opensInput(form.heroMediaId !== '' ? text.imageChange : text.imageChoose)}
                   </Button>
                   {form.heroMediaId !== '' ? (
                     <Button variant="ghost" onClick={() => change({ heroMediaId: '' })}>
@@ -357,12 +377,13 @@ function ShopInfoForm_() {
                 </FormGrid>
                 {info.hoursBranch ? (
                   <Cluster>
-                    <Button
-                      variant="secondary"
-                      onClick={() => navigate?.(`${base}/branches/${info.hoursBranch?.id ?? ''}`)}
+                    {/* A real router link styled as the secondary button (the kit ButtonLink is a plain anchor). */}
+                    <Link
+                      href={`${base}/branches/${info.hoursBranch.id}`}
+                      className={buttonClass('secondary', 'md')}
                     >
-                      {text.hoursEdit}
-                    </Button>
+                      <span className="ls-btn-label">{text.hoursEdit}</span>
+                    </Link>
                   </Cluster>
                 ) : (
                   <p className="ls-hint">{text.hoursNone}</p>
@@ -447,6 +468,7 @@ function ShopInfoForm_() {
           onClose={() => setPicking(false)}
         />
       ) : null}
+      {dialog}
     </>
   );
 }

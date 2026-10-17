@@ -3,6 +3,7 @@
 import { Cluster, MediaPreview } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Button, Notice } from '../ui';
 import { MediaPicker } from './media-picker';
@@ -35,7 +36,7 @@ export function MediaPhotoField({
       {error ? <Notice tone="error">{error}</Notice> : null}
       <Cluster>
         <Button variant="secondary" onClick={() => setPicking(true)}>
-          {mediaId !== '' ? text.photoChange : text.photoChoose}
+          {opensInput(mediaId !== '' ? text.photoChange : text.photoChoose)}
         </Button>
         {mediaId !== '' ? (
           <Button variant="ghost" onClick={() => onChange('')}>

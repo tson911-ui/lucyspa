@@ -9,9 +9,10 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
-  Cluster,
   ConfirmDialog,
   DataTable,
+  DescriptionList,
+  EmptyState,
   Field,
   FormDialog,
   FormGrid,
@@ -21,10 +22,12 @@ import {
   Stack,
   Tabs,
   TextInput,
+  PageHeader as UiPageHeader,
+  useUrlState,
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink } from '../link';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
@@ -36,20 +39,19 @@ import {
 } from '../../../lib/workforce/employee-detail';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import { normalizePage, paginationLabels } from '../../../lib/workforce/list-view';
 import { canAnywhere } from '../../../lib/workforce/permissions';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { branchLabel, useBranches } from '../data';
 import { ManagementLevels, useManagementLevelVisible } from './management-levels';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   useResource,
   useSubmit,
   useSuccessToast,
@@ -108,6 +110,21 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
 }
 
 type TabId = 'profile' | 'employment' | 'access' | 'skills';
+const TAB_IDS: readonly string[] = ['profile', 'employment', 'access', 'skills'];
+
+/** The open tab lives in the address bar (`?tab=`): Back/Forward and a shared link restore it. */
+const DETAIL_URL_DEFAULTS = { tab: 'profile' };
+const DETAIL_URL_OPTIONS = {
+  normalize: (state: typeof DETAIL_URL_DEFAULTS) => ({
+    tab: TAB_IDS.includes(state.tab) ? state.tab : 'profile',
+  }),
+};
+
+/** The branch-history page of the Access tab (`?bhp=`), its own key so it never collides with the skills history pager. */
+const BRANCH_HISTORY_DEFAULTS = { bhp: 1 };
+const BRANCH_HISTORY_OPTIONS = {
+  normalize: (state: typeof BRANCH_HISTORY_DEFAULTS) => ({ bhp: normalizePage(state.bhp) }),
+};
 
 /** The loaded detail: header, summary badges and the tabs. */
 export function EmployeeDetail({
@@ -133,7 +150,7 @@ export function EmployeeDetail({
   const texts = t.employees.detail;
   const actions = detailActions(account, employee, employment);
   const ended = employment ? employmentEnded(employment) : false;
-  const [tab, setTab] = useState<TabId>('profile');
+  const [{ tab }, updateUrl] = useUrlState(DETAIL_URL_DEFAULTS, DETAIL_URL_OPTIONS);
   const [overlay, setOverlay] = useState<DetailOverlay | null>(null);
   const timeZone =
     (employee.branchIds[0] && branches?.get(employee.branchIds[0])?.timezone) || 'UTC';
@@ -146,23 +163,25 @@ export function EmployeeDetail({
   const menuItems: Record<Exclude<DetailOverlay, 'profile'>, MenuItem> = {
     promote: {
       id: 'promote',
-      label: texts.promote,
+      label: opensInput(texts.promote),
       onSelect: () => setOverlay('promote'),
     },
     password: {
       id: 'password',
-      label: employee.status === 'PENDING_SETUP' ? texts.setPassword : texts.resetPassword,
+      label: opensInput(
+        employee.status === 'PENDING_SETUP' ? texts.setPassword : texts.resetPassword,
+      ),
       onSelect: () => setOverlay('password'),
     },
     status: {
       id: 'status',
-      label: employee.status === 'INACTIVE' ? texts.reactivate : texts.deactivate,
+      label: opensInput(employee.status === 'INACTIVE' ? texts.reactivate : texts.deactivate),
       ...(employee.status === 'INACTIVE' ? {} : { tone: 'danger' as const }),
       onSelect: () => setOverlay('status'),
     },
     end: {
       id: 'end',
-      label: texts.end,
+      label: opensInput(texts.end),
       tone: 'danger',
       onSelect: () => setOverlay('end'),
     },
@@ -171,48 +190,62 @@ export function EmployeeDetail({
 
   return (
     <>
-      <PageHeader
+      <UiPageHeader
         title={employee.fullName}
-        intro={employee.employeeId}
+        description={employee.employeeId}
+        // The account status sits under the title (kit slot), never inside the heading.
+        status={
+          <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
+            {t.employees.statuses[employee.status]}
+          </Badge>
+        }
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               { label: t.employees.title, href: `${base}/employees` },
               { label: employee.fullName },
             ]}
           />
         }
-      >
-        {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
-        {actions.editProfile ? (
-          <Button variant="primary" icon="edit" onClick={() => setOverlay('profile')}>
-            {texts.editProfile}
-          </Button>
-        ) : null}
-      </PageHeader>
-      <Cluster gap="inline">
-        <span className="ls-hint">{t.employees.titleColumn}:</span>
-        <TitleBadge employment={employment} />
-        {showLevel ? (
-          <>
-            <span className="ls-hint">{text.level}:</span>
-            <ManagementLevels
-              appointments={employee.organizationAppointments}
-              branches={branches}
-            />
-          </>
-        ) : null}
-        <span className="ls-hint">{texts.accountStatus}:</span>
-        <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
-          {t.employees.statuses[employee.status]}
-        </Badge>
-      </Cluster>
+        actions={
+          menu.length > 0 || actions.editProfile ? (
+            <>
+              {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
+              {actions.editProfile ? (
+                <Button variant="primary" icon="edit" onClick={() => setOverlay('profile')}>
+                  {opensInput(texts.editProfile)}
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      />
+      {/* Title and level as label-above-value facts, not a colon chain of badges (generic meta-string tell). */}
+      <DescriptionList
+        className="ls-ppl-meta"
+        items={[
+          { label: t.employees.titleColumn, value: <TitleBadge employment={employment} /> },
+          ...(showLevel
+            ? [
+                {
+                  label: text.level,
+                  value: (
+                    <ManagementLevels
+                      appointments={employee.organizationAppointments}
+                      branches={branches}
+                    />
+                  ),
+                },
+              ]
+            : []),
+        ]}
+      />
       <Tabs
         label={texts.tabsLabel}
         value={tab}
-        onChange={(id) => setTab(id as TabId)}
+        onChange={(id) => updateUrl({ tab: id as TabId })}
         tabs={[
           {
             id: 'profile',
@@ -341,7 +374,10 @@ function BranchAssignments({
     [api, employee.id],
   );
   const [overlay, setOverlay] = useState<AssignmentOverlay | null>(null);
-  const [historyPage, setHistoryPage] = useState(1);
+  const [{ bhp: historyPage }, updateHistory] = useUrlState(
+    BRANCH_HISTORY_DEFAULTS,
+    BRANCH_HISTORY_OPTIONS,
+  );
   // UX hint only: the API checks MANAGE_EMPLOYEE_SCOPE over every old and new branch.
   const manage =
     canAnywhere(account, 'MANAGE_EMPLOYEE_SCOPE') &&
@@ -365,7 +401,7 @@ function BranchAssignments({
       key: 'branch',
       header: t.common.branch,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (entry) => branchLabel(entry.branchId, branches, t),
     },
@@ -388,7 +424,7 @@ function BranchAssignments({
                 items={[
                   {
                     id: 'revoke',
-                    label: t.employees.revokeAssignment,
+                    label: opensInput(t.employees.revokeAssignment),
                     tone: 'danger',
                     onSelect: () => setOverlay({ kind: 'revoke', entry }),
                   },
@@ -404,7 +440,7 @@ function BranchAssignments({
       key: 'branch',
       header: t.common.branch,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (entry) => branchLabel(entry.branchId, branches, t),
     },
@@ -417,7 +453,7 @@ function BranchAssignments({
       key: 'revoked',
       header: t.employees.revokedAt,
       cell: (entry) =>
-        entry.revokedAt ? formatDateTime(entry.revokedAt, zone(entry.branchId), locale) : '…',
+        entry.revokedAt ? formatDateTime(entry.revokedAt, zone(entry.branchId), locale) : '—',
     },
   ];
   const history = assignments.data?.history ?? [];
@@ -434,7 +470,7 @@ function BranchAssignments({
               disabled={!assignments.data || assignable.length === 0}
               onClick={() => setOverlay({ kind: 'assign' })}
             >
-              {t.employees.assign}
+              {opensInput(t.employees.assign)}
             </Button>
           ) : undefined
         }
@@ -457,7 +493,16 @@ function BranchAssignments({
               />
             ) : undefined
           }
-          empty={assignments.data ? <Empty>{t.employees.noAssignments}</Empty> : undefined}
+          empty={
+            assignments.data ? (
+              <EmptyState
+                icon="building"
+                title={organizationDictionary(locale).people.noAssignmentsTitle}
+              >
+                {t.employees.noAssignments}
+              </EmptyState>
+            ) : undefined
+          }
           paging={{ off: 'A member works at a few branches: the list is the branch count.' }}
         />
       </ListSection>
@@ -472,7 +517,7 @@ function BranchAssignments({
             paging={{
               page: historyPage,
               pageSize: 20,
-              onPageChange: setHistoryPage,
+              onPageChange: (page) => updateHistory({ bhp: page }),
               labels: paginationLabels(t, t.employees.history),
             }}
           />
@@ -522,9 +567,15 @@ function AssignBranchDialog({
   const { api, t } = useWorkforce();
   const [branchId, setBranchId] = useState('');
   const [reason, setReason] = useState('');
+  // Validate on submit: the button stays enabled and a missing field says so at the field.
+  const [tried, setTried] = useState(false);
   const submit = useSubmit();
 
   async function save() {
+    if (branchId === '' || reason.trim() === '') {
+      setTried(true);
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -550,27 +601,35 @@ function AssignBranchDialog({
       labels={formOverlayLabels(t, t.employees.assign)}
       busy={submit.pending}
       dirty={branchId !== '' || reason !== ''}
-      submitDisabled={branchId === '' || reason.trim() === ''}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={t.common.branch} required>
+        <Field
+          label={t.common.branch}
+          required
+          error={tried && branchId === '' ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Select
               {...control}
-              placeholder="—"
+              placeholder={t.common.form.choose}
               value={branchId}
               onChange={(event) => setBranchId(event.target.value)}
               options={assignable.map((branch) => ({ value: branch.id, label: branch.name }))}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required>
+        <Field
+          label={t.common.reason}
+          required
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="assignment-reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -612,7 +671,7 @@ function RevokeBranchDialog({
       ]}
       tone="danger"
       confirmLabel={t.employees.revokeAssignment}
-      busyLabel={t.common.saving}
+      busyLabel={t.common.ending}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{

@@ -1,20 +1,31 @@
 'use client';
 
 import type { DiscountDetailResponse } from '@lucy-spa/contracts';
-import { Breadcrumbs, Card, FormActions, Page, Stack, useUnsavedChangesGuard } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  Breadcrumbs,
+  ButtonLink,
+  Card,
+  FormActions,
+  Page,
+  Stack,
+  focusFirstInvalid,
+  useUnsavedChangesGuard,
+} from '@lucy-spa/ui';
+import { ListCrumbLink } from '../link';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import {
   discountErrorMessage,
+  discountFieldProblems,
   formFromProgram,
   versionRequestOf,
   type DiscountForm,
 } from '../../../lib/workforce/discounts';
 import { discountName } from '../../../lib/workforce/discounts-list';
 import { useWorkforce } from '../session';
-import { Button, ErrorState, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
-import { DiscountFormFields } from './discount-form';
+import { Button, Empty, ErrorState, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
+import { DiscountFormFields, discountFieldErrors } from './discount-form';
+import { AdminButtonLink } from './admin-button-link';
 
 /**
  * "New version" of a discount program on its own page (long form, contract FR9): the same sections as the
@@ -25,6 +36,7 @@ export function DiscountVersionScreen({ id }: { id: string }) {
   const { api, t } = useWorkforce();
   const [program, setProgram] = useState<DiscountDetailResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -35,9 +47,20 @@ export function DiscountVersionScreen({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [api, id]);
+  }, [api, id, attempt]);
 
-  if (loadError && !program) return <ErrorState error={loadError} t={t} />;
+  if (loadError && !program) {
+    return (
+      <ErrorState
+        error={loadError}
+        t={t}
+        onRetry={() => {
+          setLoadError(null);
+          setAttempt((count) => count + 1);
+        }}
+      />
+    );
+  }
   if (!program) return <Loading t={t} page />;
   return <VersionPage program={program} />;
 }
@@ -53,12 +76,27 @@ function VersionPage({ program }: { program: DiscountDetailResponse }) {
   const [form, setForm] = useState<DiscountForm>(() => formFromProgram(program));
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // After the first submit every field shows its own problem, and the errors follow the typing (validate on submit).
+  const [checked, setChecked] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const errors = checked
+    ? discountFieldErrors(discountFieldProblems(form, 'version'), d.problems)
+    : {};
   const dirty = JSON.stringify(form) !== JSON.stringify(formFromProgram(program));
   useUnsavedChangesGuard(dirty && !pending);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
+    setChecked(true);
+    if (Object.keys(discountFieldProblems(form, 'version')).length > 0) {
+      setMessage(null);
+      // The errors render on the next frame; then the first invalid field takes focus.
+      requestAnimationFrame(() => {
+        if (formRef.current) focusFirstInvalid(formRef.current);
+      });
+      return;
+    }
     const request = versionRequestOf(form, program.version);
     if ('problem' in request) {
       setMessage(d.problems[request.problem]);
@@ -83,11 +121,10 @@ function VersionPage({ program }: { program: DiscountDetailResponse }) {
     <Page width="form">
       <PageHeader
         title={d.newVersion}
-        intro={title}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               { label: d.title, href: `${base}/discounts` },
               { label: title, href: back },
@@ -97,26 +134,47 @@ function VersionPage({ program }: { program: DiscountDetailResponse }) {
         }
       />
       {!allowed ? (
-        <Notice tone="info">{d.errors.DISCOUNT_STATE_INVALID}</Notice>
+        <Empty
+          title={d.versionLockedTitle}
+          action={
+            <ButtonLink LinkComponent={AdminButtonLink} href={back} variant="secondary">
+              {d.backToProgram}
+            </ButtonLink>
+          }
+        >
+          {d.errors.DISCOUNT_STATE_INVALID}
+        </Empty>
       ) : (
-        <form noValidate onSubmit={(event) => void submit(event)} aria-label={d.newVersion}>
+        <form
+          ref={formRef}
+          noValidate
+          onSubmit={(event) => void submit(event)}
+          aria-label={d.newVersion}
+        >
           <Stack gap="block">
             <Card as="section" aria-label={d.newVersion}>
               <Stack gap="page">
-                <p className="ls-hint">{d.newVersionHint}</p>
-                <DiscountFormFields form={form} setForm={setForm} mode="version" columns={2} />
+                <Notice tone="info">{d.newVersionHint}</Notice>
+                <DiscountFormFields
+                  form={form}
+                  setForm={setForm}
+                  mode="version"
+                  columns={2}
+                  errors={errors}
+                />
                 {message ? <Notice tone="error">{message}</Notice> : null}
               </Stack>
             </Card>
             <FormActions
+              // Cancel goes back to the program: a real link in the secondary (outline) style; the primary names the action.
               cancel={
-                <Button variant="secondary" onClick={() => navigate?.(back)} disabled={pending}>
+                <ButtonLink LinkComponent={AdminButtonLink} href={back} variant="secondary">
                   {t.common.cancel}
-                </Button>
+                </ButtonLink>
               }
               primary={
                 <Button type="submit" variant="primary" loading={pending}>
-                  {pending ? d.saving : d.save}
+                  {pending ? d.saving : d.createVersion}
                 </Button>
               }
             />

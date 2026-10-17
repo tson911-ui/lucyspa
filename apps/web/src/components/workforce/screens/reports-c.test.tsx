@@ -205,7 +205,8 @@ test('differences: the amount signed, and a day over the threshold is marked in 
   };
   const html = render(<DifferencesBody data={data} />, owner);
   assert.match(html, /\+300\.000/);
-  assert.match(html, /-20\.000/);
+  // A true minus sign (−), not a hyphen.
+  assert.match(html, /−20\.000/);
   assert.equal(html.match(new RegExp(c.cash.alert, 'g'))?.length, 1);
   assert.match(html, new RegExp(c.cash.kpi.alerts));
 });
@@ -340,12 +341,13 @@ const profit = (patch: Partial<ProfitReport> = {}): ProfitReport => ({
 test('provisional profit: every line, deductions with a minus sign, the disclaimer, the cost coverage and the salary months in words', () => {
   const html = render(<ProfitBody data={profit()} />, owner);
   assert.match(html, new RegExp(c.profit.lines.revenue));
-  assert.match(html, /-40\.000/);
-  assert.match(html, /-255\.000/);
+  // Deductions carry a true minus sign (−), not a hyphen.
+  assert.match(html, /−40\.000/);
+  assert.match(html, /−255\.000/);
   assert.match(html, /5\.000/);
   assert.match(html, new RegExp(c.profit.disclaimerTitle));
   assert.match(html, /không phải báo cáo thuế/);
-  assert.match(html, /50% số lượng bán có giá vốn/);
+  assert.match(html, /50,0% số lượng bán có giá vốn/);
   assert.match(html, /1 tháng chưa có kỳ lương/);
   assert.match(html, /1 tháng chỉ nằm một phần/);
   assert.match(html, /1 tháng là bảng lương nháp/);

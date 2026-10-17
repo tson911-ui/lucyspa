@@ -53,8 +53,18 @@ test('a new version is a page too: loading state without a drawer', () => {
 
 test('a viewer cannot create programs', () => {
   const markup = render(<DiscountNewScreen />, employee([['CREATE_VOUCHERS']]));
-  assert.ok(markup.includes(vi.errors.forbidden));
+  // Heading, one sentence and the way back to the list (never a dead end).
+  assert.ok(markup.includes(d.forbiddenTitle));
+  assert.ok(markup.includes(d.forbiddenNext));
+  assert.match(markup, /href="\/vi\/workforce\/discounts"[^>]*>(?:<[^>]+>)*Về danh sách ưu đãi/);
   assert.ok(!markup.includes('<form'));
+});
+
+test('the validity is typed as dd/mm/yyyy and a 24 h time, never the browser datetime-local', () => {
+  const markup = render(<DiscountNewScreen />, owner);
+  assert.ok(!markup.includes('datetime-local'));
+  assert.ok(markup.includes('placeholder="dd/mm/yyyy…"'));
+  assert.ok(markup.includes('placeholder="HH:mm…"'));
 });
 
 test('the scope is chosen first: services, products or both, then everything or only the items chosen', () => {

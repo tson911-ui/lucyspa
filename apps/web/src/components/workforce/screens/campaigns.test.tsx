@@ -71,13 +71,23 @@ const running = (patch: Partial<CampaignDetailResponse> = {}) =>
     ...patch,
   });
 
+/** The header status slot (under the h1): the badge of the record's state. */
+const headerStatus = (markup: string): string => {
+  const start = markup.indexOf('ls-page-status');
+  return start < 0 ? '' : markup.slice(start, markup.indexOf('</div>', start));
+};
+
 const view = (data: CampaignDetailResponse) =>
   render(<CampaignDetailView campaign={data} reload={noop} />, owner);
 
 test('a draft shows its state in the header, one primary action, the review, the groups and the picker tab', () => {
   const markup = view(campaign());
   assert.ok(markup.includes('Ngày hội làm đẹp'));
-  assert.ok(markup.includes(`${c.states.DRAFT} ·`), 'the state is text in the header line');
+  assert.ok(
+    headerStatus(markup).includes(c.states.DRAFT),
+    'the state is the header badge under the title',
+  );
+  assert.ok(!markup.includes(' · '), 'no middle-dot meta line');
   assert.ok(markup.includes(c.detail.publish));
   assert.ok(!markup.includes(c.detail.end));
   assert.ok(markup.includes(c.review.titleDraft));
@@ -118,13 +128,17 @@ test('a draft that cannot be published says why, and its Publish button is disab
 
 test('a running campaign offers End, no publish, no picker, no group edits, and a published summary', () => {
   const markup = view(running());
-  assert.ok(markup.includes(c.detail.end));
+  // End is destructive: it sits in the header more-actions menu (with its confirmation), never in the primary slot.
+  assert.ok(markup.includes(c.detail.moreActions));
+  assert.ok(
+    !markup.includes(`ls-btn-label">${c.detail.end}</span>`),
+    'no End button in the header',
+  );
   assert.ok(!markup.includes(c.detail.publish));
   assert.ok(!markup.includes(c.detail.tabs.picker));
   assert.ok(!markup.includes(c.groups.add));
-  assert.ok(!markup.includes(c.detail.moreActions));
   assert.ok(markup.includes(c.review.titlePublished));
-  assert.ok(markup.includes(`${c.states.ACTIVE} ·`));
+  assert.ok(headerStatus(markup).includes(c.states.ACTIVE));
   assert.ok(!markup.includes(c.review.frozen), 'the freeze notice is for drafts');
 });
 

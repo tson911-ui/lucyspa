@@ -403,10 +403,15 @@ export function orderCategoryTree(
     left.sortOrder - right.sortOrder || left.code.localeCompare(right.code);
   const roots = categories.filter((entry) => entry.parentId === null).sort(byOrder);
   const known = new Set(roots.map((root) => root.id));
-  const result = roots.flatMap((root) => [
-    root,
-    ...categories.filter((entry) => entry.parentId === root.id).sort(byOrder),
-  ]);
+  // Children grouped by parent in one pass, not one filter of the whole list per root (rbp js-index-maps).
+  const children = new Map<string, ProductCategoryResponse[]>();
+  for (const entry of categories) {
+    if (entry.parentId === null) continue;
+    const siblings = children.get(entry.parentId);
+    if (siblings) siblings.push(entry);
+    else children.set(entry.parentId, [entry]);
+  }
+  const result = roots.flatMap((root) => [root, ...(children.get(root.id) ?? []).sort(byOrder)]);
   // A child whose parent is not in the list (should not happen) is still shown.
   return [
     ...result,
@@ -653,7 +658,7 @@ export function variantActiveRequest(
 export const variantName = (variant: ProductVariantResponse, locale: Locale): string => {
   const label =
     locale === 'vi' ? (variant.labelVi ?? variant.labelEn) : (variant.labelEn ?? variant.labelVi);
-  return label ? `${variant.sku} · ${label}` : variant.sku;
+  return label ? `${variant.sku} (${label})` : variant.sku;
 };
 
 // ---------------------------------------------------------------------------------------------------- price change

@@ -6,10 +6,12 @@ import {
   Card,
   CardHeader,
   DescriptionList,
+  EmptyState,
   Grid,
   ListToolbar,
   RowActions,
   Select,
+  useUrlState,
   type DescriptionItem,
 } from '@lucy-spa/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,7 +29,10 @@ import { briefDictionary } from '../../../i18n/brief';
 import { canAt } from '../../../lib/workforce/permissions';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Empty, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
+import { Badge, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
+
+/** The branch whose queue is shown, in the address bar ('' = the first branch the person may work at). */
+const MY_SERVICES_DEFAULTS = { branch: '' };
 
 /**
  * "Dịch vụ của tôi": the work the signed-in staff member is assigned today. One card per service
@@ -43,7 +48,14 @@ export function MyServicesScreen() {
     () => executionBranches(account, branches.data),
     [account, branches.data],
   );
-  const [branchId, setBranchId] = useState('');
+  // The chosen branch lives in the address bar (?branch=…): Back/Forward and a shared link restore it.
+  const [url, updateUrl] = useUrlState(MY_SERVICES_DEFAULTS);
+  const chosenBranch = url.branch;
+  const setBranchId = (value: string) => updateUrl({ branch: value });
+  // Derived in render (rbp my-services.tsx:57-59): the chosen branch while allowed, else the first allowed one.
+  const branchId = allowed.some((branch) => branch.id === chosenBranch)
+    ? chosenBranch
+    : (allowed[0]?.id ?? '');
   const [board, setBoard] = useState<MyServiceWorkResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -53,10 +65,6 @@ export function MyServicesScreen() {
   const [loading, setLoading] = useState(false);
   const generation = useRef(0);
   const mutating = useRef(false);
-
-  useEffect(() => {
-    if (!allowed.some((branch) => branch.id === branchId)) setBranchId(allowed[0]?.id ?? '');
-  }, [allowed, branchId]);
 
   const load = useCallback(
     async (passive: boolean) => {
@@ -131,23 +139,25 @@ export function MyServicesScreen() {
     }
   }
 
-  const timestamp = (iso: string) =>
-    new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-      timeZone: board?.branch.timezone ?? 'UTC',
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }).format(new Date(iso));
-
-  // The planned slot is read as hours of the day; the actual times keep the date and the seconds.
-  const clock = (iso: string) =>
-    new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-      timeZone: board?.branch.timezone ?? 'UTC',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
+  // The planned slot is read as hours of the day; the actual times keep the date and the seconds. Both formatters are built once
+  // per language and branch time zone, not per line on every render (rbp js-cache-function-results).
+  const timeZone = board?.branch.timezone ?? 'UTC';
+  const formats = useMemo(() => {
+    const tag = locale === 'vi' ? 'vi-VN' : 'en-GB';
+    return {
+      stamp: new Intl.DateTimeFormat(tag, {
+        timeZone,
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+      clock: new Intl.DateTimeFormat(tag, { timeZone, hour: '2-digit', minute: '2-digit' }),
+    };
+  }, [locale, timeZone]);
+  const timestamp = (iso: string) => formats.stamp.format(new Date(iso));
+  const clock = (iso: string) => formats.clock.format(new Date(iso));
   const lines = board?.branch.id === branchId ? board.lines : [];
 
   function details(line: ServiceExecutionWork): DescriptionItem[] {
@@ -182,7 +192,7 @@ export function MyServicesScreen() {
         ? [
             {
               id: 'add',
-              label: t.bookingBoard.addService,
+              label: t.bookingBoard.addServiceOpen,
               icon: 'plus' as const,
               disabled: pending !== null,
               onSelect: () => setAdding(line),
@@ -233,12 +243,20 @@ export function MyServicesScreen() {
 
   return (
     <>
-      <PageHeader title={t.execution.title} intro={t.execution.intro} />
+      {/* The how-to line only when the page can be used. */}
+      <PageHeader
+        title={t.execution.title}
+        {...(branches.loading || allowed.length > 0 ? { intro: t.execution.intro } : {})}
+      />
       {branches.loading && !branches.data ? <Loading t={t} /> : null}
       {branches.error ? (
         <Notice tone="error">{executionErrorMessage(branches.error, t)}</Notice>
       ) : null}
-      {!branches.loading && allowed.length === 0 ? <Empty>{t.execution.noBranch}</Empty> : null}
+      {!branches.loading && allowed.length === 0 ? (
+        <EmptyState icon="user" title={t.execution.noBranchTitle}>
+          {t.execution.noBranch}
+        </EmptyState>
+      ) : null}
       {allowed.length > 0 ? (
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -260,19 +278,20 @@ export function MyServicesScreen() {
       {message ? <Notice tone="success">{message}</Notice> : null}
       {loading && !board ? <Loading t={t} /> : null}
       {board?.branch.id === branchId && lines.length === 0 ? (
-        <Empty>{t.execution.empty}</Empty>
+        <EmptyState icon="calendar" title={t.execution.emptyTitle}>
+          {t.execution.empty}
+        </EmptyState>
       ) : null}
       {lines.length > 0 ? (
         <Grid min="lg" gap="block">
           {lines.map((line) => {
             const name = locale === 'vi' ? line.service.nameVi : line.service.nameEn;
             return (
-              <Card as="article" key={line.lineId} aria-label={`${name} · ${line.visitCode}`}>
+              <Card as="article" key={line.lineId} aria-label={`${name}, ${line.visitCode}`}>
                 <CardHeader
                   title={name}
-                  description={`${line.visitCode} · ${fill(t.execution.sequence, { number: line.sequence })}`}
+                  description={`${line.visitCode}, ${fill(t.execution.sequence, { number: line.sequence })}`}
                   headingLevel={3}
-                  clamp
                   actions={
                     menuItems(line).length > 0 ? (
                       <RowActions

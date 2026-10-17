@@ -9,21 +9,25 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
+  ButtonLink,
   ConfirmDialog,
   Cluster,
   DataTable,
   DescriptionList,
+  EmptyState,
   Field,
   FormDialog,
   FormGrid,
   ListSection,
+  PageHeader as UiPageHeader,
   RowActions,
   Tabs,
   TextInput,
+  useUrlState,
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink } from '../link';
 import { useEffect, useRef, useState } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
@@ -37,24 +41,61 @@ import {
 import { discountName } from '../../../lib/workforce/discounts-list';
 import { formatVnd } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  paginationLabels,
+} from '../../../lib/workforce/list-view';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   Section,
   useResource,
   useSuccessToast,
 } from '../ui';
 import { orderedCategories, useProductCatalog } from './discount-targets';
+import { AdminButtonLink } from './admin-button-link';
 
 type TabId = 'current' | 'versions' | 'vouchers';
 type Overlay = 'terminate' | 'voucher';
+const TAB_IDS: readonly TabId[] = ['current', 'versions', 'vouchers'];
+const TAB_DEFAULTS = { tab: 'current' };
+const normalizeTab = (state: typeof TAB_DEFAULTS) => ({
+  tab: (TAB_IDS as readonly string[]).includes(state.tab) ? state.tab : 'current',
+});
+const TAB_OPTIONS = { normalize: normalizeTab };
+// The pagers of the two lists live in the address bar too (distinct keys; a new page size goes back to page 1).
+const VERSIONS_DEFAULTS = { vpage: 1, vsize: 20 };
+const VERSIONS_OPTIONS = {
+  normalize: (state: typeof VERSIONS_DEFAULTS) => ({
+    vpage: normalizePage(state.vpage),
+    vsize: normalizePageSize(state.vsize),
+  }),
+  resetOnChange: ['vpage'],
+};
+const VOUCHERS_DEFAULTS = { cpage: 1, csize: 20 };
+const VOUCHERS_OPTIONS = {
+  normalize: (state: typeof VOUCHERS_DEFAULTS) => ({
+    cpage: normalizePage(state.cpage),
+    csize: normalizePageSize(state.csize),
+  }),
+  resetOnChange: ['cpage'],
+};
+/** '1 use' / '2 uses' (English plural; Vietnamese has one form). */
+const plurals = new Map<string, Intl.PluralRules>();
+function pluralOf(locale: string, n: number): string {
+  let rules = plurals.get(locale);
+  if (!rules) {
+    rules = new Intl.PluralRules(locale);
+    plurals.set(locale, rules);
+  }
+  return rules.select(n);
+}
 
 /**
  * One discount program (Phase 4 Step 6): what is in force now, its immutable version history, pause/resume,
@@ -66,6 +107,7 @@ export function DiscountDetailScreen({ id }: { id: string }) {
   const { api, t } = useWorkforce();
   const [program, setProgram] = useState<DiscountDetailResponse | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -76,9 +118,20 @@ export function DiscountDetailScreen({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [api, id]);
+  }, [api, id, attempt]);
 
-  if (loadError && !program) return <ErrorState error={loadError} t={t} />;
+  if (loadError && !program) {
+    return (
+      <ErrorState
+        error={loadError}
+        t={t}
+        onRetry={() => {
+          setLoadError(null);
+          setAttempt((count) => count + 1);
+        }}
+      />
+    );
+  }
   if (!program) return <Loading t={t} page />;
   return <DiscountDetail program={program} onChange={setProgram} />;
 }
@@ -90,11 +143,12 @@ function DiscountDetail({
   program: DiscountDetailResponse;
   onChange: (program: DiscountDetailResponse) => void;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const notify = useSuccessToast();
   const text = organizationDictionary(locale);
   const d = t.discounts;
-  const [tab, setTab] = useState<TabId>('current');
+  // The open tab lives in the address bar (reload, back and a shared link keep it).
+  const [view, updateView] = useUrlState(TAB_DEFAULTS, TAB_OPTIONS);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
@@ -180,7 +234,7 @@ function DiscountDetail({
             ]),
         {
           id: 'terminate',
-          label: d.terminate,
+          label: opensInput(d.terminate),
           tone: 'danger',
           onSelect: () => setOverlay('terminate'),
         },
@@ -189,33 +243,44 @@ function DiscountDetail({
 
   return (
     <>
-      <PageHeader
+      {/* Subtitle = the program code only (no "code · kind" meta string); the status, the kind and the bot flag are badges
+          in the kit header's status slot, under the title and never inside the heading. */}
+      <UiPageHeader
         title={title}
-        intro={`${program.code} · ${program.requiresCode ? d.codeProgram : d.autoProgram}`}
+        description={program.code}
+        status={
+          <Cluster gap="inline">
+            <Badge tone={statusTone(program.status)}>{d.statuses[program.status]}</Badge>
+            <Badge tone="neutral">{program.requiresCode ? d.codeProgram : d.autoProgram}</Badge>
+            {program.botVisible ? <Badge tone="info">{d.botBadge}</Badge> : null}
+          </Cluster>
+        }
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: d.title, href: `${base}/discounts` }, { label: title }]}
           />
         }
-      >
-        {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
-        {manage ? (
-          <Button
-            variant="primary"
-            icon="plus"
-            onClick={() => navigate?.(`${base}/discounts/${program.id}/versions/new`)}
-          >
-            {d.newVersion}
-          </Button>
-        ) : null}
-      </PageHeader>
-      <Cluster gap="inline">
-        <span className="ls-hint">{t.common.status}:</span>
-        <Badge tone={statusTone(program.status)}>{d.statuses[program.status]}</Badge>
-        {program.botVisible ? <Badge tone="info">{d.botBadge}</Badge> : null}
-      </Cluster>
+        actions={
+          menu.length > 0 || manage ? (
+            <>
+              {menu.length > 0 ? <RowActions menuLabel={text.moreActions} items={menu} /> : null}
+              {/* A new version opens its own page: a real link styled as the one primary. */}
+              {manage ? (
+                <ButtonLink
+                  LinkComponent={AdminButtonLink}
+                  variant="primary"
+                  icon="plus"
+                  href={`${base}/discounts/${program.id}/versions/new`}
+                >
+                  {d.newVersion}
+                </ButtonLink>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      />
       {error ? <Notice tone="error">{error}</Notice> : null}
       {terminated ? (
         <Notice tone="info">
@@ -224,8 +289,8 @@ function DiscountDetail({
       ) : null}
       <Tabs
         label={d.tabsLabel}
-        value={tab}
-        onChange={(id) => setTab(id as TabId)}
+        value={view.tab}
+        onChange={(id) => updateView({ tab: id })}
         tabs={[
           {
             id: 'current',
@@ -269,7 +334,10 @@ function DiscountDetail({
         <ConfirmDialog
           title={d.terminateTitle}
           description={d.terminateBody}
-          facts={[{ label: d.code, value: `${program.code} · ${title}` }]}
+          facts={[
+            { label: d.colProgram, value: title },
+            { label: d.code, value: program.code },
+          ]}
           tone="danger"
           confirmLabel={d.terminateConfirm}
           busyLabel={d.saving}
@@ -398,15 +466,15 @@ function CurrentVersion({ program }: { program: DiscountDetailResponse }) {
       : fill(d.perCustomerShort, { n: current.usageLimitPerCustomer }),
   ].filter((entry): entry is string => entry !== null);
   return (
-    <Section title={fill(d.current, { n: current.versionNo })}>
+    // The card title is text only; the version number is a fact. The validity is two facts (from, until): no "→" glyph.
+    <Section title={d.currentTitle}>
       <DescriptionList
         columns={2}
         items={[
+          { label: d.colVersion, value: fill(d.versionN, { n: current.versionNo }) },
           { label: d.colBenefit, value: benefitLabel(current, locale) },
-          {
-            label: d.colWindow,
-            value: `${formatVnInstant(current.validFrom, locale)} → ${formatVnInstant(current.validUntil, locale)}`,
-          },
+          { label: d.validFrom, value: formatVnInstant(current.validFrom, locale) },
+          { label: d.validUntil, value: formatVnInstant(current.validUntil, locale) },
           { label: d.minSpend, value: formatVnd(current.minSpendVnd, locale) },
           { label: d.scope, value: d.scopeKinds[scope] },
           {
@@ -423,8 +491,16 @@ function CurrentVersion({ program }: { program: DiscountDetailResponse }) {
                   ? target.names.join(', ')
                   : fill(d.targetsCount, { n: target.ids.length }),
             })),
-          { label: d.limits, value: limits.length > 0 ? limits.join(' · ') : d.unlimited },
-          { label: d.colUsed, value: program.redemptions },
+          { label: d.limits, value: limits.length > 0 ? limits.join(', ') : d.unlimited },
+          {
+            label: d.colUsed,
+            value: fill(
+              pluralOf(locale, program.redemptions) === 'one' ? d.usedTimeOne : d.usedTimes,
+              {
+                n: program.redemptions,
+              },
+            ),
+          },
         ]}
       />
     </Section>
@@ -435,8 +511,10 @@ function CurrentVersion({ program }: { program: DiscountDetailResponse }) {
 function Versions({ program }: { program: DiscountDetailResponse }) {
   const { t, locale } = useWorkforce();
   const d = t.discounts;
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [{ vpage: page, vsize: pageSize }, update] = useUrlState(
+    VERSIONS_DEFAULTS,
+    VERSIONS_OPTIONS,
+  );
   const columns: DataTableColumn<DiscountVersionResponse>[] = [
     {
       key: 'version',
@@ -449,8 +527,15 @@ function Versions({ program }: { program: DiscountDetailResponse }) {
     {
       key: 'window',
       header: d.colWindow,
-      cell: (version) =>
-        `${formatVnInstant(version.validFrom, locale)} → ${formatVnInstant(version.validUntil, locale)}`,
+      // Start, then "đến <end>" on a second line: no "→" glyph and a range never breaks inside a date.
+      cell: (version) => (
+        <span className="ls-cell-stack ls-cat-window">
+          <span className="ls-cell-main">{formatVnInstant(version.validFrom, locale)}</span>
+          <span className="ls-cell-sub">
+            {fill(d.untilShort, { date: formatVnInstant(version.validUntil, locale) })}
+          </span>
+        </span>
+      ),
     },
     {
       key: 'minSpend',
@@ -471,11 +556,8 @@ function Versions({ program }: { program: DiscountDetailResponse }) {
         paging={{
           page,
           pageSize,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-          },
+          onPageChange: (vpage) => update({ vpage }),
+          onPageSizeChange: (vsize) => update({ vsize }),
           labels: paginationLabels(t, d.history),
         }}
       />
@@ -499,14 +581,16 @@ function Vouchers({
 }) {
   const { t } = useWorkforce();
   const d = t.discounts;
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [{ cpage: page, csize: pageSize }, update] = useUrlState(
+    VOUCHERS_DEFAULTS,
+    VOUCHERS_OPTIONS,
+  );
   const columns: DataTableColumn<VoucherResponse>[] = [
     {
       key: 'code',
       header: d.vouchersTitle,
       mobileTitle: true,
-      cell: (voucher) => <code>{voucher.code}</code>,
+      cell: (voucher) => <code translate="no">{voucher.code}</code>,
     },
     {
       key: 'status',
@@ -547,7 +631,7 @@ function Vouchers({
       actions={
         editable ? (
           <Button variant="secondary" icon="plus" onClick={onAdd}>
-            {d.addVoucher}
+            {opensInput(d.addVoucher)}
           </Button>
         ) : undefined
       }
@@ -558,15 +642,16 @@ function Vouchers({
         columns={columns}
         rows={program.vouchers}
         rowKey={(voucher) => voucher.id}
-        empty={<Empty>{d.noVouchers}</Empty>}
+        empty={
+          <EmptyState icon={false} title={d.noVouchersTitle}>
+            {d.noVouchers}
+          </EmptyState>
+        }
         paging={{
           page,
           pageSize,
-          onPageChange: setPage,
-          onPageSizeChange: (size) => {
-            setPageSize(size);
-            setPage(1);
-          },
+          onPageChange: (cpage) => update({ cpage }),
+          onPageSizeChange: (csize) => update({ csize }),
           labels: paginationLabels(t, d.vouchersTitle),
         }}
       />
@@ -628,8 +713,11 @@ function VoucherDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="voucher-code"
               maxLength={64}
               autoComplete="off"
+              spellCheck={false}
+              autoCapitalize="characters"
               value={code}
               onChange={(event) => setCode(event.target.value.toUpperCase())}
             />

@@ -11,21 +11,25 @@ import {
   Card,
   CardHeader,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DescriptionList,
-  ListSection,
+  EmptyState,
   ListToolbar,
+  PageHeader as KitPageHeader,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { payrollDictionary } from '../../../i18n/payroll';
 import { fill } from '../../../i18n/workforce';
 import { signedVnd, vndNumber } from '../../../lib/workforce/cash';
-import { formatDate, formatDateTime } from '../../../lib/workforce/format';
-import { toolbarLabels } from '../../../lib/workforce/list-view';
+import { formatDate, formatDateTime, formatVnd } from '../../../lib/workforce/format';
+import { normalizePage, normalizePageSize, toolbarLabels } from '../../../lib/workforce/list-view';
 import { monthLabel } from '../../../lib/workforce/payroll';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Loading, PageHeader, useResource } from '../ui';
+import { Badge, Button, ErrorState, Loading, PageHeader, useResource } from '../ui';
 
 const SLIP_TONE = { PENDING: 'warning', PAID: 'success', REVERSED: 'neutral' } as const;
 const ZONE = 'Asia/Ho_Chi_Minh';
@@ -50,7 +54,7 @@ export function PayslipDocument({ slip }: { slip: PayslipView }) {
         <>
           {p.kinds[item.kind]}
           {item.quantity ? (
-            <span className="ls-hint"> · {fill(p.run.qty, { count: item.quantity })}</span>
+            <span className="ls-adminb-sub">{fill(p.run.qty, { count: item.quantity })}</span>
           ) : null}
         </>
       ),
@@ -58,7 +62,7 @@ export function PayslipDocument({ slip }: { slip: PayslipView }) {
     {
       key: 'note',
       header: p.run.itemColumns.note,
-      truncate: true,
+      wrap: true,
       hidePhone: true,
       cell: (item) => {
         const parts = [
@@ -67,7 +71,7 @@ export function PayslipDocument({ slip }: { slip: PayslipView }) {
             ? fill(p.run.lateNote, { amount: signedVnd(vndNumber(item.lateVnd), locale) })
             : null,
         ].filter(Boolean);
-        return parts.length > 0 ? parts.join(' · ') : '—';
+        return parts.length > 0 ? parts.join('; ') : '—';
       },
     },
     {
@@ -80,14 +84,22 @@ export function PayslipDocument({ slip }: { slip: PayslipView }) {
   return (
     <>
       <Card as="section" aria-label={x.heading}>
-        <CardHeader
-          title={`LUCY SPA · ${fill(x.title, { month: monthLabel(slip.month) })}`}
-          actions={<Badge tone={SLIP_TONE[slip.status]}>{p.slipStatuses[slip.status]}</Badge>}
-        />
+        {/* The printed slip carries the shop's text logo and the month; on screen the page header names the month and shows the
+            status, so the card does not repeat the h1. */}
+        <div className="ls-print-only">
+          <p className="ls-adminb-slip-brand" translate="no">
+            LUCY SPA
+          </p>
+          <p className="ls-adminb-heading">{fill(x.title, { month: monthLabel(slip.month) })}</p>
+        </div>
+        <CardHeader title={slip.employee.name} />
         <DescriptionList
           columns={2}
           items={[
-            { label: x.employee, value: `${slip.employee.name} · ${slip.employee.code}` },
+            {
+              label: x.employeeCode,
+              value: <span translate="no">{slip.employee.code}</span>,
+            },
             {
               label: x.period,
               value: `${formatDate(slip.periodFrom, locale)} – ${formatDate(slip.periodTo, locale)}`,
@@ -159,12 +171,14 @@ export function PayslipScreen({ id }: { id: string }) {
   const slip = data.data;
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={fill(p.slip.title, { month: monthLabel(slip.month) })}
+        status={<Badge tone={SLIP_TONE[slip.status]}>{p.slipStatuses[slip.status]}</Badge>}
+        actions={<PrintButton />}
         breadcrumbs={
           <Breadcrumbs
             label={p.common.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               { label: p.title, href: `${base}/payroll` },
               { label: monthLabel(slip.month), href: `${base}/payroll/${slip.runId}` },
@@ -172,20 +186,38 @@ export function PayslipScreen({ id }: { id: string }) {
             ]}
           />
         }
-      >
-        <PrintButton />
-      </PageHeader>
+      />
       <PayslipDocument slip={slip} />
     </>
   );
 }
+
+const MY_PAYSLIPS_DEFAULTS = { page: 1, size: DEFAULT_PAGE_SIZE };
+const MY_PAYSLIPS_OPTIONS = {
+  normalize: (state: typeof MY_PAYSLIPS_DEFAULTS) => ({
+    page: normalizePage(state.page),
+    size: normalizePageSize(state.size),
+  }),
+};
 
 /** "Phiếu lương của tôi": the signed-in employee's own payslips. */
 export function MyPayslipsScreen() {
   const { api, t, locale, base } = useWorkforce();
   const p = payrollDictionary(locale);
   const data = useResource(() => api.get<MyPayslipsResponse>('/api/v1/me/payslips'), [api]);
-  const paging = useClientPaging(t, p.mine.title);
+  // The pager in the address bar (?page=2): Back/Forward and a shared link restore it.
+  const [pager, updatePager] = useUrlState(MY_PAYSLIPS_DEFAULTS, MY_PAYSLIPS_OPTIONS);
+  const paging = urlPaging(
+    pager.page,
+    pager.size,
+    ({ page, pageSize }) =>
+      updatePager({
+        ...(page !== undefined ? { page } : {}),
+        ...(pageSize !== undefined ? { size: pageSize } : {}),
+      }),
+    t,
+    p.mine.title,
+  );
   if (data.error && !data.data) {
     return (
       <>
@@ -210,7 +242,8 @@ export function MyPayslipsScreen() {
       key: 'net',
       header: p.mine.columns.net,
       numeric: true,
-      cell: (slip) => signedVnd(vndNumber(slip.netVnd), locale),
+      // Intl grouping from the integer string (wig Locale & i18n), never through a float.
+      cell: (slip) => formatVnd(slip.netVnd, locale),
     },
     {
       key: 'tips',
@@ -218,7 +251,7 @@ export function MyPayslipsScreen() {
       numeric: true,
       hideBelow: 'md',
       hidePhone: true,
-      cell: (slip) => (slip.tipsVnd !== '0' ? signedVnd(vndNumber(slip.tipsVnd), locale) : '—'),
+      cell: (slip) => (slip.tipsVnd !== '0' ? formatVnd(slip.tipsVnd, locale) : '—'),
     },
     {
       key: 'status',
@@ -236,22 +269,32 @@ export function MyPayslipsScreen() {
   return (
     <>
       <PageHeader title={p.mine.title} intro={p.mine.intro} />
-      <ListSection title={p.mine.section}>
+      {/* The page's one list: no "Các tháng" h2 repeating the page, no count line for an empty list. */}
+      <div className="ls-self-list">
         <ListToolbar
           labels={toolbarLabels(t)}
           reload={{ label: t.common.reload, onClick: () => void data.reload() }}
-          resultCount={fill(t.common.list.results, { count: data.data.items.length })}
+          resultCount={
+            data.data.items.length > 0
+              ? fill(t.common.list.results, { count: data.data.items.length })
+              : undefined
+          }
         />
         <DataTable
+          drillDown
           mode="client"
           caption={fill(t.common.list.table, { list: p.mine.title })}
           columns={columns}
           rows={data.data.items}
           rowKey={(slip) => slip.id}
-          empty={<Empty>{p.mine.none}</Empty>}
+          empty={
+            <EmptyState icon="receipt" title={p.mine.noneTitle}>
+              {p.mine.none}
+            </EmptyState>
+          }
           paging={paging}
         />
-      </ListSection>
+      </div>
     </>
   );
 }
@@ -273,21 +316,21 @@ export function MyPayslipScreen({ id }: { id: string }) {
   const slip = data.data;
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={fill(p.slip.title, { month: monthLabel(slip.month) })}
+        status={<Badge tone={SLIP_TONE[slip.status]}>{p.slipStatuses[slip.status]}</Badge>}
+        actions={<PrintButton />}
         breadcrumbs={
           <Breadcrumbs
             label={p.common.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               { label: p.mine.title, href: `${base}/my-payslips` },
               { label: monthLabel(slip.month) },
             ]}
           />
         }
-      >
-        <PrintButton />
-      </PageHeader>
+      />
       <PayslipDocument slip={slip} />
     </>
   );

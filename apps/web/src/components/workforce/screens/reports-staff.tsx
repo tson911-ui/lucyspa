@@ -3,11 +3,17 @@
 import type { StaffActivityReport, StaffRow } from '@lucy-spa/contracts';
 import { Stack, type DataTableColumn } from '@lucy-spa/ui';
 import { reportsBDictionary } from '../../../i18n/reports-b';
-import { vnd } from '../../../lib/workforce/reports';
+
 import { durationText, formatCount } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
-import { Notice } from '../ui';
-import { ReportData, ReportScreen, ReportTable, type ReportTabDef } from './reports-kit';
+import {
+  ReportData,
+  ReportNote,
+  ReportScreen,
+  ReportTable,
+  type ReportTabDef,
+} from './reports-kit';
+import { vndText } from './reports-format';
 
 /**
  * "Nhân viên" (Phase 8 P8-10, docs/PHASE8_REPORTS.md 4.4): what each employee did in the period. Facts only, listed by name, never ranked.
@@ -48,7 +54,7 @@ export function StaffBody({ data }: { data: StaffActivityReport }) {
   const count = (value: number) => formatCount(value, locale);
   const c = b.col;
   const { sales, pay } = data.columns;
-  const money = (value: string | null) => (value === null ? '—' : vnd(value, locale));
+  const money = (value: string | null) => (value === null ? '—' : vndText(value, locale));
   const salesColumns: DataTableColumn<StaffRow>[] = sales
     ? [
         {
@@ -98,7 +104,7 @@ export function StaffBody({ data }: { data: StaffActivityReport }) {
       key: 'name',
       header: c['employee']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.name,
     },
@@ -164,7 +170,7 @@ export function StaffBody({ data }: { data: StaffActivityReport }) {
   ];
   return (
     <Stack gap="page">
-      <Notice tone="info">{b.staff.note}</Notice>
+      <ReportNote>{b.staff.note}</ReportNote>
       <ReportTable
         label={b.staff.title}
         columns={columns}

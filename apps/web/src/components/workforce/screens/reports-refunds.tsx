@@ -5,7 +5,6 @@ import { REPORT_LIMITS } from '@lucy-spa/contracts';
 import {
   DataTable,
   DateRangePicker,
-  ListSection,
   ListToolbar,
   Select,
   Stack,
@@ -25,11 +24,13 @@ import {
   REFUND_RESET_KEYS,
   REPORT_ZONE,
   revenueRange,
-  vnd,
+  vndNumber,
 } from '../../../lib/workforce/reports';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
 import { ExportDialog } from './reports-export';
+import { Kpi, KpiRow } from './reports-kit';
+import { vndText } from './reports-format';
 
 /**
  * "Hoàn tiền và điều chỉnh" (Phase 8 P8-5, R10): every product refund, every difference paid back on an exchange and every cash payment
@@ -105,7 +106,27 @@ export function RefundsView({ registry }: { registry: ReportRegistryResponse }) 
             {fill(w.refunds.anomalies, { count: String(data.totals.paymentAnomalies) })}
           </Notice>
         ) : null}
-        <ListSection title={w.refunds.list}>
+        {/* The period totals are the report's figures (Stat cards, as on every report), not a middle-dot line in the toolbar. */}
+        {data ? (
+          <KpiRow>
+            <Kpi
+              label={w.refunds.kpi.refunds}
+              value={vndNumber(data.totals.refundsVnd)}
+              format="vnd"
+            />
+            <Kpi
+              label={w.refunds.kpi.exchanges}
+              value={vndNumber(data.totals.exchangesVnd)}
+              format="vnd"
+            />
+            <Kpi
+              label={w.refunds.kpi.reversals}
+              value={vndNumber(data.totals.reversalsVnd)}
+              format="vnd"
+            />
+          </KpiRow>
+        ) : null}
+        <div className="ls-list-section">
           <ListToolbar
             className="ls-no-print"
             labels={toolbarLabels(t)}
@@ -116,15 +137,6 @@ export function RefundsView({ registry }: { registry: ReportRegistryResponse }) 
               onClick: () => void report.reload(),
               busy: report.loading,
             }}
-            resultCount={
-              data
-                ? fill(w.refunds.totals, {
-                    refunds: vnd(data.totals.refundsVnd, locale),
-                    exchanges: vnd(data.totals.exchangesVnd, locale),
-                    reversals: vnd(data.totals.reversalsVnd, locale),
-                  })
-                : undefined
-            }
             filters={
               <>
                 {today && range ? (
@@ -173,7 +185,7 @@ export function RefundsView({ registry }: { registry: ReportRegistryResponse }) 
               labels: paginationLabels(t, w.refunds.title),
             }}
           />
-        </ListSection>
+        </div>
       </Stack>
       {exporting ? (
         <ExportDialog
@@ -194,12 +206,16 @@ function columns(
 ): DataTableColumn<RefundRow>[] {
   const c = w.refunds.columns;
   return [
-    { key: 'date', header: c.date, cell: (row) => formatDate(row.date, locale) },
+    {
+      key: 'date',
+      header: c.date,
+      cell: (row) => <span className="ls-adminb-code">{formatDate(row.date, locale)}</span>,
+    },
     {
       key: 'type',
       header: c.type,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
         <>
@@ -219,21 +235,30 @@ function columns(
             key: 'branch',
             header: c.branch,
             hideBelow: 'lg' as const,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             cell: (row: RefundRow) => row.branch.name,
           },
         ]
       : []),
-    { key: 'invoice', header: c.invoice, cell: (row) => row.invoiceCode },
+    {
+      key: 'invoice',
+      header: c.invoice,
+      cell: (row) => <span translate="no">{row.invoiceCode}</span>,
+    },
     {
       key: 'code',
       header: c.code,
       hideBelow: 'xl',
       hidePhone: true,
-      cell: (row) => row.code ?? '—',
+      cell: (row) => (row.code ? <span translate="no">{row.code}</span> : '—'),
     },
-    { key: 'amount', header: c.amount, numeric: true, cell: (row) => vnd(row.amountVnd, locale) },
+    {
+      key: 'amount',
+      header: c.amount,
+      numeric: true,
+      cell: (row) => vndText(row.amountVnd, locale),
+    },
     {
       key: 'method',
       header: c.method,
@@ -245,7 +270,7 @@ function columns(
       header: c.reason,
       hideBelow: 'lg',
       hidePhone: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.reason,
     },

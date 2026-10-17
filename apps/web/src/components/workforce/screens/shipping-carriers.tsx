@@ -4,16 +4,19 @@ import type { ShippingCarrierListResponse, ShippingCarrierResponse } from '@lucy
 import {
   ConfirmDialog,
   DataTable,
+  EmptyState,
   Field,
   FormDialog,
   FormGrid,
   RowActions,
   Stack,
   TextInput,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { onlineFulfilmentDictionary } from '../../../i18n/online-fulfilment';
+import { onlineSalesDictionary } from '../../../i18n/online-sales';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
@@ -32,13 +35,11 @@ import {
   type CarrierDraft,
 } from '../../../lib/workforce/online-orders';
 import { canGlobal } from '../../../lib/workforce/permissions';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -46,6 +47,17 @@ import {
   useResource,
   useSuccessToast,
 } from '../ui';
+import { focusInvalidSoon, urlPaging } from './products-links';
+
+// The carriers' page lives in the address bar (Back/Forward and shared links restore it).
+const useCarrierPaging = urlPaging('page', 'pageSize');
+const CARRIER_SORT = { sort: 'name', dir: 'asc' };
+const CARRIER_SORT_OPTIONS = {
+  normalize: (state: typeof CARRIER_SORT) => ({
+    sort: 'name',
+    dir: state.dir === 'desc' ? 'desc' : 'asc',
+  }),
+};
 
 /**
  * "Đơn vị vận chuyển": the carriers the shop ships online orders with (Phase 6 P6-20, `MANAGE_PRODUCTS`). The list starts empty: no
@@ -59,7 +71,7 @@ export function ShippingCarriersScreen() {
     return (
       <>
         <PageHeader title={text.title} intro={text.intro} />
-        <Empty>{text.noAccess}</Empty>
+        <Notice tone="info">{text.noAccess}</Notice>
       </>
     );
   }
@@ -72,10 +84,14 @@ function CarriersPage() {
     () => api.get<ShippingCarrierListResponse>('/api/v1/shipping-carriers'),
     [api],
   );
-  const [carriers, setCarriers] = useState<ShippingCarrierResponse[] | null>(null);
-  useEffect(() => {
-    if (loaded.data) setCarriers(loaded.data.carriers);
-  }, [loaded.data]);
+  // A command's answer is kept beside the load it replaced; a fresh load wins (derived in render, no mirror effect: rbp
+  // shipping-carriers.tsx:76-78).
+  const [changed, setChanged] = useState<{
+    from: ShippingCarrierListResponse | null;
+    value: ShippingCarrierResponse[];
+  } | null>(null);
+  const carriers =
+    changed && changed.from === loaded.data ? changed.value : (loaded.data?.carriers ?? null);
   if (loaded.error && !carriers) {
     return <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />;
   }
@@ -83,7 +99,7 @@ function CarriersPage() {
   return (
     <CarriersView
       carriers={carriers}
-      onChange={(list) => setCarriers(list.carriers)}
+      onChange={(list) => setChanged({ from: loaded.data, value: list.carriers })}
       reload={async () => {
         await loaded.reload();
       }}
@@ -109,16 +125,18 @@ export function CarriersView({
 }) {
   const { api, t, locale } = useWorkforce();
   const text = onlineFulfilmentDictionary(locale).carriers;
+  const empty = onlineSalesDictionary(locale).carriers;
   const notify = useSuccessToast();
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const paging = useClientPaging(t, text.title);
+  const paging = useCarrierPaging(t, text.title);
+  const [sorting, setSorting] = useUrlState(CARRIER_SORT, CARRIER_SORT_OPTIONS);
 
   const columns: DataTableColumn<ShippingCarrierResponse>[] = [
     {
       key: 'name',
       header: text.columns.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       sortable: true,
       sortValue: (carrier) => carrier.name.toLocaleLowerCase(locale),
@@ -127,10 +145,17 @@ export function CarriersView({
     {
       key: 'template',
       header: text.columns.template,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       hideBelow: 'md',
-      cell: (carrier) => carrier.trackingUrlTemplate ?? text.noTemplate,
+      cell: (carrier) =>
+        carrier.trackingUrlTemplate ? (
+          <span className="ls-adm-c-url" translate="no">
+            {carrier.trackingUrlTemplate}
+          </span>
+        ) : (
+          text.noTemplate
+        ),
     },
     {
       key: 'status',
@@ -186,8 +211,25 @@ export function CarriersView({
         rows={carriers}
         rowKey={(carrier) => `${carrier.id}:${carrier.rowVersion}`}
         loadingLabel={t.common.loading}
-        defaultSort={{ key: 'name', direction: 'asc' }}
-        empty={<Empty>{text.empty}</Empty>}
+        sort={{ key: sorting.sort, direction: sorting.dir === 'desc' ? 'desc' : 'asc' }}
+        onSortChange={(next) => setSorting({ sort: next.key, dir: next.direction })}
+        empty={
+          <EmptyState
+            icon="truck"
+            title={empty.emptyTitle}
+            action={
+              <Button
+                variant="secondary"
+                icon="plus"
+                onClick={() => setOverlay({ kind: 'create' })}
+              >
+                {text.add}
+              </Button>
+            }
+          >
+            {empty.empty}
+          </EmptyState>
+        }
         paging={paging}
       />
       {overlay?.kind === 'create' ? (
@@ -272,7 +314,10 @@ function CarrierDialog({
     setError(null);
     setField(null);
     const body = carrier ? carrierEditRequest(draft, carrier) : carrierCreateRequest(draft);
-    if (Object.keys(problems).length > 0) return;
+    if (Object.keys(problems).length > 0) {
+      focusInvalidSoon();
+      return;
+    }
     if (!body) {
       setError(text.nothing);
       return;
@@ -326,6 +371,7 @@ function CarrierDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="name"
                 autoComplete="off"
                 maxLength={CARRIER_NAME_MAX}
                 value={draft.name}
@@ -346,7 +392,10 @@ function CarrierDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="template"
                 autoComplete="off"
+                type="url"
+                spellCheck={false}
                 inputMode="url"
                 maxLength={CARRIER_TEMPLATE_MAX}
                 value={draft.template}

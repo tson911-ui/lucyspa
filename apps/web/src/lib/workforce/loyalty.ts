@@ -67,9 +67,21 @@ export function tierTone(tier: LoyaltyTierName): 'neutral' | 'info' {
   return tier === 'NONE' ? 'neutral' : 'info';
 }
 
+const pointFormats = new Map<Locale, Intl.NumberFormat>();
+
+/** One formatter per locale, built once (rbp js-cache-function-results: points are formatted per row). */
+function pointFormat(locale: Locale): Intl.NumberFormat {
+  let format = pointFormats.get(locale);
+  if (!format) {
+    format = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US');
+    pointFormats.set(locale, format);
+  }
+  return format;
+}
+
 /** Whole points with the locale's grouping; a plus or a true minus sign for adjustments. */
 export function formatPoints(points: number, locale: Locale, signed = false): string {
-  const text = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(Math.abs(points));
+  const text = pointFormat(locale).format(Math.abs(points));
   if (!signed || points === 0) return points < 0 ? `−${text}` : text;
   return points > 0 ? `+${text}` : `−${text}`;
 }

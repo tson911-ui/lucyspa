@@ -4,6 +4,7 @@ import type { ProductBrandResponse, ProductCategoryResponse } from '@lucy-spa/co
 import {
   CheckField,
   DataTable,
+  EmptyState,
   Field,
   FormDialog,
   FormGrid,
@@ -40,9 +41,21 @@ import { ApiError } from '../../../lib/workforce/api';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { MediaPhotoField } from './media-photo-field';
-import { Badge, Empty, ErrorState, Notice, useSuccessToast, type Resource } from '../ui';
+import { Badge, ErrorState, Notice, useSuccessToast, type Resource } from '../ui';
+import { focusInvalidSoon } from './products-links';
 
 /** The record was changed by someone else: the list is reloaded and the dialog closes with a message. */
+// Counts in the brand and category tables through Intl (grouping per locale), one formatter per locale (js-cache-function-results).
+const counts = new Map<string, Intl.NumberFormat>();
+function countText(locale: string, value: number): string {
+  let format = counts.get(locale);
+  if (!format) {
+    format = new Intl.NumberFormat(locale);
+    counts.set(locale, format);
+  }
+  return format.format(value);
+}
+
 const isConflict = (error: unknown): boolean =>
   error instanceof ApiError && error.code === 'CONFLICT' && error.field === null;
 
@@ -72,12 +85,22 @@ export function BrandsTab({
       key: 'name',
       header: b.nameVi,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (brand) => localizedName(brand, locale),
     },
-    { key: 'code', header: b.code, hideBelow: 'md', cell: (brand) => brand.code },
-    { key: 'products', header: b.products, numeric: true, cell: (brand) => brand.productCount },
+    {
+      key: 'code',
+      header: b.code,
+      hideBelow: 'md',
+      cell: (brand) => <span translate="no">{brand.code}</span>,
+    },
+    {
+      key: 'products',
+      header: b.products,
+      numeric: true,
+      cell: (brand) => countText(locale, brand.productCount),
+    },
     {
       key: 'status',
       header: p.list.status,
@@ -125,7 +148,7 @@ export function BrandsTab({
             <ErrorState error={resource.error} t={t} onRetry={() => void resource.reload()} />
           ) : undefined
         }
-        empty={resource.data ? <Empty>{b.empty}</Empty> : undefined}
+        empty={resource.data ? <EmptyState title={b.emptyTitle}>{b.empty}</EmptyState> : undefined}
         paging={{
           page: props.page,
           pageSize: props.pageSize,
@@ -187,7 +210,10 @@ function BrandDialog({
     setChecked(true);
     setError(null);
     const body = brand ? brandEditRequest(draft, brand.rowVersion) : brandCreateRequest(draft);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     setPending(true);
     try {
       await api.post(
@@ -225,6 +251,7 @@ function BrandDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               autoComplete="off"
               maxLength={200}
               value={draft.nameVi}
@@ -236,6 +263,7 @@ function BrandDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               autoComplete="off"
               maxLength={200}
               value={draft.nameEn}
@@ -246,7 +274,9 @@ function BrandDialog({
         {brand ? (
           <>
             <Field label={b.code} hint={b.codeHint}>
-              {(control) => <TextInput {...control} value={brand.code} readOnly disabled />}
+              {(control) => (
+                <TextInput {...control} name="code" value={brand.code} readOnly disabled />
+              )}
             </Field>
             <CheckField
               label={b.activeField}
@@ -279,6 +309,8 @@ function BrandDialog({
               {(control) => (
                 <NumberInput
                   {...control}
+                  name="homeSortOrder"
+                  autoComplete="off"
                   inputMode="numeric"
                   min={0}
                   value={draft.homeSortOrder}
@@ -313,7 +345,7 @@ export function CategoriesTab({
       key: 'name',
       header: c.nameVi,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (category) => localizedName(category, locale),
     },
@@ -321,23 +353,28 @@ export function CategoriesTab({
       key: 'parent',
       header: c.parent,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (category) => parentName(category.parentId),
     },
-    { key: 'code', header: c.code, hideBelow: 'lg', cell: (category) => category.code },
+    {
+      key: 'code',
+      header: c.code,
+      hideBelow: 'lg',
+      cell: (category) => <span translate="no">{category.code}</span>,
+    },
     {
       key: 'sortOrder',
       header: c.sortOrder,
       numeric: true,
       hideBelow: 'lg',
-      cell: (category) => category.sortOrder,
+      cell: (category) => countText(locale, category.sortOrder),
     },
     {
       key: 'products',
       header: c.products,
       numeric: true,
-      cell: (category) => category.productCount,
+      cell: (category) => countText(locale, category.productCount),
     },
     {
       key: 'status',
@@ -388,7 +425,7 @@ export function CategoriesTab({
             <ErrorState error={resource.error} t={t} onRetry={() => void resource.reload()} />
           ) : undefined
         }
-        empty={resource.data ? <Empty>{c.empty}</Empty> : undefined}
+        empty={resource.data ? <EmptyState title={c.emptyTitle}>{c.empty}</EmptyState> : undefined}
         paging={{
           page: props.page,
           pageSize: props.pageSize,
@@ -448,7 +485,10 @@ function CategoryDialog({
     const body = category
       ? categoryEditRequest(draft, category.rowVersion)
       : categoryCreateRequest(draft);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     setPending(true);
     try {
       await api.post(
@@ -486,6 +526,7 @@ function CategoryDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               autoComplete="off"
               maxLength={200}
               value={draft.nameVi}
@@ -497,6 +538,7 @@ function CategoryDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               autoComplete="off"
               maxLength={200}
               value={draft.nameEn}
@@ -508,6 +550,8 @@ function CategoryDialog({
           {(control) => (
             <Select
               {...control}
+              name="parentId"
+              autoComplete="off"
               value={draft.parentId}
               options={[
                 { value: '', label: c.parentNone },
@@ -524,6 +568,8 @@ function CategoryDialog({
           {(control) => (
             <NumberInput
               {...control}
+              name="sortOrder"
+              autoComplete="off"
               inputMode="numeric"
               min={0}
               value={draft.sortOrder}
@@ -534,7 +580,9 @@ function CategoryDialog({
         {category ? (
           <>
             <Field label={c.code} hint={c.codeHint}>
-              {(control) => <TextInput {...control} value={category.code} readOnly disabled />}
+              {(control) => (
+                <TextInput {...control} name="code" value={category.code} readOnly disabled />
+              )}
             </Field>
             <CheckField
               label={c.activeField}

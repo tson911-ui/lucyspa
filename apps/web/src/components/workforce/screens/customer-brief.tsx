@@ -7,6 +7,7 @@ import { fill } from '../../../i18n/workforce';
 import { dayText } from '../../../lib/workforce/assistant';
 import { useWorkforce } from '../session';
 import { Button, Loading, Notice, useResource } from '../ui';
+import { listFormat, sentence } from './pos-format';
 
 const BASE = '/api/v1/briefs/lines';
 
@@ -39,7 +40,8 @@ export function CustomerBriefDrawer({
   return (
     <Drawer
       open
-      title={`${text.title}: ${serviceName}`}
+      // One dictionary template, not a title glued together in code (wig Locale & i18n).
+      title={fill(text.titleFor, { service: serviceName })}
       closeLabel={t.common.close}
       onClose={onClose}
       footer={
@@ -64,7 +66,7 @@ export function CustomerBriefDrawer({
         ) : (
           <>
             <Stack gap="field">
-              <h3>{text.facts.title}</h3>
+              <h3 className="ls-pos-brief-heading">{text.facts.title}</h3>
               {data.facts && data.facts.known ? (
                 data.facts.visits === 0 ? (
                   <p>{text.facts.firstTime}</p>
@@ -93,21 +95,21 @@ export function CustomerBriefDrawer({
                         value:
                           data.facts.usualServices.length === 0
                             ? text.facts.none
-                            : data.facts.usualServices
-                                .map((entry) =>
+                            : listFormat(locale).format(
+                                data.facts.usualServices.map((entry) =>
                                   fill(text.facts.times, {
                                     name: entry.name,
                                     count: String(entry.times),
                                   }),
-                                )
-                                .join(', '),
+                                ),
+                              ),
                       },
                       {
                         label: text.facts.products,
                         value:
                           data.facts.productsBefore.length === 0
                             ? text.facts.none
-                            : data.facts.productsBefore.join(', '),
+                            : listFormat(locale).format(data.facts.productsBefore),
                       },
                     ]}
                   />
@@ -117,7 +119,7 @@ export function CustomerBriefDrawer({
               )}
             </Stack>
             <Stack gap="field">
-              <h3>{text.summary.title}</h3>
+              <h3 className="ls-pos-brief-heading">{text.summary.title}</h3>
               {data.summaryStatus === 'READY' && data.summary ? (
                 <>
                   <p>{data.summary}</p>
@@ -130,23 +132,26 @@ export function CustomerBriefDrawer({
               )}
             </Stack>
             <Stack gap="field">
-              <h3>{text.suggestions.title}</h3>
+              <h3 className="ls-pos-brief-heading">{text.suggestions.title}</h3>
               <p className="ls-hint">{text.suggestions.intro}</p>
-              {points.loading && !points.data ? (
-                <p className="ls-hint">{text.suggestions.loading}</p>
-              ) : points.data && points.data.available && points.data.items.length > 0 ? (
-                <ul>
-                  {points.data.items.map((item) => (
-                    <li key={item.productId}>
-                      <strong>{item.name}.</strong> {item.line}
-                    </li>
-                  ))}
-                </ul>
-              ) : points.error || points.data?.status === 'UNAVAILABLE' ? (
-                <p className="ls-hint">{text.suggestions.unavailable}</p>
-              ) : (
-                <p className="ls-hint">{text.suggestions.none}</p>
-              )}
+              {/* The talking points arrive from a second request: the region announces them when they come (wig :136). */}
+              <div aria-live="polite">
+                {points.loading && !points.data ? (
+                  <p className="ls-hint">{text.suggestions.loading}</p>
+                ) : points.data && points.data.available && points.data.items.length > 0 ? (
+                  <ul>
+                    {points.data.items.map((item) => (
+                      <li key={item.productId}>
+                        <strong>{sentence(item.name)}</strong> {item.line}
+                      </li>
+                    ))}
+                  </ul>
+                ) : points.error || points.data?.status === 'UNAVAILABLE' ? (
+                  <p className="ls-hint">{text.suggestions.unavailable}</p>
+                ) : (
+                  <p className="ls-hint">{text.suggestions.none}</p>
+                )}
+              </div>
             </Stack>
           </>
         )}

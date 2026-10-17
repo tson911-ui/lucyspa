@@ -26,6 +26,8 @@ export function paginationLabels(t: WorkforceDictionary, list: string): Paginati
     summary: text.summary,
     pageSize: text.pageSize,
     pageSizeOption: text.pageSizeOption,
+    // The counts in the list's language: 1.234 (vi) / 1,234 (en).
+    locale: t.meta.locale,
   };
 }
 

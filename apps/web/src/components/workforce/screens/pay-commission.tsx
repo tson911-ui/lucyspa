@@ -19,7 +19,6 @@ import {
   Field,
   FormDialog,
   FormGrid,
-  ListSection,
   ListToolbar,
   MoneyInput,
   Select,
@@ -33,7 +32,7 @@ import { fill } from '../../../i18n/workforce';
 import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import {
   commissionBody,
   commissionProblems,
@@ -94,18 +93,23 @@ export function PayCommission({
       key: 'scope',
       header: c.columns.scope,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       // On a phone the "paid to" column is hidden, so a rule for one person names them here.
       cell: (item) =>
-        item.employee
-          ? `${commissionScopeText(item, locale)} · ${item.employee.name}`
-          : commissionScopeText(item, locale),
+        item.employee ? (
+          <>
+            {commissionScopeText(item, locale)}
+            <span className="ls-adminb-sub">{item.employee.name}</span>
+          </>
+        ) : (
+          commissionScopeText(item, locale)
+        ),
     },
     {
       key: 'who',
       header: c.columns.who,
-      truncate: true,
+      wrap: true,
       hidePhone: true,
       cell: (item) => item.employee?.name ?? c.everyone,
     },
@@ -132,15 +136,16 @@ export function PayCommission({
       header: c.columns.by,
       hideBelow: 'xl',
       hidePhone: true,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (item) => item.createdBy.name,
     },
   ];
-  const paging1 = useClientPaging(t, c.title);
+  const paging1 = useUrlPaging('cmp', t, c.title);
   return (
     <>
-      <ListSection title={c.title}>
+      {/* The tab already names the list: no h2 repeating it (FR "a heading never repeats its control"). */}
+      <div className="ls-list-section">
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={filtered}
@@ -186,7 +191,7 @@ export function PayCommission({
           paging={paging1}
         />
         <p className="ls-hint">{p.common.appendOnly}</p>
-      </ListSection>
+      </div>
       {adding && data.data ? (
         <CommissionDialog data={data.data} onDone={onAdded} onClose={onCloseAdd} />
       ) : null}
@@ -220,14 +225,20 @@ function CommissionDialog({
   const [checked, setChecked] = useState(false);
   const command = usePayCommand();
   const problems = commissionProblems(draft, data.today);
-  const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+  // A value error names the rule the kind needs (a percentage or an amount).
+  const invalid = (name: 'target' | 'value' | 'from' | 'reason') =>
+    checked && problems.includes(name)
+      ? p.common.fieldErrors[
+          name === 'value' ? (draft.kind === 'PERCENT' ? 'percent' : 'amount') : name
+        ]
+      : undefined;
 
   // The product picker searches the catalog as the person types (at least two letters, twenty results).
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<CommissionProductOption[]>([]);
   const [chosen, setChosen] = useState<CommissionProductOption | null>(null);
   const [searching, setSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   useEffect(() => {
     if (draft.scope !== 'PRODUCT' || query.trim().length < 2) {
       setFound([]);
@@ -241,10 +252,17 @@ function CommissionDialog({
           q: query.trim(),
         })
         .then((result) => {
-          if (!cancelled) setFound(result.items);
+          if (!cancelled) {
+            setFound(result.items);
+            setSearchFailed(false);
+          }
         })
         .catch(() => {
-          if (!cancelled) setFound([]);
+          // A failed search says so (not "no product"); the next keystroke tries again.
+          if (!cancelled) {
+            setFound([]);
+            setSearchFailed(true);
+          }
         })
         .finally(() => {
           if (!cancelled) setSearching(false);
@@ -265,7 +283,7 @@ function CommissionDialog({
   const productOptions = [
     ...(chosen ? [chosen] : []),
     ...found.filter((item) => item.id !== chosen?.id),
-  ].map((item) => ({ value: item.id, label: item.sku ? `${item.name} · ${item.sku}` : item.name }));
+  ].map((item) => ({ value: item.id, label: item.sku ? `${item.name} (${item.sku})` : item.name }));
 
   async function submit() {
     setChecked(true);
@@ -344,7 +362,13 @@ function CommissionDialog({
                 onQueryChange={setQuery}
                 loading={searching}
                 loadingLabel={t.common.loading}
-                emptyLabel={query.trim().length < 2 ? c.productSearch : c.productNone}
+                emptyLabel={
+                  query.trim().length < 2
+                    ? c.productSearch
+                    : searchFailed
+                      ? c.productSearchFailed
+                      : c.productNone
+                }
                 placeholder={c.productSearch}
               />
             )}
@@ -387,6 +411,7 @@ function CommissionDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="percent"
                 inputMode="decimal"
                 autoComplete="off"
                 maxLength={6}
@@ -400,8 +425,9 @@ function CommissionDialog({
             {(control) => (
               <MoneyInput
                 {...control}
+                name="amount"
                 unit="₫"
-                separator={locale === 'vi' ? '.' : ','}
+                locale={locale}
                 value={draft.amount}
                 onValueChange={(amount) => setDraft({ ...draft, amount })}
               />
@@ -412,6 +438,7 @@ function CommissionDialog({
           {(control) => (
             <DateTextInput
               {...control}
+              name="from"
               min={window.min}
               max={window.max}
               value={draft.from}
@@ -423,6 +450,8 @@ function CommissionDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={draft.reason}

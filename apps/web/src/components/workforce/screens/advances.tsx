@@ -4,25 +4,27 @@ import type { SalaryAdvanceItem, SalaryAdvancesResponse } from '@lucy-spa/contra
 import { SALARY_ADVANCE_STATUSES } from '@lucy-spa/contracts';
 import {
   DataTable,
+  DEFAULT_PAGE_SIZE,
   FacetedFilter,
   Field,
   FormDialog,
   FormGrid,
-  ListSection,
+  focusFirstInvalid,
   ListToolbar,
+  MoneyInput,
   RowActions,
   Select,
   Textarea,
-  TextInput,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { payrollDictionary } from '../../../i18n/payroll';
 import { fill } from '../../../i18n/workforce';
-import { signedVnd, vndNumber } from '../../../lib/workforce/cash';
-import { formatDate } from '../../../lib/workforce/format';
+import type { Locale } from '../../../i18n/locales';
+import { formatDate, zonedLocal } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { toolbarLabels } from '../../../lib/workforce/list-view';
+import { normalizePage, normalizePageSize, toolbarLabels } from '../../../lib/workforce/list-view';
 import {
   advanceBody,
   advanceCan,
@@ -31,7 +33,8 @@ import {
   reasonMissing,
   type AdvanceDraft,
 } from '../../../lib/workforce/payroll';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { urlPaging } from '../../../lib/workforce/url-paging';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -45,6 +48,41 @@ import {
   useSuccessToast,
 } from '../ui';
 import { usePayrollCommand } from './payroll-command';
+
+/** Pay runs in the shop's zone (as the payslips do). */
+const ZONE = 'Asia/Ho_Chi_Minh';
+
+/** Address-bar state of the list (Back/Forward and a shared link restore the view); a filter change returns to page 1. */
+const ADVANCE_LIST_DEFAULTS = { status: '', page: 1, pageSize: DEFAULT_PAGE_SIZE };
+const ADVANCE_LIST_OPTIONS = {
+  normalize: (state: typeof ADVANCE_LIST_DEFAULTS) => ({
+    status: (SALARY_ADVANCE_STATUSES as readonly string[]).includes(state.status)
+      ? state.status
+      : '',
+    page: normalizePage(state.page),
+    pageSize: normalizePageSize(state.pageSize),
+  }),
+  resetOnChange: ['page'],
+};
+
+/** VND from the API's integer string with Intl (true minus sign for a negative fund balance), never through a float. */
+const vndFormats = new Map<string, Intl.NumberFormat>();
+function money(value: string, locale: Locale): string {
+  if (!/^-?(?:0|[1-9][0-9]*)$/.test(value)) return value;
+  let format = vndFormats.get(locale);
+  if (!format) {
+    format = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
+      signDisplay: 'negative',
+    });
+    vndFormats.set(locale, format);
+  }
+  return `${format.format(BigInt(value)).replace('-', '\u2212')}\u00a0₫`;
+}
+
+/** After a failed submit the errors render on the next frame; the first field with an error then takes focus. */
+function focusInvalid(): void {
+  requestAnimationFrame(() => focusFirstInvalid(document));
+}
 
 const TONE = {
   REQUESTED: 'info',
@@ -97,8 +135,11 @@ export function AdvancesView({
   const p = payrollDictionary(locale);
   const a = p.advances;
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [status, setStatus] = useState('');
-  const paging = useClientPaging(t, a.title);
+  // Filter and pager in the address bar (?status=PAID&page=2): Back/Forward and a shared link restore the list.
+  const [list, updateList] = useUrlState(ADVANCE_LIST_DEFAULTS, ADVANCE_LIST_OPTIONS);
+  const status = list.status;
+  const setStatus = (value: string) => updateList({ status: value });
+  const paging = urlPaging(list.page, list.pageSize, updateList, t, a.title);
   const notify = useSuccessToast();
   const [working, setWorking] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -127,20 +168,23 @@ export function AdvancesView({
       key: 'employee',
       header: a.columns.employee,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
+      // Name, then the code on a second muted line (no middle-dot meta string).
       cell: (item) => (
-        <>
-          {item.employee.name}
-          <span className="ls-hint"> · {item.employee.code}</span>
-        </>
+        <span className="ls-cell-stack">
+          <span className="ls-cell-main">{item.employee.name}</span>
+          <span className="ls-cell-sub" translate="no">
+            {item.employee.code}
+          </span>
+        </span>
       ),
     },
     {
       key: 'amount',
       header: a.columns.amount,
       numeric: true,
-      cell: (item) => signedVnd(vndNumber(item.amountVnd), locale),
+      cell: (item) => money(item.amountVnd, locale),
     },
     {
       key: 'status',
@@ -151,15 +195,15 @@ export function AdvancesView({
       key: 'owed',
       header: a.columns.owed,
       numeric: true,
-      cell: (item) =>
-        item.status === 'PAID' ? signedVnd(vndNumber(item.outstandingVnd), locale) : '—',
+      cell: (item) => (item.status === 'PAID' ? money(item.outstandingVnd, locale) : '—'),
     },
     {
       key: 'date',
       header: a.columns.date,
       hideBelow: 'lg',
       hidePhone: true,
-      cell: (item) => formatDate(item.requestedAt.slice(0, 10), locale),
+      // The request's day in the shop's zone (Vietnam), not the UTC day of the instant (wig advances.tsx:162).
+      cell: (item) => formatDate(zonedLocal(item.requestedAt, ZONE).slice(0, 10), locale),
     },
     {
       key: 'actions',
@@ -182,7 +226,7 @@ export function AdvancesView({
             ? [
                 {
                   id: 'pay',
-                  label: a.pay,
+                  label: opensInput(a.pay),
                   icon: 'wallet' as const,
                   onSelect: () => setOverlay({ kind: 'pay', item }),
                 },
@@ -192,7 +236,7 @@ export function AdvancesView({
             ? [
                 {
                   id: 'writeOff',
-                  label: a.writeOff,
+                  label: opensInput(a.writeOff),
                   icon: 'x-circle' as const,
                   tone: 'danger' as const,
                   onSelect: () => setOverlay({ kind: 'writeOff', item }),
@@ -203,7 +247,7 @@ export function AdvancesView({
             ? [
                 {
                   id: 'cancel',
-                  label: a.cancel,
+                  label: opensInput(a.cancel),
                   icon: 'close' as const,
                   tone: 'danger' as const,
                   onSelect: () => setOverlay({ kind: 'cancel', item }),
@@ -225,11 +269,12 @@ export function AdvancesView({
       <PageHeader title={a.title} intro={a.intro}>
         {data.canRequest ? (
           <Button variant="primary" icon="plus" onClick={() => setOverlay({ kind: 'request' })}>
-            {a.request}
+            {opensInput(a.request)}
           </Button>
         ) : null}
       </PageHeader>
-      <ListSection title={a.section}>
+      {/* One list on the page: no h2 repeating the h1 ("Các khoản tạm ứng"); the table caption keeps the name. */}
+      <div className="ls-self-list">
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={status ? 1 : 0}
@@ -253,10 +298,25 @@ export function AdvancesView({
           columns={columns}
           rows={rows}
           rowKey={(item) => item.id}
-          empty={<Empty>{status ? a.noneFiltered : a.none}</Empty>}
+          empty={
+            status ? (
+              <Empty
+                title={a.noneFilteredTitle}
+                action={
+                  <Button variant="secondary" onClick={() => setStatus('')}>
+                    {a.showAll}
+                  </Button>
+                }
+              >
+                {a.noneFiltered}
+              </Empty>
+            ) : (
+              <Empty title={a.noneTitle}>{a.none}</Empty>
+            )
+          }
           paging={paging}
         />
-      </ListSection>
+      </div>
       {overlay?.kind === 'request' ? (
         <RequestDialog
           data={data}
@@ -270,7 +330,7 @@ export function AdvancesView({
           path={`/api/v1/pay/advances/${overlay.item.id}/cancel`}
           title={a.cancelTitle}
           description={fill(a.cancelDescription, {
-            amount: signedVnd(vndNumber(overlay.item.amountVnd), locale),
+            amount: money(overlay.item.amountVnd, locale),
             name: overlay.item.employee.name,
           })}
           reasonLabel={a.cancelReason}
@@ -287,7 +347,7 @@ export function AdvancesView({
           path={`/api/v1/pay/advances/${overlay.item.id}/write-off`}
           title={a.writeOffTitle}
           description={fill(a.writeOffDescription, {
-            amount: signedVnd(vndNumber(overlay.item.outstandingVnd), locale),
+            amount: money(overlay.item.outstandingVnd, locale),
             name: overlay.item.employee.name,
           })}
           reasonLabel={a.writeOffReason}
@@ -327,12 +387,17 @@ function RequestDialog({
   const limit =
     data.eligible.find((entry) => entry.employee.id === draft.employeeUserId)?.limitVnd ?? null;
   const problems = advanceProblems(draft, limit);
+  const errorText: Record<string, string> = {
+    employee: a.errorEmployee,
+    amount: a.errorAmount,
+    reason: a.errorReason,
+  };
   const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+    checked && problems.includes(name) ? errorText[name] : undefined;
   async function submit() {
     setChecked(true);
     const body = advanceBody(draft, limit, command.requestId);
-    if (!body) return;
+    if (!body) return focusInvalid();
     await command.run('/api/v1/pay/advances', body, onDone);
   }
   return (
@@ -355,12 +420,12 @@ function RequestDialog({
               <Select
                 {...control}
                 value={draft.employeeUserId}
-                placeholder="…"
+                placeholder={t.common.form.choose}
                 options={data.eligible.map((entry) => ({
                   value: entry.employee.id,
                   label: fill(a.requestLimit, {
                     name: entry.employee.name,
-                    limit: signedVnd(vndNumber(entry.limitVnd), locale),
+                    limit: money(entry.limitVnd, locale),
                   }),
                 }))}
                 onChange={(event) => setDraft({ ...draft, employeeUserId: event.target.value })}
@@ -369,13 +434,17 @@ function RequestDialog({
           </Field>
           <Field label={a.requestAmount} error={invalid('amount')} required full>
             {(control) => (
-              <TextInput
+              // Grouped money with the ₫ unit (wig advances.tsx:372); the draft keeps the digits the payroll rules parse.
+              <MoneyInput
                 {...control}
-                inputMode="numeric"
-                autoComplete="off"
+                name="amount"
+                unit="₫"
+                separator={locale === 'vi' ? '.' : ','}
                 maxLength={20}
-                value={draft.amount}
-                onChange={(event) => setDraft({ ...draft, amount: event.target.value })}
+                value={/^\d+$/.test(draft.amount) ? Number(draft.amount) : null}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, amount: value === null ? '' : String(value) })
+                }
               />
             )}
           </Field>
@@ -383,6 +452,7 @@ function RequestDialog({
             {(control) => (
               <Textarea
                 {...control}
+                name="reason"
                 rows={3}
                 maxLength={500}
                 value={draft.reason}
@@ -419,18 +489,20 @@ function ReasonDialog({
   onDone: () => void;
   onClose: () => void;
 }) {
-  const { t } = useWorkforce();
+  const { t, locale } = useWorkforce();
+  const a = payrollDictionary(locale).advances;
   const [reason, setReason] = useState('');
   const [checked, setChecked] = useState(false);
   const command = usePayrollCommand({ reauth });
   async function send() {
     setChecked(true);
-    if (reasonMissing(reason)) return;
+    if (reasonMissing(reason)) return focusInvalid();
     await command.run(path, { expectedVersion: item.version, reason: reason.trim() }, onDone);
   }
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={title}
         description={description}
         labels={{ ...formOverlayLabels(t, submit), submitting }}
@@ -443,13 +515,14 @@ function ReasonDialog({
         <FormGrid>
           <Field
             label={reasonLabel}
-            error={checked && reasonMissing(reason) ? t.errors.validation : undefined}
+            error={checked && reasonMissing(reason) ? a.errorReason : undefined}
             required
             full
           >
             {(control) => (
               <Textarea
                 {...control}
+                name="reason"
                 rows={3}
                 maxLength={500}
                 value={reason}
@@ -482,7 +555,7 @@ function PayDialog({
   const command = usePayrollCommand({ reauth: true });
   async function submit() {
     setChecked(true);
-    if (fundId === '') return;
+    if (fundId === '') return focusInvalid();
     await command.run(
       `/api/v1/pay/advances/${item.id}/pay`,
       { expectedVersion: item.version, fundId, clientRequestId: command.requestId },
@@ -492,9 +565,10 @@ function PayDialog({
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={a.payTitle}
         description={fill(a.payDescription, {
-          amount: signedVnd(vndNumber(item.amountVnd), locale),
+          amount: money(item.amountVnd, locale),
           name: item.employee.name,
         })}
         labels={{ ...formOverlayLabels(t, a.paySubmit), submitting: a.paySubmitting }}
@@ -507,7 +581,7 @@ function PayDialog({
         <FormGrid>
           <Field
             label={a.payFund}
-            error={checked && fundId === '' ? t.errors.validation : undefined}
+            error={checked && fundId === '' ? a.errorFund : undefined}
             required
             full
           >
@@ -515,12 +589,12 @@ function PayDialog({
               <Select
                 {...control}
                 value={fundId}
-                placeholder="…"
+                placeholder={t.common.form.choose}
                 options={data.funds.map((fund) => ({
                   value: fund.id,
                   label: fill(a.payFundOption, {
                     name: fund.name,
-                    balance: signedVnd(vndNumber(fund.balanceVnd), locale),
+                    balance: money(fund.balanceVnd, locale),
                   }),
                 }))}
                 onChange={(event) => setFundId(event.target.value)}

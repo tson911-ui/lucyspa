@@ -334,7 +334,7 @@ test('a receipt draft starts from the saved receipt', () => {
     unitCost: '5000',
   });
   assert.equal(draft.notes, '');
-  assert.equal(variantOptionLabel(receipt.lines[0]!, 'vi'), 'A · a');
+  assert.equal(variantOptionLabel(receipt.lines[0]!, 'vi'), 'a (A)');
 });
 
 const lot = (patch: Partial<InventoryLotResponse>): InventoryLotResponse => ({

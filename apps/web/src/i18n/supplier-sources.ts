@@ -10,10 +10,11 @@ const vi = {
   title: 'Nguồn nhà cung cấp',
   intro:
     'Nơi hệ thống đọc danh mục sản phẩm của nhà cung cấp. Mỗi nguồn phải ghi lại giấy phép sử dụng và được xác nhận trước khi bật.',
-  noAccess: 'Bạn chưa được giao quản lý nguồn nhà cung cấp.',
+  noAccess:
+    'Bạn chưa được giao quản lý nguồn nhà cung cấp. Nhờ chủ spa hoặc quản lý cấp quyền nếu bạn cần dùng mục này.',
   readOnly: 'Bạn chỉ xem được danh sách. Thêm hoặc sửa nguồn cần quyền quản lý nguồn nhà cung cấp.',
   empty: 'Chưa có nguồn nào. Thêm nguồn đầu tiên để bắt đầu.',
-  add: 'Thêm nguồn',
+  add: 'Thêm nguồn…',
   columns: {
     name: 'Nguồn',
     supplier: 'Nhà cung cấp',
@@ -48,12 +49,12 @@ const vi = {
     TEST_REQUIRED: 'Chưa chạy thử và xác nhận mẫu.',
   },
   menu: {
-    edit: 'Sửa nguồn',
-    permission: 'Giấy phép',
+    edit: 'Sửa nguồn…',
+    permission: 'Ghi giấy phép…',
     confirm: 'Xác nhận giấy phép',
-    test: 'Chạy thử',
-    scan: 'Quét mẫu',
-    scanFull: 'Quét toàn bộ',
+    test: 'Chạy thử…',
+    scan: 'Quét mẫu…',
+    scanFull: 'Quét toàn bộ…',
     enable: 'Bật nguồn',
     disable: 'Tắt nguồn',
   },
@@ -88,7 +89,7 @@ const vi = {
     addressLocked: 'Tắt nguồn trước khi đổi địa chỉ.',
     cadence: 'Lịch kiểm tra',
     cadenceHint:
-      'Quét theo lịch chỉ chạy từ 1 đến 5 giờ sáng, khi nguồn đang bật, sẵn sàng và đã được quét tay thành công một lần. "Chạy tay" là không tự quét. Có thay đổi thì người duyệt nhận thông báo trong ứng dụng.',
+      'Quét theo lịch chỉ chạy từ 1 đến 5 giờ sáng, khi nguồn đang bật, sẵn sàng và đã được quét tay thành công một lần. “Chạy tay” là không tự quét. Có thay đổi thì người duyệt nhận thông báo trong ứng dụng.',
     submit: 'Lưu',
   },
   permission: {
@@ -168,7 +169,7 @@ const vi = {
     unsupported: 'Loại nguồn này chưa chạy thử được.',
     queued: 'Đang chờ máy xử lý…',
     running: 'Đang đọc nguồn…',
-    passed: 'Đạt. Hãy xem mẫu bên dưới. Nếu đúng, bấm "Xác nhận mẫu" để nguồn sẵn sàng.',
+    passed: 'Đạt. Hãy xem mẫu bên dưới. Nếu đúng, bấm “Xác nhận mẫu” để nguồn sẵn sàng.',
     confirmedBy:
       'Mẫu đã được {name} xác nhận lúc {time}. Nguồn sẵn sàng; bật nguồn từ menu của dòng.',
     confirmedNoName: 'Mẫu đã được xác nhận lúc {time}. Nguồn sẵn sàng; bật nguồn từ menu của dòng.',
@@ -223,7 +224,7 @@ const vi = {
       CATEGORY_MISSING: 'Không có nhóm hàng',
       DESCRIPTION_EMPTY: 'Không có mô tả',
       REVIEW_TEXT_REMOVED: 'Đã bỏ lời đánh giá của khách trong mô tả (không nhập vào)',
-      REVIEW_TEXT_SUSPECTED: 'Mô tả có mục kiểu "Đánh giá" cần người xem lại',
+      REVIEW_TEXT_SUSPECTED: 'Mô tả có mục kiểu “Đánh giá” cần người xem lại',
       NAME_MISSING: 'Thiếu tên (không dùng được)',
       URL_MISSING: 'Thiếu đường dẫn (không dùng được)',
       URL_OFF_HOST: 'Đường dẫn nằm ngoài website của nguồn (không dùng được)',
@@ -261,11 +262,11 @@ const vi = {
   scan: {
     title: 'Quét nguồn',
     intro:
-      'Quét mẫu đọc tối đa 20 sản phẩm của website và tải ảnh của chính từng sản phẩm. Chưa có gì thành sản phẩm: kết quả hiện ở "Sản phẩm nhập" để bạn xem và duyệt.',
+      'Quét mẫu đọc tối đa 20 sản phẩm của website và tải ảnh của chính từng sản phẩm. Chưa có gì thành sản phẩm: kết quả hiện ở “Sản phẩm nhập” để bạn xem và duyệt.',
     notReady: 'Nguồn phải đang bật và sẵn sàng mới quét được.',
     queued: 'Đang chờ máy xử lý…',
     running: 'Đang đọc nguồn…',
-    succeeded: 'Quét xong. Xem kết quả ở "Sản phẩm nhập".',
+    succeeded: 'Quét xong. Xem kết quả ở “Sản phẩm nhập”.',
     partial: 'Quét xong, có vài việc cần xem (bên dưới).',
     failed: 'Lần quét không thành công.',
     suspect:
@@ -276,7 +277,7 @@ const vi = {
     queuedToast: 'Đã xếp hàng quét mẫu.',
     queuedFullToast: 'Đã xếp hàng quét toàn bộ. Việc này mất vài phút đến vài chục phút.',
     fullHint:
-      '"Quét toàn bộ" đọc mọi sản phẩm của nguồn (không chỉ 20 sản phẩm mẫu) và tải ảnh của từng sản phẩm, chậm rãi, mỗi giây một yêu cầu. Kết quả hiện ở "Sản phẩm nhập"; chưa có gì được đăng bán.',
+      '“Quét toàn bộ” đọc mọi sản phẩm của nguồn (không chỉ 20 sản phẩm mẫu) và tải ảnh của từng sản phẩm, chậm rãi, mỗi giây một yêu cầu. Kết quả hiện ở “Sản phẩm nhập”; chưa có gì được đăng bán.',
     scopeFull: 'Quét toàn bộ',
     scopeSample: 'Quét mẫu',
     lastRun: 'Lần quét lúc {time}, bởi {name}',
@@ -318,7 +319,7 @@ const vi = {
       MEDIA_STORAGE_UNAVAILABLE: 'Máy chủ chưa có thư mục lưu ảnh nên chưa lưu ảnh.',
       MEDIA_TYPE_UNSUPPORTED: 'Một tệp ảnh không phải ảnh JPEG, PNG hay WebP.',
       MEDIA_INVALID_IMAGE: 'Một tệp ảnh bị hỏng.',
-      MEDIA_TOO_LARGE: 'Một ảnh quá lớn (trên 10 MB).',
+      MEDIA_TOO_LARGE: 'Một ảnh quá lớn (trên 10\u00a0MB).',
       MEDIA_DIMENSIONS_TOO_LARGE: 'Một ảnh quá lớn (trên 6000 điểm ảnh).',
       VARIATION_FAILED: 'Không đọc được một biến thể.',
       VARIATION_MISMATCH: 'Một biến thể không thuộc sản phẩm này nên bị bỏ qua.',
@@ -353,12 +354,13 @@ const en: SupplierSourcesText = {
   nav: 'Supplier sources',
   title: 'Supplier sources',
   intro:
-    "Where the system reads a supplier's product catalog. Every source needs its permission recorded and confirmed before it can be switched on.",
-  noAccess: 'You have not been given access to supplier sources.',
+    'Where the system reads a supplier’s product catalog. Every source needs its permission recorded and confirmed before it can be switched on.',
+  noAccess:
+    'You have not been given access to supplier sources. Ask the spa owner or a manager for access if you need it.',
   readOnly:
     'You can only view the list. Adding or editing a source needs the supplier sources permission.',
   empty: 'No sources yet. Add the first one to begin.',
-  add: 'Add a source',
+  add: 'Add a source…',
   columns: {
     name: 'Source',
     supplier: 'Supplier',
@@ -393,12 +395,12 @@ const en: SupplierSourcesText = {
     TEST_REQUIRED: 'No test run and sample confirmed yet.',
   },
   menu: {
-    edit: 'Edit source',
-    permission: 'Permission',
+    edit: 'Edit source…',
+    permission: 'Record permission…',
     confirm: 'Confirm permission',
-    test: 'Run test',
-    scan: 'Sample scan',
-    scanFull: 'Scan everything',
+    test: 'Run a test…',
+    scan: 'Sample scan…',
+    scanFull: 'Scan everything…',
     enable: 'Switch on',
     disable: 'Switch off',
   },
@@ -434,7 +436,7 @@ const en: SupplierSourcesText = {
     addressLocked: 'Switch the source off before changing its address.',
     cadence: 'Check schedule',
     cadenceHint:
-      'A scheduled scan runs only between 1 and 5 am, while the source is on, ready and has been scanned by hand successfully once. "Manual" never scans by itself. When something changed, the reviewers get an in-app notice.',
+      'A scheduled scan runs only between 1 and 5 am, while the source is on, ready and has been scanned by hand successfully once. “Manual” never scans by itself. When something changed, the reviewers get an in-app notice.',
     submit: 'Save',
   },
   permission: {
@@ -516,7 +518,7 @@ const en: SupplierSourcesText = {
     queued: 'Waiting for the worker…',
     running: 'Reading the source…',
     passed:
-      'Passed. Look at the sample below. If it is right, choose "Confirm sample" to make the source ready.',
+      'Passed. Look at the sample below. If it is right, choose “Confirm sample” to make the source ready.',
     confirmedBy:
       'Sample confirmed by {name} at {time}. The source is ready; switch it on from the row menu.',
     confirmedNoName:
@@ -558,14 +560,14 @@ const en: SupplierSourcesText = {
       open: 'Source page',
     },
     noSku: 'None',
-    openSource: "Open the source's product page: {name}",
+    openSource: 'Open the source’s product page: {name}',
     none: 'No test has been run yet.',
     loadFailed: 'Could not load the test results.',
     problems: {
       SKU_MISSING: 'No SKU (HARU-product id will be used)',
       SKU_TOO_LONG: 'SKU too long',
       IMAGE_MISSING: 'No image',
-      IMAGE_OFF_HOST: "Image is outside the source's website (ignored)",
+      IMAGE_OFF_HOST: 'Image is outside the source’s website (ignored)',
       PRICE_MISSING: 'No price',
       PRICE_INVALID: 'Price cannot be read',
       PRICE_NOT_WHOLE_VND: 'Price is not a whole number of dong',
@@ -576,7 +578,7 @@ const en: SupplierSourcesText = {
       REVIEW_TEXT_SUSPECTED: 'The description has a review-like heading to check',
       NAME_MISSING: 'Name missing (unusable)',
       URL_MISSING: 'Link missing (unusable)',
-      URL_OFF_HOST: "Link is outside the source's website (unusable)",
+      URL_OFF_HOST: 'Link is outside the source’s website (unusable)',
       INVALID_PRODUCT: 'Product data cannot be read',
       DUPLICATE_KEY: 'Product id repeated on the page',
     },
@@ -595,8 +597,8 @@ const en: SupplierSourcesText = {
       SERVER_ERROR: 'The website has an error. Run again later.',
       CONNECTION: 'Could not connect to the website. Run again later.',
       ROBOTS_DISALLOWED:
-        "The website's robots.txt does not allow reading this part. The system respects that.",
-      ROBOTS_UNAVAILABLE: "Could not read the website's robots.txt right now. Run again later.",
+        'The website’s robots.txt does not allow reading this part. The system respects that.',
+      ROBOTS_UNAVAILABLE: 'Could not read the website’s robots.txt right now. Run again later.',
       EMPTY: 'The website returned no products.',
       TOO_FEW_USABLE:
         'Too many products in the sample lack a name or a link, so the sample cannot be trusted.',
@@ -612,11 +614,11 @@ const en: SupplierSourcesText = {
   scan: {
     title: 'Scan source',
     intro:
-      'A sample scan reads up to 20 products of the website and downloads each product\'s own pictures. Nothing becomes a product: the result appears in "Review imports" for you to look at and approve.',
+      'A sample scan reads up to 20 products of the website and downloads each product’s own pictures. Nothing becomes a product: the result appears in “Review imports” for you to look at and approve.',
     notReady: 'The source must be switched on and ready to be scanned.',
     queued: 'Waiting for the worker…',
     running: 'Reading the source…',
-    succeeded: 'Scan finished. See the result in "Review imports".',
+    succeeded: 'Scan finished. See the result in “Review imports”.',
     partial: 'Scan finished; a few things need a look (below).',
     failed: 'The scan did not succeed.',
     suspect:
@@ -627,7 +629,7 @@ const en: SupplierSourcesText = {
     queuedToast: 'Sample scan queued.',
     queuedFullToast: 'Full scan queued. It takes a few minutes to a few dozen minutes.',
     fullHint:
-      '"Scan everything" reads every product of the source (not only the 20 sample products) and downloads each product\'s pictures, slowly, one request a second. The result appears in "Review imports"; nothing is put on sale yet.',
+      '“Scan everything” reads every product of the source (not only the 20 sample products) and downloads each product’s pictures, slowly, one request a second. The result appears in “Review imports”; nothing is put on sale yet.',
     scopeFull: 'Full scan',
     scopeSample: 'Sample scan',
     lastRun: 'Scan at {time}, by {name}',
@@ -671,14 +673,14 @@ const en: SupplierSourcesText = {
       MEDIA_STORAGE_UNAVAILABLE: 'The server has no picture folder, so pictures were not saved.',
       MEDIA_TYPE_UNSUPPORTED: 'A picture file is not a JPEG, PNG or WebP.',
       MEDIA_INVALID_IMAGE: 'A picture file is damaged.',
-      MEDIA_TOO_LARGE: 'A picture is too large (over 10 MB).',
+      MEDIA_TOO_LARGE: 'A picture is too large (over 10\u00a0MB).',
       MEDIA_DIMENSIONS_TOO_LARGE: 'A picture is too large (over 6000 pixels).',
       VARIATION_FAILED: 'A variant could not be read.',
       VARIATION_MISMATCH: 'A variant does not belong to this product and was skipped.',
       RECORD_FAILED: 'A product could not be saved.',
       EVALUATE_FAILED: 'What needs attention was not worked out for every product.',
-      ROBOTS_DISALLOWED: "The website's robots.txt does not allow reading this part.",
-      ROBOTS_UNAVAILABLE: "Could not read the website's robots.txt right now.",
+      ROBOTS_DISALLOWED: 'The website’s robots.txt does not allow reading this part.',
+      ROBOTS_UNAVAILABLE: 'Could not read the website’s robots.txt right now.',
       AUTHENTICATION_REQUIRED: 'The website blocks us or asks for a login.',
       CHALLENGE_PAGE: 'The website shows a human check.',
       API_NOT_FOUND: 'The website has no public product data address.',
@@ -689,7 +691,7 @@ const en: SupplierSourcesText = {
       SERVER_ERROR: 'The website has an error.',
       CONNECTION: 'Could not connect to the website.',
       WORKER_LOST: 'The scan was interrupted.',
-      SCAN_SUSPECT: "Fewer than 70% of last time's products were read.",
+      SCAN_SUSPECT: 'Fewer than 70% of last time’s products were read.',
       MISSING_FAILED: 'A product missing from the source could not be recorded.',
       PRODUCT_NAME_MISSING: 'The website returned a product with no name.',
       PRODUCT_INVALID_PRODUCT: 'The website returned a product that could not be read.',

@@ -10,6 +10,7 @@ import {
   ConfirmDialog,
   DataTable,
   Drawer,
+  EmptyState,
   RowActions,
   Stack,
   type DataTableColumn,
@@ -18,14 +19,12 @@ import { useState } from 'react';
 import { productTextCleanupDictionary } from '../../../i18n/product-text-cleanup';
 import { fill } from '../../../i18n/workforce';
 import { confirmError } from '../../../lib/workforce/form-labels';
-import { paginationLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { applyEntries, batches, sumResults } from '../../../lib/workforce/product-text-cleanup';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
   Button,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -33,6 +32,10 @@ import {
   useResource,
   useSuccessToast,
 } from '../ui';
+import { RouterButtonLink, formatCount, urlPaging } from './products-links';
+
+// Pagers kept in the address bar (Back/Forward and shared links restore them).
+const useCleanupPaging = urlPaging('page', 'pageSize');
 
 const BASE = '/api/v1/product-text-cleanup';
 
@@ -57,7 +60,7 @@ export function ProductTextCleanupScreen() {
     return (
       <>
         <PageHeader title={text.title} intro={text.intro} />
-        <Empty>{text.noAccess}</Empty>
+        <Notice tone="info">{text.noAccess}</Notice>
       </>
     );
   }
@@ -75,11 +78,11 @@ export function Cleanup({
   data: ProductTextCleanupPreviewResponse;
   reload: () => Promise<void>;
 }) {
-  const { api, t, locale } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const text = productTextCleanupDictionary(locale);
   const notify = useSuccessToast();
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const paging = useCleanupPaging(t, text.table);
   const [viewing, setViewing] = useState<ProductTextCleanupItem | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -107,8 +110,10 @@ export function Cleanup({
       if (responses.length > 0) {
         const sum = sumResults(responses);
         const message =
-          fill(text.done, { cleaned: String(sum.cleaned) }) +
-          (sum.skipped > 0 ? fill(text.doneSkipped, { skipped: String(sum.skipped) }) : '');
+          fill(text.done, { cleaned: formatCount(locale, sum.cleaned) }) +
+          (sum.skipped > 0
+            ? fill(text.doneSkipped, { skipped: formatCount(locale, sum.skipped) })
+            : '');
         setResult(message);
         notify(message);
         setSkipped(new Set());
@@ -126,10 +131,8 @@ export function Cleanup({
       width: 'lg',
       cell: (row) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-truncate" title={row.nameVi}>
-            {row.nameVi}
-          </span>
-          <span className="ls-cell-sub ls-cell-truncate" title={row.code}>
+          <span className="ls-adm-c-name">{row.nameVi}</span>
+          <span className="ls-cell-sub ls-adm-c-name" translate="no">
             {row.code}
           </span>
         </span>
@@ -146,7 +149,7 @@ export function Cleanup({
       header: text.columns.chars,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => row.removedChars.toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US'),
+      cell: (row) => formatCount(locale, row.removedChars),
     },
     {
       key: 'state',
@@ -184,7 +187,13 @@ export function Cleanup({
       <>
         <PageHeader title={text.title} intro={text.intro} />
         {result ? <Notice tone="success">{result}</Notice> : null}
-        <Empty>{text.empty}</Empty>
+        <EmptyState
+          icon="check-circle"
+          title={text.emptyTitle}
+          action={<RouterButtonLink href={`${base}/products`}>{text.toProducts}</RouterButtonLink>}
+        >
+          {text.empty}
+        </EmptyState>
       </>
     );
   }
@@ -200,7 +209,7 @@ export function Cleanup({
         >
           {included.length === 0
             ? text.submitNone
-            : fill(text.submit, { count: String(included.length) })}
+            : fill(text.submit, { count: formatCount(locale, included.length) })}
         </Button>
       </PageHeader>
       {data.truncated ? <Notice tone="warning">{text.truncated}</Notice> : null}
@@ -211,13 +220,12 @@ export function Cleanup({
         columns={columns}
         rows={data.items}
         rowKey={(row) => row.id}
-        empty={<Empty>{text.empty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, text.table),
-        }}
+        empty={
+          <EmptyState icon="check-circle" title={text.emptyTitle}>
+            {text.empty}
+          </EmptyState>
+        }
+        paging={paging}
       />
       {viewing ? (
         <CleanupDetail
@@ -229,15 +237,15 @@ export function Cleanup({
       ) : null}
       {confirming ? (
         <ConfirmDialog
-          title={fill(text.confirm.title, { count: String(included.length) })}
+          title={fill(text.confirm.title, { count: formatCount(locale, included.length) })}
           description={text.confirm.body}
           facts={[
-            { label: text.confirm.facts.products, value: String(included.length) },
-            { label: text.confirm.facts.entries, value: String(entryTotal) },
+            { label: text.confirm.facts.products, value: formatCount(locale, included.length) },
+            { label: text.confirm.facts.entries, value: formatCount(locale, entryTotal) },
           ]}
           tone="warning"
-          confirmLabel={fill(text.confirm.confirm, { count: String(included.length) })}
-          busyLabel={t.common.saving}
+          confirmLabel={fill(text.confirm.confirm, { count: formatCount(locale, included.length) })}
+          busyLabel={text.confirm.cleaning}
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}
           describeError={confirmError(t)}
@@ -285,11 +293,22 @@ function CleanupDetail({
       }
     >
       {loaded.error && !detail ? (
-        <Notice tone="error">{text.detail.loadFailed}</Notice>
+        <Notice tone="error">
+          <Stack gap="field">
+            <span>{text.detail.loadFailed}</span>
+            <span>
+              <Button variant="secondary" icon="refresh" onClick={() => void loaded.reload()}>
+                {t.common.reload}
+              </Button>
+            </span>
+          </Stack>
+        </Notice>
       ) : !detail ? (
         <Loading t={t} />
       ) : detail.removedLines.length === 0 ? (
-        <Empty>{text.detail.nothing}</Empty>
+        <EmptyState icon="check-circle" title={text.detail.nothingTitle}>
+          {text.detail.nothing}
+        </EmptyState>
       ) : (
         <Stack gap="page">
           <section aria-label={text.detail.removed}>

@@ -140,7 +140,7 @@ export function TestDrawer({
   return (
     <Drawer
       open
-      title={`${copy.title}: ${shortName(item.name)}`}
+      title={`${copy.title}: ${item.name}`}
       closeLabel={t.common.close}
       className="ls-drawer-form"
       busy={busy !== null}
@@ -339,10 +339,4 @@ export function LatestRun({
       ) : null}
     </Stack>
   );
-}
-
-/** A long source name in a title: the first 40 characters and an ellipsis. */
-function shortName(name: string): string {
-  const letters = [...name];
-  return letters.length > 40 ? `${letters.slice(0, 40).join('')}…` : name;
 }

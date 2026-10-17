@@ -1,6 +1,8 @@
 import type { BranchSummary, EmployeeResponse } from '@lucy-spa/contracts';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ReauthDialog } from '../../components/workforce/reauth-dialog';
 import {
@@ -89,7 +91,7 @@ test('the employee code is the login ID; access is offered with MANAGE_EMPLOYEE_
     <EmployeeCreateForm
       branches={branches}
       onCreated={() => undefined}
-      onCancel={() => undefined}
+      cancelHref="/vi/workforce/employees"
     />,
     accessAdmin,
   );
@@ -102,7 +104,7 @@ test('the employee code is the login ID; access is offered with MANAGE_EMPLOYEE_
     <EmployeeCreateForm
       branches={branches}
       onCreated={() => undefined}
-      onCancel={() => undefined}
+      cancelHref="/vi/workforce/employees"
     />,
     creatorOnly,
   );
@@ -278,4 +280,79 @@ test('success says the member can sign in with the employee code; errors are spe
     createErrorMessage(new ApiError(403, 'REAUTHENTICATION_REQUIRED'), vi),
     vi.errors.reauthenticate,
   );
+});
+
+// HIG C60 (one modal at a time): while the password check is open, the confirmation that asked for it is suspended (out of sight,
+// reason and pending request kept); the requests and their order stay those of `withReauthentication` (tested above). The kit flow
+// itself (suspended confirm, cancel brings it back with the reason, a confirmed check sends the command again) is in
+// packages/ui/src/overlays-v2.test.tsx.
+test('C60: every confirmation that can ask for the password is suspended while the check is open', () => {
+  const read = (file: string) =>
+    readFileSync(
+      fileURLToPath(new URL(`../../components/workforce/${file}`, import.meta.url)),
+      'utf8',
+    );
+  assert.match(read('reauth-dialog.tsx'), /return \{ confirm, dialog, asking: open \};/);
+  const invoice = read('screens/pos-invoice.tsx');
+  assert.match(invoice, /const \{ confirm, dialog, asking \} = useReauthentication\(\);/);
+  for (const confirm of ['ReverseConfirm', 'CancelConfirm']) {
+    const element = new RegExp(`<${confirm}\\b[\\s\\S]*?\\/>`).exec(invoice)?.[0] ?? '';
+    assert.match(element, /suspended=\{asking\}/, confirm);
+  }
+  const dialogs = read('screens/pos-dialogs.tsx');
+  assert.equal(
+    dialogs.match(/<ConfirmDialog\n\s+suspended=\{suspended\}/g)?.length,
+    2,
+    'both POS confirms forward it',
+  );
+  assert.match(read('screens/loyalty-go-live.tsx'), /<ConfirmDialog\n\s+suspended=\{checking\}/);
+  assert.match(read('screens/loyalty-combo-usage.tsx'), /<ConfirmDialog\n\s+suspended=\{asking\}/);
+});
+
+// The form dialogs and drawers whose save can ask for the password: each one is suspended while the check is open (C60).
+test('C60: every form dialog or drawer that can ask for the password is suspended while the check is open', () => {
+  const read = (file: string) =>
+    readFileSync(
+      fileURLToPath(new URL(`../../components/workforce/screens/${file}`, import.meta.url)),
+      'utf8',
+    );
+  const wired: [file: string, expression: string, count: number][] = [
+    ['reports-export.tsx', 'asking', 1],
+    ['referral-dialogs.tsx', 'asking', 1],
+    ['product-refunds.tsx', 'asking', 1],
+    ['product-orders.tsx', 'asking', 1],
+    ['product-exchanges.tsx', 'asking', 1],
+    ['loyalty-adjust-dialog.tsx', 'asking', 1],
+    ['employee-lifecycle.tsx', 'asking', 1],
+    ['cash-book.tsx', 'command.asking', 3],
+    ['advances.tsx', 'command.asking', 2],
+    ['payroll-dialogs.tsx', 'command.asking', 3],
+    ['online-order-dialogs.tsx', 'asking', 2],
+  ];
+  for (const [file, expression, count] of wired) {
+    const source = read(file);
+    const escaped = expression.replace('.', '\\.');
+    assert.equal(
+      source.match(new RegExp(`suspended=\\{${escaped}\\}`, 'g'))?.length,
+      count,
+      `${file}: ${count} × suspended={${expression}}`,
+    );
+  }
+  // The shared command hooks hand `asking` to their dialogs.
+  assert.match(
+    read('cash-book.tsx'),
+    /return \{ run, pending, error, requestId: requestId\.current, dialog, asking \};/,
+  );
+  assert.match(
+    read('payroll-command.tsx'),
+    /return \{ run, pending, error, requestId, dialog, asking \};/,
+  );
+  // The online-order command dialog forwards it to whichever surface it draws.
+  assert.equal(read('online-order-dialogs.tsx').match(/suspended=\{suspended\}/g)?.length, 2);
+  // Every payroll dialog whose command asks for the password is wired (no reauth command left without it).
+  for (const file of ['advances.tsx', 'payroll-dialogs.tsx']) {
+    const source = read(file);
+    const asking = source.match(/usePayrollCommand\(\{ reauth/g)?.length ?? 0;
+    assert.equal(source.match(/suspended=\{command\.asking\}/g)?.length, asking, file);
+  }
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { Drawer } from '@lucy-spa/ui';
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { payErrorMessage } from '../../../lib/workforce/pay';
 import { useWorkforce } from '../session';
 import { Button } from '../ui';
@@ -15,7 +15,8 @@ export function usePayCommand() {
   const { api, t, locale } = useWorkforce();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // One id per dialog, made once (rerender-lazy-state-init: not a new UUID on every render).
+  const [requestId] = useState(() => globalThis.crypto.randomUUID());
   async function run<T>(path: string, body: object, done: (result: T) => void) {
     if (pending) return;
     setPending(true);
@@ -27,7 +28,7 @@ export function usePayCommand() {
       setPending(false);
     }
   }
-  return { run, pending, error, requestId: requestId.current };
+  return { run, pending, error, requestId };
 }
 
 /** A read-only side sheet for a history list: one close button, nothing else to decide. */

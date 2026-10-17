@@ -266,10 +266,14 @@ test('12–14. empty and filtered states per section', () => {
 test('15. the Owner has a reachable "Thêm nhân sự / Add employee" action', () => {
   const vi_ = render(<EmployeesScreen />, owner);
   // The primary action opens the add page (/employees/new); it no longer expands a form in the list.
-  assert.match(vi_, /ls-btn-primary[^>]*>.*?Thêm nhân sự<\/span><\/button>/);
+  // A real link (modifier-click opens a tab), styled as the one primary.
+  assert.match(
+    vi_,
+    /<a (?=[^>]*href="\/vi\/workforce\/employees\/new")[^>]*class="ls-btn ls-btn-primary[^"]*"[^>]*>.*?Thêm nhân sự<\/span><\/a>/,
+  );
   assert.doesNotMatch(vi_, /add-workforce-member/);
   const en_ = render(<EmployeesScreen />, owner, 'en');
-  assert.match(en_, />Add employee<\/span><\/button>/);
+  assert.match(en_, />Add employee<\/span><\/a>/);
   assert.equal(en.employees.add, 'Add employee');
   // Not for readers without CREATE_EMPLOYEES.
   assert.doesNotMatch(

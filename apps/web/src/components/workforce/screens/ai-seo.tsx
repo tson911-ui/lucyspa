@@ -20,12 +20,13 @@ import {
   FacetedFilter,
   Field,
   FormDialog,
-  ListSection,
+  EmptyState,
   ListToolbar,
   RowActions,
   Select,
   Stack,
   Textarea,
+  serializeUrlState,
   useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
@@ -51,9 +52,10 @@ import {
 } from '../../../lib/workforce/ai-seo';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
+import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -92,6 +94,8 @@ export function AiSeoScreen() {
   return <AiSeoPage />;
 }
 
+const DRAWER_DEFAULTS = { draft: '' };
+
 function AiSeoPage() {
   const { api, t, locale } = useWorkforce();
   const text = aiSeoDictionary(locale);
@@ -111,25 +115,47 @@ function AiSeoPage() {
   const data = list.data;
   const notify = useSuccessToast();
   const [creating, setCreating] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
+  // The open draft lives in the address bar: Back closes the drawer, a shared link opens the same draft.
+  const [drawer, updateDrawer] = useUrlState(DRAWER_DEFAULTS);
+  const open = drawer.draft === '' ? null : drawer.draft;
+  const setOpen = (id: string | null) => updateDrawer({ draft: id ?? '' });
+  const { reload: reloadList } = list;
   const working = data !== null && data.byStatus.QUEUED + data.byStatus.GENERATING > 0;
   useEffect(() => {
     if (!working) return;
-    const timer = setInterval(() => void list.reload(), POLL_MS);
+    const timer = setInterval(() => void reloadList(), POLL_MS);
     return () => clearInterval(timer);
-  }, [working, list]);
+  }, [working, reloadList]);
 
+  const emptyList = data !== null && data.total === 0 && !state.status && !state.kind;
+  const createButton = (
+    <Button variant="primary" icon="sparkles" onClick={() => setCreating(true)}>
+      {opensInput(text.create.action)}
+    </Button>
+  );
   const columns: DataTableColumn<AiSeoRow>[] = [
     {
       key: 'target',
       header: text.columns.target,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
-        <button type="button" className="ls-link" title={row.label} onClick={() => setOpen(row.id)}>
+        <a
+          className="ls-link"
+          // A real link that keeps the filters and page, so Ctrl/Cmd+click opens the same view with this draft (WIG Navigation).
+          href={serializeUrlState(
+            { ...state, draft: row.id },
+            { ...AI_SEO_LIST_DEFAULTS, ...DRAWER_DEFAULTS },
+          )}
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            event.preventDefault();
+            setOpen(row.id);
+          }}
+        >
           {row.label}
-        </button>
+        </a>
       ),
     },
     {
@@ -147,14 +173,14 @@ function AiSeoPage() {
       key: 'notes',
       header: text.columns.notes,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => {
         const parts = [
           row.warnings > 0 ? fill(text.notes.soft, { count: String(row.warnings) }) : null,
         ].filter((part): part is string => part !== null);
-        const line = parts.length === 0 ? text.notes.none : parts.join(' · ');
-        return <span title={line}>{line}</span>;
+        const line = parts.length === 0 ? text.notes.none : parts.join('; ');
+        return line;
       },
     },
     {
@@ -186,17 +212,17 @@ function AiSeoPage() {
   return (
     <>
       <PageHeader title={text.title} intro={text.intro}>
-        <Button variant="primary" icon="sparkles" onClick={() => setCreating(true)}>
-          {text.create.action}
-        </Button>
+        {/* One primary per view: an empty list offers "Tạo bản nháp" in its empty state instead. */}
+        {emptyList ? null : createButton}
       </PageHeader>
-      <ListSection title={text.table}>
+      {/* The h1 names the list: no "Danh sách bản nháp" h2 above the toolbar. */}
+      <div className="ls-list-section">
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={(state.status ? 1 : 0) + (state.kind ? 1 : 0)}
           onReset={() => update({ status: '', kind: '' })}
           reload={{ label: t.common.reload, onClick: () => void list.reload() }}
-          resultCount={data ? String(data.total) : undefined}
+          resultCount={data ? resultsText(t, data.total) : undefined}
           filters={
             <>
               <FacetedFilter
@@ -234,7 +260,13 @@ function AiSeoPage() {
           }
           empty={
             data ? (
-              <Empty>{state.status || state.kind ? text.emptyFiltered : text.empty}</Empty>
+              state.status || state.kind ? (
+                <Empty>{text.emptyFiltered}</Empty>
+              ) : (
+                <EmptyState icon="sparkles" title={text.emptyTitle} action={createButton}>
+                  {text.empty}
+                </EmptyState>
+              )
             ) : undefined
           }
           paging={{
@@ -245,7 +277,7 @@ function AiSeoPage() {
             labels: paginationLabels(t, text.table),
           }}
         />
-      </ListSection>
+      </div>
       {creating ? (
         <CreateDialog
           onClose={() => setCreating(false)}
@@ -313,7 +345,7 @@ function CreateDialog({
     <FormDialog
       title={c.title}
       description={c.body}
-      labels={{ ...formOverlayLabels(t, c.confirm), submitting: t.common.saving }}
+      labels={{ ...formOverlayLabels(t, c.confirm), submitting: t.common.creating }}
       busy={pending}
       submitDisabled={!view || view.blocked.length > 0}
       error={failure ? <Notice tone="error">{failure}</Notice> : undefined}
@@ -381,19 +413,24 @@ function DraftDrawer({
   const [rejecting, setRejecting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [instruction, setInstruction] = useState('');
+  const [leaving, setLeaving] = useState(false);
 
-  // The form starts from the draft (or its saved edit) and starts again whenever the server's version of it changes.
-  useEffect(() => {
-    if (detail) {
-      setForm(formOf(detail));
-    }
-  }, [detail?.id, detail?.rowVersion]);
+  // The form starts from the draft (or its saved edit) and starts again whenever the server's version of it changes: adjusted while
+  // rendering, not in an effect, so the drawer never paints a stale form for one frame (rerender-derived-state-no-effect).
+  const [formVersion, setFormVersion] = useState<string | null>(null);
+  const version = detail ? `${detail.id}:${detail.rowVersion}` : null;
+  if (detail && version !== formVersion) {
+    setFormVersion(version);
+    setForm(formOf(detail));
+  }
   // A draft being written reloads itself.
+  const { reload: reloadDetail } = detailResource;
+  const working = detail !== null && isWorking(detail.status);
   useEffect(() => {
-    if (!detail || !isWorking(detail.status)) return;
-    const timer = setInterval(() => void detailResource.reload(), POLL_MS);
+    if (!working) return;
+    const timer = setInterval(() => void reloadDetail(), POLL_MS);
     return () => clearInterval(timer);
-  }, [detail, detailResource]);
+  }, [working, reloadDetail]);
 
   async function run(work: () => Promise<string | null>) {
     if (pending) return;
@@ -402,8 +439,8 @@ function DraftDrawer({
     setFieldProblem(null);
     try {
       const message = await work();
-      await detailResource.reload();
-      await onChanged(message);
+      // The draft and the list behind it reload together (async-parallel).
+      await Promise.all([detailResource.reload(), onChanged(message)]);
     } catch (error) {
       setFieldProblem(serverField(error));
       setFailure(isConflict(error) ? d.conflict : errorMessage(error, t));
@@ -439,6 +476,8 @@ function DraftDrawer({
         {(control) => (
           <Textarea
             {...control}
+            name={name}
+            autoComplete="off"
             rows={limit === null ? 5 : 3}
             value={form?.[name] ?? ''}
             disabled={pending || !editable}
@@ -451,16 +490,19 @@ function DraftDrawer({
     </Stack>
   );
 
+  // Unsaved edits are not dropped silently: closing (Esc, overlay, Close) asks first, as the kit form drawers do (wig Forms).
+  const requestClose = () => (editable && dirty ? setLeaving(true) : onClose());
+
   return (
     <Drawer
       open
       title={label || text.title}
       closeLabel={t.common.close}
-      onClose={onClose}
+      onClose={requestClose}
       footer={
         detail ? (
           <>
-            <Button variant="secondary" onClick={onClose}>
+            <Button variant="secondary" onClick={requestClose}>
               {d.close}
             </Button>
             {editable ? (
@@ -478,7 +520,7 @@ function DraftDrawer({
                     disabled={pending}
                     onClick={() => setRegenerating(true)}
                   >
-                    {d.regenerate}
+                    {opensInput(d.regenerate)}
                   </Button>
                 ) : null}
                 {dirty ? (
@@ -538,7 +580,11 @@ function DraftDrawer({
       }
     >
       {detailResource.error && !detail ? (
-        <Notice tone="error">{d.loadFailed}</Notice>
+        <ErrorState
+          error={detailResource.error}
+          t={t}
+          onRetry={() => void detailResource.reload()}
+        />
       ) : !detail || !form ? (
         <Loading t={t} />
       ) : (
@@ -571,7 +617,7 @@ function DraftDrawer({
                     ? ` (${text.fields[warning.field]})`
                     : ''}
                   {warning.detail && warning.detail !== 'NOT_REQUESTED'
-                    ? ` · ${warning.detail}`
+                    ? `: ${warning.detail}`
                     : ''}
                 </Notice>
               ))}
@@ -602,13 +648,30 @@ function DraftDrawer({
           ) : null}
         </Stack>
       )}
+      {leaving ? (
+        <ConfirmDialog
+          title={t.common.form.discardTitle}
+          description={t.common.form.discardBody}
+          tone="warning"
+          confirmLabel={t.common.form.discardConfirm}
+          busyLabel={t.common.saving}
+          cancelLabel={t.common.form.discardKeep}
+          referenceLabel={t.errors.reference}
+          describeError={confirmError(t)}
+          onConfirm={async () => {
+            setLeaving(false);
+            onClose();
+          }}
+          onCancel={() => setLeaving(false)}
+        />
+      ) : null}
       {rejecting && detail ? (
         <ConfirmDialog
           title={d.reject}
           description={d.rejectBody}
           tone="danger"
           confirmLabel={d.reject}
-          busyLabel={t.common.saving}
+          busyLabel={t.common.rejecting}
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}
           describeError={confirmError(t)}
@@ -625,8 +688,9 @@ function DraftDrawer({
         <FormDialog
           title={d.regenerateTitle}
           description={d.regenerateBody}
-          labels={{ ...formOverlayLabels(t, d.regenerateConfirm), submitting: t.common.saving }}
+          labels={{ ...formOverlayLabels(t, d.regenerateConfirm), submitting: d.regenerating }}
           busy={pending}
+          dirty={instruction.trim() !== ''}
           onClose={() => setRegenerating(false)}
           onSubmit={async () => {
             await api.post(`${BASE}/${id}/regenerate`, {
@@ -635,14 +699,15 @@ function DraftDrawer({
             });
             setRegenerating(false);
             setInstruction('');
-            await detailResource.reload();
-            await onChanged(d.regenerated);
+            await Promise.all([detailResource.reload(), onChanged(d.regenerated)]);
           }}
         >
           <Field label={d.regenerateField}>
             {(control) => (
               <Textarea
                 {...control}
+                name="instruction"
+                autoComplete="off"
                 rows={3}
                 maxLength={600}
                 value={instruction}

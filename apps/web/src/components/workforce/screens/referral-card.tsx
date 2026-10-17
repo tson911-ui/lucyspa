@@ -56,7 +56,7 @@ export function ReferralCard({
         value: (
           <Link className="ls-link" href={`${base}/loyalty/${referral.referrer.id}`}>
             {referral.referrer.displayName}
-            {referral.referrer.phoneMasked ? ` · ${referral.referrer.phoneMasked}` : ''}
+            {referral.referrer.phoneMasked ? ` (${referral.referrer.phoneMasked})` : ''}
           </Link>
         ),
       },
@@ -142,14 +142,14 @@ function ReferralHistory({ changes, zone }: { changes: ReferralChangeResponse[];
     {
       key: 'from',
       header: l.referral.history.from,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (change) => change.oldReferrer.displayName,
     },
     {
       key: 'to',
       header: l.referral.history.to,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (change) => change.newReferrer.displayName,
     },
@@ -163,7 +163,7 @@ function ReferralHistory({ changes, zone }: { changes: ReferralChangeResponse[];
       key: 'reason',
       header: l.referral.history.reason,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (change) => change.reason,
     },

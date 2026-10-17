@@ -8,6 +8,7 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Cluster,
+  DateTimeInput,
   Field,
   FormDrawer,
   FormGrid,
@@ -17,7 +18,7 @@ import {
   Switch,
   TextInput,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
 import { isoToVnLocal } from '../../../lib/workforce/discounts';
@@ -33,6 +34,7 @@ import {
   type SlideProblem,
 } from '../../../lib/workforce/slides';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Button, ErrorState, Notice, useSubmit } from '../ui';
 import { MediaPicker } from './media-picker';
@@ -99,6 +101,7 @@ export function SlideDrawer({
   onSaved: (message: string) => Promise<void>;
 }) {
   const { api, t } = useWorkforce();
+  const enabledHintId = useId();
   const text = t.slides.form;
   const submit = useSubmit();
   const [initial] = useState<SlideForm>(() =>
@@ -163,7 +166,9 @@ export function SlideDrawer({
           src={mediaVariantUrl(media.id, 'md')}
           alt={fill(text.imagePreview, { name: media.filename })}
         />
-        <p className="ls-hint">{media.filename}</p>
+        <p className="ls-hint ls-adminb-file" translate="no">
+          {media.filename}
+        </p>
       </Stack>
     ) : (
       <p className="ls-hint">{none}</p>
@@ -187,7 +192,7 @@ export function SlideDrawer({
             {error('media') ? <Notice tone="error">{error('media')}</Notice> : null}
             <Cluster>
               <Button variant="secondary" onClick={() => setPicking('media')}>
-                {form.media ? text.imageChange : text.imageChoose}
+                {opensInput(form.media ? text.imageChange : text.imageChoose)}
               </Button>
             </Cluster>
           </FormSection>
@@ -196,7 +201,7 @@ export function SlideDrawer({
             {error('mobileMedia') ? <Notice tone="error">{error('mobileMedia')}</Notice> : null}
             <Cluster>
               <Button variant="secondary" onClick={() => setPicking('mobileMedia')}>
-                {form.mobileMedia ? text.imageChange : text.imageChoose}
+                {opensInput(form.mobileMedia ? text.imageChange : text.imageChoose)}
               </Button>
               {form.mobileMedia ? (
                 <Button variant="ghost" onClick={() => change({ mobileMedia: null })}>
@@ -211,6 +216,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="title-vi"
                     value={form.titleVi}
                     onChange={(event) => change({ titleVi: event.target.value })}
                   />
@@ -220,6 +226,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="title-en"
                     value={form.titleEn}
                     onChange={(event) => change({ titleEn: event.target.value })}
                   />
@@ -229,6 +236,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="subtitle-vi"
                     value={form.subtitleVi}
                     onChange={(event) => change({ subtitleVi: event.target.value })}
                   />
@@ -238,6 +246,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="subtitle-en"
                     value={form.subtitleEn}
                     onChange={(event) => change({ subtitleEn: event.target.value })}
                   />
@@ -251,6 +260,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="link-label-vi"
                     value={form.linkLabelVi}
                     onChange={(event) => change({ linkLabelVi: event.target.value })}
                   />
@@ -260,6 +270,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="link-label-en"
                     value={form.linkLabelEn}
                     onChange={(event) => change({ linkLabelEn: event.target.value })}
                   />
@@ -269,6 +280,8 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="link-url"
+                    spellCheck={false}
                     inputMode="url"
                     autoComplete="off"
                     value={form.linkUrl}
@@ -284,6 +297,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="alt-vi"
                     value={form.altVi}
                     onChange={(event) => change({ altVi: event.target.value })}
                   />
@@ -293,6 +307,7 @@ export function SlideDrawer({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="alt-en"
                     value={form.altEn}
                     onChange={(event) => change({ altEn: event.target.value })}
                   />
@@ -321,23 +336,29 @@ export function SlideDrawer({
             <FormGrid>
               <Field label={text.startsAt} error={error('startsAt')}>
                 {(control) => (
-                  <TextInput
-                    {...control}
-                    type="datetime-local"
+                  <DateTimeInput
+                    id={control.id}
+                    aria-describedby={control['aria-describedby']}
+                    invalid={control['aria-invalid'] === true}
+                    timeLabel={`${text.startsAt}, ${t.website.timeLabel}`}
+                    timeError={t.website.timeError}
                     disabled={form.seasonId !== ''}
                     value={form.startsAt}
-                    onChange={(event) => change({ startsAt: event.target.value })}
+                    onValueChange={(startsAt) => change({ startsAt })}
                   />
                 )}
               </Field>
               <Field label={text.endsAt} error={error('endsAt')}>
                 {(control) => (
-                  <TextInput
-                    {...control}
-                    type="datetime-local"
+                  <DateTimeInput
+                    id={control.id}
+                    aria-describedby={control['aria-describedby']}
+                    invalid={control['aria-invalid'] === true}
+                    timeLabel={`${text.endsAt}, ${t.website.timeLabel}`}
+                    timeError={t.website.timeError}
                     disabled={form.seasonId !== ''}
                     value={form.endsAt}
-                    onChange={(event) => change({ endsAt: event.target.value })}
+                    onValueChange={(endsAt) => change({ endsAt })}
                   />
                 )}
               </Field>
@@ -348,8 +369,11 @@ export function SlideDrawer({
               checked={form.isEnabled}
               onCheckedChange={(isEnabled) => change({ isEnabled })}
               label={text.enabled}
+              aria-describedby={enabledHintId}
             />
-            <p className="ls-hint">{text.enabledHint}</p>
+            <p className="ls-hint" id={enabledHintId}>
+              {text.enabledHint}
+            </p>
           </FormSection>
         </Stack>
       </FormDrawer>

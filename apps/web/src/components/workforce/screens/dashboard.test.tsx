@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { getWorkforceDictionary } from '../../../i18n/workforce';
 import { availableWidgets, WIDGETS } from '../../../lib/workforce/dashboard/widgets';
+import { navigationFor } from '../../../lib/workforce/permissions';
+import { shortcutsFor } from '../dashboard/personal-widgets';
+import { WidgetHost } from '../dashboard/widget-host';
 import { employee, owner, render } from '../../../test/support';
 import { DashboardScreen } from './dashboard';
 
@@ -50,10 +53,17 @@ test('widgets follow permissions; the Owner sees management widgets but no perso
 });
 
 test('a branch widget without a resolved branch says so instead of staying blank; the grid has an accessible name', () => {
+  // First paint: the branch list is still loading, so a branch widget shows its loading state, never the "no branch" message
+  // that would flash before the branch arrives (rbp rerender-derived-state).
   const html = render(<DashboardScreen />, owner);
-  assert.match(html, new RegExp(vi.dashboard.noBranchWidgets));
+  assert.doesNotMatch(html, new RegExp(vi.dashboard.noBranchWidgets));
+  assert.match(html, new RegExp(vi.dashboard.widgetLoading));
   assert.match(html, new RegExp(`aria-label="${vi.dashboard.gridLabel}"`));
   assert.match(html, /ls-sortable-bare ls-widget-grid/);
+  // Once the list has answered without a branch, the widget says so.
+  const meta = WIDGETS.find((widget) => widget.scope === 'branch')!;
+  const resolved = render(<WidgetHost placed={{ meta, size: 'm' }} branchId={null} />, owner);
+  assert.match(resolved, new RegExp(vi.dashboard.noBranchWidgets));
 });
 
 test('size classes come from the layout: the revenue widget is wide by default', () => {
@@ -68,16 +78,26 @@ test('size classes come from the layout: the revenue widget is wide by default',
   assert.match(html, /ls-sortable-item ls-widget-s/);
 });
 
-test('widget titles are one clamped line with the full text as title, so a long title never shifts the value row', () => {
+test('widget titles wrap in full: no clamp and no tooltip copy of the title (Owner answer 7)', () => {
   const html = render(<DashboardScreen />, owner);
-  const headings = [
-    ...html.matchAll(/<h2 class="ls-card-title ls-card-title-clamp"([^>]*)>([^<]*)<\/h2>/g),
-  ];
-  assert.ok(headings.length >= 4, 'every widget heading is clamped');
-  for (const [, attributes, text] of headings) {
-    assert.ok(attributes!.includes(`title="${text}"`), `title carries "${text}"`);
-  }
-  assert.match(html, /ls-card-header ls-card-header-clamp/);
+  const headings = [...html.matchAll(/<h2 class="ls-card-title"([^>]*)>([^<]*)<\/h2>/g)];
+  assert.ok(headings.length >= 4, 'every widget has a plain heading');
+  for (const [, attributes] of headings) assert.ok(!attributes!.includes('title='));
+  assert.doesNotMatch(html, /ls-card-title-clamp|ls-card-header-clamp/);
+});
+
+test('"Lối tắt" lists the everyday tasks the account may open, most used first, at most eight (Owner answer 5)', () => {
+  const keys = (account: Parameters<typeof navigationFor>[0]) =>
+    shortcutsFor(navigationFor(account)).map((item) => item.key);
+  const mine = keys(employee());
+  // Only pages the sidebar offers; never the dashboard itself.
+  const offered = new Set(navigationFor(employee()).map((item) => item.key));
+  assert.ok(mine.length > 0 && mine.every((key) => offered.has(key)));
+  assert.ok(!mine.includes('dashboard'));
+  const ownerKeys = keys(owner);
+  assert.ok(ownerKeys.length <= 8);
+  assert.equal(ownerKeys[0], 'pos');
+  assert.ok(!keys(employee()).includes('pos'));
 });
 
 test('the Owner note is a notice, not loose text, and the layout button says what it does', () => {

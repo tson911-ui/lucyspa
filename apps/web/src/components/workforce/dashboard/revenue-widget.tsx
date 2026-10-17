@@ -1,8 +1,8 @@
 'use client';
 
 import type { RevenueReport } from '@lucy-spa/contracts';
-import { LineChart, SegmentedControl, Stat, addDays } from '@lucy-spa/ui';
-import { useMemo, useState } from 'react';
+import { LineChart, SegmentedControl, Stat, addDays, useUrlState } from '@lucy-spa/ui';
+import { useMemo } from 'react';
 import { reportsDictionary } from '../../../i18n/reports';
 import { fill } from '../../../i18n/workforce';
 import { formatVnd, todayIn } from '../../../lib/workforce/format';
@@ -22,12 +22,22 @@ import { WidgetFrame } from './widget-frame';
  * branch the person may read. It is one answer of `GET /reports/revenue`, the very figures of the report page, so the two never differ.
  * Money collected minus money given back, tips not included; the paid-invoices count stays as a second line.
  */
+/** The compare choice lives in the address bar ("?cmp=previous"), so Back/Forward and a shared link keep it. */
+const COMPARE_DEFAULTS = { cmp: 'none' };
+const COMPARE_OPTIONS = {
+  normalize: (state: typeof COMPARE_DEFAULTS) => ({
+    cmp: state.cmp === 'previous' ? 'previous' : 'none',
+  }),
+};
+
 export function RevenueWidget({ size, title }: WidgetProps) {
   const { api, t, locale } = useWorkforce();
   const w = reportsDictionary(locale);
   const d = w.dashboard;
   const kit = t.dashboard.kit;
-  const [mode, setMode] = useState<'none' | 'previous'>('none');
+  const [compare, updateCompare] = useUrlState(COMPARE_DEFAULTS, COMPARE_OPTIONS);
+  const mode: 'none' | 'previous' = compare.cmp === 'previous' ? 'previous' : 'none';
+  const setMode = (next: 'none' | 'previous') => updateCompare({ cmp: next });
   const today = useMemo(() => todayIn(REPORT_ZONE), []);
   const resource = useShared(`revenue:${today}:${mode}`, (passive) =>
     api.get<RevenueReport>(
@@ -70,7 +80,7 @@ export function RevenueWidget({ size, title }: WidgetProps) {
                 ...(held > 0
                   ? [fill(d.held, { amount: formatVnd(report.onlineHeldVnd, locale) })]
                   : []),
-              ].join(' · ')}
+              ].join(', ')}
             />
             <SegmentedControl<'none' | 'previous'>
               label={kit.compareLabel}
@@ -85,7 +95,6 @@ export function RevenueWidget({ size, title }: WidgetProps) {
               title={`${title}. ${d.sevenDays}`}
               data={revenueSeries(report, w)}
               format={format}
-              area
               labels={{
                 ...words,
                 xHeader: kit.xHeader,

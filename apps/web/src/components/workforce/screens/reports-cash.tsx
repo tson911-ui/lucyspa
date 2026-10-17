@@ -7,22 +7,24 @@ import {
   type CashFundsReport,
   type MoneyReportBase,
 } from '@lucy-spa/contracts';
-import { ListSection, Stack, type DataTableColumn } from '@lucy-spa/ui';
+import { Badge as KitBadge, ListSection, Stack, type DataTableColumn } from '@lucy-spa/ui';
 import { reportsCDictionary, type ReportsCDictionary } from '../../../i18n/reports-c';
 import { formatDate } from '../../../lib/workforce/format';
-import { vnd, vndNumber } from '../../../lib/workforce/reports';
+import { vndNumber } from '../../../lib/workforce/reports';
 import { useWorkforce } from '../session';
-import { Badge, Empty, Notice } from '../ui';
+import { Badge, Empty } from '../ui';
 import {
   Kpi,
   KpiRow,
   ReportData,
+  ReportNote,
   ReportScreen,
   ReportTable,
   TruncatedNote,
   type PanelContext,
   type ReportTabDef,
 } from './reports-kit';
+import { signedVndText, vndText } from './reports-format';
 
 /**
  * "Báo cáo quỹ" (Phase 8 P8-14, docs/PHASE8_REPORTS.md 4.6): the cash of each day (a closed day shows what its closing stored, an open day the
@@ -99,10 +101,9 @@ function NotStarted({ data }: { data: MoneyReportBase }) {
   return data.started ? null : <Empty>{c.cash.notStarted}</Empty>;
 }
 
-/** A signed difference: a minus sign in front of what is missing, a plus in front of what is over. */
+/** A signed difference: a true minus in front of what is missing, a plus in front of what is over (signedVndText). */
 function signed(value: string, locale: 'vi' | 'en'): string {
-  const text = vnd(value, locale);
-  return value !== '0' && !value.startsWith('-') ? `+${text}` : text;
+  return signedVndText(value, locale);
 }
 
 export function DailyBody({ data }: { data: CashDailyReport }) {
@@ -124,7 +125,7 @@ export function DailyBody({ data }: { data: CashDailyReport }) {
             key: 'branch',
             header: col['branch']!,
             hideBelow: 'lg' as const,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             cell: (row: CashDailyReport['rows'][number]) => row.branch.name,
           },
@@ -137,7 +138,9 @@ export function DailyBody({ data }: { data: CashDailyReport }) {
         row.closed ? (
           <Badge tone="success">{c.cash.status.closed}</Badge>
         ) : (
-          <Badge tone="neutral">{c.cash.status.open}</Badge>
+          <KitBadge tone="neutral" icon="clock">
+            {c.cash.status.open}
+          </KitBadge>
         ),
     },
     {
@@ -145,28 +148,33 @@ export function DailyBody({ data }: { data: CashDailyReport }) {
       header: col['openingFloat']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => vnd(row.openingFloatVnd, locale),
+      cell: (row) => vndText(row.openingFloatVnd, locale),
     },
-    { key: 'in', header: col['cashIn']!, numeric: true, cell: (row) => vnd(row.cashInVnd, locale) },
+    {
+      key: 'in',
+      header: col['cashIn']!,
+      numeric: true,
+      cell: (row) => vndText(row.cashInVnd, locale),
+    },
     {
       key: 'out',
       header: col['cashOut']!,
       numeric: true,
-      cell: (row) => vnd(row.cashOutVnd, locale),
+      cell: (row) => vndText(row.cashOutVnd, locale),
     },
     {
       key: 'expected',
       header: col['expected']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.expectedVnd, locale),
+      cell: (row) => vndText(row.expectedVnd, locale),
     },
     {
       key: 'counted',
       header: col['counted']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => (row.countedVnd === null ? '—' : vnd(row.countedVnd, locale)),
+      cell: (row) => (row.countedVnd === null ? '—' : vndText(row.countedVnd, locale)),
     },
     {
       key: 'difference',
@@ -180,7 +188,7 @@ export function DailyBody({ data }: { data: CashDailyReport }) {
       numeric: true,
       hideBelow: '2xl',
       hidePhone: true,
-      cell: (row) => (row.withdrawalVnd === null ? '—' : vnd(row.withdrawalVnd, locale)),
+      cell: (row) => (row.withdrawalVnd === null ? '—' : vndText(row.withdrawalVnd, locale)),
     },
   ];
   const categoryColumns: DataTableColumn<CashDailyReport['byCategory'][number]>[] = [
@@ -188,12 +196,17 @@ export function DailyBody({ data }: { data: CashDailyReport }) {
       key: 'category',
       header: col['category']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => c.cash.categories[row.category] ?? row.category,
     },
-    { key: 'in', header: col['cashIn']!, numeric: true, cell: (row) => vnd(row.inVnd, locale) },
-    { key: 'out', header: col['cashOut']!, numeric: true, cell: (row) => vnd(row.outVnd, locale) },
+    { key: 'in', header: col['cashIn']!, numeric: true, cell: (row) => vndText(row.inVnd, locale) },
+    {
+      key: 'out',
+      header: col['cashOut']!,
+      numeric: true,
+      cell: (row) => vndText(row.outVnd, locale),
+    },
   ];
   const k = c.cash.kpi;
   return (
@@ -221,6 +234,7 @@ export function DailyBody({ data }: { data: CashDailyReport }) {
       {data.byCategory.length > 0 ? (
         <ListSection title={c.cash.byCategory}>
           <ReportTable
+            urlKey="tp2"
             label={c.cash.byCategory}
             columns={categoryColumns}
             rows={data.byCategory}
@@ -243,7 +257,7 @@ export function FundsBody({ data }: { data: CashFundsReport }) {
       key: 'fund',
       header: col['fund']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.name,
     },
@@ -258,27 +272,27 @@ export function FundsBody({ data }: { data: CashFundsReport }) {
       header: col['openingBalance']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => vnd(row.openingBalanceVnd, locale),
+      cell: (row) => vndText(row.openingBalanceVnd, locale),
     },
     {
       key: 'in',
       header: col['cashIn']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.inVnd, locale),
+      cell: (row) => vndText(row.inVnd, locale),
     },
     {
       key: 'out',
       header: col['cashOut']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.outVnd, locale),
+      cell: (row) => vndText(row.outVnd, locale),
     },
     {
       key: 'balance',
       header: col['balance']!,
       numeric: true,
-      cell: (row) => vnd(row.balanceVnd, locale),
+      cell: (row) => vndText(row.balanceVnd, locale),
     },
     {
       key: 'closed',
@@ -299,7 +313,7 @@ export function FundsBody({ data }: { data: CashFundsReport }) {
         <Kpi label={k.cashBalance} value={sum('CASH')} format="vnd" />
         {data.bankIncluded ? <Kpi label={k.bankBalance} value={sum('BANK')} format="vnd" /> : null}
       </KpiRow>
-      {!data.bankIncluded ? <Notice tone="info">{c.cash.bankNote}</Notice> : null}
+      {!data.bankIncluded ? <ReportNote>{c.cash.bankNote}</ReportNote> : null}
       <ReportTable
         label={c.cash.tabs.funds}
         columns={columns}
@@ -330,7 +344,7 @@ export function DifferencesBody({ data }: { data: CashDifferencesReport }) {
             key: 'branch',
             header: col['branch']!,
             hideBelow: 'lg' as const,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             cell: (row: CashDifferencesReport['rows'][number]) => row.branch.name,
           },
@@ -341,14 +355,14 @@ export function DifferencesBody({ data }: { data: CashDifferencesReport }) {
       header: col['expected']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.expectedVnd, locale),
+      cell: (row) => vndText(row.expectedVnd, locale),
     },
     {
       key: 'counted',
       header: col['counted']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.countedVnd, locale),
+      cell: (row) => vndText(row.countedVnd, locale),
     },
     {
       key: 'difference',
@@ -370,7 +384,7 @@ export function DifferencesBody({ data }: { data: CashDifferencesReport }) {
       key: 'reason',
       header: col['reason']!,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.reason ?? '—',
     },
@@ -379,7 +393,7 @@ export function DifferencesBody({ data }: { data: CashDifferencesReport }) {
       header: col['closedBy']!,
       hideBelow: 'xl',
       hidePhone: true,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.closedByName ?? '—',
     },

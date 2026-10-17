@@ -80,7 +80,7 @@ function LoginForm() {
   }
 
   return (
-    <AuthLayout brand={<BrandWordmark size="display" serif />} topActions={<AuthTopActions />}>
+    <AuthLayout brand={<BrandWordmark size="display" />} topActions={<AuthTopActions />}>
       <h1>{t.auth.loginTitle}</h1>
       <p>{t.auth.loginIntro}</p>
       {params.get('expired') ? (
@@ -112,18 +112,15 @@ function LoginForm() {
             name="identifier"
             type={identifierType === 'EMAIL' ? 'email' : 'text'}
             autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             required
             maxLength={256}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
           />
         </Field>
-        <Field
-          id="password"
-          label={t.auth.password}
-          required
-          labelAction={<Link href={`${base}/forgot-password`}>{t.auth.forgotPassword}</Link>}
-        >
+        <Field id="password" label={t.auth.password} required>
           <PasswordInput
             id="password"
             name="password"
@@ -136,6 +133,12 @@ function LoginForm() {
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
+        {/* Its own 40 px row under the field, not squeezed into the label row 7 px from the eye toggle (C29). */}
+        <p className="ls-self-auth-link">
+          <Link className="ls-link" href={`${base}/forgot-password`}>
+            {t.auth.forgotPassword}
+          </Link>
+        </p>
         <SubmitButton pending={pending} label={t.auth.signIn} pendingLabel={t.auth.signingIn} />
       </form>
     </AuthLayout>

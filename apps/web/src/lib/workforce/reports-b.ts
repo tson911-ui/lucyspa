@@ -85,10 +85,22 @@ export function normalizeReportPage(
 }
 
 /** Whole-number percent of a basis-point figure, one decimal at most ("66,7%"). */
+/** One formatter per locale and kind, built once: the report tables format every cell (rbp js-cache-function-results). */
+const reportFormats = new Map<string, Intl.NumberFormat>();
+function reportFormat(locale: Locale, fractionDigits: number): Intl.NumberFormat {
+  const key = `${locale}-${fractionDigits}`;
+  let format = reportFormats.get(key);
+  if (!format) {
+    format = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+      maximumFractionDigits: fractionDigits,
+    });
+    reportFormats.set(key, format);
+  }
+  return format;
+}
+
 export function percentFromBp(bp: number, locale: Locale): string {
-  return `${new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-    maximumFractionDigits: 1,
-  }).format(bp / 100)}%`;
+  return `${reportFormat(locale, 1).format(bp / 100)}%`;
 }
 
 /** Minutes as hours and minutes ("7 giờ 30 phút", "45 phút"). */
@@ -116,9 +128,7 @@ export function bpToPercent(bp: number): number {
 
 /** A whole number with the language's digit grouping ("1.043" / "1,043"). */
 export function formatCount(value: number, locale: Locale): string {
-  return new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-    maximumFractionDigits: 0,
-  }).format(Math.round(value));
+  return reportFormat(locale, 0).format(Math.round(value));
 }
 
 /** A pay month as "10/2026". */

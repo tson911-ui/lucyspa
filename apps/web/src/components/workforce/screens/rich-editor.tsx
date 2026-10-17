@@ -107,6 +107,8 @@ export function RichEditor({
           {mode === 'write' ? (
             <Textarea
               {...control}
+              name="body"
+              autoComplete="off"
               ref={box}
               rows={18}
               spellCheck

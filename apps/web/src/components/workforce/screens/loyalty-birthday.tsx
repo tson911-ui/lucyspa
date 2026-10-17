@@ -25,7 +25,8 @@ import {
   windowText,
 } from '../../../lib/workforce/birthday';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -53,7 +54,8 @@ export function LoyaltyBirthday() {
     [api],
   );
   const [editing, setEditing] = useState(false);
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+  // The pager lives in the address bar under its own key, so Back/Forward and a shared link restore the page.
+  const paging = useUrlPaging('bhp', t, b.history.title);
 
   if (config.error && !config.data) {
     return <ErrorState error={config.error} t={t} onRetry={() => void config.reload()} />;
@@ -79,7 +81,7 @@ export function LoyaltyBirthday() {
       key: 'by',
       header: b.history.by,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.createdByName,
     },
@@ -121,7 +123,7 @@ export function LoyaltyBirthday() {
             title={b.current.title}
             actions={
               <Button variant="primary" icon="edit" onClick={() => setEditing(true)}>
-                {b.current.edit}
+                {opensInput(b.current.edit)}
               </Button>
             }
           />
@@ -163,7 +165,7 @@ export function LoyaltyBirthday() {
             title={b.empty.title}
             actions={
               <Button variant="primary" icon="plus" onClick={() => setEditing(true)}>
-                {b.empty.action}
+                {opensInput(b.empty.action)}
               </Button>
             }
           />
@@ -179,12 +181,7 @@ export function LoyaltyBirthday() {
             rows={versions}
             rowKey={(row) => row.id}
             empty={<Empty>{b.history.none}</Empty>}
-            paging={{
-              ...paging,
-              onPageChange: (page) => setPaging((state) => ({ ...state, page })),
-              onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-              labels: paginationLabels(t, b.history.title),
-            }}
+            paging={paging}
           />
         </ListSection>
       ) : null}

@@ -32,6 +32,7 @@ import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { Button, ErrorState, Loading, Notice, useResource, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
+import { focusInvalidSoon } from './products-links';
 
 /**
  * "Trang mỹ phẩm": the Owner-written copy of the public cosmetics page (OQ-P6-28) in a drawer (FR9: a medium form): the picture
@@ -111,7 +112,10 @@ function PageForm({
     setChecked(true);
     onError(null);
     const body = pageRequest(draft, settings.rowVersion);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     if (!pageChanged(draft, initial)) {
       onClose();
       return;
@@ -170,6 +174,8 @@ function PageForm({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="heroTitleVi"
+                    autoComplete="off"
                     value={draft.heroTitleVi}
                     onChange={(event) => set({ heroTitleVi: event.target.value })}
                   />
@@ -179,6 +185,8 @@ function PageForm({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="heroTitleEn"
+                    autoComplete="off"
                     value={draft.heroTitleEn}
                     onChange={(event) => set({ heroTitleEn: event.target.value })}
                   />
@@ -188,6 +196,8 @@ function PageForm({
                 {(control) => (
                   <Textarea
                     {...control}
+                    name="heroTextVi"
+                    autoComplete="off"
                     rows={3}
                     value={draft.heroTextVi}
                     onChange={(event) => set({ heroTextVi: event.target.value })}
@@ -198,6 +208,8 @@ function PageForm({
                 {(control) => (
                   <Textarea
                     {...control}
+                    name="heroTextEn"
+                    autoComplete="off"
                     rows={3}
                     value={draft.heroTextEn}
                     onChange={(event) => set({ heroTextEn: event.target.value })}
@@ -212,6 +224,8 @@ function PageForm({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="commitmentTitleVi"
+                    autoComplete="off"
                     value={draft.commitmentTitleVi}
                     onChange={(event) => set({ commitmentTitleVi: event.target.value })}
                   />
@@ -221,6 +235,8 @@ function PageForm({
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="commitmentTitleEn"
+                    autoComplete="off"
                     value={draft.commitmentTitleEn}
                     onChange={(event) => set({ commitmentTitleEn: event.target.value })}
                   />
@@ -234,6 +250,8 @@ function PageForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="textVi"
+                        autoComplete="off"
                         value={line.textVi}
                         onChange={(event) => setLine(line.key, { textVi: event.target.value })}
                       />
@@ -243,6 +261,8 @@ function PageForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="textEn"
+                        autoComplete="off"
                         value={line.textEn}
                         onChange={(event) => setLine(line.key, { textEn: event.target.value })}
                       />

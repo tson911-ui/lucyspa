@@ -19,6 +19,22 @@ import { preOrderErrorText } from './product-orders';
  * API decides again on every command.
  */
 
+// Lists through Intl.ListFormat, one cached formatter per locale and kind (wig Locale & i18n; rbp js-cache-function-results):
+// `facts` is "A, B, C" for the facts of one option, `names` is "A, B và C" for the products a message names.
+const lists = new Map<string, Intl.ListFormat>();
+function listOf(locale: Locale, kind: 'facts' | 'names'): Intl.ListFormat {
+  const key = `${locale}:${kind}`;
+  let format = lists.get(key);
+  if (!format) {
+    format = new Intl.ListFormat(
+      locale,
+      kind === 'names' ? { type: 'conjunction' } : { type: 'unit', style: 'short' },
+    );
+    lists.set(key, format);
+  }
+  return format;
+}
+
 /** The largest quantity of one line, as the server accepts it. */
 export const MAX_PRODUCT_QUANTITY = 1000;
 
@@ -44,10 +60,11 @@ export function productTitle(
   const label = locale === 'vi' ? product.variantLabelVi : product.variantLabelEn;
   if (!label) return name;
   // The name of an invoice line already ends with " - <label>" (the catalog copy); show the label once, the same way as a search result.
+  // The variant sits in brackets (session 10: no " · " meta string), which also keeps a list of products unambiguous.
   const suffix = ` - ${label}`;
   return name.endsWith(suffix)
-    ? `${name.slice(0, -suffix.length)} · ${label}`
-    : `${name} · ${label}`;
+    ? `${name.slice(0, -suffix.length)} (${label})`
+    : `${name} (${label})`;
 }
 
 /**
@@ -71,7 +88,8 @@ export function optionLabel(option: PosProductOption, locale: Locale): string {
         ? a.available.replace('{count}', String(option.available))
         : a.outOfStock),
   ];
-  return parts.join(' — ');
+  // Facts as an Intl list ("A, B, C"), not " — " fragments (session 10 tells).
+  return listOf(locale, 'facts').format(parts);
 }
 
 export type AddProblem = 'product' | 'seller' | 'quantity' | 'stock';
@@ -146,7 +164,7 @@ export function productErrorText(
         .filter((line): line is InvoiceProductLineResponse => line !== undefined)
         .map((line) => productTitle(line, locale));
       return names.length > 0
-        ? d.outOfStock.named.replace('{names}', names.join(', '))
+        ? d.outOfStock.named.replace('{names}', listOf(locale, 'names').format(names))
         : d.outOfStock.unnamed;
     }
     const texts = d.errors as Record<string, string>;

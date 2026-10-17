@@ -11,11 +11,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inventoryDictionary } from '../../../i18n/inventory';
 import { INVENTORY_LIST_DEFAULTS } from '../../../lib/workforce/inventory';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { owner, render } from '../../../test/support';
 import { InventoryView } from './inventory';
 import { CountView } from './inventory-counts';
 import { ReceiptsList, ReceiptView } from './inventory-receipts';
-import { InventoryItemView, StockList } from './inventory-stock';
+import { InventoryItemScreen, InventoryItemView, StockList } from './inventory-stock';
 
 const text = inventoryDictionary('vi');
 const noop = () => Promise.resolve();
@@ -327,7 +328,8 @@ const countView = (c: StockCountResponse) => render(<CountView count={c} reload=
 
 test('an open count can be edited, approved and cancelled by someone who may adjust', () => {
   const markup = countView(count());
-  assert.ok(markup.includes('aria-label="Số đếm của KEM-50"'), 'each counted box is labelled');
+  // Session 10 (wig :336): the box names the product and its SKU.
+  assert.match(markup, /aria-label="Số đếm của [^"]+ \(KEM-50\)"/, 'each counted box is labelled');
   assert.ok(markup.includes('value="8"'));
   assert.ok(markup.includes(`ls-btn-label">${text.count.approve}</span>`), 'the primary action');
   assert.ok(markup.includes(`ls-btn-label">${text.count.add}</span>`));
@@ -416,7 +418,7 @@ const itemView = (d: InventoryVariantDetailResponse) =>
 test('the item page: the adjustment is the one primary action; lots and history in their own sections', () => {
   const markup = itemView(detail());
   assert.equal(markup.match(/<h1/g)?.length, 1);
-  assert.ok(markup.includes(`ls-btn-label">${text.item.adjust}</span>`));
+  assert.ok(markup.includes(`ls-btn-label">${opensInput(text.item.adjust)}</span>`));
   assert.ok(markup.includes(text.item.lots) && markup.includes(text.item.history));
   assert.ok(markup.includes('LOT-OLD') && markup.includes(text.item.expiredBadge));
   assert.ok(
@@ -425,7 +427,9 @@ test('the item page: the adjustment is the one primary action; lots and history 
   assert.ok(markup.includes('-1'));
   assert.ok(!markup.includes(text.item.lotColumns.cost), 'no cost column without a cost');
   assert.ok(
-    !itemView(detail({ canAdjust: false })).includes(`ls-btn-label">${text.item.adjust}</span>`),
+    !itemView(detail({ canAdjust: false })).includes(
+      `ls-btn-label">${opensInput(text.item.adjust)}</span>`,
+    ),
   );
   const costed = itemView(
     detail({
@@ -453,7 +457,7 @@ test('the inventory page offers only the tabs and actions the context allows', (
   assert.ok(viewer.includes(text.tabs.stock) && viewer.includes(text.tabs.counts));
   assert.ok(!viewer.includes(text.tabs.receipts) && !viewer.includes(text.tabs.suppliers));
   assert.ok(
-    !viewer.includes(`ls-btn-label">${text.settings}</span>`),
+    !viewer.includes(`ls-btn-label">${opensInput(text.settings)}</span>`),
     'settings need MANAGE_PRODUCTS',
   );
   assert.ok(!viewer.includes(`ls-btn-label">${text.receipts.add}</span>`));
@@ -480,8 +484,8 @@ test('the inventory page offers only the tabs and actions the context allows', (
     owner,
   );
   assert.ok(manager.includes(text.tabs.suppliers) && !manager.includes(text.tabs.stock));
-  assert.ok(manager.includes(`ls-btn-label">${text.settings}</span>`));
-  assert.ok(manager.includes(`ls-btn-label">${text.suppliers.add}</span>`));
+  assert.ok(manager.includes(`ls-btn-label">${opensInput(text.settings)}</span>`));
+  assert.ok(manager.includes(`ls-btn-label">${opensInput(text.suppliers.add)}</span>`));
 
   const nothing = render(<InventoryView context={context({ branches: [] })} />, owner);
   assert.ok(nothing.includes(text.noAccess));
@@ -504,4 +508,12 @@ test('with several branches the toolbar offers a branch chooser, with one it doe
   assert.ok(
     !render(<InventoryView context={context()} />, owner).includes(`aria-label="${text.branch}"`),
   );
+});
+
+test('an item page opened directly waits for the address bar instead of asking the API for an empty branch', () => {
+  // The server snapshot of useUrlState has no query: the page must not build /inventory/branches//variants/<id> (the 404 that
+  // the session 10 sweep logged on every admin page); it shows the loading state until the branch is known.
+  const markup = render(<InventoryItemScreen variantId="v1" />, owner);
+  assert.ok(markup.includes('Đang tải…'), 'the loading state');
+  assert.ok(!markup.includes(text.notFound), 'not the missing-branch notice before hydration');
 });

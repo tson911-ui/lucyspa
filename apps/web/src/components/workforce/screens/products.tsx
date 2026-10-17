@@ -8,14 +8,17 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListToolbar,
   MediaThumb,
+  Menu,
   RowActions,
   SearchInput,
   Tabs,
   useUrlState,
   type DataTableColumn,
+  type MenuItem,
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
 import { useState } from 'react';
@@ -43,17 +46,9 @@ import {
 } from '../../../lib/workforce/products';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
 import { useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+import { Badge, Button, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 import { ProductPageDrawer } from './product-page-drawer';
+import { RouterButtonLink, RouterMenuLink } from './products-links';
 import { ProductSettingsDialog } from './product-settings-dialog';
 import { ProductStatusConfirm } from './product-status';
 import { BrandsTab, CategoriesTab } from './products-taxonomy';
@@ -67,7 +62,7 @@ type Overlay = { kind: 'status'; product: ProductListItem; to: 'PUBLISHED' | 'IN
  * `access`; the cost never appears in any list.
  */
 export function ProductsScreen() {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const p = productDictionary(locale);
   const products = useResource(() => api.get<ProductListResponse>('/api/v1/products'), [api]);
   const brands = useResource(
@@ -104,6 +99,15 @@ export function ProductsScreen() {
     (list.q ? 1 : 0) + (list.brand ? 1 : 0) + (list.category ? 1 : 0) + (list.status ? 1 : 0);
   const shownBrands = brands.data?.brands ?? [];
   const shownCategories = categories.data?.categories ?? [];
+  const headerMenu: MenuItem[] = [
+    { id: 'page', label: p.page.open, icon: 'globe', onSelect: () => setPageOpen(true) },
+    {
+      id: 'settings',
+      label: p.settings.open,
+      icon: 'settings',
+      onSelect: () => setSettingsOpen(true),
+    },
+  ];
 
   const columns: DataTableColumn<ProductListItem>[] = [
     {
@@ -120,16 +124,12 @@ export function ProductsScreen() {
       key: 'name',
       header: p.list.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       sortable: true,
       sortValue: (product) => productSortValue(product, 'name', locale),
       cell: (product) => (
-        <Link
-          className="ls-link"
-          href={`${base}/products/${product.id}`}
-          title={localizedName(product, locale)}
-        >
+        <Link className="ls-link" href={`${base}/products/${product.id}`}>
           {localizedName(product, locale)}
         </Link>
       ),
@@ -138,7 +138,7 @@ export function ProductsScreen() {
       key: 'brand',
       header: p.list.brand,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       sortable: true,
       sortValue: (product) => productSortValue(product, 'brand', locale),
@@ -148,7 +148,7 @@ export function ProductsScreen() {
       key: 'category',
       header: p.list.category,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       sortable: true,
       sortValue: (product) => productSortValue(product, 'category', locale),
@@ -188,12 +188,13 @@ export function ProductsScreen() {
         return (
           <RowActions
             menuLabel={fill(t.common.list.actionsFor, { name })}
+            LinkComponent={RouterMenuLink}
             items={[
               {
                 id: 'details',
                 label: p.actions.details,
                 icon: 'eye',
-                onSelect: () => navigate?.(`${base}/products/${product.id}`),
+                href: `${base}/products/${product.id}`,
               },
               ...(manage
                 ? allowedStatusMoves(product.status).map((to) => ({
@@ -227,7 +228,7 @@ export function ProductsScreen() {
               id="product-q"
               value={list.q}
               label={p.list.search}
-              placeholder={p.list.search}
+              hint={p.list.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -269,6 +270,7 @@ export function ProductsScreen() {
         />
       ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: p.title })}
         columns={columns}
@@ -286,7 +288,36 @@ export function ProductsScreen() {
         }
         empty={
           products.data ? (
-            <Empty>{all.length === 0 ? p.list.empty : p.list.noMatch}</Empty>
+            all.length === 0 ? (
+              <EmptyState
+                icon="tag"
+                title={p.list.emptyTitle}
+                action={
+                  manage ? (
+                    <RouterButtonLink href={`${base}/products/new`} icon="plus">
+                      {p.list.add}
+                    </RouterButtonLink>
+                  ) : undefined
+                }
+              >
+                {p.list.empty}
+              </EmptyState>
+            ) : (
+              <EmptyState
+                icon="search"
+                title={p.list.noMatchTitle}
+                action={
+                  <Button
+                    variant="secondary"
+                    onClick={() => updateList({ q: '', brand: '', category: '', status: '' })}
+                  >
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {p.list.noMatch}
+              </EmptyState>
+            )
           ) : undefined
         }
         paging={{
@@ -304,19 +335,15 @@ export function ProductsScreen() {
     <>
       <PageHeader title={p.title}>
         {manage ? (
-          <Button variant="secondary" icon="globe" onClick={() => setPageOpen(true)}>
-            {p.page.open}
-          </Button>
-        ) : null}
-        {manage ? (
-          <Button variant="secondary" icon="settings" onClick={() => setSettingsOpen(true)}>
-            {p.settings.open}
-          </Button>
+          // The cosmetics page and the catalog settings are occasional: one header `⋮` keeps a single button in the title row
+          // (the primary), so the row never wraps at 1024 px.
+          <Menu label={p.list.more} items={headerMenu} icon="more-vertical" />
         ) : null}
         {manage && list.tab === 'products' ? (
-          <Button variant="primary" icon="plus" onClick={() => navigate?.(`${base}/products/new`)}>
+          // Owner answer 5: the new-product form is its own page; the action is a real link to it.
+          <RouterButtonLink href={`${base}/products/new`} variant="primary" icon="plus">
             {p.list.add}
-          </Button>
+          </RouterButtonLink>
         ) : null}
         {manage && list.tab === 'brands' ? (
           <Button variant="primary" icon="plus" onClick={() => setCreateOpen('brand')}>

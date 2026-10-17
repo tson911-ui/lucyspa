@@ -8,6 +8,7 @@ import type {
 import {
   ConfirmDialog,
   Dialog,
+  EmptyState,
   ListSection,
   MediaGrid,
   MediaPreview,
@@ -23,7 +24,7 @@ import { mediaVariantUrl } from '../../../lib/workforce/media';
 import { movedImageIds, productErrorText } from '../../../lib/workforce/products';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
-import { Button, Empty, Notice, useSuccessToast } from '../ui';
+import { Button, Notice, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
 
 /**
@@ -86,7 +87,9 @@ export function ImagesSection({
     >
       {notice ? <Notice tone="error">{notice}</Notice> : null}
       {images.length === 0 ? (
-        <Empty>{m.empty}</Empty>
+        <EmptyState icon="image" title={m.emptyTitle}>
+          {m.empty}
+        </EmptyState>
       ) : (
         <MediaGrid label={m.list}>
           {images.map((image, index) => {
@@ -159,7 +162,7 @@ export function ImagesSection({
         >
           <MediaPreview
             src={mediaVariantUrl(viewing.mediaAssetId, 'lg')}
-            alt={viewing.altVi ?? ''}
+            alt={title(viewing, images.indexOf(viewing))}
           />
         </Dialog>
       ) : null}

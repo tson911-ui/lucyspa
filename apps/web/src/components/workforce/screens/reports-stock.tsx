@@ -15,25 +15,22 @@ import { inventoryDictionary } from '../../../i18n/inventory';
 import type { Locale } from '../../../i18n/locales';
 import { reportsBDictionary, type ReportsBDictionary } from '../../../i18n/reports-b';
 import { formatDate } from '../../../lib/workforce/format';
-import { vnd, vndNumber } from '../../../lib/workforce/reports';
-import {
-  bpToPercent,
-  percentFromBp,
-  pickName,
-  formatCount,
-} from '../../../lib/workforce/reports-b';
+import { vndNumber } from '../../../lib/workforce/reports';
+import { bpToPercent, pickName, formatCount } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
-import { Badge, Notice } from '../ui';
+import { Badge } from '../ui';
 import {
   Kpi,
   KpiRow,
   ReportData,
+  ReportNote,
   ReportScreen,
   ReportTable,
   TruncatedNote,
   type PanelContext,
   type ReportTabDef,
 } from './reports-kit';
+import { shareText, vndText } from './reports-format';
 
 /**
  * "Kho hàng" (Phase 8 P8-10, docs/PHASE8_REPORTS.md 4.5): best sellers, items running low, slow movers, expiry, what the stock is worth at cost
@@ -194,18 +191,23 @@ function itemColumns<Row extends ItemRow>(
             key: 'branch',
             header: b.col['branch']!,
             hideBelow: 'lg' as const,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
-            cell: (row: Row) => row.branch?.name ?? '',
+            cell: (row: Row) => row.branch?.name ?? '—',
           },
         ]
       : []),
-    { key: 'sku', header: b.col['sku']!, hideBelow: 'md' as const, cell: (row: Row) => row.sku },
+    {
+      key: 'sku',
+      header: b.col['sku']!,
+      hideBelow: 'md' as const,
+      cell: (row: Row) => <span translate="no">{row.sku}</span>,
+    },
     {
       key: 'name',
       header: b.col['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg' as const,
       cell: (row: Row) => pickName(locale, row.nameVi, row.nameEn),
     },
@@ -236,14 +238,14 @@ export function BestBody({ data }: { data: BestSellerReport }) {
       header: c['net']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => vnd(row.netVnd, locale),
+      cell: (row) => vndText(row.netVnd, locale),
     },
     {
       key: 'share',
       header: c['share']!,
       numeric: true,
       hideBelow: 'lg',
-      cell: (row) => percentFromBp(row.shareBp, locale),
+      cell: (row) => shareText(locale, row.shareBp),
     },
   ];
   return (
@@ -327,7 +329,7 @@ export function SlowBody({ data }: { data: SlowMoverReport }) {
       header: c['daysSinceSale']!,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => row.daysSinceSale ?? '—',
+      cell: (row) => (row.daysSinceSale === null ? '—' : count(row.daysSinceSale)),
     },
     ...(data.costColumn
       ? [
@@ -337,7 +339,7 @@ export function SlowBody({ data }: { data: SlowMoverReport }) {
             numeric: true,
             hideBelow: 'lg' as const,
             cell: (row: SlowMoverReport['rows'][number]) =>
-              row.costValueVnd === null ? b.stock.noCost : vnd(row.costValueVnd, locale),
+              row.costValueVnd === null ? b.stock.noCost : vndText(row.costValueVnd, locale),
           },
         ]
       : []),
@@ -345,7 +347,7 @@ export function SlowBody({ data }: { data: SlowMoverReport }) {
   return (
     <Stack gap="page">
       <p className="ls-hint">{b.stock.slowIntro}</p>
-      {!data.costColumn ? <Notice tone="info">{b.stock.noCostColumn}</Notice> : null}
+      {!data.costColumn ? <ReportNote>{b.stock.noCostColumn}</ReportNote> : null}
       <TruncatedNote truncated={data.truncated} count={STOCK_ROW_LIMIT} />
       <ReportTable
         label={b.stock.tabs.slow}
@@ -365,7 +367,12 @@ export function ExpiryBody({ data }: { data: ExpiryReport }) {
   const c = b.col;
   const columns: DataTableColumn<ExpiryReport['rows'][number]>[] = [
     ...itemColumns<ExpiryReport['rows'][number]>(b, locale, hasManyBranches(data.branches)),
-    { key: 'lot', header: c['lot']!, hideBelow: 'md', cell: (row) => row.lotCode },
+    {
+      key: 'lot',
+      header: c['lot']!,
+      hideBelow: 'md',
+      cell: (row) => <span translate="no">{row.lotCode}</span>,
+    },
     { key: 'expiry', header: c['expiry']!, cell: (row) => formatDate(row.expiryDate, locale) },
     {
       key: 'left',
@@ -413,7 +420,12 @@ export function ValueBody({ data }: { data: StockValueReport }) {
       hideBelow: 'md',
       cell: (row) => count(row.unitsWithCost),
     },
-    { key: 'value', header: c['value']!, numeric: true, cell: (row) => vnd(row.valueVnd, locale) },
+    {
+      key: 'value',
+      header: c['value']!,
+      numeric: true,
+      cell: (row) => vndText(row.valueVnd, locale),
+    },
   ];
   return (
     <Stack gap="page">
@@ -459,7 +471,7 @@ export function MovementsBody({ data }: { data: StockMovementReport }) {
             key: 'branch',
             header: c['branch']!,
             hideBelow: 'lg' as const,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             cell: (row: StockMovementReport['rows'][number]) => row.branch.name,
           },
@@ -469,7 +481,7 @@ export function MovementsBody({ data }: { data: StockMovementReport }) {
       key: 'kind',
       header: c['movement']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => (inventory.kinds as Record<string, string>)[row.kind] ?? row.kind,
     },
@@ -513,7 +525,7 @@ export function ReceiptsBody({ data }: { data: StockReceiptReport }) {
       key: 'supplier',
       header: c['supplier']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.supplierName ?? b.stock.noSupplier,
     },
@@ -526,7 +538,7 @@ export function ReceiptsBody({ data }: { data: StockReceiptReport }) {
             header: c['receiptCost']!,
             numeric: true,
             cell: (row: StockReceiptReport['rows'][number]) =>
-              row.costVnd === null ? b.stock.noCost : vnd(row.costVnd, locale),
+              row.costVnd === null ? b.stock.noCost : vndText(row.costVnd, locale),
           },
         ]
       : []),
@@ -540,7 +552,7 @@ export function ReceiptsBody({ data }: { data: StockReceiptReport }) {
   ];
   return (
     <Stack gap="page">
-      {!data.costColumn ? <Notice tone="info">{b.stock.noCostColumn}</Notice> : null}
+      {!data.costColumn ? <ReportNote>{b.stock.noCostColumn}</ReportNote> : null}
       <ReportTable
         label={b.stock.tabs.receipts}
         columns={columns}

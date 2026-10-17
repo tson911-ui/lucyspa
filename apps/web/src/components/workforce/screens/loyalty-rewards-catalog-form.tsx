@@ -101,7 +101,7 @@ export function RewardItemDrawer({
         <Field label={f.kind} hint={f.kindHint} error={issueText(errors.kind)} required={!editing}>
           {(control) =>
             editing ? (
-              <TextInput {...control} value={r.kind[item.kind]} readOnly disabled />
+              <TextInput {...control} name="kind" value={r.kind[item.kind]} readOnly disabled />
             ) : (
               <Select
                 {...control}
@@ -130,6 +130,7 @@ export function RewardItemDrawer({
               editing ? (
                 <TextInput
                   {...control}
+                  name="service"
                   value={item.service ? rewardName(item.service, locale) : ''}
                   readOnly
                   disabled
@@ -166,7 +167,7 @@ export function RewardItemDrawer({
                   value: variant.id,
                   label: `${rewardName(variant, locale)}${
                     (locale === 'vi' ? variant.labelVi : variant.labelEn)
-                      ? ` · ${locale === 'vi' ? variant.labelVi : variant.labelEn}`
+                      ? `, ${locale === 'vi' ? variant.labelVi : variant.labelEn}`
                       : ''
                   } (${variant.sku})`,
                 }))}
@@ -179,6 +180,7 @@ export function RewardItemDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               autoComplete="off"
               maxLength={200}
               value={draft.nameVi}
@@ -190,6 +192,7 @@ export function RewardItemDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               autoComplete="off"
               maxLength={200}
               value={draft.nameEn}
@@ -223,6 +226,7 @@ export function RewardItemDrawer({
             {(control) => (
               <NumberInput
                 {...control}
+                name="days"
                 inputMode="numeric"
                 min={1}
                 max={3650}

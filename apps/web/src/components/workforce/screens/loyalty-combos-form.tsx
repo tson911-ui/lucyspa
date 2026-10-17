@@ -13,6 +13,7 @@ import {
 } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
+import { moneyInputFormat } from '../../../lib/workforce/money-input';
 import {
   comboErrorText,
   createRequest,
@@ -45,6 +46,7 @@ export function ComboFormDrawer({
   onClose: () => void;
 }) {
   const { api, t, locale } = useWorkforce();
+  const money = moneyInputFormat(locale);
   const c = comboDictionary(locale);
   const f = c.form;
   const [initial] = useState(() => (combo ? draftFromCombo(combo) : emptyComboDraft()));
@@ -97,7 +99,13 @@ export function ComboFormDrawer({
         >
           {(control) =>
             combo ? (
-              <TextInput {...control} value={serviceName(combo.service)} readOnly disabled />
+              <TextInput
+                {...control}
+                name="service"
+                value={serviceName(combo.service)}
+                readOnly
+                disabled
+              />
             ) : (
               <Select
                 {...control}
@@ -116,6 +124,7 @@ export function ComboFormDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               autoComplete="off"
               maxLength={200}
               value={draft.nameVi}
@@ -127,6 +136,7 @@ export function ComboFormDrawer({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               autoComplete="off"
               maxLength={200}
               value={draft.nameEn}
@@ -138,6 +148,7 @@ export function ComboFormDrawer({
           {(control) => (
             <NumberInput
               {...control}
+              name="paid"
               inputMode="numeric"
               min={1}
               max={200}
@@ -156,6 +167,7 @@ export function ComboFormDrawer({
           {(control) => (
             <NumberInput
               {...control}
+              name="bonus"
               inputMode="numeric"
               min={0}
               max={200}
@@ -174,8 +186,9 @@ export function ComboFormDrawer({
           {(control) => (
             <MoneyInput
               {...control}
-              unit="₫"
-              separator={locale === 'vi' ? '.' : ','}
+              name="price"
+              unit={money.unit}
+              separator={money.separator}
               value={draft.price}
               onValueChange={(price) => set({ price })}
             />

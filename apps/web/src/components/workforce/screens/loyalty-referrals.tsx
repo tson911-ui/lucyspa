@@ -3,6 +3,7 @@
 import type { ReferralListItemResponse, ReferralPageResponse } from '@lucy-spa/contracts';
 import {
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListSection,
   ListToolbar,
@@ -16,10 +17,11 @@ import { formatDateTime } from '../../../lib/workforce/format';
 import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import { loyaltyBranches } from '../../../lib/workforce/loyalty';
 import { LOYALTY_PAGE_SIZE } from '../../../lib/workforce/loyalty-list';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useBranches } from '../data';
 import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Empty, ErrorState, useResource, useSuccessToast } from '../ui';
+import { Badge, Button, ErrorState, useResource, useSuccessToast } from '../ui';
 import { ChangeReferrerDialog } from './referral-dialogs';
 
 /**
@@ -38,7 +40,7 @@ export function LoyaltyReferrals({
   onPage: (page: number) => void;
   onStatus: (status: string) => void;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const { account } = useAccount();
   const l = loyaltyDictionary(locale);
   const r = l.referral;
@@ -65,7 +67,7 @@ export function LoyaltyReferrals({
       key: 'referred',
       header: r.list.referred,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
         <Link className="ls-link" href={`${base}/loyalty/${row.referred.id}`}>
@@ -76,7 +78,7 @@ export function LoyaltyReferrals({
     {
       key: 'referrer',
       header: r.list.referrer,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
         <Link className="ls-link" href={`${base}/loyalty/${row.referrer.id}`}>
@@ -94,7 +96,7 @@ export function LoyaltyReferrals({
       key: 'via',
       header: r.list.via,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => r.via[row.boundVia],
     },
@@ -119,19 +121,20 @@ export function LoyaltyReferrals({
       actions: true,
       cell: (row) => (
         <RowActions
+          LinkComponent={Link}
           menuLabel={fill(t.common.list.actionsFor, { name: row.referred.displayName })}
           items={[
             {
               id: 'open',
               label: r.list.open,
               icon: 'eye',
-              onSelect: () => navigate?.(`${base}/loyalty/${row.referred.id}`),
+              href: `${base}/loyalty/${row.referred.id}`,
             },
             ...(canChange
               ? [
                   {
                     id: 'change',
-                    label: r.list.change,
+                    label: opensInput(r.list.change),
                     icon: 'edit' as const,
                     disabled: row.awarded !== null,
                     onSelect: () => setChanging(row.referred.id),
@@ -143,7 +146,13 @@ export function LoyaltyReferrals({
       ),
     },
   ];
-  if (branches.data && allowed.length === 0) return <Empty>{r.list.noBranch}</Empty>;
+  if (branches.data && allowed.length === 0) {
+    return (
+      <EmptyState icon="building" title={l.empty.noBranchTitle}>
+        {r.list.noBranch}
+      </EmptyState>
+    );
+  }
   return (
     <>
       <ListSection title={r.list.title}>
@@ -180,7 +189,22 @@ export function LoyaltyReferrals({
             ) : undefined
           }
           empty={
-            list.data ? <Empty>{status ? r.list.noneFiltered : r.list.none}</Empty> : undefined
+            list.data ? (
+              status ? (
+                <EmptyState
+                  title={l.empty.filteredTitle}
+                  action={
+                    <Button variant="secondary" onClick={() => onStatus('')}>
+                      {l.empty.showAll}
+                    </Button>
+                  }
+                >
+                  {r.list.noneFiltered}
+                </EmptyState>
+              ) : (
+                <EmptyState title={l.empty.referralsTitle}>{l.empty.referralsText}</EmptyState>
+              )
+            ) : undefined
           }
           paging={{
             page,

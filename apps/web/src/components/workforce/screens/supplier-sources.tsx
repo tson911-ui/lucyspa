@@ -16,6 +16,8 @@ import {
   FormDrawer,
   FormGrid,
   FormSection,
+  Badge as KitBadge,
+  Icon,
   RowActions,
   Select,
   Stack,
@@ -23,7 +25,7 @@ import {
   Textarea,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useEffect, useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { supplierSourcesDictionary } from '../../../i18n/supplier-sources';
 import { fill } from '../../../i18n/workforce';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
@@ -55,13 +57,12 @@ import {
   type PermissionDraft,
   type SourceDraft,
 } from '../../../lib/workforce/supplier-sources';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
 import { ScanDrawer } from './supplier-source-scan';
 import { TestDrawer } from './supplier-source-test';
 import {
-  Badge,
   Button,
   Empty,
   ErrorState,
@@ -102,10 +103,13 @@ function SourcesPage() {
     () => api.get<SupplierSourceListResponse>('/api/v1/supplier-sources'),
     [api],
   );
-  const [list, setList] = useState<SupplierSourceListResponse | null>(null);
-  useEffect(() => {
-    if (loaded.data) setList(loaded.data);
-  }, [loaded.data]);
+  // A changed source from a command replaces the loaded list until the next load (derived in render, no mirror effect).
+  const [changed, setChanged] = useState<{
+    base: SupplierSourceListResponse | null;
+    value: SupplierSourceListResponse;
+  } | null>(null);
+  const list = changed && changed.base === loaded.data ? changed.value : loaded.data;
+  const setList = (value: SupplierSourceListResponse) => setChanged({ base: loaded.data, value });
   if (loaded.error && !list) {
     return <ErrorState error={loaded.error} t={t} onRetry={() => void loaded.reload()} />;
   }
@@ -146,7 +150,7 @@ export function SourcesView({
   const text = supplierSourcesDictionary(locale);
   const notify = useSuccessToast();
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const paging = useClientPaging(t, text.title);
+  const paging = useUrlPaging('ssp', t, text.title);
 
   /** The server answers with the one changed source: swap it into the list and close the overlay. */
   const finish = (message: string) => (response: SupplierSourceResponse) => {
@@ -170,7 +174,7 @@ export function SourcesView({
       key: 'name',
       header: text.columns.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (item) => item.name.toLocaleLowerCase(locale),
@@ -179,7 +183,7 @@ export function SourcesView({
     {
       key: 'supplier',
       header: text.columns.supplier,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'lg',
       sortable: true,
@@ -189,22 +193,21 @@ export function SourcesView({
     {
       key: 'address',
       header: text.columns.address,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       hideBelow: '2xl',
-      cell: (item) => item.baseUrl ?? text.noAddress,
+      cell: (item) => (item.baseUrl ? <span translate="no">{item.baseUrl}</span> : text.noAddress),
     },
     {
       key: 'permission',
       header: text.columns.permission,
       cell: (item) => {
+        // Plain words; an icon only where someone must act (plan: one status badge per row, no wall of pills).
         const state = permissionState(item);
         return (
-          <Badge
-            tone={state === 'confirmed' ? 'success' : state === 'pending' ? 'warning' : 'neutral'}
-          >
+          <CellText attention={state === 'pending'} muted={state === 'none'}>
             {text.permissionBadge[state]}
-          </Badge>
+          </CellText>
         );
       },
     },
@@ -212,15 +215,25 @@ export function SourcesView({
       key: 'status',
       header: text.columns.status,
       hideBelow: 'wide',
-      cell: (item) => <Badge tone={statusTone(item.status)}>{text.statuses[item.status]}</Badge>,
+      cell: (item) => {
+        const tone = statusTone(item.status);
+        return (
+          <CellText attention={tone === 'warning' || tone === 'error'} muted={tone === 'neutral'}>
+            {text.statuses[item.status]}
+          </CellText>
+        );
+      },
     },
     {
       key: 'state',
       header: text.columns.state,
       cell: (item) => (
-        <Badge tone={item.isEnabled ? 'success' : 'neutral'}>
+        <KitBadge
+          tone={item.isEnabled ? 'success' : 'neutral'}
+          {...(item.isEnabled ? {} : { icon: 'pause' as const })}
+        >
           {item.isEnabled ? text.enabled : text.disabled}
-        </Badge>
+        </KitBadge>
       ),
     },
     {
@@ -367,10 +380,25 @@ export function SourcesView({
   );
 }
 
-/** A long source name in a title: the first 40 characters and an ellipsis. */
-function shortName(name: string): string {
-  const letters = [...name];
-  return letters.length > 40 ? `${letters.slice(0, 40).join('')}…` : name;
+/** A cell fact in words: muted when nothing is recorded, with a warning icon when someone must act (C5: never colour alone). */
+function CellText({
+  attention,
+  muted,
+  children,
+}: {
+  attention: boolean;
+  muted: boolean;
+  children: ReactNode;
+}) {
+  if (attention) {
+    return (
+      <span className="ls-adminb-issue">
+        <Icon name="alert-triangle" size={16} />
+        <span>{children}</span>
+      </span>
+    );
+  }
+  return muted ? <span className="ls-adminb-muted">{children}</span> : <>{children}</>;
 }
 
 function useForm(
@@ -481,6 +509,7 @@ function CreateDialog({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="supplier-name"
                   autoComplete="off"
                   maxLength={SUPPLIER_NAME_MAX}
                   value={draft.supplierName}
@@ -505,6 +534,7 @@ function CreateDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="name"
                 autoComplete="off"
                 maxLength={SUPPLIER_SOURCE_NAME_MAX}
                 value={draft.name}
@@ -542,7 +572,9 @@ function CreateDialog({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="source-url"
                   autoComplete="off"
+                  spellCheck={false}
                   inputMode="url"
                   maxLength={500}
                   value={draft.baseUrl}
@@ -616,6 +648,7 @@ function EditDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="name"
                 autoComplete="off"
                 maxLength={SUPPLIER_SOURCE_NAME_MAX}
                 value={draft.name}
@@ -639,7 +672,9 @@ function EditDialog({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="source-url"
                   autoComplete="off"
+                  spellCheck={false}
                   inputMode="url"
                   maxLength={500}
                   disabled={item.isEnabled}
@@ -721,7 +756,7 @@ function PermissionDrawer({
 
   return (
     <FormDrawer
-      title={`${copy.title}: ${shortName(item.name)}`}
+      title={`${copy.title}: ${item.name}`}
       labels={{ ...formOverlayLabels(t, copy.submit), submitting: copy.saving }}
       busy={form.pending}
       dirty={body !== null}
@@ -744,6 +779,7 @@ function PermissionDrawer({
             {(control) => (
               <TextInput
                 {...control}
+                name="given-by"
                 autoComplete="off"
                 maxLength={SUPPLIER_SOURCE_PERMISSION_FIELD_MAX}
                 value={draft.givenBy}
@@ -761,6 +797,7 @@ function PermissionDrawer({
             {(control) => (
               <TextInput
                 {...control}
+                name="method"
                 autoComplete="off"
                 maxLength={SUPPLIER_SOURCE_PERMISSION_FIELD_MAX}
                 value={draft.method}
@@ -781,6 +818,7 @@ function PermissionDrawer({
             {(control) => (
               <DateTextInput
                 {...control}
+                name="date"
                 max={today}
                 value={draft.date}
                 onChange={(event) => set({ date: event.target.value })}
@@ -791,6 +829,8 @@ function PermissionDrawer({
             {(control) => (
               <Textarea
                 {...control}
+                name="note"
+                autoComplete="off"
                 maxLength={SUPPLIER_SOURCE_PERMISSION_NOTE_MAX}
                 value={draft.note}
                 onChange={(event) => set({ note: event.target.value })}

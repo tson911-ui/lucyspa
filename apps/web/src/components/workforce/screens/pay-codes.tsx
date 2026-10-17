@@ -6,7 +6,6 @@ import {
   Field,
   FormDialog,
   FormGrid,
-  ListSection,
   ListToolbar,
   RowActions,
   SearchInput,
@@ -16,14 +15,19 @@ import {
 import { useState } from 'react';
 import { payDictionary } from '../../../i18n/pay';
 import { fill } from '../../../i18n/workforce';
-import { formatDate } from '../../../lib/workforce/format';
+import { formatDate, zonedLocal } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { reasonProblem, type PayPageState } from '../../../lib/workforce/pay';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import { Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import { HistoryDrawer, usePayCommand } from './pay-command';
+
+// Instants are shown as the shop's calendar day (an instant's UTC day is the previous day before 07:00 in Vietnam).
+const ZONE = 'Asia/Ho_Chi_Minh';
 
 /**
  * "Mã nhân viên" (Phase 7 P7-11): the referral code of each official employee for online orders. A code exists only after the Owner
@@ -86,7 +90,7 @@ export function PayCodes({
       key: 'employee',
       header: c.columns.employee,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (item) => item.employee.name,
     },
@@ -101,7 +105,8 @@ export function PayCodes({
       header: c.columns.since,
       hideBelow: 'md',
       hidePhone: true,
-      cell: (item) => (item.createdAt ? formatDate(item.createdAt.slice(0, 10), locale) : '—'),
+      cell: (item) =>
+        item.createdAt ? formatDate(zonedLocal(item.createdAt, ZONE).slice(0, 10), locale) : '—',
     },
     {
       key: 'orders',
@@ -144,7 +149,7 @@ export function PayCodes({
               ? [
                   {
                     id: 'reset',
-                    label: c.reset,
+                    label: opensInput(c.reset),
                     icon: 'refresh' as const,
                     onSelect: () => setResetting(item),
                   },
@@ -165,7 +170,7 @@ export function PayCodes({
       ),
     },
   ];
-  const paging1 = useClientPaging(t, c.title);
+  const paging1 = useUrlPaging('kp', t, c.title);
   return (
     <>
       {data.data && data.data.retired.length > 0 ? (
@@ -175,7 +180,8 @@ export function PayCodes({
           {c.retiredNote}
         </Notice>
       ) : null}
-      <ListSection title={c.title}>
+      {/* The tab already names the list: no h2 repeating it (FR "a heading never repeats its control"). */}
+      <div className="ls-list-section">
         <p className="ls-hint">{c.intro}</p>
         <ListToolbar
           labels={toolbarLabels(t)}
@@ -186,7 +192,7 @@ export function PayCodes({
               id="pay-codes-q"
               value={state.q}
               label={p.common.search}
-              placeholder={p.common.search}
+              hint={p.common.searchName}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => update({ q })}
             />
@@ -210,7 +216,7 @@ export function PayCodes({
           empty={data.data ? <Empty>{query ? c.noneFiltered : c.none}</Empty> : undefined}
           paging={paging1}
         />
-      </ListSection>
+      </div>
       {resetting ? (
         <ResetDialog
           item={resetting}
@@ -267,13 +273,15 @@ function ResetDialog({
       <FormGrid>
         <Field
           label={c.resetReason}
-          error={missing ? t.errors.validation : undefined}
+          error={missing ? payDictionary(locale).common.fieldErrors.reasonRequired : undefined}
           required
           full
         >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={3}
               maxLength={500}
               value={reason}
@@ -304,7 +312,7 @@ function CodeHistory({ item, onClose }: { item: StaffCodeItem; onClose: () => vo
               <>
                 <strong>{row.code}</strong>
                 {row.deactivationReason ? (
-                  <span className="ls-hint"> · {row.deactivationReason}</span>
+                  <span className="ls-adminb-sub">{row.deactivationReason}</span>
                 ) : null}
               </>
             ),
@@ -313,13 +321,15 @@ function CodeHistory({ item, onClose }: { item: StaffCodeItem; onClose: () => vo
             key: 'created',
             header: c.historyColumns.created,
             hidePhone: true,
-            cell: (row) => formatDate(row.createdAt.slice(0, 10), locale),
+            cell: (row) => formatDate(zonedLocal(row.createdAt, ZONE).slice(0, 10), locale),
           },
           {
             key: 'stopped',
             header: c.historyColumns.stopped,
             cell: (row) =>
-              row.deactivatedAt ? formatDate(row.deactivatedAt.slice(0, 10), locale) : '—',
+              row.deactivatedAt
+                ? formatDate(zonedLocal(row.deactivatedAt, ZONE).slice(0, 10), locale)
+                : '—',
           },
         ]}
         rows={item.history}

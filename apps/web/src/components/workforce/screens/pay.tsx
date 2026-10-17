@@ -40,7 +40,7 @@ export function PayScreen() {
     return (
       <>
         <PageHeader title={p.title} intro={p.intro} />
-        <Empty>{p.common.loadError}</Empty>
+        <Empty>{p.common.noAccess}</Empty>
       </>
     );
   }

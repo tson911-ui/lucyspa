@@ -5,11 +5,12 @@ import {
   Breadcrumbs,
   DescriptionList,
   FormDrawer,
+  PageHeader,
   RowActions,
   Stack,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink } from '../link';
 import { useState } from 'react';
 import { productDictionary } from '../../../i18n/products';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
@@ -32,16 +33,16 @@ import {
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   Section,
   useResource,
   useSuccessToast,
 } from '../ui';
 import { ProductFields } from './product-fields';
-import { HistorySection } from './product-history';
+import { HistorySection, useHistoryUrl } from './product-history';
 import { ImagesSection } from './product-images';
 import { ProductStatusConfirm } from './product-status';
 import { VariantsSection } from './product-variants';
+import { scrollToSection } from './products-links';
 import { useProductCommand } from './use-product-command';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
@@ -64,7 +65,7 @@ type Overlay = 'edit' | { kind: 'status'; to: 'PUBLISHED' | 'INACTIVE' };
 
 /**
  * The product page's content (also rendered on its own by the tests). The page header carries the one primary action: "Đăng bán"
- * on a draft. The status badge lives inside the information card, never next to the title. What each person sees and may do
+ * on a draft. The status badge sits in the header's status slot under the title, never inside the heading. What each person sees and may do
  * follows `product.access`; cost and margin are in the variant table only when the API sent them.
  */
 export function ProductDetailView({
@@ -79,15 +80,13 @@ export function ProductDetailView({
   const d = p.detail;
   const notify = useSuccessToast();
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [historyVariant, setHistoryVariant] = useState('');
+  const [, updateHistory] = useHistoryUrl();
   const { access } = product;
   const name = localizedName(product, locale);
   const showHistory = (variantId: string) => {
-    setHistoryVariant(variantId);
+    updateHistory({ hvariant: variantId });
     // The history surface is further down the same page.
-    document
-      .getElementById('product-history')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollToSection('product-history');
   };
 
   const moves = access.manage ? allowedStatusMoves(product.status) : [];
@@ -105,21 +104,26 @@ export function ProductDetailView({
     <>
       <PageHeader
         title={name}
-        {...(product.status === 'DRAFT' ? { intro: d.draftHint } : {})}
+        status={<Badge tone={statusTone(product.status)}>{p.status[product.status]}</Badge>}
+        {...(product.status === 'DRAFT' ? { description: d.draftHint } : {})}
         breadcrumbs={
           <Breadcrumbs
             label={p.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: p.title, href: `${base}/products` }, { label: crumbLabel(name) }]}
           />
         }
-      >
-        {access.manage && product.status === 'DRAFT' ? (
-          <Button variant="primary" onClick={() => setOverlay({ kind: 'status', to: 'PUBLISHED' })}>
-            {p.actions.publish}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          access.manage && product.status === 'DRAFT' ? (
+            <Button
+              variant="primary"
+              onClick={() => setOverlay({ kind: 'status', to: 'PUBLISHED' })}
+            >
+              {p.actions.publish}
+            </Button>
+          ) : undefined
+        }
+      />
       <Stack gap="page">
         <Section
           title={d.info}
@@ -149,10 +153,6 @@ export function ProductDetailView({
               },
               { label: d.descriptionVi, value: product.descriptionVi },
               { label: d.descriptionEn, value: product.descriptionEn },
-              {
-                label: d.status,
-                value: <Badge tone={statusTone(product.status)}>{p.status[product.status]}</Badge>,
-              },
               { label: d.featured, value: product.featured ? p.yes : p.no },
               {
                 label: d.publishedAt,
@@ -164,13 +164,8 @@ export function ProductDetailView({
           />
         </Section>
         <VariantsSection product={product} reload={reload} onHistory={showHistory} />
-        <div id="product-history">
-          <HistorySection
-            product={product}
-            reload={reload}
-            variantId={historyVariant}
-            onVariant={setHistoryVariant}
-          />
+        <div id="product-history" className="ls-adm-c-anchor">
+          <HistorySection product={product} reload={reload} />
         </div>
         <ImagesSection product={product} reload={reload} />
       </Stack>

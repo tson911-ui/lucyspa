@@ -83,8 +83,11 @@ export function ProfileSection({ employee }: { employee: EmployeeResponse }) {
             label: texts.loginId,
             value: (
               <>
-                <strong id="employee-login-id">{employee.employeeId}</strong>{' '}
-                <span className="ls-hint">{texts.loginIdHint}</span>
+                <strong id="employee-login-id" translate="no">
+                  {employee.employeeId}
+                </strong>
+                {/* The hint is a caption under the value, never on the value's line (E2 overlap). */}
+                <span className="ls-ppl-caption">{texts.loginIdHint}</span>
               </>
             ),
           },
@@ -158,6 +161,7 @@ export function ProfileDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="fullName"
               maxLength={200}
               value={form.fullName}
               onChange={(event) => set('fullName', event.target.value)}
@@ -168,6 +172,7 @@ export function ProfileDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="phone"
               type="tel"
               maxLength={32}
               autoComplete="off"
@@ -180,6 +185,7 @@ export function ProfileDialog({
           {(control) => (
             <DateTextInput
               {...control}
+              name="dateOfBirth"
               value={form.dateOfBirth}
               onChange={(event) => set('dateOfBirth', event.target.value)}
             />
@@ -202,6 +208,7 @@ export function ProfileDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="address"
               maxLength={500}
               value={form.address}
               onChange={(event) => set('address', event.target.value)}
@@ -280,7 +287,7 @@ export function EmploymentSection({
     {
       key: 'reason',
       header: texts.historyReason,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (entry) => entry.reason ?? '—',
     },
@@ -366,8 +373,14 @@ export function PromoteDialog({
   const submit = useSubmit();
   const ownerOnly = backdatedForNonOwner(account, date, employment.today);
 
+  // Validate on submit (the button stays enabled): a missing choice or reason shows at its field.
+  const [tried, setTried] = useState(false);
+
   async function save() {
-    if (target === '' || !isCalendarDate(date) || reason.trim() === '' || ownerOnly) return;
+    if (target === '' || !isCalendarDate(date) || reason.trim() === '' || ownerOnly) {
+      setTried(true);
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -398,7 +411,7 @@ export function PromoteDialog({
       labels={formOverlayLabels(t, texts.promote)}
       busy={submit.pending}
       dirty={reason !== '' || date !== employment.today}
-      submitDisabled={target === '' || ownerOnly || reason.trim() === ''}
+      submitDisabled={ownerOnly}
       error={submitError(submit.error, t)}
       onClose={onClose}
       onSubmit={save}
@@ -409,6 +422,7 @@ export function PromoteDialog({
           legend={texts.changeTo}
           name="promote-target"
           required
+          invalid={tried && target === ''}
           value={target === '' ? null : target}
           onValueChange={(value) => setTarget(options.find((option) => option === value) ?? '')}
           options={options.map((option) => ({
@@ -425,15 +439,21 @@ export function PromoteDialog({
           {(control) => (
             <DateTextInput
               {...control}
+              name="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required>
+        <Field
+          label={t.common.reason}
+          required
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -471,8 +491,13 @@ export function EndDialog({
   const ownerOnly = backdatedForNonOwner(account, date, employment.today);
   const outcome = endingOutcome(date, employment.today, disableAccess, employee.status);
 
+  const [tried, setTried] = useState(false);
+
   async function save() {
-    if (!isCalendarDate(date) || reason.trim() === '' || ownerOnly) return;
+    if (!isCalendarDate(date) || reason.trim() === '' || ownerOnly) {
+      setTried(true);
+      return;
+    }
     let message = '';
     const ok = await submit.run(async () => {
       const result = await runMutation(
@@ -499,7 +524,7 @@ export function EndDialog({
       labels={formOverlayLabels(t, texts.endConfirm)}
       busy={submit.pending}
       dirty={reason !== ''}
-      submitDisabled={ownerOnly || reason.trim() === ''}
+      submitDisabled={ownerOnly}
       error={submitError(submit.error, t)}
       onClose={onClose}
       onSubmit={save}
@@ -515,15 +540,21 @@ export function EndDialog({
           {(control) => (
             <DateTextInput
               {...control}
+              name="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required>
+        <Field
+          label={t.common.reason}
+          required
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -564,15 +595,15 @@ export function AccessSection({
       <DescriptionList
         columns={2}
         items={[
-          { label: texts.loginId, value: <strong>{employee.employeeId}</strong> },
+          // The login id is shown once, in the profile; this card says whether it works.
           {
             label: texts.accountStatus,
             value: (
               <>
                 <Badge tone={EMPLOYEE_STATUS_TONE[employee.status]}>
                   {t.employees.statuses[employee.status]}
-                </Badge>{' '}
-                <span className="ls-hint">{texts.statusHelp[employee.status]}</span>
+                </Badge>
+                <span className="ls-ppl-caption">{texts.statusHelp[employee.status]}</span>
               </>
             ),
           },
@@ -597,17 +628,19 @@ export function PasswordDialog({
 }) {
   const { api, t } = useWorkforce();
   const texts = t.employees.detail;
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<'length' | 'mismatch' | null>(null);
+  const [tried, setTried] = useState(false);
   const submit = useSubmit();
   const title = employee.status === 'PENDING_SETUP' ? texts.setPassword : texts.resetPassword;
 
   async function save() {
     const found = passwordProblem(password, confirmation);
     setProblem(found);
+    setTried(true);
     if (found !== null || reason.trim() === '') return;
     const request = credentialsRequest(employee.version, password, reason);
     const ok = await submit.run(
@@ -632,34 +665,34 @@ export function PasswordDialog({
     }
   }
 
-  const problems =
-    problem === 'length' ? (
-      <Notice tone="error">{texts.passwordLength}</Notice>
-    ) : problem === 'mismatch' ? (
-      <Notice tone="error">{texts.passwordMismatch}</Notice>
-    ) : (
-      submitError(submit.error, t)
-    );
+  // Password problems show under their own field (wig: inline errors), the summary only for a server answer.
+  const problems = submitError(submit.error, t);
 
   return (
     <>
       {dialog}
       <FormDialog
+        suspended={asking}
         title={title}
         labels={formOverlayLabels(t, title)}
         busy={submit.pending}
         dirty={password !== '' || confirmation !== '' || reason !== ''}
-        submitDisabled={reason.trim() === ''}
         error={problems}
         onClose={onClose}
         onSubmit={save}
       >
         <FormGrid>
           <p className="ls-hint">{fill(texts.resetHint, { code: employee.employeeId })}</p>
-          <Field label={texts.newPassword} required hint={texts.passwordHint}>
+          <Field
+            label={texts.newPassword}
+            required
+            hint={texts.passwordHint}
+            error={problem === 'length' ? texts.passwordLength : undefined}
+          >
             {(control) => (
               <PasswordInput
                 {...control}
+                name="password"
                 showLabel={t.auth.showPassword}
                 hideLabel={t.auth.hidePassword}
                 minLength={PASSWORD_LENGTH.min}
@@ -671,10 +704,15 @@ export function PasswordDialog({
               />
             )}
           </Field>
-          <Field label={texts.confirmPassword} required>
+          <Field
+            label={texts.confirmPassword}
+            required
+            error={problem === 'mismatch' ? texts.passwordMismatch : undefined}
+          >
             {(control) => (
               <PasswordInput
                 {...control}
+                name="confirmation"
                 showLabel={t.auth.showPassword}
                 hideLabel={t.auth.hidePassword}
                 autoComplete="new-password"
@@ -684,10 +722,15 @@ export function PasswordDialog({
               />
             )}
           </Field>
-          <Field label={t.common.reason} required>
+          <Field
+            label={t.common.reason}
+            required
+            error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+          >
             {(control) => (
               <TextInput
                 {...control}
+                name="reason"
                 maxLength={500}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
@@ -720,10 +763,10 @@ export function StatusDialog({
     <ConfirmDialog
       title={disabling ? texts.deactivateTitle : texts.reactivateTitle}
       description={texts.statusHelp[next]}
-      facts={[{ label: texts.loginId, value: `${employee.fullName} · ${employee.employeeId}` }]}
+      facts={[{ label: texts.loginId, value: `${employee.fullName} (${employee.employeeId})` }]}
       tone={disabling ? 'danger' : 'neutral'}
       confirmLabel={disabling ? texts.deactivate : texts.reactivate}
-      busyLabel={t.common.saving}
+      busyLabel={disabling ? t.common.deactivating : t.common.activating}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{

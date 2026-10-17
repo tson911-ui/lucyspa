@@ -21,6 +21,7 @@ import { formatVnd } from '../../../lib/workforce/format';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
 import { Badge, Button, Loading, Notice, useResource, useSuccessToast } from '../ui';
+import { formatCount } from './products-links';
 
 const RUNS = '/api/v1/ai/product-runs';
 
@@ -51,13 +52,14 @@ export function RunsPanel({
   const r = text.runs;
   const notify = useSuccessToast();
   const run = data.runs[0];
-  const [pending, setPending] = useState(false);
+  // Which command is running: only the pressed button shows progress, the others wait disabled (wig ai-runs.tsx:110).
+  const [pending, setPending] = useState<'pause' | 'resume' | 'unlock' | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
   async function command(kind: 'pause' | 'resume', row: AiRunRow) {
     if (pending) return;
-    setPending(true);
+    setPending(kind);
     setFailure(null);
     try {
       await api.post(`${RUNS}/${row.id}/${kind}`, { expectedRowVersion: row.rowVersion });
@@ -67,13 +69,13 @@ export function RunsPanel({
       setFailure(errorMessage(error, t));
       await onChanged().catch(() => undefined);
     } finally {
-      setPending(false);
+      setPending(null);
     }
   }
 
   async function unlock() {
     if (pending) return;
-    setPending(true);
+    setPending('unlock');
     setFailure(null);
     try {
       await api.post(`${RUNS}/unlock`, { expectedRowVersion: data.settingsRowVersion });
@@ -83,18 +85,38 @@ export function RunsPanel({
       setFailure(errorMessage(error, t));
       await onChanged().catch(() => undefined);
     } finally {
-      setPending(false);
+      setPending(null);
     }
   }
 
   const open = run !== undefined && OPEN_STATUSES.includes(run.status);
+  // The page header's "Chạy viết lại" is the view's one filled button; unlocking is the outline.
   const unlockButton = (
-    <Button variant="primary" loading={pending} onClick={() => void unlock()}>
+    <Button
+      variant="secondary"
+      loading={pending === 'unlock'}
+      disabled={pending !== null && pending !== 'unlock'}
+      onClick={() => void unlock()}
+    >
       {r.unlock}
     </Button>
   );
   const money = (value: string | null) => (value === null ? null : formatVnd(value, locale));
   if (run === undefined && data.unlocked) return null;
+  if (run === undefined) {
+    // No run yet: one line of guidance above the list, not a card holding a single sentence.
+    return data.canUnlock ? (
+      <Notice tone="info">
+        <Stack gap="field">
+          <span>{r.unlockNotice}</span>
+          <span>{unlockButton}</span>
+          {failure ? <span>{failure}</span> : null}
+        </Stack>
+      </Notice>
+    ) : (
+      <p className="ls-hint">{fill(r.lockedHint, { done: String(Math.min(3, data.reviewed)) })}</p>
+    );
+  }
   return (
     <Card as="section" aria-label={r.title}>
       <CardHeader
@@ -106,8 +128,9 @@ export function RunsPanel({
               {run.status === 'QUEUED' || run.status === 'RUNNING' ? (
                 <Button
                   variant="secondary"
-                  icon="close"
-                  loading={pending}
+                  icon="pause"
+                  loading={pending === 'pause'}
+                  disabled={pending !== null && pending !== 'pause'}
                   onClick={() => void command('pause', run)}
                 >
                   {r.pause}
@@ -115,8 +138,9 @@ export function RunsPanel({
               ) : (
                 <Button
                   variant="secondary"
-                  icon="refresh"
-                  loading={pending}
+                  icon="play"
+                  loading={pending === 'resume'}
+                  disabled={pending !== null && pending !== 'resume'}
                   onClick={() => void command('resume', run)}
                 >
                   {r.resume}
@@ -125,7 +149,7 @@ export function RunsPanel({
               <Button
                 variant="danger-outline"
                 onClick={() => setCancelling(true)}
-                disabled={pending}
+                disabled={pending !== null}
               >
                 {r.cancel}
               </Button>
@@ -161,10 +185,10 @@ export function RunsPanel({
                 {
                   label: r.progress,
                   value: fill(r.counts, {
-                    ready: String(run.counts.draftReady),
-                    writing: String(run.counts.queued + run.counts.generating),
-                    failed: String(run.counts.failed + run.counts.needsAttention),
-                    applied: String(run.counts.applied),
+                    ready: formatCount(locale, run.counts.draftReady),
+                    writing: formatCount(locale, run.counts.queued + run.counts.generating),
+                    failed: formatCount(locale, run.counts.failed + run.counts.needsAttention),
+                    applied: formatCount(locale, run.counts.applied),
                   }),
                 },
                 {
@@ -195,7 +219,7 @@ export function RunsPanel({
           description={r.cancelBody}
           tone="danger"
           confirmLabel={r.cancelConfirm}
-          busyLabel={t.common.saving}
+          busyLabel={r.cancelling}
           cancelLabel={r.keep}
           referenceLabel={t.errors.reference}
           describeError={confirmError(t)}
@@ -248,6 +272,7 @@ export function StartRunDialog({
   );
   const view = preview.data;
   const money = (value: string | null) => (value === null ? '—' : formatVnd(value, locale));
+  const count = (value: number) => formatCount(locale, value);
 
   async function submit() {
     if (pending || !view || view.blocked.length > 0) return;
@@ -271,9 +296,11 @@ export function StartRunDialog({
     <FormDialog
       title={r.startTitle}
       description={r.startBody}
-      labels={{ ...formOverlayLabels(t, r.startConfirm), submitting: t.common.saving }}
+      labels={{ ...formOverlayLabels(t, r.startConfirm), submitting: r.starting }}
       busy={pending}
       submitDisabled={!view || view.blocked.length > 0 || !limitOk}
+      // A typed limit is input: closing asks before discarding it (C60).
+      dirty={limit !== '20'}
       error={failure ? <Notice tone="error">{failure}</Notice> : undefined}
       onClose={onClose}
       onSubmit={submit}
@@ -283,6 +310,8 @@ export function StartRunDialog({
           {(control) => (
             <Select
               {...control}
+              name="scope"
+              autoComplete="off"
               options={[
                 { value: 'FIRST_THREE', label: r.scopes.FIRST_THREE },
                 { value: 'ALL_PENDING', label: r.scopes.ALL_PENDING },
@@ -302,6 +331,8 @@ export function StartRunDialog({
             {(control) => (
               <NumberInput
                 {...control}
+                name="limit"
+                autoComplete="off"
                 min={1}
                 max={400}
                 step={1}
@@ -323,9 +354,10 @@ export function StartRunDialog({
             ))}
             <DescriptionList
               items={[
-                { label: r.facts.count, value: String(view.count) },
-                { label: r.facts.pending, value: String(view.pending) },
-                { label: r.facts.model, value: view.model },
+                { label: r.facts.count, value: count(view.count) },
+                { label: r.facts.pending, value: count(view.pending) },
+                // A model id is a code token: never machine-translated.
+                { label: r.facts.model, value: <span translate="no">{view.model}</span> },
                 { label: r.facts.estimate, value: money(view.estimateVnd) },
                 { label: r.facts.capLeft, value: money(view.capLeftVnd) },
               ]}

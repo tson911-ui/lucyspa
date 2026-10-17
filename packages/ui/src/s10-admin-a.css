@@ -1,0 +1,244 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): admin-a pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages. */
+
+/* ---- Loyalty (Owner answer 5): six task groups; a group with several sections switches them with a segmented control under the
+   tab bar. The control keeps its natural width at the leading edge instead of stretching across the page. ------------------------ */
+.ls-loyalty-sections .ls-segmented {
+  inline-size: var(--ls-field-lg);
+  max-inline-size: 100%;
+}
+
+/* ---- Dashboard ------------------------------------------------------------------------------------------------------------------- */
+/* A widget is a flex column and its one link is pinned to the end, so the links of a row of widgets line up (E2 grid alignment). */
+[data-ui='v2'] .ls-widget {
+  display: flex;
+  flex-direction: column;
+}
+
+/* With a footer, the widget is three rows (head, body, footer) on one 16 px rhythm; the body row takes the spare height, so the footer
+   links of a row of widgets line up without an auto margin (the DOM audit counts an auto margin as off-grid spacing). */
+[data-ui='v2'] .ls-widget:has(> .ls-widget-footer) {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  row-gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-widget:has(> .ls-widget-footer) > * {
+  margin-block: 0;
+}
+
+/* The widget's way on is a quiet text link with a 40 px target, not an outline button in every card. */
+.ls-dash-open {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--ls-control-h);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+}
+
+/* "Lối tắt" (Owner answer 5): a compact list of the everyday tasks; each row is a 40 px link with its sidebar icon, 8 px apart. */
+.ls-dash-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--ls-field-sm)), 1fr));
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ls-dash-shortcut {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-block-size: var(--ls-control-h);
+  padding-inline: var(--ls-space-2);
+  border-radius: var(--ls-radius-sm);
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  overflow-wrap: break-word;
+  transition:
+    background-color var(--ls-dur-fast) var(--ls-ease),
+    transform var(--ls-dur-fast) var(--ls-ease);
+}
+
+.ls-dash-shortcut .ls-icon {
+  flex: none;
+  color: var(--ls-text-muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-dash-shortcut:hover {
+    background: var(--ls-hover-bg);
+  }
+}
+
+.ls-dash-shortcut:active {
+  background: var(--ls-pressed-bg);
+  transform: scale(var(--ls-press-scale));
+}
+
+/* Latest notifications: one 40 px row each; unread = a dot and the 600 weight (the word is for screen readers). */
+.ls-dash-note {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-width: 0;
+}
+
+.ls-dash-note-dot {
+  flex: none;
+  inline-size: var(--ls-space-2);
+  block-size: var(--ls-space-2);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-brand);
+}
+
+.ls-dash-note-link,
+.ls-dash-note-text {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--ls-control-h);
+  min-width: 0;
+  color: var(--ls-text);
+  overflow-wrap: break-word;
+}
+
+.ls-dash-note[data-unread] :is(.ls-dash-note-link, .ls-dash-note-text) {
+  font-weight: 600;
+}
+
+.ls-dash-note-link {
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ls-dash-note-link:hover {
+    text-decoration-line: underline;
+  }
+}
+
+.ls-dash-note-link:active {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  background: var(--ls-hover-bg);
+}
+
+/* A second line under a widget row's name (the service of a guest in service), muted, never joined with a middle dot. */
+.ls-dash-sub {
+  display: block;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-text-xs);
+}
+
+.ls-dash-time {
+  font-variant-numeric: tabular-nums;
+  margin-inline-end: var(--ls-space-2);
+}
+
+/* The notification inbox rules moved to foundation-v2.css (end): the inbox is on staff and member pages, and this sheet loads only
+   in the staff area (Step 7). */
+
+/* The lookup's "Số điện thoại | Email" switch sits on the field row, as wide as a medium field. */
+.ls-loyalty-lookup .ls-segmented {
+  inline-size: var(--ls-field-md);
+  max-inline-size: 100%;
+}
+
+/* ---- Services and discounts (fork) ---------------------------------------------------------------------------------------------- */
+/* A record code (service, category, program) is a muted reference in tabular figures at the end of the row, not the lead (C58b). */
+.ls-cat-code {
+  color: var(--ls-text-muted);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* A validity range: start on the first line, "đến <end>" on the second; each date stays on one line. */
+.ls-cat-window .ls-cell-main,
+.ls-cat-window .ls-cell-sub {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Self-service and sign-in (fork) ---------------------------------------------------------------------------------------------- */
+/* A page's only list without a section heading (the h2 only repeated the h1): toolbar, notices and table keep the list rhythm. */
+.ls-self-list {
+  display: grid;
+  gap: var(--ls-space-4);
+  min-width: 0;
+}
+
+/* Staff sign-in and password reset: "Quên mật khẩu?" and "Quay lại đăng nhập" are their own 40 px link rows (C29), at least 8 px from
+   the field above and the button below (the form's own gap). */
+.ls-self-auth-link {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.ls-self-auth-link .ls-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  min-block-size: var(--ls-control-h);
+  font-size: var(--ls-text-sm);
+  font-weight: 500;
+}
+
+.ls-self-back svg {
+  flex: none;
+}
+
+/* Password reset: the two-line explanation reads at the form's leading edge (one alignment with the fields below it). */
+.ls-auth-card > h1 + p.ls-self-auth-intro,
+.ls-auth-card > p.ls-self-auth-intro {
+  text-align: start;
+}
+
+/* A work time range ("09:00–13:00") keeps its figures aligned and stays on one line. */
+.ls-self-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- People (fork) -------------------------------------------------------------------------------------------------------------
+   employees, employee-detail/new, teams, roles, skills, organization, branches, branch-detail. */
+
+/* Employee header facts (Chức danh, Cấp quản lý): label above value in one row that wraps, not a "Label: [badge]" colon chain. */
+.ls-ppl-meta {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ls-field-sm)), max-content));
+  column-gap: var(--ls-space-8);
+}
+
+/* A hint under a fact's value, on its own line (it overlapped the value when it ran inline, E2 overlap). */
+.ls-ppl-caption {
+  display: block;
+  margin-block-start: var(--ls-space-1);
+  color: var(--ls-text-subtle);
+  font-size: var(--ls-text-xs);
+  font-weight: 400;
+}
+
+/* An empty value written as words (no team leader): muted, so it does not read like a real name. */
+.ls-ppl-muted {
+  color: var(--ls-text-muted);
+}
+
+/* Codes in a list: muted, tabular, kept whole (a code never breaks mid-word). */
+.ls-ppl-code {
+  color: var(--ls-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Opening hours: one column, Monday to Sunday; the day and its hours on one line, hours tabular. */
+.ls-ppl-hours .ls-dl-row {
+  grid-template-columns: minmax(0, var(--ls-field-sm)) minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: var(--ls-space-4);
+}
+
+.ls-ppl-hours .ls-dl-value {
+  font-variant-numeric: tabular-nums;
+}

@@ -13,7 +13,7 @@ import {
   DataTable,
   DateRangePicker,
   DonutChart,
-  Grid,
+  EmptyState,
   KpiCard,
   LineChart,
   ListToolbar,
@@ -27,7 +27,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { reportsDictionary, type ReportsDictionary } from '../../../i18n/reports';
 import { fill } from '../../../i18n/workforce';
-import { formatTime, todayIn } from '../../../lib/workforce/format';
+import { formatDate, formatTime, todayIn } from '../../../lib/workforce/format';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import {
   exportRequest,
@@ -37,7 +37,6 @@ import {
   revenueRange,
   revenueSeries,
   normalizeRevenuePage,
-  vnd as formatVnd,
   reportErrorMessage,
   sideSlices,
   vndNumber,
@@ -47,6 +46,9 @@ import { useWorkforce } from '../session';
 import { AssistantBox } from './assistant-box';
 import { Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
 import { ExportDialog, type ExportChoice } from './reports-export';
+import { shareText, vndText as formatVnd } from './reports-format';
+import { formatCount } from '../../../lib/workforce/reports-b';
+import { KpiRow, ReportNote } from './reports-kit';
 
 const REVENUE_REPORTS = [
   'revenue-overview',
@@ -250,9 +252,7 @@ export function RevenueBody({
   const prev = (value: string | undefined) =>
     previous && value !== undefined ? vndNumber(value) : undefined;
   const k = w.revenue.kpi;
-  const period = data.period.previous
-    ? `${data.period.from} → ${data.period.to}`
-    : `${data.period.from} → ${data.period.to}`;
+  const period = `${formatDate(data.period.from, locale)} – ${formatDate(data.period.to, locale)}`;
   const names = data.branches.map((branch) => branch.name).join(', ');
   const unclassified = vndNumber(data.unclassifiedVnd);
 
@@ -262,7 +262,7 @@ export function RevenueBody({
         <p>{fill(w.print.period, { period })}</p>
         <p>{fill(w.print.branches, { names })}</p>
       </div>
-      <Grid min="sm" gap="page">
+      <KpiRow>
         <KpiCard
           label={k.net}
           info={k.netInfo}
@@ -289,8 +289,6 @@ export function RevenueBody({
           format={format}
           labels={words}
         />
-      </Grid>
-      <Grid min="sm" gap="page">
         <KpiCard
           label={k.paidInvoices}
           info={k.paidInvoicesInfo}
@@ -317,7 +315,7 @@ export function RevenueBody({
           format={format}
           labels={words}
         />
-      </Grid>
+      </KpiRow>
       {unclassified > 0 ? (
         <Notice tone="warning">
           {fill(w.revenue.unclassified, { amount: formatVnd(data.unclassifiedVnd, locale) })}
@@ -329,13 +327,14 @@ export function RevenueBody({
           description={`${fill(w.revenue.chart.subtitle, { bucket: w.buckets[data.bucket].toLowerCase() })}${data.bucket === 'day' ? '' : '. ' + w.revenue.chart.partial}`}
         />
         {isEmptyRevenue(data) ? (
-          <Empty>{w.revenue.empty}</Empty>
+          <EmptyState icon="bar-chart" title={w.common.emptyTitle}>
+            {w.revenue.empty}
+          </EmptyState>
         ) : (
           <LineChart
             title={w.revenue.chart.title}
             data={revenueSeries(data, w)}
             format={format}
-            area
             labels={{
               ...words,
               xHeader: kit.xHeader,
@@ -357,9 +356,9 @@ export function RevenueBody({
           { id: 'method', label: w.revenue.tabs.method, panel: <MethodTable data={data} w={w} /> },
         ]}
       />
-      <Notice tone="info">
+      <ReportNote>
         <strong>{w.revenue.definitionTitle}.</strong> {w.revenue.definition}
-      </Notice>
+      </ReportNote>
     </Stack>
   );
 }
@@ -373,7 +372,7 @@ function BranchTable({ data, w }: { data: RevenueReport; w: ReportsDictionary })
       key: 'branch',
       header: c.branch,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.branch.name,
     },
@@ -417,9 +416,15 @@ function BranchTable({ data, w }: { data: RevenueReport; w: ReportsDictionary })
       header: c.paidInvoices,
       numeric: true,
       hideBelow: 'md',
-      cell: (row) => row.paidInvoices,
+      cell: (row) => formatCount(row.paidInvoices, locale),
     },
-    { key: 'visits', header: c.visits, numeric: true, hideBelow: 'md', cell: (row) => row.visits },
+    {
+      key: 'visits',
+      header: c.visits,
+      numeric: true,
+      hideBelow: 'md',
+      cell: (row) => formatCount(row.visits, locale),
+    },
   ];
   return (
     <DataTable
@@ -512,7 +517,7 @@ function KindPanel({ data, w }: { data: RevenueReport; w: ReportsDictionary }) {
             key: 'share',
             header: c.share,
             numeric: true,
-            cell: (row: PartRow) => `${(row.share / 100).toFixed(1)}%`,
+            cell: (row: PartRow) => shareText(locale, row.share),
           },
         ]}
         rows={rows}

@@ -2,7 +2,7 @@
 
 import type { CurrentAccountResponse } from '@lucy-spa/contracts';
 import { Button, ErrorState, LoadingState, Notice, Page, Stack } from '@lucy-spa/ui';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   createContext,
   useCallback,
@@ -144,7 +144,6 @@ type GuardState =
 export function RequireWorkforce({ children }: { children: ReactNode }) {
   const { api, base, t } = useWorkforce();
   const router = useRouter();
-  const pathname = usePathname();
   const [state, setState] = useState<GuardState>({ kind: 'loading' });
 
   useEffect(() => {
@@ -153,7 +152,9 @@ export function RequireWorkforce({ children }: { children: ReactNode }) {
       .then((result) => {
         if (!active) return;
         if (result.kind === 'anonymous') {
-          router.replace(`${base}/login?next=${encodeURIComponent(pathname)}`);
+          // The path is read when it is needed (rbp rerender-defer-reads): subscribing to `usePathname` re-rendered the guard,
+          // and every `useAccount` consumer under it, on each navigation inside the area.
+          router.replace(`${base}/login?next=${encodeURIComponent(window.location.pathname)}`);
         } else if (result.kind === 'customer') {
           setState({ kind: 'customer' });
         } else {
@@ -174,6 +175,9 @@ export function RequireWorkforce({ children }: { children: ReactNode }) {
       router.replace(`${base}/login?signedOut=1`);
     }
   }, [api, base, router]);
+  const account = state.kind === 'workforce' ? state.account : null;
+  // One value per account (rbp rerender-memo): a new object each render re-rendered every `useAccount` consumer.
+  const accountValue = useMemo(() => (account ? { account, signOut } : null), [account, signOut]);
 
   if (state.kind === 'loading') {
     return (
@@ -207,9 +211,5 @@ export function RequireWorkforce({ children }: { children: ReactNode }) {
       </Page>
     );
   }
-  return (
-    <AccountContext.Provider value={{ account: state.account, signOut }}>
-      {children}
-    </AccountContext.Provider>
-  );
+  return <AccountContext.Provider value={accountValue}>{children}</AccountContext.Provider>;
 }

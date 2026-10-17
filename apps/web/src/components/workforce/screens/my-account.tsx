@@ -8,6 +8,7 @@ import type {
 import {
   Button,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DateTextInput,
   DescriptionList,
   Field as KitField,
@@ -17,6 +18,7 @@ import {
   PasswordInput,
   Select,
   TextInput,
+  useUrlState,
   type DataTableColumn,
   type DescriptionItem,
 } from '@lucy-spa/ui';
@@ -31,7 +33,8 @@ import {
 } from '../../../lib/workforce/collaborator-work';
 import { businessToday, PASSWORD_LENGTH } from '../../../lib/workforce/employee-create';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { normalizePage, normalizePageSize } from '../../../lib/workforce/list-view';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import { useBranches } from '../data';
 import { OTP_PATTERN } from '../../../lib/workforce/recovery';
 import {
@@ -51,6 +54,7 @@ import {
   type MyProfileForm,
 } from '../../../lib/workforce/my-account';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { RecoveryEmailSection } from '../recovery-email';
 import { useWorkforce } from '../session';
 import {
@@ -64,7 +68,6 @@ import {
   useResource,
   useSubmit,
 } from '../ui';
-import { TITLE_TONE } from './employee-lifecycle';
 
 /**
  * "Tài khoản của tôi / My Account" (follow-up Step 3). A self-service view over the same
@@ -113,14 +116,8 @@ export function MyAccountView({
 
   const personal: DescriptionItem[] = [
     { label: t.employees.fullName, value: <strong>{account.fullName}</strong> },
-    {
-      label: t.employees.titleColumn,
-      value: (
-        <Badge tone={TITLE_TONE[account.title] ?? 'neutral'}>
-          {t.employees.titles[account.title]}
-        </Badge>
-      ),
-    },
+    // A job title is a plain value, not a status: no coloured pill (A3, C5).
+    { label: t.employees.titleColumn, value: t.employees.titles[account.title] },
     ...(employee
       ? [
           {
@@ -129,7 +126,14 @@ export function MyAccountView({
               ? t.employees.classifications[employee.classification]
               : texts.notStarted,
           },
-          { label: detail.loginId, value: <strong id="my-login-id">{employee.employeeId}</strong> },
+          {
+            label: detail.loginId,
+            value: (
+              <strong id="my-login-id" translate="no">
+                {employee.employeeId}
+              </strong>
+            ),
+          },
         ]
       : []),
     { label: detail.phone, value: account.phone },
@@ -149,7 +153,7 @@ export function MyAccountView({
         title={texts.personal}
         actions={
           <Button variant="secondary" icon="edit" onClick={() => setOverlay('profile')}>
-            {t.common.edit}
+            {opensInput(t.common.edit)}
           </Button>
         }
       >
@@ -169,7 +173,10 @@ export function MyAccountView({
                     <ul className="ls-list-plain">
                       {employee.branches.map((branch) => (
                         <li key={branch.id}>
-                          {branch.name} <span className="ls-hint">({branch.code})</span>
+                          {branch.name}{' '}
+                          <span className="ls-hint" translate="no">
+                            ({branch.code})
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -200,10 +207,10 @@ export function MyAccountView({
         actions={
           <>
             <Button variant="secondary" onClick={() => setOverlay('email')}>
-              {texts.changeEmail.title}
+              {opensInput(texts.changeEmail.title)}
             </Button>
             <Button variant="secondary" onClick={() => setOverlay('password')}>
-              {texts.changePassword.title}
+              {opensInput(texts.changePassword.title)}
             </Button>
           </>
         }
@@ -323,6 +330,7 @@ export function ProfileDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="fullName"
               maxLength={200}
               value={form.fullName}
               onChange={(event) => set('fullName', event.target.value)}
@@ -337,6 +345,7 @@ export function ProfileDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="phone"
               type="tel"
               maxLength={32}
               autoComplete="tel"
@@ -356,6 +365,7 @@ export function ProfileDialog({
               {(control) => (
                 <DateTextInput
                   {...control}
+                  name="dateOfBirth"
                   value={form.dateOfBirth}
                   onChange={(event) => set('dateOfBirth', event.target.value)}
                 />
@@ -370,6 +380,7 @@ export function ProfileDialog({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="address"
                   maxLength={500}
                   value={form.address}
                   onChange={(event) => set('address', event.target.value)}
@@ -466,6 +477,7 @@ export function ChangePasswordDialog({
           {(control) => (
             <PasswordInput
               {...control}
+              name="currentPassword"
               showLabel={t.auth.showPassword}
               hideLabel={t.auth.hidePassword}
               maxLength={1024}
@@ -485,6 +497,7 @@ export function ChangePasswordDialog({
           {(control) => (
             <PasswordInput
               {...control}
+              name="newPassword"
               showLabel={t.auth.showPassword}
               hideLabel={t.auth.hidePassword}
               minLength={PASSWORD_LENGTH.min}
@@ -504,6 +517,7 @@ export function ChangePasswordDialog({
           {(control) => (
             <PasswordInput
               {...control}
+              name="confirmPassword"
               showLabel={t.auth.showPassword}
               hideLabel={t.auth.hidePassword}
               autoComplete="new-password"
@@ -632,6 +646,7 @@ export function ChangeEmailDialog({
               {(control) => (
                 <PasswordInput
                   {...control}
+                  name="password"
                   showLabel={t.auth.showPassword}
                   hideLabel={t.auth.hidePassword}
                   maxLength={1024}
@@ -653,6 +668,7 @@ export function ChangeEmailDialog({
               {(control) => (
                 <TextInput
                   {...control}
+                  name="email"
                   type="email"
                   maxLength={254}
                   autoComplete="email"
@@ -680,6 +696,7 @@ export function ChangeEmailDialog({
             {(control) => (
               <TextInput
                 {...control}
+                name="code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 pattern="[0-9]{6}"
@@ -700,7 +717,7 @@ export function ChangeEmailDialog({
  * occurrences and own agreed pay, read-only. Not payroll and not an income total.
  */
 function MySchedule({ account }: { account: MyAccountResponse }) {
-  const { api } = useWorkforce();
+  const { api, t } = useWorkforce();
   const branches = useBranches(api);
   const today = businessToday(
     account.employee?.branches.map((branch) => branch.id) ?? [],
@@ -711,8 +728,24 @@ function MySchedule({ account }: { account: MyAccountResponse }) {
     () => collaboratorWorkCommands.mine(api, range.from, range.to),
     [api, range.from, range.to],
   );
+  // A failed load shows the error and a retry instead of loading forever (wig my-account.tsx:710).
+  if (mine.error && !mine.data) {
+    return (
+      <ListSection title={t.myAccount.schedule.title}>
+        <ErrorState error={mine.error} t={t} onRetry={() => void mine.reload()} />
+      </ListSection>
+    );
+  }
   return <MyScheduleView items={mine.data?.items ?? null} branches={branches.data} />;
 }
+
+const SCHEDULE_PAGER_DEFAULTS = { schedulePage: 1, scheduleSize: DEFAULT_PAGE_SIZE };
+const SCHEDULE_PAGER_OPTIONS = {
+  normalize: (state: typeof SCHEDULE_PAGER_DEFAULTS) => ({
+    schedulePage: normalizePage(state.schedulePage),
+    scheduleSize: normalizePageSize(state.scheduleSize),
+  }),
+};
 
 export function MyScheduleView({
   items,
@@ -724,7 +757,19 @@ export function MyScheduleView({
   const { t, locale } = useWorkforce();
   const texts = t.myAccount.schedule;
   const work = t.collaboratorWork;
-  const paging = useClientPaging(t, texts.title);
+  // The pager in the address bar (?schedulePage=2): Back/Forward and a shared link restore it.
+  const [pager, updatePager] = useUrlState(SCHEDULE_PAGER_DEFAULTS, SCHEDULE_PAGER_OPTIONS);
+  const paging = urlPaging(
+    pager.schedulePage,
+    pager.scheduleSize,
+    ({ page, pageSize }) =>
+      updatePager({
+        ...(page !== undefined ? { schedulePage: page } : {}),
+        ...(pageSize !== undefined ? { scheduleSize: pageSize } : {}),
+      }),
+    t,
+    texts.title,
+  );
   const columns: DataTableColumn<CollaboratorWorkOccurrence>[] = [
     {
       key: 'date',
@@ -735,7 +780,7 @@ export function MyScheduleView({
     {
       key: 'branch',
       header: work.branch,
-      truncate: true,
+      wrap: true,
       cell: (row) => branches?.get(row.branchId)?.name ?? '—',
     },
     { key: 'mode', header: work.mode, cell: (row) => work.modes[row.mode] },
@@ -743,7 +788,13 @@ export function MyScheduleView({
       key: 'time',
       header: work.time,
       numeric: true,
-      cell: (row) => `${row.startTime}–${row.endTime}`,
+      // Branch wall-clock times as the API keeps them (24-hour HH:mm, the same in vi and en); marked up as times.
+      cell: (row) => (
+        <span className="ls-self-time">
+          <time dateTime={row.startTime}>{row.startTime}</time>–
+          <time dateTime={row.endTime}>{row.endTime}</time>
+        </span>
+      ),
     },
     { key: 'pay', header: work.pay, numeric: true, cell: (row) => payLabel(row, t, locale) },
     { key: 'status', header: work.status, cell: (row) => work.statuses[row.status] },
@@ -752,7 +803,9 @@ export function MyScheduleView({
     <ListSection title={texts.title}>
       <p className="ls-hint">{texts.intro}</p>
       {items === null ? <Loading t={t} /> : null}
-      {items !== null && items.length === 0 ? <Empty>{texts.empty}</Empty> : null}
+      {items !== null && items.length === 0 ? (
+        <Empty title={texts.emptyTitle}>{texts.empty}</Empty>
+      ) : null}
       {items !== null && items.length > 0 ? (
         <DataTable
           mode="client"

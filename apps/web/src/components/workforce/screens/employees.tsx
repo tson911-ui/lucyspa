@@ -8,7 +8,9 @@ import type {
   EmployeeStatus,
 } from '@lucy-spa/contracts';
 import {
+  ButtonLink,
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListSection,
   ListToolbar,
@@ -37,7 +39,8 @@ import { organizationDictionary } from '../../../i18n/organization';
 import { branchLabel, useBranches } from '../data';
 import { ManagementLevels, useManagementLevelVisible } from './management-levels';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, PageHeader, useResource, type Tone } from '../ui';
+import { Badge, ErrorState, PageHeader, useResource, type Tone } from '../ui';
+import { AdminButtonLink } from './admin-button-link';
 
 const STATUSES: EmployeeStatus[] = ['ACTIVE', 'PENDING_SETUP', 'INACTIVE'];
 /** Four mutually exclusive sections, managers first; each member appears in exactly one. */
@@ -56,7 +59,7 @@ export const EMPLOYEE_STATUS_TONE: Record<EmployeeStatus, Tone> = {
  * Search, filters, page size and each table's page live in the address bar (`useUrlState`).
  */
 export function EmployeesScreen() {
-  const { api, t, base, navigate } = useWorkforce();
+  const { api, t, base } = useWorkforce();
   const { account } = useAccount();
   const branches = useBranches(api);
   const offerCreate = canOfferCreate(account);
@@ -75,9 +78,15 @@ export function EmployeesScreen() {
     <>
       <PageHeader title={t.employees.title}>
         {offerCreate ? (
-          <Button variant="primary" icon="plus" onClick={() => navigate?.(`${base}/employees/new`)}>
+          // A real link (modifier-click opens a tab; client navigation keeps the shell), styled as the one primary.
+          <ButtonLink
+            LinkComponent={AdminButtonLink}
+            variant="primary"
+            icon="plus"
+            href={`${base}/employees/new`}
+          >
             {t.employees.add}
-          </Button>
+          </ButtonLink>
         ) : null}
       </PageHeader>
       <ListToolbar
@@ -90,7 +99,7 @@ export function EmployeesScreen() {
             id="emp-q"
             value={list.q}
             label={t.employees.search}
-            placeholder={t.employees.search}
+            hint={t.employees.searchExample}
             clearLabel={t.common.list.clearSearch}
             onSearch={(q) => updateList({ q }, { replace: true })}
           />
@@ -213,7 +222,7 @@ export function DirectoryGroupView({
   onPageSize?: (pageSize: number) => void;
   reload: () => Promise<void>;
 }) {
-  const { t, base, locale, navigate } = useWorkforce();
+  const { t, base, locale } = useWorkforce();
   const text = organizationDictionary(locale);
   const texts = t.employees.directory;
   const section = SECTION_TEXT[group];
@@ -226,20 +235,16 @@ export function DirectoryGroupView({
     {
       key: 'employeeId',
       header: t.employees.employeeId,
-      cell: (employee) => employee.employeeId,
+      cell: (employee) => <span translate="no">{employee.employeeId}</span>,
     },
     {
       key: 'fullName',
       header: t.employees.fullName,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (employee) => (
-        <Link
-          className="ls-link"
-          href={`${base}/employees/${employee.id}`}
-          title={employee.fullName}
-        >
+        <Link className="ls-link" href={`${base}/employees/${employee.id}`}>
           {employee.fullName}
         </Link>
       ),
@@ -262,7 +267,7 @@ export function DirectoryGroupView({
       key: 'title',
       header: t.employees.titleColumn,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (employee) => directoryTitle(employee, t, locale),
     },
@@ -272,7 +277,7 @@ export function DirectoryGroupView({
             key: 'level',
             header: text.level,
             hideBelow: 'xl' as const,
-            truncate: true,
+            wrap: true,
             width: 'md' as const,
             cell: (employee: EmployeeDirectoryEntry) => (
               <ManagementLevels
@@ -298,13 +303,14 @@ export function DirectoryGroupView({
       actions: true,
       cell: (employee) => (
         <RowActions
+          LinkComponent={Link}
           menuLabel={fill(t.common.list.actionsFor, { name: employee.fullName })}
           items={[
             {
               id: 'view',
               label: t.common.details,
               icon: 'eye',
-              onSelect: () => navigate?.(`${base}/employees/${employee.id}`),
+              href: `${base}/employees/${employee.id}`,
             },
           ]}
         />
@@ -315,6 +321,7 @@ export function DirectoryGroupView({
   return (
     <ListSection title={title}>
       <DataTable
+        drillDown
         mode="server"
         caption={fill(t.common.list.table, { list: title })}
         columns={columns}
@@ -323,7 +330,13 @@ export function DirectoryGroupView({
         loading={loading}
         loadingLabel={t.common.loading}
         error={error ? <ErrorState error={error} t={t} onRetry={() => void reload()} /> : undefined}
-        empty={data ? <Empty>{empty}</Empty> : undefined}
+        empty={
+          data ? (
+            <EmptyState icon="users" title={filtered ? texts.filteredTitle : texts.emptyTitle}>
+              {empty}
+            </EmptyState>
+          ) : undefined
+        }
         paging={{
           page,
           pageSize,

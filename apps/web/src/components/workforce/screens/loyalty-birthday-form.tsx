@@ -16,8 +16,9 @@ import {
   Stack,
   TextInput,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { birthdayDictionary } from '../../../i18n/birthday';
+import { moneyInputFormat } from '../../../lib/workforce/money-input';
 import {
   birthdayErrorText,
   birthdayRequest,
@@ -58,6 +59,7 @@ export function BirthdayFormDrawer({
   onClose: () => void;
 }) {
   const { api, t, locale } = useWorkforce();
+  const money = moneyInputFormat(locale);
   const b = birthdayDictionary(locale);
   const f = b.form;
   const [initial] = useState(() => (current ? draftFromVersion(current) : emptyBirthdayDraft()));
@@ -65,6 +67,7 @@ export function BirthdayFormDrawer({
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const combineId = useId();
   const errors = validateBirthdayDraft(draft);
   const set = (patch: Partial<BirthdayDraft>) => setDraft((state) => ({ ...state, ...patch }));
   const issueText = (issue: DraftIssue | undefined) =>
@@ -126,6 +129,7 @@ export function BirthdayFormDrawer({
             {(control) => (
               <TextInput
                 {...control}
+                name="percent"
                 inputMode="decimal"
                 autoComplete="off"
                 maxLength={6}
@@ -146,8 +150,9 @@ export function BirthdayFormDrawer({
             {(control) => (
               <MoneyInput
                 {...control}
-                unit="₫"
-                separator={locale === 'vi' ? '.' : ','}
+                name="fixed"
+                unit={money.unit}
+                separator={money.separator}
                 value={draft.fixed}
                 onValueChange={(fixed) => set({ fixed })}
               />
@@ -158,8 +163,9 @@ export function BirthdayFormDrawer({
           {(control) => (
             <MoneyInput
               {...control}
-              unit="₫"
-              separator={locale === 'vi' ? '.' : ','}
+              name="minSpend"
+              unit={money.unit}
+              separator={money.separator}
               value={draft.minSpend}
               onValueChange={(minSpend) => set({ minSpend })}
             />
@@ -175,6 +181,7 @@ export function BirthdayFormDrawer({
           {(control) => (
             <NumberInput
               {...control}
+              name="before"
               inputMode="numeric"
               min={0}
               max={364}
@@ -193,6 +200,7 @@ export function BirthdayFormDrawer({
           {(control) => (
             <NumberInput
               {...control}
+              name="after"
               inputMode="numeric"
               min={0}
               max={364}
@@ -201,25 +209,32 @@ export function BirthdayFormDrawer({
             />
           )}
         </Field>
-        <Stack gap="field">
-          <span className="ls-label">{f.combine}</span>
-          <p className="ls-hint">{f.combineHint}</p>
-          <CheckField
-            label={f.combineMember}
-            checked={draft.combineMember}
-            onChange={(event) => set({ combineMember: event.target.checked })}
-          />
-          <CheckField
-            label={f.combinePromotion}
-            checked={draft.combinePromotion}
-            onChange={(event) => set({ combinePromotion: event.target.checked })}
-          />
-          <CheckField
-            label={f.combineVoucher}
-            checked={draft.combineVoucher}
-            onChange={(event) => set({ combineVoucher: event.target.checked })}
-          />
-        </Stack>
+        {/* The three checkboxes are one named group (the label is read with each box). */}
+        <div role="group" aria-labelledby={combineId} aria-describedby={`${combineId}-hint`}>
+          <Stack gap="field">
+            <span className="ls-label" id={combineId}>
+              {f.combine}
+            </span>
+            <p className="ls-hint" id={`${combineId}-hint`}>
+              {f.combineHint}
+            </p>
+            <CheckField
+              label={f.combineMember}
+              checked={draft.combineMember}
+              onChange={(event) => set({ combineMember: event.target.checked })}
+            />
+            <CheckField
+              label={f.combinePromotion}
+              checked={draft.combinePromotion}
+              onChange={(event) => set({ combinePromotion: event.target.checked })}
+            />
+            <CheckField
+              label={f.combineVoucher}
+              checked={draft.combineVoucher}
+              onChange={(event) => set({ combineVoucher: event.target.checked })}
+            />
+          </Stack>
+        </div>
         <RadioGroup
           legend={f.usage}
           name="birthday-usage"
@@ -246,6 +261,7 @@ export function BirthdayFormDrawer({
             {(control) => (
               <NumberInput
                 {...control}
+                name="usageCount"
                 inputMode="numeric"
                 min={2}
                 max={1000}

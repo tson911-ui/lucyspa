@@ -3,10 +3,12 @@
 import type { AuditEventPageResponse, AuditEventResponse } from '@lucy-spa/contracts';
 import {
   CursorPagination,
+  DEFAULT_PAGE_SIZE,
   DataTable,
   DescriptionList,
   DateRangePicker,
   Drawer,
+  Icon,
   ListToolbar,
   RowActions,
   SearchInput,
@@ -16,12 +18,17 @@ import {
   type DataTableColumn,
   type DateRange,
 } from '@lucy-spa/ui';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { auditArea, auditDictionary, type AuditDictionary } from '../../../i18n/audit';
 import { reportsDictionary } from '../../../i18n/reports';
 import { fill } from '../../../i18n/workforce';
 import { formatDateTime, todayIn, zonedInstant } from '../../../lib/workforce/format';
-import { cursorLabels, paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  cursorLabels,
+  normalizePage,
+  normalizePageSize,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import {
   auditQuery,
   AUDIT_DEFAULTS,
@@ -29,14 +36,24 @@ import {
   type AuditState,
 } from '../../../lib/workforce/audit';
 import { REPORT_ZONE } from '../../../lib/workforce/reports';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Notice, PageHeader } from '../ui';
+import { Badge, Button, Empty, ErrorState, PageHeader } from '../ui';
 
 /**
  * "Nhật ký hoạt động" (Phase 8 P8-14, docs/PHASE8_REPORTS.md 4.8): a read-only screen over the existing audit endpoint. The API alone decides
  * which rows a person may see (by branch and by kind of data); this screen adds a period, an action-code filter, "show more" paging and a
  * detail drawer with what an event changed. Nothing here writes anything.
  */
+const AUDIT_VIEW = { ap: 1, aps: DEFAULT_PAGE_SIZE, ev: '' };
+const AUDIT_VIEW_OPTIONS = {
+  normalize: (state: typeof AUDIT_VIEW) => ({
+    ap: normalizePage(Number(state.ap)),
+    aps: normalizePageSize(Number(state.aps)),
+    ev: String(state.ev),
+  }),
+};
+
 export function AuditLogScreen() {
   const { api, t, locale } = useWorkforce();
   const a = auditDictionary(locale);
@@ -55,8 +72,21 @@ export function AuditLogScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [nonce, setNonce] = useState(0);
-  const [detail, setDetail] = useState<AuditEventResponse | null>(null);
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+  // The table page and the open event live in the address bar (Back closes the drawer; a shared link opens the same view).
+  const [view, updateView] = useUrlState(AUDIT_VIEW, AUDIT_VIEW_OPTIONS);
+  const detail = view.ev === '' ? null : (items.find((event) => event.id === view.ev) ?? null);
+  const paging = urlPaging(
+    view.ap,
+    view.aps,
+    (patch) =>
+      updateView({
+        ...(patch.page !== undefined ? { ap: patch.page } : {}),
+        ...(patch.pageSize !== undefined ? { aps: patch.pageSize } : {}),
+      }),
+    t,
+    a.title,
+  );
+  const loadedKey = useRef<string | null>(null);
   const generation = useRef(0);
 
   const key = range ? `${range.from}|${range.to}|${state.action}|${nonce}` : null;
@@ -85,20 +115,28 @@ export function AuditLogScreen() {
     [api, key],
   );
   useEffect(() => {
-    setPaging((current) => ({ ...current, page: 1 }));
+    // A new period or code returns to page 1; the first load keeps the page the address asked for.
+    if (key !== null) {
+      if (loadedKey.current !== null && loadedKey.current !== key)
+        updateView({ ap: 1 }, { replace: true });
+      loadedKey.current = key;
+    }
     void load(null);
-  }, [load]);
+  }, [load, key, updateView]);
 
   const columns = useMemo(
-    () => auditColumns(a, locale, (event) => setDetail(event), t),
-    [a, locale, t],
+    () => auditColumns(a, locale, (event) => updateView({ ev: event.id }), t),
+    [a, locale, t, updateView],
   );
   const activeFilters = (state.from !== '' ? 1 : 0) + (state.action !== '' ? 1 : 0);
   return (
     <>
       <PageHeader title={a.title} intro={a.intro} />
       <Stack gap="page">
-        <Notice tone="info">{a.readOnlyNote}</Notice>
+        <p className="ls-adminb-note">
+          <Icon name="shield" size={16} />
+          <span>{a.readOnlyNote}</span>
+        </p>
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={activeFilters}
@@ -109,7 +147,7 @@ export function AuditLogScreen() {
               id="audit-action"
               value={state.action}
               label={a.actionFilter}
-              placeholder={a.actionPlaceholder}
+              hint={a.actionPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(text) => update({ action: text.toUpperCase().replace(/[^A-Z0-9_]/g, '') })}
             />
@@ -140,14 +178,10 @@ export function AuditLogScreen() {
               loading={loading && items.length === 0}
               loadingLabel={t.common.loading}
               empty={!loading ? <Empty>{a.empty}</Empty> : undefined}
-              paging={{
-                ...paging,
-                onPageChange: (page) => setPaging((current) => ({ ...current, page })),
-                onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-                labels: paginationLabels(t, a.title),
-              }}
+              paging={paging}
             />
-            {next ? (
+            {/* One paging model: the older rows load from the last page of the table only (no second pager under the first). */}
+            {next && paging.page >= Math.ceil(items.length / paging.pageSize) ? (
               <CursorPagination
                 hasNext
                 loading={loading}
@@ -158,7 +192,7 @@ export function AuditLogScreen() {
           </>
         )}
       </Stack>
-      {detail ? <AuditDetail event={detail} onClose={() => setDetail(null)} /> : null}
+      {detail ? <AuditDetail event={detail} onClose={() => updateView({ ev: '' })} /> : null}
     </>
   );
 }
@@ -182,12 +216,16 @@ export function auditColumns(
     {
       key: 'time',
       header: a.columns.time,
-      cell: (row) => formatDateTime(row.occurredAt, REPORT_ZONE, locale),
+      cell: (row) => (
+        <span className="ls-adminb-code">
+          {formatDateTime(row.occurredAt, REPORT_ZONE, locale)}
+        </span>
+      ),
     },
     {
       key: 'who',
       header: a.columns.who,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => who(row, a),
     },
@@ -195,15 +233,10 @@ export function auditColumns(
       key: 'what',
       header: a.columns.what,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
-      cell: (row) => (
-        <>
-          {a.areas[auditArea(row.action)]}
-          {' · '}
-          <span className="ls-hint">{row.action}</span>
-        </>
-      ),
+      // The area in words; the system event code (ALL-CAPS identifier) is in the row's details, not in the list.
+      cell: (row) => a.areas[auditArea(row.action)],
     },
     {
       key: 'class',
@@ -221,7 +254,7 @@ export function auditColumns(
       key: 'about',
       header: a.columns.about,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.subjectName ?? '—',
     },
@@ -230,7 +263,7 @@ export function auditColumns(
       header: a.columns.reason,
       hideBelow: 'xl',
       hidePhone: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.reason ?? '—',
     },
@@ -266,7 +299,7 @@ function Snapshot({
   const entries = value ? Object.entries(value) : [];
   return (
     <section aria-label={title}>
-      <h3>{title}</h3>
+      <h3 className="ls-adminb-heading">{title}</h3>
       {entries.length === 0 ? (
         <p className="ls-hint">{none}</p>
       ) : (
@@ -288,15 +321,23 @@ export function AuditDetail({
   const { t, locale } = useWorkforce();
   const a = auditDictionary(locale);
   const f = a.fields;
-  const rows: [string, string][] = [
+  const rows: [string, ReactNode][] = [
     [f.time, formatDateTime(event.occurredAt, REPORT_ZONE, locale)],
     [f.who, who(event, a)],
-    [f.action, `${a.areas[auditArea(event.action)]} · ${event.action}`],
+    [
+      f.action,
+      <>
+        {a.areas[auditArea(event.action)]}
+        <span className="ls-adminb-sub" translate="no">
+          {event.action}
+        </span>
+      </>,
+    ],
     [f.about, event.subjectName ?? '—'],
-    [f.entity, `${event.entityType} ${event.entityId}`],
+    [f.entity, <span translate="no">{`${event.entityType} ${event.entityId}`}</span>],
     [f.reason, event.reason ?? '—'],
     [f.classification, a.classification[event.dataClassification]],
-    [f.request, event.requestId ?? '—'],
+    [f.request, event.requestId ? <span translate="no">{event.requestId}</span> : '—'],
   ];
   return (
     <Drawer

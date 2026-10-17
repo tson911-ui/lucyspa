@@ -11,29 +11,40 @@ import {
   Button,
   ConfirmDialog,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DateTextInput,
   DescriptionList,
   Field as KitField,
   FormDialog,
   FormGrid,
+  focusFirstInvalid,
   ListSection,
   ListToolbar,
   RowActions,
   Select,
   Textarea,
+  useUrlState,
+  type DataTablePaging,
   type DataTableColumn,
   type MenuItem,
   type SelectOption,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import type { Locale } from '../../../i18n/locales';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDate, inclusiveDays } from '../../../lib/workforce/format';
-import { resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import { canAnywhere } from '../../../lib/workforce/permissions';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { errorMessage, leaveActions, runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { employeeLabel, useEmployeeNames } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
@@ -69,10 +80,38 @@ export function LeaveStatusBadge({ status, t }: { status: LeaveStatus; t: Workfo
   return <Badge tone={STATUS_TONE[status]}>{t.leave.statuses[status]}</Badge>;
 }
 
+/**
+ * Address-bar state (session 10: Back/Forward and a shared link restore the view): the approval list's status filter ("ALL" for
+ * every status, since the default is "PENDING") and pager, and the pager of one's own requests.
+ */
+const LEAVE_DEFAULTS = {
+  status: 'PENDING',
+  page: 1,
+  size: DEFAULT_PAGE_SIZE,
+  minePage: 1,
+  mineSize: DEFAULT_PAGE_SIZE,
+};
+const LEAVE_OPTIONS = {
+  normalize: (state: typeof LEAVE_DEFAULTS) => ({
+    status:
+      state.status === 'ALL' || (STATUSES as string[]).includes(state.status)
+        ? state.status
+        : 'PENDING',
+    page: normalizePage(state.page),
+    size: normalizePageSize(state.size),
+    minePage: normalizePage(state.minePage),
+    mineSize: normalizePageSize(state.mineSize),
+  }),
+  resetOnChange: ['page', 'minePage'],
+};
+type LeaveUrl = typeof LEAVE_DEFAULTS;
+type LeaveUpdate = (patch: Partial<LeaveUrl>) => void;
+
 export function LeaveScreen() {
   const { t } = useWorkforce();
   const { account } = useAccount();
   const [creating, setCreating] = useState(false);
+  const [url, update] = useUrlState(LEAVE_DEFAULTS, LEAVE_OPTIONS);
   // Collaborators work by schedule and never use leave (Owner decision Q15).
   const collaborator = account.workforceTitle === 'COLLABORATOR';
   const ownLeave = account.kind === 'EMPLOYEE' && !collaborator;
@@ -81,7 +120,7 @@ export function LeaveScreen() {
       <PageHeader title={t.leave.title} intro={t.leave.wholeDays}>
         {ownLeave ? (
           <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-            {t.leave.newRequest}
+            {opensInput(t.leave.newRequest)}
           </Button>
         ) : null}
       </PageHeader>
@@ -89,10 +128,17 @@ export function LeaveScreen() {
         collaborator ? (
           <Notice tone="info">{t.leave.collaboratorNoLeave}</Notice>
         ) : (
-          <OwnLeave creating={creating} onClose={() => setCreating(false)} />
+          <OwnLeave
+            creating={creating}
+            onClose={() => setCreating(false)}
+            url={url}
+            update={update}
+          />
         )
       ) : null}
-      {canAnywhere(account, 'APPROVE_LEAVE') ? <LeaveDecisions /> : null}
+      {canAnywhere(account, 'APPROVE_LEAVE') ? (
+        <LeaveDecisions titled={account.kind === 'EMPLOYEE'} url={url} update={update} />
+      ) : null}
     </>
   );
 }
@@ -102,7 +148,17 @@ export function leaveTypeOptions(t: WorkforceDictionary): SelectOption[] {
   return LEAVE_TYPE_ORDER.map((type) => ({ value: type, label: t.leave.types[type] }));
 }
 
-function OwnLeave({ creating, onClose }: { creating: boolean; onClose: () => void }) {
+function OwnLeave({
+  creating,
+  onClose,
+  url,
+  update,
+}: {
+  creating: boolean;
+  onClose: () => void;
+  url: LeaveUrl;
+  update: LeaveUpdate;
+}) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const notify = useSuccessToast();
@@ -123,7 +179,9 @@ function OwnLeave({ creating, onClose }: { creating: boolean; onClose: () => voi
           <ErrorState error={own.error} t={t} onRetry={() => void own.reload()} />
         ) : null}
         {cancelled ? <Notice tone="success">{t.leave.cancelled}</Notice> : null}
-        {own.data && requests.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
+        {own.data && requests.length === 0 ? (
+          <Empty title={t.leave.mineEmptyTitle}>{t.leave.mineEmpty}</Empty>
+        ) : null}
         {requests.length > 0 ? (
           <>
             <LeaveTable
@@ -131,6 +189,17 @@ function OwnLeave({ creating, onClose }: { creating: boolean; onClose: () => voi
               t={t}
               locale={locale}
               list={t.leave.mine}
+              paging={urlPaging(
+                url.minePage,
+                url.mineSize,
+                ({ page, pageSize }) =>
+                  update({
+                    ...(page !== undefined ? { minePage: page } : {}),
+                    ...(pageSize !== undefined ? { mineSize: pageSize } : {}),
+                  }),
+                t,
+                t.leave.mine,
+              )}
               menu={(request) =>
                 leaveActions(request, account.id, false).cancel
                   ? [
@@ -204,8 +273,20 @@ function LeaveRequestDialog({
   const create = useSubmit();
   const days = inclusiveDays(form.startDate, form.endDate);
   const invalidRange = form.startDate !== '' && form.endDate !== '' && days === null;
+  // Submit stays enabled (wig leave.tsx:226): a missing field is said at the field after a submit, and the first one takes focus.
+  const [checked, setChecked] = useState(false);
+  const missing = {
+    startDate: checked && form.startDate === '',
+    endDate: checked && form.endDate === '',
+    reason: checked && form.reason.trim() === '',
+  };
 
   async function submit() {
+    if (form.startDate === '' || form.endDate === '' || form.reason.trim() === '') {
+      setChecked(true);
+      window.setTimeout(() => focusFirstInvalid(document), 0);
+      return;
+    }
     if (invalidRange) return;
     const ok = await create.run(
       () => runMutation(() => api.post('/api/v1/leave-requests', form), reload),
@@ -223,9 +304,6 @@ function LeaveRequestDialog({
       labels={formOverlayLabels(t, t.leave.submit)}
       busy={create.pending}
       dirty={form.startDate !== '' || form.endDate !== '' || form.reason !== ''}
-      submitDisabled={
-        invalidRange || form.startDate === '' || form.endDate === '' || form.reason.trim() === ''
-      }
       error={
         create.error ? <Notice tone="error">{errorMessage(create.error, t)}</Notice> : undefined
       }
@@ -243,10 +321,16 @@ function LeaveRequestDialog({
             />
           )}
         </KitField>
-        <KitField label={t.leave.startDate} required requiredLabel={t.common.required}>
+        <KitField
+          label={t.leave.startDate}
+          required
+          requiredLabel={t.common.required}
+          {...(missing.startDate ? { error: t.common.form.fieldRequired } : {})}
+        >
           {(control) => (
             <DateTextInput
               {...control}
+              name="startDate"
               value={form.startDate}
               onChange={(event) =>
                 setForm({
@@ -264,13 +348,16 @@ function LeaveRequestDialog({
           requiredLabel={t.common.required}
           {...(invalidRange
             ? { error: t.leave.endBeforeStart }
-            : days !== null
-              ? { hint: `${t.leave.days}: ${fill(t.leave.daysValue, { count: days })}` }
-              : {})}
+            : missing.endDate
+              ? { error: t.common.form.fieldRequired }
+              : days !== null
+                ? { hint: `${t.leave.days}: ${fill(t.leave.daysValue, { count: days })}` }
+                : {})}
         >
           {(control) => (
             <DateTextInput
               {...control}
+              name="endDate"
               min={form.startDate || undefined}
               value={form.endDate}
               invalid={invalidRange}
@@ -278,10 +365,17 @@ function LeaveRequestDialog({
             />
           )}
         </KitField>
-        <KitField label={t.leave.reason} required requiredLabel={t.common.required} full>
+        <KitField
+          label={t.leave.reason}
+          required
+          requiredLabel={t.common.required}
+          full
+          {...(missing.reason ? { error: t.common.form.reasonRequired } : {})}
+        >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
               maxLength={1000}
               value={form.reason}
               onChange={(event) => setForm({ ...form, reason: event.target.value })}
@@ -300,6 +394,7 @@ export function LeaveTable({
   list,
   employee,
   menu,
+  paging: urlPager,
 }: {
   requests: readonly LeaveRequestResponse[];
   t: WorkforceDictionary;
@@ -309,9 +404,12 @@ export function LeaveTable({
   employee?: (id: string) => string;
   /** Row menu items for one request; an empty list shows no menu. */
   menu?: (request: LeaveRequestResponse) => MenuItem[];
+  /** The pager kept in the address bar by the leave page; a table shown elsewhere pages in memory. */
+  paging?: DataTablePaging | undefined;
 }) {
   const name = list ?? t.leave.title;
-  const paging = useClientPaging(t, name);
+  const localPaging = useClientPaging(t, name);
+  const paging = urlPager ?? localPaging;
   const columns: DataTableColumn<LeaveRequestResponse>[] = [
     ...(employee
       ? [
@@ -319,7 +417,7 @@ export function LeaveTable({
             key: 'employee',
             header: t.leave.employee,
             mobileTitle: true,
-            truncate: true,
+            wrap: true,
             cell: (request: LeaveRequestResponse) => employee(request.employeeId),
           },
         ]
@@ -349,10 +447,18 @@ export function LeaveTable({
       hideBelow: 'lg',
       wrap: true,
       width: 'lg',
+      // The decision's reason is a second muted line, not joined with a middle dot.
       cell: (request) =>
-        request.decisionReason
-          ? `${request.reason} · ${t.leave.decisionReason}: ${request.decisionReason}`
-          : request.reason,
+        request.decisionReason ? (
+          <span className="ls-cell-stack">
+            <span className="ls-cell-main">{request.reason}</span>
+            <span className="ls-cell-sub">
+              {t.leave.decisionReason}: {request.decisionReason}
+            </span>
+          </span>
+        ) : (
+          request.reason
+        ),
     },
     {
       key: 'status',
@@ -396,11 +502,38 @@ export function LeaveTable({
 
 type Decision = { request: LeaveRequestResponse; kind: 'approve' | 'reject' };
 
-function LeaveDecisions() {
+/** The approval list's heading is left out when it is the page's only section (it would only repeat the h1). */
+function SectionFrame({
+  titled,
+  title,
+  children,
+}: {
+  titled: boolean;
+  title: string;
+  children: ReactNode;
+}) {
+  return titled ? (
+    <ListSection title={title}>{children}</ListSection>
+  ) : (
+    <div className="ls-self-list">{children}</div>
+  );
+}
+
+function LeaveDecisions({
+  titled,
+  url,
+  update,
+}: {
+  titled: boolean;
+  url: LeaveUrl;
+  update: LeaveUpdate;
+}) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const names = useEmployeeNames(api, account);
-  const [status, setStatus] = useState<LeaveStatus | ''>('PENDING');
+  // '' (every status) is "ALL" in the address bar, because the default filter is "PENDING".
+  const status = (url.status === 'ALL' ? '' : url.status) as LeaveStatus | '';
+  const setStatus = (value: LeaveStatus | '') => update({ status: value === '' ? 'ALL' : value });
   const [deciding, setDeciding] = useState<Decision | null>(null);
   const list = useResource(
     () =>
@@ -411,7 +544,7 @@ function LeaveDecisions() {
   const nameOf = (id: string) => employeeLabel(id, names.data, account, t);
 
   return (
-    <ListSection title={t.leave.decisions}>
+    <SectionFrame titled={titled} title={t.leave.decisions}>
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={status === 'PENDING' ? 0 : 1}
@@ -435,13 +568,39 @@ function LeaveDecisions() {
       {list.error ? (
         <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
       ) : null}
-      {list.data && requests.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
+      {list.data && requests.length === 0 ? (
+        status === 'PENDING' ? (
+          <Empty title={t.leave.decisionsEmptyTitle}>{t.leave.decisionsEmpty}</Empty>
+        ) : (
+          <Empty
+            title={t.leave.decisionsEmptyFilteredTitle}
+            action={
+              <Button variant="secondary" onClick={() => setStatus('PENDING')}>
+                {t.leave.showPending}
+              </Button>
+            }
+          >
+            {t.leave.decisionsEmptyFiltered}
+          </Empty>
+        )
+      ) : null}
       {requests.length > 0 ? (
         <LeaveTable
           requests={requests}
           t={t}
           locale={locale}
           list={t.leave.decisions}
+          paging={urlPaging(
+            url.page,
+            url.size,
+            ({ page, pageSize }) =>
+              update({
+                ...(page !== undefined ? { page } : {}),
+                ...(pageSize !== undefined ? { size: pageSize } : {}),
+              }),
+            t,
+            t.leave.decisions,
+          )}
           employee={nameOf}
           menu={(request) =>
             // Every listed request is inside the caller's APPROVE_LEAVE scope (server-filtered).
@@ -449,13 +608,13 @@ function LeaveDecisions() {
               ? [
                   {
                     id: 'approve',
-                    label: t.leave.approve,
+                    label: opensInput(t.leave.approve),
                     icon: 'check-circle',
                     onSelect: () => setDeciding({ request, kind: 'approve' }),
                   },
                   {
                     id: 'reject',
-                    label: t.leave.reject,
+                    label: opensInput(t.leave.reject),
                     icon: 'x-circle',
                     tone: 'danger',
                     onSelect: () => setDeciding({ request, kind: 'reject' }),
@@ -478,7 +637,7 @@ function LeaveDecisions() {
           onClose={() => setDeciding(null)}
         />
       ) : null}
-    </ListSection>
+    </SectionFrame>
   );
 }
 
@@ -503,7 +662,16 @@ export function DecisionDialog({
   const submit = useSubmit();
   const reject = kind === 'reject';
 
+  const [checked, setChecked] = useState(false);
+  const reasonMissing = reject && checked && reason.trim() === '';
+
   async function decide() {
+    // A rejection needs a reason: said at the field on submit (the button is never disabled to signal it, wig leave.tsx:524).
+    if (reject && reason.trim() === '') {
+      setChecked(true);
+      window.setTimeout(() => focusFirstInvalid(document), 0);
+      return;
+    }
     const trimmed = reason.trim();
     const body = { expectedVersion: request.version, ...(trimmed ? { reason: trimmed } : {}) };
     const ok = await submit.run(
@@ -517,11 +685,10 @@ export function DecisionDialog({
   return (
     <FormDialog
       title={reject ? t.leave.rejectTitle : t.leave.approveTitle}
-      description={`${employee} · ${formatDate(request.startDate, locale)} – ${formatDate(request.endDate, locale)}`}
+      description={`${employee}, ${formatDate(request.startDate, locale)} – ${formatDate(request.endDate, locale)}`}
       labels={formOverlayLabels(t, reject ? t.leave.reject : t.leave.approve)}
       busy={submit.pending}
       dirty={reason !== ''}
-      submitDisabled={reject && reason.trim() === ''}
       error={
         submit.error ? <Notice tone="error">{errorMessage(submit.error, t)}</Notice> : undefined
       }
@@ -539,10 +706,12 @@ export function DecisionDialog({
         <KitField
           label={reject ? t.leave.rejectReason : t.leave.approveReason}
           {...(reject ? { required: true, requiredLabel: t.common.required } : {})}
+          {...(reasonMissing ? { error: t.common.form.reasonRequired } : {})}
         >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
               maxLength={1000}
               value={reason}
               onChange={(event) => setReason(event.target.value)}

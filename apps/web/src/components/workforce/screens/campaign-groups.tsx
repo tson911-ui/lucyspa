@@ -10,6 +10,7 @@ import {
 import {
   ConfirmDialog,
   DataTable,
+  EmptyState,
   Field,
   FormDialog,
   FormGrid,
@@ -37,8 +38,9 @@ import {
 } from '../../../lib/workforce/campaigns';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatVnd } from '../../../lib/workforce/format';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
-import { Button, Empty, Notice, useSuccessToast } from '../ui';
+import { Button, Notice, useSuccessToast } from '../ui';
 import { useCampaignAction, useConfirmError, type SendCampaign } from './campaign-dialogs';
 
 type Overlay =
@@ -89,7 +91,7 @@ export function GroupsSection({
                 items={[
                   {
                     id: 'edit',
-                    label: c.groups.edit,
+                    label: opensInput(c.groups.edit),
                     icon: 'edit',
                     onSelect: () => setOverlay({ kind: 'edit', group }),
                   },
@@ -115,7 +117,7 @@ export function GroupsSection({
         actions={
           editable && !atLimit ? (
             <Button variant="secondary" icon="plus" onClick={() => setOverlay({ kind: 'add' })}>
-              {c.groups.add}
+              {opensInput(c.groups.add)}
             </Button>
           ) : undefined
         }
@@ -126,7 +128,7 @@ export function GroupsSection({
           rows={rows}
           rowKey={(group) => group.id}
           loadingLabel={t.common.loading}
-          empty={<Empty>{c.groups.empty}</Empty>}
+          empty={<EmptyState title={c.groups.emptyTitle}>{c.groups.empty}</EmptyState>}
           paging={{ off: 'A campaign has at most ten groups.' }}
         />
         {editable && atLimit ? (
@@ -240,6 +242,8 @@ function GroupDialog({
           {(control) => (
             <Select
               {...control}
+              name="kind"
+              autoComplete="off"
               value={draft.kind}
               options={CAMPAIGN_RULE_KINDS.map((kind) => ({
                 value: kind,
@@ -269,6 +273,8 @@ function GroupDialog({
             draft.kind === 'PERCENT' ? (
               <NumberInput
                 {...control}
+                name="value"
+                autoComplete="off"
                 inputMode="numeric"
                 min={1}
                 max={90}
@@ -280,8 +286,10 @@ function GroupDialog({
             ) : (
               <MoneyInput
                 {...control}
+                name="value"
+                autoComplete="off"
                 unit="₫"
-                separator={locale === 'vi' ? '.' : ','}
+                locale={locale}
                 value={draft.value === '' ? null : Number(draft.value)}
                 onValueChange={(value) =>
                   setDraft({ ...draft, value: value === null ? '' : String(value) })

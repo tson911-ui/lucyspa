@@ -15,6 +15,7 @@ import {
   CheckField,
   ConfirmDialog,
   DataTable,
+  EmptyState,
   FacetedFilter,
   ListSection,
   ListToolbar,
@@ -38,22 +39,16 @@ import {
 } from '../../../lib/workforce/ai-drafts';
 import { confirmError } from '../../../lib/workforce/form-labels';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
+import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
 import { RunsPanel, StartRunDialog } from './ai-runs';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+import { metaLine } from './pos-format';
+import { RouterMenuLink } from './products-links';
+import { Badge, Button, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 
 const BASE = '/api/v1/ai/product-drafts';
 const RUNS = '/api/v1/ai/product-runs';
@@ -73,7 +68,7 @@ export function AiDraftsScreen() {
     return (
       <>
         <PageHeader title={text.title} intro={text.intro} />
-        <Empty>{text.noAccess}</Empty>
+        <Notice tone="info">{text.noAccess}</Notice>
       </>
     );
   }
@@ -118,11 +113,15 @@ function AiDraftsPage() {
   };
   const working =
     data !== null && data.counts.byStatus.QUEUED + data.counts.byStatus.GENERATING > 0;
+  // The reload functions are stable (useCallback in useResource): the timer is set once while drafts are being written, not torn
+  // down on every render (rbp ai-drafts.tsx:121-125, rerender-dependencies).
+  const reloadList = list.reload;
+  const reloadRuns = runs.reload;
   useEffect(() => {
     if (!working) return;
-    const timer = setInterval(() => void Promise.all([list.reload(), runs.reload()]), POLL_MS);
+    const timer = setInterval(() => void Promise.all([reloadList(), reloadRuns()]), POLL_MS);
     return () => clearInterval(timer);
-  }, [working, list, runs]);
+  }, [working, reloadList, reloadRuns]);
 
   const pick = (row: AiDraftRow, on: boolean) =>
     setPicked((current) => {
@@ -217,10 +216,10 @@ function AiDraftsPage() {
       key: 'product',
       header: text.columns.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
-        <Link className="ls-link" href={draftHref(base, row.id)} title={row.productName}>
+        <Link className="ls-link" href={draftHref(base, row.id)}>
           {row.productName}
         </Link>
       ),
@@ -229,7 +228,7 @@ function AiDraftsPage() {
       key: 'code',
       header: text.columns.code,
       hideBelow: 'lg',
-      cell: (row) => row.productCode,
+      cell: (row) => <span translate="no">{row.productCode}</span>,
     },
     {
       key: 'status',
@@ -240,7 +239,7 @@ function AiDraftsPage() {
       key: 'notes',
       header: text.columns.notes,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => {
         const reason =
@@ -249,14 +248,13 @@ function AiDraftsPage() {
                 errorKey(row.errorCode, Object.keys(text.errors)) as keyof typeof text.errors
               ]
             : null;
-        const parts = [
+        const line = metaLine(locale, [
           reason,
           row.warnings > 0 ? fill(text.notesCell.notes, { count: String(row.warnings) }) : null,
           row.autoFixes > 0 ? fill(text.notesCell.fixed, { count: String(row.autoFixes) }) : null,
           row.edited ? text.notesCell.edited : null,
-        ].filter((part): part is string => part !== null);
-        const line = parts.length === 0 ? text.notesCell.none : parts.join(' · ');
-        return <span title={line}>{line}</span>;
+        ]);
+        return line === '' ? text.notesCell.none : line;
       },
     },
     {
@@ -283,6 +281,7 @@ function AiDraftsPage() {
             cell: (row: AiDraftRow) => (
               <RowActions
                 menuLabel={fill(t.common.list.actionsFor, { name: row.productName })}
+                LinkComponent={RouterMenuLink}
                 items={[
                   {
                     id: 'open',
@@ -306,7 +305,7 @@ function AiDraftsPage() {
           onClick={() => setStarting(true)}
           disabled={!runData}
         >
-          {text.runs.start}
+          {opensInput(text.runs.start)}
         </Button>
       </PageHeader>
       {runData ? <RunsPanel data={runData} onChanged={reloadAll} /> : null}
@@ -326,7 +325,8 @@ function AiDraftsPage() {
             <Button variant="ghost" onClick={() => setPicked(new Map())}>
               {text.select.clear}
             </Button>
-            <Button variant="primary" icon="check" onClick={() => setConfirming(true)}>
+            {/* One filled button per view: the header's "Chạy viết lại" is the primary, so the bulk approve is the outline. */}
+            <Button variant="secondary" icon="check" onClick={() => setConfirming(true)}>
               {fill(text.select.approve, { count: String(picked.size) })}
             </Button>
           </SelectionBar>
@@ -336,7 +336,7 @@ function AiDraftsPage() {
             activeFilters={state.status ? 1 : 0}
             onReset={() => update({ status: '' })}
             reload={{ label: t.common.reload, onClick: () => void list.reload() }}
-            resultCount={data ? String(data.total) : undefined}
+            resultCount={data ? resultsText(t, data.total) : undefined}
             {...(canSelect && pending > 0
               ? {
                   actions: (
@@ -371,6 +371,7 @@ function AiDraftsPage() {
           <Notice tone="info">{fill(text.select.needSingles, { done: String(singles) })}</Notice>
         ) : null}
         <DataTable
+          drillDown
           mode="server"
           caption={fill(t.common.list.table, { list: text.table })}
           columns={columns}
@@ -383,7 +384,37 @@ function AiDraftsPage() {
               <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
             ) : undefined
           }
-          empty={data ? <Empty>{state.status ? text.emptyFiltered : text.empty}</Empty> : undefined}
+          empty={
+            data ? (
+              state.status ? (
+                <EmptyState
+                  icon="search"
+                  title={text.emptyFilteredTitle}
+                  action={
+                    <Button variant="secondary" onClick={() => update({ status: '' })}>
+                      {t.common.list.reset}
+                    </Button>
+                  }
+                >
+                  {text.emptyFiltered}
+                </EmptyState>
+              ) : (
+                <EmptyState
+                  icon="sparkles"
+                  title={text.emptyTitle}
+                  action={
+                    runData ? (
+                      <Button variant="secondary" icon="sparkles" onClick={() => setStarting(true)}>
+                        {opensInput(text.runs.start)}
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  {text.empty}
+                </EmptyState>
+              )
+            ) : undefined
+          }
           paging={{
             page: state.page,
             pageSize: data?.pageSize ?? 20,
@@ -424,7 +455,7 @@ function AiDraftsPage() {
                   done: String(progress.done),
                   total: String(progress.total),
                 })
-              : t.common.saving
+              : text.select.approving
           }
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}

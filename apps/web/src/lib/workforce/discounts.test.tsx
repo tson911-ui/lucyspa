@@ -11,8 +11,10 @@ import { ApiError } from './api';
 import {
   benefitLabel,
   bpToPercent,
+  DISCOUNT_FIELDS,
   createRequestOf,
   discountErrorMessage,
+  discountFieldProblems,
   emptyDiscountForm,
   formFromProgram,
   ineligibleText,
@@ -131,6 +133,50 @@ test('version input problems are named (the API validates everything again)', ()
   assert.equal(problem({ limitTotal: '99999999999' }), 'limit');
   assert.equal(problem({}), null);
   assert.equal(problem({ minSpend: '' }), null, 'an empty minimum spend is 0');
+});
+
+test('every field problem is reported at once, at the field that shows it (inline errors)', () => {
+  assert.deepEqual(discountFieldProblems(form(), 'create'), {});
+  assert.deepEqual(discountFieldProblems(form({ code: '1x', nameEn: ' ' }), 'version'), {
+    nameEn: 'name',
+  });
+  assert.deepEqual(
+    discountFieldProblems(
+      form({
+        code: '1x',
+        nameVi: '',
+        percent: '150',
+        minSpend: '-1',
+        validFrom: '',
+        validUntil: 'x',
+        scopeMode: 'SELECTED',
+        limitTotal: '0',
+        limitPerCustomer: '1.5',
+      }),
+      'create',
+    ),
+    {
+      code: 'code',
+      nameVi: 'name',
+      percent: 'percent',
+      minSpend: 'minSpend',
+      validFrom: 'window',
+      validUntil: 'window',
+      scope: 'scope',
+      limitTotal: 'limit',
+      limitPerCustomer: 'limit',
+    },
+  );
+  // The end before the start is the end's problem; a fixed amount is checked only for that kind.
+  assert.deepEqual(discountFieldProblems(form({ validUntil: '2026-12-01T00:00' }), 'create'), {
+    validUntil: 'window',
+  });
+  assert.deepEqual(
+    discountFieldProblems(form({ kind: 'FIXED_AMOUNT', fixedAmount: '0' }), 'create'),
+    { fixedAmount: 'amount' },
+  );
+  // The field order is the form's order, so the first invalid field is the one that takes focus.
+  assert.deepEqual(DISCOUNT_FIELDS.slice(0, 3), ['code', 'nameVi', 'nameEn']);
 });
 
 test('create and new-version requests: canonical code, trimmed names, program version echoed', () => {

@@ -37,9 +37,11 @@ import {
   scopeOptions,
 } from '../../../lib/workforce/employee-roles';
 import { ApiError } from '../../../lib/workforce/api';
+import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -160,16 +162,18 @@ export function RolesView({
       key: 'role',
       header: texts.role,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (assignment) => (
-        <>
-          <strong>{roleName(assignment, catalog, locale)}</strong>{' '}
-          <span className="ls-hint">({assignment.roleCode})</span>
+        <span className="ls-cell-stack">
+          <span className="ls-cell-main">{roleName(assignment, catalog, locale)}</span>
+          <span className="ls-cell-sub" translate="no">
+            {assignment.roleCode}
+          </span>
           {inactive.has(assignment.roleId) ? (
-            <span className="ls-hint"> {texts.inactiveRole}</span>
+            <span className="ls-cell-sub">{texts.inactiveRole}</span>
           ) : null}
-        </>
+        </span>
       ),
     },
     {
@@ -196,7 +200,7 @@ export function RolesView({
                   items={[
                     {
                       id: 'revoke',
-                      label: texts.revoke,
+                      label: opensInput(texts.revoke),
                       tone: 'danger',
                       onSelect: () => setOverlay({ kind: 'revoke', assignment }),
                     },
@@ -228,7 +232,7 @@ export function RolesView({
                 icon="plus"
                 onClick={() => setOverlay({ kind: 'assign' })}
               >
-                {texts.assign}
+                {opensInput(texts.assign)}
               </Button>
             ) : undefined
           }
@@ -241,7 +245,13 @@ export function RolesView({
             columns={columns}
             rows={authorization?.roleAssignments ?? []}
             rowKey={(assignment) => assignment.id}
-            empty={authorization ? <Empty>{texts.none}</Empty> : undefined}
+            empty={
+              authorization ? (
+                <Empty title={organizationDictionary(locale).people.noRolesTitle}>
+                  {texts.none}
+                </Empty>
+              ) : undefined
+            }
             paging={{ off: 'A member holds a handful of roles; the API caps the assignments.' }}
           />
           <p className="ls-hint">{texts.history}</p>
@@ -306,9 +316,14 @@ export function AssignRoleDialog({
   const submit = useSubmit();
   const selectedScope = scopeFromKey(scope);
   const ready = selectedScope !== null && roleId !== '' && reason.trim() !== '';
+  // Validate on submit: the button stays enabled, a missing field says so at the field.
+  const [tried, setTried] = useState(false);
 
   async function save() {
-    if (!selectedScope || !ready) return;
+    if (!selectedScope || !ready) {
+      setTried(true);
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -334,7 +349,6 @@ export function AssignRoleDialog({
       labels={formOverlayLabels(t, texts.assign)}
       busy={submit.pending}
       dirty={scope !== '' || roleId !== '' || reason !== ''}
-      submitDisabled={!ready}
       error={
         submit.error ? <Notice tone="error">{roleErrorMessage(submit.error, t)}</Notice> : undefined
       }
@@ -342,11 +356,15 @@ export function AssignRoleDialog({
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={texts.scope} required>
+        <Field
+          label={texts.scope}
+          required
+          error={tried && scope === '' ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Select
               {...control}
-              placeholder="—"
+              placeholder={t.common.form.choose}
               value={scope}
               onChange={(event) => {
                 setScope(event.target.value);
@@ -359,11 +377,15 @@ export function AssignRoleDialog({
             />
           )}
         </Field>
-        <Field label={texts.role} required>
+        <Field
+          label={texts.role}
+          required
+          error={tried && roleId === '' ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Select
               {...control}
-              placeholder="—"
+              placeholder={t.common.form.choose}
               value={roleId}
               disabled={!selectedScope}
               onChange={(event) => setRoleId(event.target.value)}
@@ -377,20 +399,26 @@ export function AssignRoleDialog({
                   disabled: !allowed,
                   label: `${name} (${role.code})${
                     managerBlocked
-                      ? ` — ${texts.managerOfficialOnly}`
+                      ? `, ${texts.managerOfficialOnly}`
                       : allowed
                         ? ''
-                        : ` — ${texts.exceeds}`
+                        : `, ${texts.exceeds}`
                   }`,
                 };
               })}
             />
           )}
         </Field>
-        <Field label={t.common.reason} required hint={texts.reasonHint}>
+        <Field
+          label={t.common.reason}
+          required
+          hint={texts.reasonHint}
+          error={tried && reason.trim() === '' ? t.common.form.reasonRequired : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -433,7 +461,7 @@ export function RevokeRoleDialog({
       ]}
       tone="danger"
       confirmLabel={texts.revoke}
-      busyLabel={t.common.saving}
+      busyLabel={t.common.removing}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{

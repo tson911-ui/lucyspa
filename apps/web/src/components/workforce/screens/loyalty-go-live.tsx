@@ -22,7 +22,7 @@ export function LoyaltyGoLive() {
   const l = loyaltyDictionary(locale);
   const g = l.goLive;
   const notify = useSuccessToast();
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking: checking } = useReauthentication();
   const status = useResource(
     () => api.get<LoyaltyGoLiveStatusResponse>('/api/v1/loyalty/go-live'),
     [api],
@@ -78,6 +78,7 @@ export function LoyaltyGoLive() {
       </Stack>
       {asking ? (
         <ConfirmDialog
+          suspended={checking}
           title={g.confirmTitle}
           description={g.confirmBody}
           tone="warning"
@@ -93,7 +94,7 @@ export function LoyaltyGoLive() {
           onCancel={() => setAsking(false)}
         />
       ) : null}
-      {/* Last, so the password confirmation sits above the confirmation dialog that asked for it. */}
+      {/* The password check (C60): the confirmation that asked for it is suspended while it is open, so only one modal shows. */}
       {dialog}
     </Card>
   );

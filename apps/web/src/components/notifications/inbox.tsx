@@ -9,27 +9,31 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Button,
-  CursorPagination,
   DataTable,
+  EmptyState,
   Icon,
   ListToolbar,
   RowActions,
   Select,
   buttonClass,
+  useUrlState,
   type DataTableColumn,
+  type DataTablePaging,
+  type ListToolbarLabels,
+  type PaginationLabels,
+  VisuallyHidden,
   type MenuItem,
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../workforce/link';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { fill, getWorkforceDictionary } from '../../i18n/workforce';
-import { getNotificationDictionary } from '../../i18n/notifications';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { fill } from '../../lib/fill';
+import { getNotificationDictionary, type NotificationDictionary } from '../../i18n/notifications';
 import type { Locale } from '../../i18n/locales';
 import type { ApiClient } from '../../lib/api/client';
-import { cursorLabels, toolbarLabels } from '../../lib/workforce/list-view';
-import { useClientPaging } from '../../lib/workforce/use-client-paging';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
+import { normalizePage } from '../../lib/workforce/list-view';
 import {
   applyItemUpdate,
-  DEFAULT_INBOX_FILTERS,
   inboxCategories,
   mergeNotifications,
   notificationHref,
@@ -37,12 +41,64 @@ import {
   notificationQuery,
   type InboxFilters,
 } from '../../lib/notifications';
-import { Badge, Empty, Notice, PageHeader } from '../workforce/ui';
+import { Notice, PageHeader } from '../workforce/ui';
 import { CHANGED, timestampParts, useUnreadCount } from './unread';
+
+// The list words come from the notification dictionary (the same words as the staff lists), so the member inbox does not load
+// the staff dictionary.
+function toolbarLabels(t: NotificationDictionary): ListToolbarLabels {
+  return {
+    toolbar: t.listToolbar,
+    filters: t.listFilters,
+    reset: t.listReset,
+    close: t.listClose,
+    apply: t.listApply,
+  };
+}
+
+function pagingLabels(t: NotificationDictionary): PaginationLabels {
+  return {
+    locale: t === getNotificationDictionary('vi') ? 'vi' : 'en',
+    nav: fill(t.pagesOf, { list: t.title }),
+    first: t.firstPage,
+    previous: t.previousPage,
+    next: t.nextPage,
+    last: t.lastPage,
+    pageNumber: t.pageNumber,
+    summary: t.pageSummary,
+    pageSize: t.pageSize,
+    pageSizeOption: t.pageSizeOption,
+  };
+}
+
+/** A pager in local state (a table on its own: 20 per page, back to page 1 when the size changes). */
+function useLocalPaging(t: NotificationDictionary): DataTablePaging {
+  const [state, setState] = useState({ page: 1, pageSize: 20 });
+  return {
+    ...state,
+    onPageChange: (page) => setState((current) => ({ ...current, page })),
+    onPageSizeChange: (pageSize) => setState({ page: 1, pageSize }),
+    labels: pagingLabels(t),
+  };
+}
 
 export { CHANGED, timestampParts, useUnreadCount };
 
 type NotificationTexts = ReturnType<typeof getNotificationDictionary>;
+
+/** Rows per page of the inbox table (the server sends 30 per batch; the table pages them 20 at a time). */
+const INBOX_PAGE_SIZE = 20;
+const INBOX_VIEWS = ['inbox', 'unread', 'archived'];
+/** Address-bar state of the inbox: group (`ncat`), view (`nview`) and page (`npage`), prefixed so they never meet another list's keys. */
+const INBOX_URL_DEFAULTS = { ncat: 'ALL', nview: 'inbox', npage: 1 };
+const INBOX_URL_OPTIONS = {
+  normalize: (state: typeof INBOX_URL_DEFAULTS) => ({
+    ncat: /^[A-Z_]{1,40}$/.test(state.ncat) ? state.ncat : 'ALL',
+    nview: INBOX_VIEWS.includes(state.nview) ? state.nview : 'inbox',
+    npage: normalizePage(state.npage),
+  }),
+  resetOnChange: ['npage'],
+};
 
 /** Bell with the unread badge. */
 export function NotificationIndicator({
@@ -135,6 +191,8 @@ export function NotificationTable({
   empty,
   onRead,
   onArchive,
+  paging,
+  audience = 'staff',
 }: {
   items: readonly NotificationItem[];
   locale: Locale;
@@ -144,10 +202,14 @@ export function NotificationTable({
   empty?: ReactNode;
   onRead: (id: string) => void;
   onArchive?: ((id: string) => void) | undefined;
+  /** The inbox page passes its address-bar pager; a table on its own pages in local state. */
+  paging?: DataTablePaging | undefined;
+  /** A member's table: links name the record, not the staff's work, and carry the site's route fade. */
+  audience?: 'staff' | 'customer' | undefined;
 }) {
   const t = getNotificationDictionary(locale);
-  const w = getWorkforceDictionary(locale);
-  const paging = useClientPaging(w, t.title);
+  const customer = audience === 'customer';
+  const localPaging = useLocalPaging(t);
   const columns: DataTableColumn<NotificationItem>[] = [
     {
       key: 'message',
@@ -158,8 +220,9 @@ export function NotificationTable({
       cell: (item) => {
         const message = notificationMessage(item, locale);
         const href = hrefFor(item);
-        const open =
-          item.source.type === 'LeaveRequest'
+        const open = customer
+          ? t.openDetail
+          : item.source.type === 'LeaveRequest'
             ? t.openLeave
             : item.source.type === 'Invoice'
               ? t.finance.openInvoice
@@ -172,12 +235,31 @@ export function NotificationTable({
                     : item.source.type === 'SupplierSource'
                       ? t.supplier.open
                       : t.open;
-        return href ? (
-          <Link className="ls-link" href={href} title={`${open}: ${message}`}>
-            {message}
-          </Link>
-        ) : (
-          message
+        // Unread = a dot and the 600 weight; the words "unread" / "archived" are for screen readers only (no status pill on
+        // every row, C5/A3). The message wraps in full (Owner answer 7), the link carries no duplicate tooltip.
+        const state = [item.readAt ? null : t.unread, item.archivedAt ? t.archivedBadge : null]
+          .filter(Boolean)
+          .map((word) => `, ${word}`)
+          .join('');
+        return (
+          <span className="ls-inbox-message" data-unread={item.readAt ? undefined : true}>
+            {item.readAt ? null : <span className="ls-inbox-dot" aria-hidden />}
+            {href ? (
+              <Link
+                className="ls-link"
+                href={href}
+                aria-label={`${open}: ${message}${state}`}
+                {...(customer ? { transitionTypes: NAV_TRANSITION } : {})}
+              >
+                {message}
+              </Link>
+            ) : (
+              <span>
+                {message}
+                {state ? <VisuallyHidden>{state}</VisuallyHidden> : null}
+              </span>
+            )}
+          </span>
         );
       },
     },
@@ -200,21 +282,11 @@ export function NotificationTable({
       hideBelow: 'lg',
       cell: (item) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-main">{item.source.code}</span>
-          <span className="ls-cell-sub ls-cell-title" title={item.branch?.name}>
-            {item.branch?.name ?? '—'}
+          <span className="ls-cell-main" translate="no">
+            {item.source.code}
           </span>
+          <span className="ls-cell-sub">{item.branch?.name ?? '—'}</span>
         </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: t.columnStatus,
-      cell: (item) => (
-        <>
-          <Badge tone={item.readAt ? 'neutral' : 'info'}>{item.readAt ? t.read : t.unread}</Badge>
-          {item.archivedAt ? <Badge tone="neutral">{t.archivedBadge}</Badge> : null}
-        </>
       ),
     },
     {
@@ -236,14 +308,14 @@ export function NotificationTable({
   return (
     <DataTable
       mode="client"
-      caption={fill(w.common.list.table, { list: t.title })}
+      caption={fill(t.listTable, { list: t.title })}
       columns={columns}
       rows={items}
       rowKey={(item) => item.id}
       loading={loading}
       loadingLabel={t.loading}
       empty={empty}
-      paging={paging}
+      paging={paging ?? localPaging}
     />
   );
 }
@@ -266,9 +338,21 @@ export function NotificationInbox({
   frame?: ((parts: { actions: ReactNode; children: ReactNode }) => ReactNode) | undefined;
 }) {
   const t = getNotificationDictionary(locale);
-  const w = getWorkforceDictionary(locale);
   const categories = inboxCategories(account);
-  const [filters, setFilters] = useState<InboxFilters>(DEFAULT_INBOX_FILTERS);
+  const categoryKey = categories.join(',');
+  // The group, the view and the page live in the address bar: Back/Forward and a shared link restore the same view.
+  const [url, updateUrl] = useUrlState(INBOX_URL_DEFAULTS, INBOX_URL_OPTIONS);
+  const filters = useMemo<InboxFilters>(
+    () => ({
+      category: categoryKey.split(',').includes(url.ncat)
+        ? (url.ncat as InboxFilters['category'])
+        : 'ALL',
+      unreadOnly: url.nview === 'unread',
+      archived: url.nview === 'archived',
+    }),
+    [categoryKey, url.ncat, url.nview],
+  );
+  const resetFilters = () => updateUrl({ ncat: 'ALL', nview: 'inbox' });
   const [page, setPage] = useState<NotificationPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -358,6 +442,15 @@ export function NotificationInbox({
           : old,
       );
     }).then(() => load());
+  // One paging model (the table's 20-row pager): the next server batch is fetched in the background while fewer rows than
+  // the page after the current one are loaded, so "next" is always there when more exists and a shared ?npage= link restores.
+  const nextCursor = page?.nextCursor ?? null;
+  const loadedRows = page?.items.length ?? 0;
+  useEffect(() => {
+    if (nextCursor && !loading && !error && loadedRows <= url.npage * INBOX_PAGE_SIZE) {
+      void load(nextCursor);
+    }
+  }, [nextCursor, loading, error, loadedRows, url.npage, load]);
   const busy = pending !== null;
   const unread = page?.unreadCount ?? 0;
   const emptyText = filters.archived
@@ -365,7 +458,23 @@ export function NotificationInbox({
     : filters.category !== 'ALL' || filters.unreadOnly
       ? t.emptyFiltered
       : t.empty;
-  const counted = page && !filters.archived;
+  const filtered = filters.archived || filters.category !== 'ALL' || filters.unreadOnly;
+  // Heading, one sentence and one way on: a filtered view offers to show everything again; an empty inbox has nothing to do.
+  const emptyState = (
+    <EmptyState
+      icon="bell"
+      title={filtered ? t.emptyFilteredTitle : t.emptyTitle}
+      action={
+        filtered ? (
+          <Button variant="secondary" onClick={resetFilters}>
+            {t.showAll}
+          </Button>
+        ) : undefined
+      }
+    >
+      {emptyText}
+    </EmptyState>
+  );
   const activeFilters =
     (filters.category !== 'ALL' ? 1 : 0) +
     (filters.unreadOnly ? 1 : 0) +
@@ -393,9 +502,9 @@ export function NotificationInbox({
         </PageHeader>
       )}
       <ListToolbar
-        labels={toolbarLabels(w)}
+        labels={toolbarLabels(t)}
         activeFilters={activeFilters}
-        onReset={() => setFilters(DEFAULT_INBOX_FILTERS)}
+        onReset={resetFilters}
         reload={{ label: t.refresh, onClick: () => void load(), busy: loading || busy }}
         search={
           categories.length > 0 ? (
@@ -404,19 +513,15 @@ export function NotificationInbox({
               aria-label={t.category}
               value={filters.category}
               disabled={busy}
+              // No count inside a filter label (Owner count rule); the unread total lives in the bell and the dashboard.
               options={[
-                { value: 'ALL', label: `${t.allCategories}${counted ? ` (${unread})` : ''}` },
+                { value: 'ALL', label: t.allCategories },
                 ...categories.map((category) => ({
                   value: category,
-                  label: `${t.categories[category]}${counted ? ` (${page.unreadByCategory[category]})` : ''}`,
+                  label: t.categories[category],
                 })),
               ]}
-              onChange={(event) =>
-                setFilters({
-                  ...filters,
-                  category: event.target.value as InboxFilters['category'],
-                })
-              }
+              onChange={(event) => updateUrl({ ncat: event.target.value })}
             />
           ) : undefined
         }
@@ -432,13 +537,7 @@ export function NotificationInbox({
                 { value: 'unread', label: t.unreadOnly },
                 { value: 'archived', label: t.showArchived },
               ]}
-              onChange={(event) =>
-                setFilters({
-                  ...filters,
-                  archived: event.target.value === 'archived',
-                  unreadOnly: event.target.value === 'unread',
-                })
-              }
+              onChange={(event) => updateUrl({ nview: event.target.value })}
             />
           </>
         }
@@ -450,18 +549,17 @@ export function NotificationInbox({
         hrefFor={(item) => notificationHref(item, account, base)}
         pendingId={pending}
         loading={loading && items.length === 0}
-        empty={page ? <Empty>{emptyText}</Empty> : undefined}
+        empty={page ? emptyState : undefined}
         onRead={(id) => void read(id)}
         onArchive={(id) => void archive(id)}
+        audience={audience}
+        paging={{
+          page: url.npage,
+          pageSize: INBOX_PAGE_SIZE,
+          onPageChange: (next) => updateUrl({ npage: next }),
+          labels: pagingLabels(t),
+        }}
       />
-      {page?.nextCursor ? (
-        <CursorPagination
-          hasNext
-          loading={loading || busy}
-          onNext={() => void load(page.nextCursor ?? undefined)}
-          labels={{ ...cursorLabels(w, t.title), loadMore: t.more }}
-        />
-      ) : null}
     </>
   );
   return frame ? <>{frame({ actions: markAll, children: content })}</> : content;

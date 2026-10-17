@@ -31,7 +31,9 @@ test('attendance: self-service for employees; branch view and corrections need p
     new RegExp(vi.attendance.self),
     'the Owner has no attendance of its own',
   );
-  assert.match(ownerView, new RegExp(vi.attendance.team));
+  // The branch view is the Owner's only section: its toolbar shows, without an h2 that would only repeat the h1.
+  assert.match(ownerView, /id="att-branch"/);
+  assert.doesNotMatch(ownerView, new RegExp(`<h2[^>]*>${vi.attendance.team}<`));
 });
 
 test('leave: request form for employees; approvals only with APPROVE_LEAVE', () => {

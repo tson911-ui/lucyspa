@@ -12,10 +12,12 @@ import {
   Card,
   CardHeader,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DateTextInput,
   Field as KitField,
   FormDialog,
   FormGrid,
+  focusFirstInvalid,
   Grid,
   ListSection,
   ListToolbar,
@@ -23,9 +25,12 @@ import {
   Select,
   Textarea,
   TextInput,
+  useUrlState,
+  type DataTablePaging,
+  type UrlStateChange,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/workforce';
 import {
   formatDate,
@@ -35,15 +40,21 @@ import {
   zonedLocal,
 } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
-import { resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import { canAnywhere, canAt, canGlobal } from '../../../lib/workforce/permissions';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import {
   attendanceState,
   canCorrectAttendance,
   errorMessage,
   runMutation,
 } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { branchLabel, employeeLabel, useBranches, useEmployeeNames } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
@@ -55,25 +66,76 @@ import {
   Notice,
   PageHeader,
   useResource,
+  type Resource,
   useSubmit,
 } from '../ui';
 
+/** An ISO date from the address bar, or '' (a malformed value is dropped, never sent to the API). */
+const isoDate = (value: string) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '');
+
+/**
+ * Address-bar state of the page (session 10: Back/Forward and a shared link restore the view): the branch list's filters and
+ * pager, and the pager of one's own history. A filter change returns the branch list to page 1.
+ */
+const ATTENDANCE_DEFAULTS = {
+  branch: '',
+  from: '',
+  to: '',
+  page: 1,
+  size: DEFAULT_PAGE_SIZE,
+  minePage: 1,
+  mineSize: DEFAULT_PAGE_SIZE,
+};
+const ATTENDANCE_OPTIONS = {
+  normalize: (state: typeof ATTENDANCE_DEFAULTS) => ({
+    branch: state.branch,
+    from: isoDate(state.from),
+    to: isoDate(state.to),
+    page: normalizePage(state.page),
+    size: normalizePageSize(state.size),
+    minePage: normalizePage(state.minePage),
+    mineSize: normalizePageSize(state.mineSize),
+  }),
+  resetOnChange: ['page', 'minePage'],
+};
+type AttendanceUrl = typeof ATTENDANCE_DEFAULTS;
+type AttendanceUpdate = (patch: Partial<AttendanceUrl>, change?: UrlStateChange) => void;
+
 export function AttendanceScreen() {
-  const { t } = useWorkforce();
+  const { api, t } = useWorkforce();
   const { account } = useAccount();
+  // One branch list for both sections (rbp: it was fetched twice).
+  const branches = useBranches(api);
+  const [url, update] = useUrlState(ATTENDANCE_DEFAULTS, ATTENDANCE_OPTIONS);
   return (
     <>
       <PageHeader title={t.attendance.title} />
-      {account.kind === 'EMPLOYEE' ? <SelfAttendance /> : null}
-      {canAnywhere(account, 'VIEW_ATTENDANCE') ? <BranchAttendance /> : null}
+      {account.kind === 'EMPLOYEE' ? (
+        <SelfAttendance branches={branches} url={url} update={update} />
+      ) : null}
+      {canAnywhere(account, 'VIEW_ATTENDANCE') ? (
+        <BranchAttendance
+          titled={account.kind === 'EMPLOYEE'}
+          branches={branches}
+          url={url}
+          update={update}
+        />
+      ) : null}
     </>
   );
 }
 
-function SelfAttendance() {
+function SelfAttendance({
+  branches,
+  url,
+  update,
+}: {
+  branches: Resource<Map<string, BranchSummary>>;
+  url: AttendanceUrl;
+  update: AttendanceUpdate;
+}) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
-  const branches = useBranches(api);
   const own = useResource(async () => {
     const [assignments, attendance] = await Promise.all([
       api.get<EmployeeBranchAssignmentsResponse>(
@@ -85,7 +147,11 @@ function SelfAttendance() {
   }, [api, account.id]);
   const submit = useSubmit();
 
-  async function act(work: () => Promise<unknown>, message: string) {
+  // The branch whose check-in/out is running shows the busy state (wig attendance.tsx:152/:167).
+  const [busyBranch, setBusyBranch] = useState<string | null>(null);
+
+  async function act(work: () => Promise<unknown>, message: string, branchId: string) {
+    setBusyBranch(branchId);
     await submit.run(async () => {
       const outcome = await runMutation(work, own.reload);
       if (outcome.ok) await own.reload();
@@ -122,7 +188,7 @@ function SelfAttendance() {
               const state = attendanceState(own.data?.records ?? [], branch.id, branch.timezone);
               return (
                 <Card as="article" key={branch.id} aria-label={branch.name}>
-                  <CardHeader title={branch.name} headingLevel={3} clamp />
+                  <CardHeader title={branch.name} headingLevel={3} />
                   <div>
                     {state.kind === 'in' ? (
                       <Badge tone="success">
@@ -153,11 +219,13 @@ function SelfAttendance() {
                       variant="primary"
                       size="lg"
                       fullWidth
+                      loading={submit.pending && busyBranch === branch.id}
                       disabled={submit.pending}
                       onClick={() =>
                         void act(
                           () => api.post(`/api/v1/attendance/${state.record.id}/check-out`, {}),
                           t.attendance.checkedOut,
+                          branch.id,
                         )
                       }
                     >
@@ -168,11 +236,13 @@ function SelfAttendance() {
                       variant="primary"
                       size="lg"
                       fullWidth
+                      loading={submit.pending && busyBranch === branch.id}
                       disabled={submit.pending}
                       onClick={() =>
                         void act(
                           () => api.post('/api/v1/attendance/check-in', { branchId: branch.id }),
                           t.attendance.checkedIn,
+                          branch.id,
                         )
                       }
                     >
@@ -189,12 +259,25 @@ function SelfAttendance() {
         ) : null}
       </ListSection>
       <ListSection title={t.attendance.history}>
-        {own.data && own.data.records.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
+        {own.data && own.data.records.length === 0 ? (
+          <Empty title={t.attendance.historyEmptyTitle}>{t.attendance.historyEmpty}</Empty>
+        ) : null}
         {own.data && own.data.records.length > 0 ? (
           <AttendanceTable
             records={own.data.records}
             branches={branches.data}
             list={t.attendance.history}
+            paging={urlPaging(
+              url.minePage,
+              url.mineSize,
+              ({ page, pageSize }) =>
+                update({
+                  ...(page !== undefined ? { minePage: page } : {}),
+                  ...(pageSize !== undefined ? { mineSize: pageSize } : {}),
+                }),
+              t,
+              t.attendance.history,
+            )}
           />
         ) : null}
       </ListSection>
@@ -206,6 +289,7 @@ function AttendanceTable({
   records,
   branches,
   list,
+  paging,
   employee,
   onCorrect,
 }: {
@@ -213,6 +297,8 @@ function AttendanceTable({
   branches: Map<string, BranchSummary> | null;
   /** Visible name of the list (the table's accessible name and the pager's). */
   list: string;
+  /** The pager, kept in the address bar by the screen. */
+  paging: DataTablePaging;
   /** Present on the branch view: adds the employee column. */
   employee?: (id: string) => string;
   /** Present when the viewer may correct: adds the row menu. */
@@ -220,7 +306,6 @@ function AttendanceTable({
 }) {
   const { t, locale } = useWorkforce();
   const { account } = useAccount();
-  const paging = useClientPaging(t, list);
   const columns: DataTableColumn<AttendanceRecordResponse>[] = [
     {
       key: 'date',
@@ -233,7 +318,7 @@ function AttendanceTable({
           {
             key: 'employee',
             header: t.attendance.employee,
-            truncate: true,
+            wrap: true,
             cell: (record: AttendanceRecordResponse) => employee(record.employeeId),
           },
         ]
@@ -242,7 +327,7 @@ function AttendanceTable({
       key: 'branch',
       header: t.common.branch,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       cell: (record) => branchLabel(record.branchId, branches, t),
     },
     {
@@ -278,7 +363,7 @@ function AttendanceTable({
                   items={[
                     {
                       id: 'correct',
-                      label: t.attendance.correct,
+                      label: opensInput(t.attendance.correct),
                       icon: 'edit',
                       onSelect: () => onCorrect(record),
                     },
@@ -301,21 +386,47 @@ function AttendanceTable({
   );
 }
 
-function BranchAttendance() {
+/** A heading that only repeats the page's h1 is left out when the branch list is the page's only section. */
+function SectionFrame({
+  titled,
+  title,
+  children,
+}: {
+  titled: boolean;
+  title: string;
+  children: ReactNode;
+}) {
+  return titled ? (
+    <ListSection title={title}>{children}</ListSection>
+  ) : (
+    <div className="ls-self-list">{children}</div>
+  );
+}
+
+function BranchAttendance({
+  titled,
+  branches,
+  url,
+  update,
+}: {
+  titled: boolean;
+  branches: Resource<Map<string, BranchSummary>>;
+  url: AttendanceUrl;
+  update: AttendanceUpdate;
+}) {
   const { api, t } = useWorkforce();
   const { account } = useAccount();
-  const branches = useBranches(api);
   const names = useEmployeeNames(api, account);
-  const [filters, setFilters] = useState({ branchId: '', from: '', to: '' });
+  const filters = { branchId: url.branch, from: url.from, to: url.to };
   const [editing, setEditing] = useState<string | null>(null);
   const list = useResource(
     () =>
       api.get<AttendanceListResponse>('/api/v1/attendance', {
-        branchId: filters.branchId || undefined,
-        from: filters.from || undefined,
-        to: filters.to || undefined,
+        branchId: url.branch || undefined,
+        from: url.from || undefined,
+        to: url.to || undefined,
       }),
-    [api, filters],
+    [api, url.branch, url.from, url.to],
   );
   const viewable = [...(branches.data?.values() ?? [])].filter(
     (branch) =>
@@ -327,12 +438,12 @@ function BranchAttendance() {
   const activeFilters = [filters.branchId, filters.from, filters.to].filter(Boolean).length;
 
   return (
-    <ListSection title={t.attendance.team}>
+    <SectionFrame titled={titled} title={t.attendance.team}>
       <ListToolbar
         labels={toolbarLabels(t)}
         activeFilters={activeFilters}
         resultCount={list.data ? resultsText(t, records.length) : undefined}
-        onReset={() => setFilters({ branchId: '', from: '', to: '' })}
+        onReset={() => update({ branch: '', from: '', to: '' })}
         reload={{ label: t.common.reload, onClick: () => void list.reload(), busy: list.loading }}
         search={
           <Select
@@ -343,7 +454,7 @@ function BranchAttendance() {
               { value: '', label: t.common.all },
               ...viewable.map((branch) => ({ value: branch.id, label: branch.name })),
             ]}
-            onChange={(event) => setFilters({ ...filters, branchId: event.target.value })}
+            onChange={(event) => update({ branch: event.target.value })}
           />
         }
         filters={
@@ -353,14 +464,14 @@ function BranchAttendance() {
               aria-label={t.common.from}
               title={t.common.from}
               value={filters.from}
-              onChange={(event) => setFilters({ ...filters, from: event.target.value })}
+              onChange={(event) => update({ from: event.target.value })}
             />
             <DateTextInput
               id="att-to"
               aria-label={t.common.to}
               title={t.common.to}
               value={filters.to}
-              onChange={(event) => setFilters({ ...filters, to: event.target.value })}
+              onChange={(event) => update({ to: event.target.value })}
             />
           </>
         }
@@ -369,12 +480,38 @@ function BranchAttendance() {
       {list.error ? (
         <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
       ) : null}
-      {list.data && records.length === 0 ? <Empty>{t.common.empty}</Empty> : null}
+      {list.data && records.length === 0 ? (
+        activeFilters > 0 ? (
+          <Empty
+            title={t.attendance.teamEmptyFilteredTitle}
+            action={
+              <Button variant="secondary" onClick={() => update({ branch: '', from: '', to: '' })}>
+                {t.attendance.showAll}
+              </Button>
+            }
+          >
+            {t.attendance.teamEmptyFiltered}
+          </Empty>
+        ) : (
+          <Empty title={t.attendance.teamEmptyTitle}>{t.attendance.teamEmpty}</Empty>
+        )
+      ) : null}
       {records.length > 0 ? (
         <AttendanceTable
           records={records}
           branches={branches.data}
           list={t.attendance.team}
+          paging={urlPaging(
+            url.page,
+            url.size,
+            ({ page, pageSize }) =>
+              update({
+                ...(page !== undefined ? { page } : {}),
+                ...(pageSize !== undefined ? { size: pageSize } : {}),
+              }),
+            t,
+            t.attendance.team,
+          )}
           employee={(id) => employeeLabel(id, names.data, account, t)}
           {...(records.some(canCorrect) ? { onCorrect: (record) => setEditing(record.id) } : {})}
         />
@@ -391,7 +528,7 @@ function BranchAttendance() {
           reload={list.reload}
         />
       ) : null}
-    </ListSection>
+    </SectionFrame>
   );
 }
 
@@ -418,9 +555,16 @@ export function CorrectionDialog({
     record.checkOutAt ? zonedLocal(record.checkOutAt, zone) : `${record.businessDate}T`,
   );
   const [reason, setReason] = useState('');
+  const [checked, setChecked] = useState(false);
   const submit = useSubmit();
 
   async function save() {
+    // The reason is required: said at the field on submit, not by a disabled button (wig attendance.tsx:447).
+    if (reason.trim().length === 0) {
+      setChecked(true);
+      window.setTimeout(() => focusFirstInvalid(document), 0);
+      return;
+    }
     const body: AttendanceCorrectionRequest = { expectedVersion: record.version, reason };
     if (checkIn !== originalIn) {
       const instant = zonedInstant(checkIn, zone);
@@ -444,7 +588,6 @@ export function CorrectionDialog({
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={reason !== '' || checkIn !== originalIn || checkOut !== originalOut}
-      submitDisabled={reason.trim().length === 0}
       error={
         submit.error ? <Notice tone="error">{errorMessage(submit.error, t)}</Notice> : undefined
       }
@@ -456,6 +599,7 @@ export function CorrectionDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="checkIn"
               type="datetime-local"
               value={checkIn}
               max={`${todayIn(zone)}T23:59`}
@@ -467,6 +611,7 @@ export function CorrectionDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="checkOut"
               type="datetime-local"
               value={checkOut.length === 16 ? checkOut : ''}
               min={checkIn}
@@ -474,10 +619,18 @@ export function CorrectionDialog({
             />
           )}
         </KitField>
-        <KitField label={t.common.reason} required requiredLabel={t.common.required}>
+        <KitField
+          label={t.common.reason}
+          required
+          requiredLabel={t.common.required}
+          {...(checked && reason.trim().length === 0
+            ? { error: t.common.form.reasonRequired }
+            : {})}
+        >
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}

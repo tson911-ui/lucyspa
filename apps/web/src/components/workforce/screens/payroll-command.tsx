@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { payrollErrorMessage } from '../../../lib/workforce/payroll';
 import { ReauthenticationCancelled, withReauthentication } from '../../../lib/workforce/reauth';
 import { useReauthentication } from '../reauth-dialog';
@@ -13,10 +13,11 @@ import { useWorkforce } from '../session';
  */
 export function usePayrollCommand(options: { reauth?: boolean } = {}) {
   const { api, t, locale } = useWorkforce();
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // One id per dialog, made once (rerender-lazy-state-init: not a new UUID on every render).
+  const [requestId] = useState(() => globalThis.crypto.randomUUID());
   async function run<T>(path: string, body: object, done: (result: T) => void) {
     if (pending) return;
     setPending(true);
@@ -33,5 +34,5 @@ export function usePayrollCommand(options: { reauth?: boolean } = {}) {
       setPending(false);
     }
   }
-  return { run, pending, error, requestId: requestId.current, dialog };
+  return { run, pending, error, requestId, dialog, asking };
 }

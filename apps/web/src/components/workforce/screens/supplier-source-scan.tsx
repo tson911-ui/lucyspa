@@ -54,7 +54,8 @@ export function ScanDrawer({
     () => api.get<SupplierSourceScanListResponse>(`/api/v1/supplier-sources/${item.id}/scans`),
     [api, item.id],
   );
-  const [busy, setBusy] = useState(false);
+  const [running, setRunning] = useState<'SAMPLE' | 'FULL' | null>(null);
+  const busy = running !== null;
   const [error, setError] = useState<string | null>(null);
   const latest = loaded.data?.items[0] ?? null;
   const active = latest?.status === 'RUNNING';
@@ -79,7 +80,7 @@ export function ScanDrawer({
 
   async function run(scope: 'SAMPLE' | 'FULL') {
     if (busy) return;
-    setBusy(true);
+    setRunning(scope);
     setError(null);
     try {
       await api.post<SupplierSourceScanResponse>(`/api/v1/supplier-sources/${item.id}/scans`, {
@@ -92,7 +93,7 @@ export function ScanDrawer({
       if (isSourceConflict(failure)) await onConflict();
       setError(sourceErrorText(failure, locale, (cause) => errorMessage(cause, t)));
     } finally {
-      setBusy(false);
+      setRunning(null);
     }
   }
 
@@ -156,12 +157,18 @@ export function ScanDrawer({
               <Button
                 variant="secondary"
                 onClick={() => void run('SAMPLE')}
+                loading={running === 'SAMPLE'}
                 disabled={busy || active}
               >
-                {busy ? copy.queuing : copy.run}
+                {running === 'SAMPLE' ? copy.queuing : copy.run}
               </Button>
-              <Button variant="primary" onClick={() => void run('FULL')} disabled={busy || active}>
-                {busy ? copy.queuing : copy.runFull}
+              <Button
+                variant="primary"
+                loading={running === 'FULL'}
+                onClick={() => void run('FULL')}
+                disabled={busy || active}
+              >
+                {running === 'FULL' ? copy.queuing : copy.runFull}
               </Button>
             </>
           ) : null}

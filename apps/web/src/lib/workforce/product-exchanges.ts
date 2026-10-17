@@ -124,12 +124,28 @@ export const completeRequest = (
   restock: ProductRefundRestockName | '',
 ): ProductExchangeCompleteRequest | null => (restock === '' ? null : { restock });
 
+const factLists = new Map<Locale, Intl.ListFormat>();
+
+/** "A, B, C": the facts of one picker option through Intl (wig: no hand-joined list), one cached formatter per locale. */
+function factList(locale: Locale): Intl.ListFormat {
+  let format = factLists.get(locale);
+  if (!format) {
+    format = new Intl.ListFormat(locale, { type: 'unit', style: 'short' });
+    factLists.set(locale, format);
+  }
+  return format;
+}
+
 /** A search result as the picker shows it: name, today's price and what is available. */
 export function exchangeOptionLabel(option: ProductExchangeOption, locale: Locale): string {
   const f = productExchangesDictionary(locale).form;
   const stock =
     option.available > 0 ? f.available.replace('{count}', String(option.available)) : f.outOfStock;
-  return [productTitle(option, locale), formatVnd(option.unitPriceVnd, locale), stock].join(' — ');
+  return factList(locale).format([
+    productTitle(option, locale),
+    formatVnd(option.unitPriceVnd, locale),
+    stock,
+  ]);
 }
 
 /** The exchanges that wait for their payment or for the old goods, newest last. */

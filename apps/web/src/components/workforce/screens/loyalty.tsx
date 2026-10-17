@@ -2,17 +2,20 @@
 
 import type { WalkInMemberLookupResponse } from '@lucy-spa/contracts';
 import {
+  ButtonLink,
   Card,
   CardHeader,
   Cluster,
+  EmptyState,
   Field,
+  SegmentedControl,
   Select,
   Stack,
   Tabs,
   TextInput,
   useUrlState,
 } from '@lucy-spa/ui';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
 import { comboSoldDictionary } from '../../../i18n/combo-sold';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
@@ -22,12 +25,14 @@ import { loyaltyBranches, loyaltyErrorMessage, loyaltyTabs } from '../../../lib/
 import {
   LOYALTY_PAGE_DEFAULTS,
   LOYALTY_RESET_KEYS,
+  loyaltyGroupOf,
+  loyaltyGroups,
   normalizeLoyaltyPage,
   type LoyaltyTabId,
 } from '../../../lib/workforce/loyalty-list';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
-import { Button, Empty, Loading, Notice, PageHeader } from '../ui';
+import { Button, Loading, Notice, PageHeader } from '../ui';
 import { LoyaltyCombos } from './loyalty-combos';
 import { LoyaltyComboSold } from './loyalty-combo-sold';
 import { FrozenCombos, LoyaltyComboUsage } from './loyalty-combo-usage';
@@ -37,6 +42,7 @@ import { LoyaltyGoLive } from './loyalty-go-live';
 import { LoyaltyReferrals } from './loyalty-referrals';
 import { LoyaltyRewardCatalog } from './loyalty-rewards-catalog';
 import { LoyaltyRewards } from './loyalty-rewards';
+import { AdminButtonLink } from './admin-button-link';
 
 type Member = WalkInMemberLookupResponse['members'][number];
 
@@ -57,109 +63,115 @@ export function LoyaltyScreen() {
   });
 
   if (branches.loading && !branches.data) return <Loading t={t} page />;
-  if (
-    !shown.customers &&
-    !shown.referrals &&
-    !shown.exceptions &&
-    !shown.combos &&
-    !shown.comboUsage &&
-    !shown.comboSold &&
-    !shown.rewardDesk &&
-    !shown.rewardCatalog &&
-    !shown.birthday &&
-    !shown.goLive
-  ) {
+  if (!Object.values(shown).some(Boolean)) {
     return (
       <>
         <PageHeader title={l.title} intro={l.intro} />
-        <Empty>{l.noAccess}</Empty>
+        <EmptyState icon="shield" title={l.empty.noAccessTitle}>
+          {l.empty.noAccessText}
+        </EmptyState>
       </>
     );
   }
-  const tabs = [
-    { id: 'customers', label: l.tabs.customers, show: shown.customers, panel: <CustomerLookup /> },
-    {
-      id: 'referrals',
-      label: l.tabs.referrals,
-      show: shown.referrals,
-      panel: (
-        <LoyaltyReferrals
-          page={state.page}
-          status={state.status}
-          onPage={(page) => update({ page })}
-          onStatus={(status) => update({ status })}
-        />
-      ),
-    },
-    {
-      id: 'exceptions',
-      label: l.tabs.exceptions,
-      show: shown.exceptions,
-      panel: (
-        <Stack gap="page">
-          <LoyaltyExceptions page={state.page} onPage={(page) => update({ page })} />
-          <FrozenCombos />
-        </Stack>
-      ),
-    },
-    {
-      id: 'combos',
-      label: comboDictionary(locale).tab,
-      show: shown.combos,
-      panel: <LoyaltyCombos />,
-    },
-    {
-      id: 'comboSold',
-      label: comboSoldDictionary(locale).tab,
-      show: shown.comboSold,
-      panel: (
-        <Stack gap="page">
-          <LoyaltyComboSold
-            page={state.page}
-            status={state.status}
-            onPage={(page) => update({ page })}
-            onStatus={(status) => update({ status })}
-          />
-        </Stack>
-      ),
-    },
-    {
-      id: 'comboUsage',
-      label: comboDictionary(locale).usage.tab,
-      show: shown.comboUsage,
-      panel: <LoyaltyComboUsage page={state.page} onPage={(page) => update({ page })} />,
-    },
-    {
-      id: 'rewardDesk',
-      label: rewardDictionary(locale).tabs.desk,
-      show: shown.rewardDesk,
-      panel: <LoyaltyRewards />,
-    },
-    {
-      id: 'rewardCatalog',
-      label: rewardDictionary(locale).tabs.catalog,
-      show: shown.rewardCatalog,
-      panel: <LoyaltyRewardCatalog />,
-    },
-    {
-      id: 'birthday',
-      label: l.tabs.birthday,
-      show: shown.birthday,
-      panel: <LoyaltyBirthday />,
-    },
-    { id: 'goLive', label: l.tabs.goLive, show: shown.goLive, panel: <LoyaltyGoLive /> },
-  ].filter((tab) => tab.show);
+  // Owner answer 5: six task groups; `?tab=` keeps the section id, so old links open the same section.
+  const { groups, current } = loyaltyGroups(shown, state.tab);
+  const sectionLabels: Record<LoyaltyTabId, string> = {
+    customers: l.tabs.customers,
+    referrals: l.tabs.referrals,
+    exceptions: l.tabs.exceptions,
+    combos: l.sections.combos,
+    comboSold: comboSoldDictionary(locale).tab,
+    comboUsage: comboDictionary(locale).usage.tab,
+    rewardDesk: rewardDictionary(locale).tabs.desk,
+    rewardCatalog: rewardDictionary(locale).tabs.catalog,
+    birthday: l.tabs.birthday,
+    goLive: l.tabs.goLive,
+  };
+  const section = current ? (
+    <LoyaltySection
+      tab={current}
+      page={state.page}
+      status={state.status}
+      onPage={(page) => update({ page })}
+      onStatus={(status) => update({ status })}
+    />
+  ) : null;
   return (
     <>
       <PageHeader title={l.title} intro={l.intro} />
       <Tabs
         label={l.tabsLabel}
-        value={state.tab || tabs[0]?.id}
-        onChange={(id) => update({ tab: id as LoyaltyTabId })}
-        tabs={tabs.map(({ id, label, panel }) => ({ id, label, panel }))}
+        value={current ? loyaltyGroupOf(current) : groups[0]?.id}
+        onChange={(id) => {
+          const group = groups.find((item) => item.id === id);
+          if (group && group.tabs[0]) update({ tab: group.tabs[0] });
+        }}
+        tabs={groups.map((group) => ({
+          id: group.id,
+          label: l.groups[group.id],
+          panel:
+            group.tabs.length > 1 && current ? (
+              <Stack gap="block">
+                <div className="ls-loyalty-sections">
+                  <SegmentedControl<LoyaltyTabId>
+                    label={l.sectionLabel}
+                    value={current}
+                    onChange={(tab) => update({ tab })}
+                    options={group.tabs.map((tab) => ({ value: tab, label: sectionLabels[tab] }))}
+                  />
+                </div>
+                {section}
+              </Stack>
+            ) : (
+              section
+            ),
+        }))}
       />
     </>
   );
+}
+
+/** The screen of one loyalty section (one of the ten; the URL keeps its id). */
+function LoyaltySection({
+  tab,
+  page,
+  status,
+  onPage,
+  onStatus,
+}: {
+  tab: LoyaltyTabId;
+  page: number;
+  status: string;
+  onPage: (page: number) => void;
+  onStatus: (status: string) => void;
+}) {
+  switch (tab) {
+    case 'customers':
+      return <CustomerLookup />;
+    case 'referrals':
+      return <LoyaltyReferrals page={page} status={status} onPage={onPage} onStatus={onStatus} />;
+    case 'exceptions':
+      return (
+        <Stack gap="page">
+          <LoyaltyExceptions page={page} onPage={onPage} />
+          <FrozenCombos />
+        </Stack>
+      );
+    case 'combos':
+      return <LoyaltyCombos />;
+    case 'comboSold':
+      return <LoyaltyComboSold page={page} status={status} onPage={onPage} onStatus={onStatus} />;
+    case 'comboUsage':
+      return <LoyaltyComboUsage page={page} onPage={onPage} />;
+    case 'rewardDesk':
+      return <LoyaltyRewards />;
+    case 'rewardCatalog':
+      return <LoyaltyRewardCatalog />;
+    case 'birthday':
+      return <LoyaltyBirthday />;
+    case 'goLive':
+      return <LoyaltyGoLive />;
+  }
 }
 
 /**
@@ -167,7 +179,7 @@ export function LoyaltyScreen() {
  * match is found, then "Open points profile". Changing the text goes back to searching.
  */
 function CustomerLookup() {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const { account } = useAccount();
   const l = loyaltyDictionary(locale);
   const branches = useBranches(api);
@@ -178,15 +190,20 @@ function CustomerLookup() {
   const [lookup, setLookup] = useState<WalkInMemberLookupResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const member: Member | null = lookup?.members[0] ?? null;
   const branch = branchId || allowed[0]?.id || '';
+  const contacts = [member?.phoneMasked, member?.emailMasked].filter(Boolean).join(', ');
 
   async function submit() {
-    if (member) {
-      navigate?.(`${base}/loyalty/${member.id}`);
+    // The button stays enabled (validate on submit): an empty field shows its error at the field and takes focus.
+    if (!value.trim()) {
+      setMissing(true);
+      inputRef.current?.focus();
       return;
     }
-    if (searching || !value.trim() || !branch) return;
+    if (searching || !branch) return;
     setSearching(true);
     setError(null);
     try {
@@ -204,7 +221,7 @@ function CustomerLookup() {
   }
 
   return (
-    <Card as="section" aria-label={l.lookup.title}>
+    <Card as="section" className="ls-loyalty-lookup" aria-label={l.lookup.title}>
       <CardHeader title={l.lookup.title} description={l.lookup.hint} />
       <form
         onSubmit={(event) => {
@@ -226,55 +243,69 @@ function CustomerLookup() {
                 )}
               </Field>
             ) : null}
-            <Field label={l.lookup.by} width="sm">
+            <SegmentedControl<'phone' | 'email'>
+              label={l.lookup.by}
+              value={by}
+              options={[
+                { value: 'phone', label: l.lookup.phone },
+                { value: 'email', label: l.lookup.email },
+              ]}
+              onChange={(next) => (setBy(next), setLookup(null), setMissing(false))}
+            />
+            <Field
+              label={by === 'phone' ? l.lookup.phone : l.lookup.email}
+              width="lg"
+              error={missing ? l.lookupRequired : undefined}
+            >
               {(control) => (
-                <Select
+                <TextInput
                   {...control}
-                  value={by}
-                  options={[
-                    { value: 'phone', label: l.lookup.phone },
-                    { value: 'email', label: l.lookup.email },
-                  ]}
+                  ref={inputRef}
+                  name={by === 'phone' ? 'lookup-phone' : 'lookup-email'}
+                  type={by === 'phone' ? 'tel' : 'email'}
+                  inputMode={by === 'phone' ? 'tel' : 'email'}
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={by === 'phone' ? 32 : 320}
+                  value={value}
                   onChange={(event) => (
-                    setBy(event.target.value as 'phone' | 'email'),
-                    setLookup(null)
+                    setValue(event.target.value),
+                    setLookup(null),
+                    setMissing(false)
                   )}
                 />
               )}
             </Field>
-            <Field label={by === 'phone' ? l.lookup.phone : l.lookup.email} width="lg">
-              {(control) => (
-                <TextInput
-                  {...control}
-                  type={by === 'phone' ? 'tel' : 'email'}
-                  inputMode={by === 'phone' ? 'tel' : 'email'}
-                  autoComplete="off"
-                  maxLength={by === 'phone' ? 32 : 320}
-                  value={value}
-                  onChange={(event) => (setValue(event.target.value), setLookup(null))}
-                />
-              )}
-            </Field>
-            <Button
-              type="submit"
-              variant="primary"
-              icon={member ? 'eye' : 'search'}
-              loading={searching}
-              disabled={!member && !value.trim()}
-            >
-              {searching ? l.lookup.searching : member ? l.lookup.open : l.lookup.search}
-            </Button>
+            {/* Found: the way on is a real link to the profile (modifier-click opens a tab); before that, the search button. */}
+            {member ? (
+              <ButtonLink
+                LinkComponent={AdminButtonLink}
+                href={`${base}/loyalty/${member.id}`}
+                variant="primary"
+                icon="eye"
+              >
+                {l.lookup.open}
+              </ButtonLink>
+            ) : (
+              <Button type="submit" variant="primary" icon="search" loading={searching}>
+                {searching ? l.lookup.searching : l.lookup.search}
+              </Button>
+            )}
           </Cluster>
           {error ? <Notice tone="error">{error}</Notice> : null}
           {member ? (
             <Notice tone="success">
               {fill(l.lookup.found, { name: member.displayName })}
-              {member.phoneMasked ? ` · ${member.phoneMasked}` : ''}
-              {member.emailMasked ? ` · ${member.emailMasked}` : ''}
+              {contacts ? ` (${contacts})` : ''}
             </Notice>
           ) : null}
           {lookup && lookup.members.length === 0 ? (
             <Notice tone="info">{l.lookup.notFound}</Notice>
+          ) : null}
+          {!lookup && !error ? (
+            <EmptyState icon="search" title={l.lookupEmpty.title}>
+              {l.lookupEmpty.text}
+            </EmptyState>
           ) : null}
         </Stack>
       </form>

@@ -129,7 +129,9 @@ const optionValues = (markup: string) =>
 test('1, 5. current skills and removed-skill history display separately', () => {
   const markup = view();
   assert.ok(markup.includes(vi.employees.skills));
-  assert.ok(markup.includes('<strong>Gội đầu</strong>') && markup.includes('(HAIR_WASH)'));
+  assert.ok(
+    markup.includes('<span class="ls-cell-main">Gội đầu</span>') && markup.includes('>HAIR_WASH<'),
+  );
   assert.ok(markup.includes(vi.employees.skillsSection.active));
   assert.ok(markup.includes('09:00 01/09/2026'), 'grant time in the branch timezone');
   assert.ok(markup.includes(vi.employees.skillsSection.history));
@@ -199,7 +201,10 @@ test('6, 15–16. trainees may get skills; ended employment keeps skills but get
   const ended = view(owner, { ended: true });
   assert.ok(ended.includes(vi.employees.skillsSection.ended));
   assert.ok(!ended.includes(`>${vi.employees.skillsSection.assign}<`));
-  assert.ok(ended.includes('<strong>Gội đầu</strong>'), 'current skills stay visible');
+  assert.ok(
+    ended.includes('<span class="ls-cell-main">Gội đầu</span>'),
+    'current skills stay visible',
+  );
   assert.ok(ended.includes(vi.employees.skillsSection.history), 'history stays visible');
   assert.ok(ended.includes('aria-label="Thao tác cho'), 'removal still possible');
   const disabled = view(owner, { employee: { ...member, status: 'INACTIVE' } });
@@ -221,7 +226,10 @@ test('17. controls follow MANAGE_SKILLS over every branch, never on oneself', ()
   assert.equal(canManageSkills(manager, { ...member, branchIds: [A, 'other'] }), false);
   assert.equal(canManageSkills(employee([['MANAGE_SKILLS', A]], [], member.id), member), false);
   const viewer = view(employee([['VIEW_EMPLOYEES', A]]));
-  assert.ok(viewer.includes('<strong>Gội đầu</strong>'), 'readers still see the skills');
+  assert.ok(
+    viewer.includes('<span class="ls-cell-main">Gội đầu</span>'),
+    'readers still see the skills',
+  );
   assert.ok(!viewer.includes(`>${vi.employees.skillsSection.assign}<`));
   assert.ok(!viewer.includes('Thao tác cho'));
   const allHeld = view(owner, {

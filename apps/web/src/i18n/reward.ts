@@ -48,10 +48,10 @@ const vi = {
     kindPlaceholder: 'Chọn loại quà',
     service: 'Dịch vụ',
     serviceHint: 'Dịch vụ khách được dùng miễn phí. Không đổi được sau khi tạo.',
-    servicePlaceholder: 'Chọn dịch vụ',
+    servicePlaceholder: 'Chọn dịch vụ…',
     variant: 'Sản phẩm trừ kho',
     variantHint:
-      'Khi nhân viên bấm "đã dùng", kho của chi nhánh đó trừ một sản phẩm này. Để trống thì không trừ kho. Không đổi được sau khi đã có người dùng quà.',
+      'Khi nhân viên bấm “đã dùng”, kho của chi nhánh đó trừ một sản phẩm này. Để trống thì không trừ kho. Không đổi được sau khi đã có người dùng quà.',
     variantPlaceholder: 'Không trừ kho',
     nameVi: 'Tên (tiếng Việt)',
     nameEn: 'Tên (tiếng Anh)',
@@ -80,7 +80,8 @@ const vi = {
       phone: 'Số điện thoại',
       search: 'Tìm khách',
       searching: 'Đang tìm…',
-      found: 'Đã tìm thấy {name}.',
+      found: 'Đã tìm thấy {name}',
+      required: 'Nhập số điện thoại của khách.',
       notFound: 'Không tìm thấy thành viên với số điện thoại này.',
     },
     list: {
@@ -238,7 +239,7 @@ const en: Dictionary = {
     service: 'Service',
     serviceHint:
       'The service the customer receives for free. Cannot be changed after it is created.',
-    servicePlaceholder: 'Choose a service',
+    servicePlaceholder: 'Choose a service…',
     variant: 'Product taken from stock',
     variantHint:
       'When staff mark a unit used, the stock of that branch loses one of this product. Leave empty to take nothing from stock. It cannot change once a unit has been used.',
@@ -270,7 +271,8 @@ const en: Dictionary = {
       phone: 'Phone number',
       search: 'Find customer',
       searching: 'Searching…',
-      found: 'Found {name}.',
+      found: 'Found {name}',
+      required: 'Enter the customer’s phone number.',
       notFound: 'No member found with this phone number.',
     },
     list: {

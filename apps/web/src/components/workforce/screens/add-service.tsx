@@ -15,6 +15,7 @@ import { boardErrorMessage, branchTime } from '../../../lib/workforce/booking-bo
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { useAccount, useWorkforce } from '../session';
 import { Loading, Notice } from '../ui';
+import { focusFirstInvalidSoon } from './service-price-fields';
 
 type Participant = { id: string; name: string | null };
 
@@ -42,7 +43,9 @@ function useAddService({
   const [staff, setStaff] = useState<StaffChoice>('');
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const key = useRef(newAddKey());
+  // The first key is made once (rbp rerender-lazy-state-init), not on every render; a new choice replaces it below.
+  const [firstKey] = useState(newAddKey);
+  const key = useRef(firstKey);
 
   useEffect(() => {
     let active = true;
@@ -140,6 +143,8 @@ export function AddServiceDialog({
   const { options, loadError, chosen, participantId, serviceId, staff, working, error, change } =
     add;
   const ready = Boolean(options && options.services.length > 0);
+  // Validate on submit: the button stays enabled, a missing choice shows at its field and takes focus.
+  const [checked, setChecked] = useState(false);
 
   return (
     <FormDialog
@@ -151,7 +156,6 @@ export function AddServiceDialog({
       }}
       busy={working}
       dirty={serviceId !== ''}
-      submitDisabled={!ready || !participantId || !serviceId}
       error={
         loadError || error ? (
           <Notice tone="error">{boardErrorMessage(loadError ?? error, t)}</Notice>
@@ -159,6 +163,12 @@ export function AddServiceDialog({
       }
       onClose={onClose}
       onSubmit={async () => {
+        if (!ready) return;
+        if (!participantId || !serviceId) {
+          setChecked(true);
+          focusFirstInvalidSoon();
+          return;
+        }
         if (await add.submit()) onClose();
       }}
     >
@@ -172,6 +182,7 @@ export function AddServiceDialog({
             label={t.bookingBoard.addParticipant}
             required
             requiredLabel={t.common.required}
+            error={checked && !participantId ? t.services.participantRequired : undefined}
           >
             {(control) => (
               <KitSelect
@@ -189,6 +200,7 @@ export function AddServiceDialog({
             label={t.bookingBoard.addServiceField}
             required
             requiredLabel={t.common.required}
+            error={checked && !serviceId ? t.services.serviceRequired : undefined}
             {...(chosen
               ? { hint: fill(t.bookingBoard.addPrice, { range: referenceRange(chosen, locale) }) }
               : {})}
@@ -197,7 +209,7 @@ export function AddServiceDialog({
               <KitSelect
                 {...control}
                 value={serviceId}
-                placeholder="—"
+                placeholder={t.services.servicePlaceholder}
                 options={options.services.map((service) => ({
                   value: service.id,
                   label: locale === 'vi' ? service.nameVi : service.nameEn,

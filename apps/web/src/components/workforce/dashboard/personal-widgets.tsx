@@ -6,13 +6,13 @@ import type {
   LeaveRequestListResponse,
   NotificationPage,
 } from '@lucy-spa/contracts';
-import { Icon, Stat, buttonClass } from '@lucy-spa/ui';
+import { Icon, Stat, VisuallyHidden } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
 import { fill } from '../../../i18n/workforce';
 import type { WidgetProps } from '../../../lib/workforce/dashboard/widgets';
 import { formatTime } from '../../../lib/workforce/format';
 import { NAV_ICONS } from '../../../lib/workforce/nav-groups';
-import { navigationFor } from '../../../lib/workforce/permissions';
+import { navigationFor, type NavItem, type NavKey } from '../../../lib/workforce/permissions';
 import { notificationHref, notificationMessage } from '../../../lib/notifications';
 import { attendanceState } from '../../../lib/workforce/workflows';
 import { useAccount, useWorkforce } from '../session';
@@ -169,11 +169,24 @@ export function NotificationsWidget({ size, title }: WidgetProps) {
               const href = notificationHref(item, account, base);
               const message = notificationMessage(item, locale);
               return (
-                <li key={item.id} className="ls-widget-row">
-                  <span className="ls-widget-row-main">
-                    {href ? <Link href={href}>{message}</Link> : message}
-                  </span>
-                  {item.readAt === null ? <Badge tone="info">{copy.new}</Badge> : null}
+                // Unread = a dot and the 600 weight, the word for screen readers only (no blue pill per line, C5).
+                <li
+                  key={item.id}
+                  className="ls-dash-note"
+                  data-unread={item.readAt === null || undefined}
+                >
+                  {item.readAt === null ? <span className="ls-dash-note-dot" aria-hidden /> : null}
+                  {href ? (
+                    <Link className="ls-dash-note-link" href={href}>
+                      {message}
+                      {item.readAt === null ? <VisuallyHidden>{copy.new}</VisuallyHidden> : null}
+                    </Link>
+                  ) : (
+                    <span className="ls-dash-note-text">
+                      {message}
+                      {item.readAt === null ? <VisuallyHidden>{copy.new}</VisuallyHidden> : null}
+                    </span>
+                  )}
                 </li>
               );
             })}
@@ -184,11 +197,41 @@ export function NotificationsWidget({ size, title }: WidgetProps) {
   );
 }
 
+/**
+ * The everyday tasks, most used first (Owner answer 5, session 10: "Lối tắt" stays as a compact list of the tasks people
+ * open most, not a copy of the whole sidebar). Only the pages the sidebar offers this account are listed.
+ */
+const SHORTCUT_ORDER: readonly NavKey[] = [
+  'pos',
+  'bookingBoard',
+  'walkIn',
+  'myServices',
+  'attendance',
+  'leave',
+  'loyalty',
+  'productOrders',
+  'onlineOrders',
+  'cash',
+  'inventory',
+  'reportsRevenue',
+  'collaboratorSchedule',
+  'myIncome',
+  'myPayslips',
+  'myAccount',
+];
+/** At most this many shortcuts; the sidebar holds the rest. */
+const SHORTCUT_LIMIT = 8;
+
+/** The shortcuts of an account: the sidebar's pages (permission-filtered) in the most-used order. */
+export function shortcutsFor(items: readonly NavItem[]): NavItem[] {
+  const byKey = new Map(items.map((item) => [item.key, item]));
+  return SHORTCUT_ORDER.flatMap((key) => byKey.get(key) ?? []).slice(0, SHORTCUT_LIMIT);
+}
+
 export function QuickLinksWidget({ size, title }: WidgetProps) {
   const { t, base } = useWorkforce();
   const { account } = useAccount();
-  // The links are exactly what the sidebar offers (`navigationFor`), minus this page itself.
-  const items = navigationFor(account).filter((item) => item.key !== 'dashboard');
+  const items = shortcutsFor(navigationFor(account));
   return (
     <WidgetFrame
       title={title}
@@ -197,12 +240,12 @@ export function QuickLinksWidget({ size, title }: WidgetProps) {
       isEmpty={(list) => list.length === 0}
     >
       {(list) => (
-        <ul className="ls-widget-links">
+        <ul className="ls-dash-shortcuts">
           {list.map((item) => (
             <li key={item.key}>
-              <Link className={buttonClass('secondary', 'md')} href={`${base}${item.path}`}>
-                <Icon name={NAV_ICONS[item.key]} />
-                <span className="ls-btn-label">{t.nav[item.key]}</span>
+              <Link className="ls-dash-shortcut" href={`${base}${item.path}`}>
+                <Icon name={NAV_ICONS[item.key]} size={20} />
+                <span>{t.nav[item.key]}</span>
               </Link>
             </li>
           ))}

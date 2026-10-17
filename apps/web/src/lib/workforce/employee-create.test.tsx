@@ -121,7 +121,7 @@ test('3–6. explicit TRAINEE or OFFICIAL_EMPLOYEE choice; no default, no ENDED'
     <EmployeeCreateForm
       branches={branches}
       onCreated={() => undefined}
-      onCancel={() => undefined}
+      cancelHref="/vi/workforce/employees"
     />,
     owner,
   );
@@ -214,7 +214,7 @@ test('7–8, 13. the request: start date, branches, no salary or account fields'
     <EmployeeCreateForm
       branches={branches}
       onCreated={() => undefined}
-      onCancel={() => undefined}
+      cancelHref="/vi/workforce/employees"
     />,
     owner,
   );
@@ -232,7 +232,7 @@ test('7–8, 13. the request: start date, branches, no salary or account fields'
   )) {
     assert.ok(markup.includes(label), label);
   }
-  assert.match(markup, /placeholder="dd\/mm\/yyyy"/);
+  assert.match(markup, /placeholder="dd\/mm\/yyyy…"/);
   assert.match(inputTag(markup, 'new-branches', 'A'), /type="checkbox"/);
   assert.match(inputTag(markup, 'new-branches', 'B'), /type="checkbox"/);
   assert.doesNotMatch(markup, /value="C"/, 'inactive branches are not offered');
@@ -322,7 +322,7 @@ test('12. without MANAGE_EMPLOYEE_PAY the official choice is unavailable', () =>
     <EmployeeCreateForm
       branches={branches}
       onCreated={() => undefined}
-      onCancel={() => undefined}
+      cancelHref="/vi/workforce/employees"
     />,
     creator,
   );
@@ -350,7 +350,7 @@ test('14. the directory search and list controls are unchanged', () => {
     <EmployeeCreateForm
       branches={branches}
       onCreated={() => undefined}
-      onCancel={() => undefined}
+      cancelHref="/vi/workforce/employees"
     />,
     employee([['CREATE_EMPLOYEES', 'Z']]),
   );

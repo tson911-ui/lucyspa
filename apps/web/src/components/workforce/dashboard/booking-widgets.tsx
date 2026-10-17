@@ -68,8 +68,9 @@ export function TodayBookingsWidget({ branchId, size, title }: WidgetProps) {
                 {summary.next.map((booking) => (
                   <li key={booking.id} className="ls-widget-row">
                     <span className="ls-widget-row-main">
-                      {branchTime(booking.startsAt, data.branch.timezone, locale)}
-                      {' · '}
+                      <span className="ls-dash-time">
+                        {branchTime(booking.startsAt, data.branch.timezone, locale)}
+                      </span>
                       {booking.owner.displayName}
                     </span>
                     <span className="ls-widget-row-meta">{booking.code}</span>
@@ -112,8 +113,9 @@ export function InServiceWidget({ branchId, size, title }: WidgetProps) {
                 <li key={row.lineId} className="ls-widget-row">
                   <span className="ls-widget-row-main">
                     {row.participant ?? copy.guest}
-                    {' · '}
-                    {locale === 'vi' ? row.serviceNameVi : row.serviceNameEn}
+                    <span className="ls-dash-sub">
+                      {locale === 'vi' ? row.serviceNameVi : row.serviceNameEn}
+                    </span>
                   </span>
                   {row.ktv ? (
                     <span className="ls-widget-row-meta">{fill(copy.by, { name: row.ktv })}</span>

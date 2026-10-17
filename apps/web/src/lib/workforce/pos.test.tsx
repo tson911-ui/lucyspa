@@ -11,6 +11,7 @@ import {
   CancelConfirm,
   CashDialog,
   LineDialog,
+  PayosCancelConfirm,
   PayosDialog,
   VoucherDialog,
 } from '../../components/workforce/screens/pos-dialogs';
@@ -322,7 +323,7 @@ test('payments section: history, balance, the cash form only when permitted, rev
   assert.ok(html.includes('100,000'), 'credited amount');
   assert.ok(html.includes('50,000'), 'change');
   assert.ok(html.includes('200,000'), 'balance due');
-  assert.ok(html.includes(en.pos.collectTitle), 'cash action shown when the API permits');
+  assert.ok(html.includes(en.pos.collectOpen), 'cash action shown when the API permits');
   assert.equal(rowMenus(html), 0, 'no reversal menu unless reversible');
   assert.ok(!html.includes('wf-'), 'kit components only, no legacy markup');
   // The `ls-card` surface class is styling, not a payment method.
@@ -475,10 +476,10 @@ test('PayOS in the payments section: waiting request, form only when none waits,
     cashier,
     'en',
   );
-  assert.ok(form.includes(en.pos.payosCreate));
-  assert.ok(form.includes(en.pos.collectTitle));
+  assert.ok(form.includes(en.pos.payosCreateOpen));
+  assert.ok(form.includes(en.pos.collectOpen));
   assert.ok(
-    form.indexOf(en.pos.payosCreate) < form.indexOf(en.pos.collectTitle),
+    form.indexOf(en.pos.payosCreateOpen) < form.indexOf(en.pos.collectOpen),
     'the primary action (cash) comes last',
   );
 
@@ -504,6 +505,16 @@ test('PayOS in the payments section: waiting request, form only when none waits,
   assert.ok(!waiting.includes(en.pos.payosCreate), 'one waiting request per invoice');
   assert.ok(waiting.includes('120,000'), 'the held amount');
   assert.ok(waiting.includes(en.pos.paymentStates.PENDING));
+  // Session 10: the QR has a reserved box, the cancel is a danger outline (it opens a confirmation first), the payment page link says
+  // it opens a new tab, and the countdown sits outside any live region.
+  assert.ok(waiting.includes('ls-pos-qr'), 'the QR box is reserved before the image is drawn');
+  assert.match(
+    waiting,
+    /ls-btn-danger-outline[^>]*>[\s\S]*?Cancel QR/,
+    'cancel QR is a danger outline',
+  );
+  assert.ok(waiting.includes(en.pos.newTab), 'the payment page link announces the new tab');
+  assert.ok(!/role="status"[^>]*>[^<]*left/.test(waiting), 'the countdown is not in a live region');
   // Cash may take only the rest: the cash dialog starts from balance minus the held amount.
   assert.equal(cashBalanceOf(invoice({ pendingProviderVnd: '120000' })).toString(), '80000');
   // A pending request is not effective and there is no "mark received" or reverse action.
@@ -623,7 +634,7 @@ test('PayOS management: anomalies and notes only where the API offers them', () 
   assert.ok(html.includes('TF-9'));
   assert.equal(rowMenus(html), 1, 'an open anomaly is reviewed from its row menu');
   assert.ok(html.includes(en.pos.noteTitle));
-  assert.ok(html.includes(en.pos.noteAdd));
+  assert.ok(html.includes(en.pos.noteAddOpen));
   // A reviewed anomaly shows who looked and when; no review form.
   const reviewed = render(
     <PosPaymentsSection
@@ -773,9 +784,20 @@ test('voucher dialog and cancel confirmation carry the same rules as before', ()
     cashier,
     'en',
   );
-  assert.ok(cancel.includes(en.pos.cancelNeedsReauth));
+  // One sentence that already says the password is asked again (session 10: no glued sentences).
+  assert.ok(cancel.includes('you will be asked for your password to confirm'));
   assert.ok(cancel.includes(en.pos.cancelReason));
   assert.ok(cancel.includes('role="alertdialog"'));
+  // Session 10 (wig pos-payments.tsx:348): cancelling a waiting PayOS code asks first; "Giữ mã" is the way out, the amount is named.
+  const payosCancel = render(
+    <PayosCancelConfirm amountVnd="120000" onConfirm={() => Promise.resolve()} onClose={noop} />,
+    cashier,
+    'vi',
+  );
+  assert.ok(payosCancel.includes('role="alertdialog"'));
+  assert.ok(payosCancel.includes(vi.pos.payosCancelTitle));
+  assert.ok(payosCancel.includes(vi.pos.payosCancelKeep));
+  assert.ok(payosCancel.includes('120.000'));
 });
 
 test('board time: the shown day carries the time only, an older day carries dd/mm as well, in branch time', () => {

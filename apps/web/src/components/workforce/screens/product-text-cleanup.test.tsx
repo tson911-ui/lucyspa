@@ -53,7 +53,8 @@ test('the list: one h1, one primary action with the count, every product with it
   assert.match(html, /Sữa Rửa Mặt Cấp Ẩm The Whoo/);
   assert.match(html, /sua-rua-mat-the-whoo/);
   assert.equal((html.match(/Sẽ dọn/g) ?? []).length, 2);
-  assert.match(html, /Chỉ phần &quot;Đánh giá&quot; bị bỏ/);
+  assert.match(html, /Chỉ đoạn đó bị bỏ/, 'the one-line intro says what stays');
+  assert.doesNotMatch(html, /title="Sữa Rửa/, 'names wrap, no tooltip copy');
   assert.doesNotMatch(html, /khám/i);
   assert.doesNotMatch(html, /Một số sản phẩm nhập từ nhà cung cấp[^<]*khách hàng của Lucy/);
 });

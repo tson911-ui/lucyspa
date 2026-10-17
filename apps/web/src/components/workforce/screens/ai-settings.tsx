@@ -12,6 +12,7 @@ import {
   Cluster,
   DescriptionList,
   Field,
+  Icon,
   FormActions,
   FormGrid,
   FormSection,
@@ -81,16 +82,20 @@ function AiSettingsPage() {
   const { api, t, locale } = useWorkforce();
   const text = aiSettingsDictionary(locale);
   const loaded = useResource(() => api.get<AiSettingsResponse>(BASE), [api]);
-  const [data, setData] = useState<AiSettingsResponse | null>(null);
-  useEffect(() => {
-    if (loaded.data) setData(loaded.data);
-  }, [loaded.data]);
+  // A saved answer replaces the loaded one until the next load (derived in render, no mirror effect: rerender-derived-state-no-effect).
+  const [saved, setSaved] = useState<{
+    base: AiSettingsResponse | null;
+    value: AiSettingsResponse;
+  } | null>(null);
+  const data = saved && saved.base === loaded.data ? saved.value : loaded.data;
+  const setData = (value: AiSettingsResponse) => setSaved({ base: loaded.data, value });
+  const { reload } = loaded;
   const pending = data?.key.checkPending === true;
   useEffect(() => {
     if (!pending) return;
-    const timer = setInterval(() => void loaded.reload(), POLL_MS);
+    const timer = setInterval(() => void reload(), POLL_MS);
     return () => clearInterval(timer);
-  }, [pending, loaded]);
+  }, [pending, reload]);
   if (loaded.error && !data) {
     return (
       <>
@@ -233,15 +238,30 @@ function AiSettingsPanel({
             }
           />
           <Stack gap="block">
-            {!key.configured ? <Notice tone="warning">{text.key.missingBody}</Notice> : null}
+            {/* Status lines with their icon, not tinted boxes inside the card (FR1). */}
+            {!key.configured ? (
+              <p className="ls-adminb-note" data-tone="warning" role="status">
+                <Icon name="alert-triangle" size={16} />
+                <span>{text.key.missingBody}</span>
+              </p>
+            ) : null}
             {key.checkPending ? (
               <p className="ls-hint">{text.key.checking}</p>
             ) : key.lastCheckStatus &&
               !(key.lastCheckStatus === 'KEY_MISSING' && !key.configured) ? (
-              <Notice tone={key.lastCheckStatus === 'OK' ? 'success' : 'error'}>
-                {text.key.statuses[key.lastCheckStatus]}
-                {when ? ` · ${fill(text.key.lastCheck, { when })}` : ''}
-              </Notice>
+              <div className="ls-adminb-check" role="status">
+                <p
+                  className="ls-adminb-note"
+                  data-tone={key.lastCheckStatus === 'OK' ? 'success' : 'danger'}
+                >
+                  <Icon
+                    name={key.lastCheckStatus === 'OK' ? 'check-circle' : 'x-circle'}
+                    size={16}
+                  />
+                  <span>{text.key.statuses[key.lastCheckStatus]}</span>
+                </p>
+                {when ? <p className="ls-hint">{fill(text.key.lastCheck, { when })}</p> : null}
+              </div>
             ) : (
               <p className="ls-hint">
                 {when ? fill(text.key.lastCheck, { when }) : text.key.never}
@@ -253,7 +273,10 @@ function AiSettingsPanel({
           <CardHeader title={text.usage.title} />
           <Stack gap="block">
             {settings.vndPerUsd === null ? (
-              <Notice tone="info">{text.usage.needRate}</Notice>
+              <p className="ls-adminb-note">
+                <Icon name="info" size={16} />
+                <span>{text.usage.needRate}</span>
+              </p>
             ) : null}
             <DescriptionList
               columns={2}
@@ -272,6 +295,7 @@ function AiSettingsPanel({
         </Card>
         <form
           ref={formRef}
+          className="ls-adminb-form"
           noValidate
           onSubmit={(event) => void submit(event)}
           aria-label={text.title}
@@ -321,7 +345,10 @@ function AiSettingsPanel({
                 </FormSection>
                 <FormSection title={text.chat.title} description={text.chat.hint}>
                   {draft.chatEnabled && !integrations.chatWebhookConfigured ? (
-                    <Notice tone="warning">{text.chat.webhookMissing}</Notice>
+                    <p className="ls-adminb-note" data-tone="warning">
+                      <Icon name="alert-triangle" size={16} />
+                      <span>{text.chat.webhookMissing}</span>
+                    </p>
                   ) : null}
                   <FormGrid cols={2}>
                     <Field
@@ -332,6 +359,7 @@ function AiSettingsPanel({
                       {(control) => (
                         <NumberInput
                           {...control}
+                          name="chat-daily-cap"
                           min={0}
                           max={5000}
                           step={1}
@@ -356,6 +384,7 @@ function AiSettingsPanel({
                       {(control) => (
                         <NumberInput
                           {...control}
+                          name="vnd-per-usd"
                           min={1000}
                           max={1000000}
                           step={1}
@@ -369,8 +398,9 @@ function AiSettingsPanel({
                       {(control) => (
                         <MoneyInput
                           {...control}
+                          name="monthly-cap-vnd"
                           unit={text.cost.unit}
-                          separator={locale === 'vi' ? '.' : ','}
+                          locale={locale}
                           value={draft.monthlyCapVnd === '' ? null : Number(draft.monthlyCapVnd)}
                           disabled={pending}
                           onValueChange={(value) =>
@@ -393,8 +423,9 @@ function AiSettingsPanel({
                         {(control) => (
                           <MoneyInput
                             {...control}
+                            name={`feature-cap-${feature}`}
                             unit={text.cost.unit}
-                            separator={locale === 'vi' ? '.' : ','}
+                            locale={locale}
                             value={
                               draft.featureCapsVnd[feature] === ''
                                 ? null
@@ -421,6 +452,7 @@ function AiSettingsPanel({
                       {(control) => (
                         <Select
                           {...control}
+                          name="rewrite-model"
                           options={AI_MODEL_IDS.map((id) => ({
                             value: id,
                             label: text.model.models[id],
@@ -439,6 +471,7 @@ function AiSettingsPanel({
                       {(control) => (
                         <Select
                           {...control}
+                          name="rewrite-effort"
                           options={AI_EFFORT_LEVELS.map((level) => ({
                             value: level,
                             label: text.model.efforts[level],
@@ -461,6 +494,7 @@ function AiSettingsPanel({
                       {(control) => (
                         <NumberInput
                           {...control}
+                          name="concurrency"
                           min={1}
                           max={4}
                           step={1}
@@ -492,6 +526,7 @@ function AiSettingsPanel({
                         {(control) => (
                           <Select
                             {...control}
+                            name={name}
                             options={AI_MODEL_IDS.map((id) => ({
                               value: id,
                               label: text.model.models[id],
@@ -524,6 +559,8 @@ function AiSettingsPanel({
                     {(control) => (
                       <Textarea
                         {...control}
+                        name="banned-phrases"
+                        autoComplete="off"
                         rows={5}
                         value={draft.bannedPhrases}
                         disabled={pending}

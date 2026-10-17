@@ -188,13 +188,13 @@ test('1–2, 15, 19. detail shows profile, read-only login ID, separate status a
   ]) {
     assert.ok(markup.includes(text), text);
   }
-  assert.match(markup, /<strong id="employee-login-id">NV0021<\/strong>/);
+  assert.match(markup, /<strong id="employee-login-id"[^>]*>NV0021<\/strong>/);
   assert.ok(markup.includes(vi.employees.detail.loginIdHint));
   assert.doesNotMatch(markup, /<input[^>]*value="NV0021"/, 'employee code is never an input');
   assert.doesNotMatch(markup, /username|tên đăng nhập/i);
-  // Account status and employment classification are separate, each labelled.
-  assert.ok(markup.includes(`${vi.employees.titleColumn}:`));
-  assert.ok(markup.includes(`${vi.employees.detail.accountStatus}:`));
+  // Account status and employment classification are separate, each labelled (label above value, no colon chain).
+  assert.ok(markup.includes(`>${vi.employees.titleColumn}</dt>`));
+  assert.ok(markup.includes(`>${vi.employees.detail.accountStatus}</dt>`));
   assert.ok(markup.includes(vi.employees.classifications.TRAINEE));
   assert.ok(markup.includes(vi.employees.statuses.ACTIVE));
   const english = detail(official, owner, member, 'en');
@@ -478,11 +478,14 @@ test('18. controls follow the permission hints; self and viewers get none', () =
   assert.deepEqual(Object.values(none), [false, false, false, false, false, false, false]);
   const viewMarkup = detail(trainee, viewer);
   assert.deepEqual(menuOverlays(none), []);
-  assert.ok(!viewMarkup.includes(`>${vi.employees.detail.editProfile}<`), 'no primary action');
+  assert.ok(!viewMarkup.includes(`>${vi.employees.detail.editProfile}…<`), 'no primary action');
   assert.ok(!viewMarkup.includes(`aria-label="${organizationMoreActions}"`), 'no ⋮ menu');
   // The owner sees the primary action and the menu; the menu order is fixed.
   const ownerMarkup = detail(trainee);
-  assert.ok(ownerMarkup.includes(`>${vi.employees.detail.editProfile}<`));
+  assert.ok(
+    ownerMarkup.includes(`>${vi.employees.detail.editProfile}…<`),
+    'the opener ends with "…" (C39)',
+  );
   assert.ok(ownerMarkup.includes(`aria-label="${organizationMoreActions}"`));
   assert.deepEqual(menuOverlays(detailActions(owner, member, trainee)), [
     'promote',

@@ -88,11 +88,9 @@ export function ChangesPanel({
       width: 'lg',
       cell: (row) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-truncate" title={row.productName}>
-            {row.productName}
-          </span>
-          <span className="ls-cell-sub ls-cell-truncate">
-            {text.columns.sku}: {row.productSku ?? text.none}
+          <span className="ls-adminb-wrap">{row.productName}</span>
+          <span className="ls-cell-sub ls-adminb-wrap">
+            {text.columns.sku}: <span translate="no">{row.productSku ?? text.none}</span>
           </span>
         </span>
       ),
@@ -122,7 +120,7 @@ export function ChangesPanel({
       key: 'source',
       header: copy.columns.source,
       hideBelow: 'wide',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.source.name,
     },
@@ -219,7 +217,7 @@ export function ChangesPanel({
               <Button
                 variant="secondary"
                 icon="check"
-                disabled={working}
+                loading={working}
                 onClick={() => void acknowledge(openOnPage)}
               >
                 {copy.markPage}

@@ -55,6 +55,7 @@ export function ServiceContentFields({
             {(control) => (
               <Textarea
                 {...control}
+                name={key}
                 rows={5}
                 value={value[key]}
                 onChange={(event) => onChange({ ...value, [key]: event.target.value })}
@@ -66,7 +67,8 @@ export function ServiceContentFields({
       <FormGrid cols={2}>
         {FAQ_KEYS.map((key) => (
           <Stack key={key}>
-            <p className="ls-form-section-title">{text[key]}</p>
+            {/* A heading, not a styled paragraph: the FAQ group is a sub-section of "Nội dung trang dịch vụ" (h3). */}
+            <h4 className="ls-form-section-title">{text[key]}</h4>
             <p className="ls-hint">{faqHint}</p>
             {broken === key ? <Notice tone="error">{faqHint}</Notice> : null}
             {value[key].map((row, index) => (
@@ -75,6 +77,7 @@ export function ServiceContentFields({
                   {(control) => (
                     <TextInput
                       {...control}
+                      name="question"
                       maxLength={SERVICE_CONTENT_LIMITS.faqQuestionMaxCodePoints}
                       value={row.question}
                       onChange={(event) => setPair(key, index, { question: event.target.value })}
@@ -85,6 +88,7 @@ export function ServiceContentFields({
                   {(control) => (
                     <Textarea
                       {...control}
+                      name="answer"
                       rows={3}
                       maxLength={SERVICE_CONTENT_LIMITS.faqAnswerMaxCodePoints}
                       value={row.answer}

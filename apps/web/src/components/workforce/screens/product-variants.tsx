@@ -11,11 +11,13 @@ import {
   ConfirmDialog,
   DataTable,
   DescriptionList,
+  EmptyState,
   Field,
   FormDialog,
   FormDrawer,
   FormGrid,
   ListSection,
+  MoneyInput,
   NumberInput,
   RowActions,
   Select,
@@ -31,7 +33,6 @@ import { ApiError } from '../../../lib/workforce/api';
 import { isoToVnLocal } from '../../../lib/workforce/discounts';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
 import {
   costText,
   draftFromVariant,
@@ -55,8 +56,13 @@ import {
 } from '../../../lib/workforce/products';
 import { errorMessage } from '../../../lib/workforce/workflows';
 import { useWorkforce } from '../session';
-import { Badge, Button, Empty, Notice, useResource, useSuccessToast } from '../ui';
+import { Badge, Button, Notice, useResource, useSuccessToast } from '../ui';
+import { metaLine } from './pos-format';
 import { useProductCommand } from './use-product-command';
+import { focusInvalidSoon, urlPaging } from './products-links';
+
+// Pagers kept in the address bar (Back/Forward and shared links restore them).
+const useVariantPaging = urlPaging('vpage', 'vsize');
 
 type Overlay = { kind: 'create' } | { kind: 'edit' | 'price' | 'promo' | 'active'; id: string };
 
@@ -81,7 +87,7 @@ export function VariantsSection({
   const v = p.variants;
   const { access } = product;
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const paging = useVariantPaging(t, v.title);
   const notify = useSuccessToast();
   const target =
     overlay && overlay.kind !== 'create'
@@ -96,14 +102,14 @@ export function VariantsSection({
       key: 'sku',
       header: v.sku,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
-      cell: (variant) => variant.sku,
+      cell: (variant) => <span translate="no">{variant.sku}</span>,
     },
     {
       key: 'label',
       header: v.label,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'md',
       cell: (variant) =>
@@ -149,7 +155,10 @@ export function VariantsSection({
         variant.sellOnOrder ? (
           <Badge tone="info">
             {variant.leadTimeDaysMin !== null && variant.leadTimeDaysMax !== null
-              ? `${v.preOrderOn} · ${leadText(variant.leadTimeDaysMin, variant.leadTimeDaysMax)}`
+              ? metaLine(locale, [
+                  v.preOrderOn,
+                  leadText(variant.leadTimeDaysMin, variant.leadTimeDaysMax),
+                ])
               : v.preOrderOn}
           </Badge>
         ) : (
@@ -265,13 +274,12 @@ export function VariantsSection({
         columns={columns}
         rows={product.variants}
         rowKey={(variant) => `${variant.id}:${variant.rowVersion}:${variant.priceVersionNo}`}
-        empty={<Empty>{v.empty}</Empty>}
-        paging={{
-          ...page,
-          onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-          onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
-          labels: paginationLabels(t, v.title),
-        }}
+        empty={
+          <EmptyState icon="tag" title={v.emptyTitle}>
+            {v.empty}
+          </EmptyState>
+        }
+        paging={paging}
       />
       {overlay?.kind === 'create' ? (
         <VariantDrawer
@@ -379,7 +387,10 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
     const body = variant
       ? variantEditRequest(draft, variant, access)
       : variantCreateRequest(draft, access);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     const path = variant
       ? `/api/v1/products/${product.id}/variants/${variant.id}/edit`
       : `/api/v1/products/${product.id}/variants`;
@@ -408,6 +419,7 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           {(control) => (
             <TextInput
               {...control}
+              name="sku"
               autoComplete="off"
               maxLength={64}
               value={draft.sku}
@@ -424,6 +436,7 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           {(control) => (
             <TextInput
               {...control}
+              name="barcode"
               autoComplete="off"
               maxLength={64}
               value={draft.barcode}
@@ -435,6 +448,7 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           {(control) => (
             <TextInput
               {...control}
+              name="labelVi"
               autoComplete="off"
               maxLength={200}
               value={draft.labelVi}
@@ -446,6 +460,7 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           {(control) => (
             <TextInput
               {...control}
+              name="labelEn"
               autoComplete="off"
               maxLength={200}
               value={draft.labelEn}
@@ -461,6 +476,8 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           {(control) => (
             <NumberInput
               {...control}
+              name="threshold"
+              autoComplete="off"
               inputMode="numeric"
               min={0}
               value={draft.threshold}
@@ -472,6 +489,8 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
           {(control) => (
             <NumberInput
               {...control}
+              name="sortOrder"
+              autoComplete="off"
               inputMode="numeric"
               min={0}
               value={draft.sortOrder}
@@ -486,12 +505,13 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
             error={issueText(checked, errors.listPrice, p)}
           >
             {(control) => (
-              <NumberInput
+              <MoneyInput
                 {...control}
-                inputMode="numeric"
-                min={1}
-                value={draft.listPrice}
-                onChange={(event) => set({ listPrice: event.target.value })}
+                name="listPrice"
+                unit="₫"
+                locale={locale}
+                value={draft.listPrice === '' ? null : Number(draft.listPrice)}
+                onValueChange={(value) => set({ listPrice: value === null ? '' : String(value) })}
               />
             )}
           </Field>
@@ -499,12 +519,13 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
         {access.cost ? (
           <Field label={v.costField} hint={v.costHint} error={issueText(checked, errors.cost, p)}>
             {(control) => (
-              <NumberInput
+              <MoneyInput
                 {...control}
-                inputMode="numeric"
-                min={0}
-                value={draft.cost}
-                onChange={(event) => set({ cost: event.target.value })}
+                name="cost"
+                unit="₫"
+                locale={locale}
+                value={draft.cost === '' ? null : Number(draft.cost)}
+                onValueChange={(value) => set({ cost: value === null ? '' : String(value) })}
               />
             )}
           </Field>
@@ -533,6 +554,8 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
               {(control) => (
                 <NumberInput
                   {...control}
+                  name="leadMin"
+                  autoComplete="off"
                   inputMode="numeric"
                   min={1}
                   max={90}
@@ -545,6 +568,8 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
               {(control) => (
                 <NumberInput
                   {...control}
+                  name="leadMax"
+                  autoComplete="off"
                   inputMode="numeric"
                   min={1}
                   max={90}
@@ -559,6 +584,8 @@ function VariantDrawer({ product, variant, reload, onClose, onDone }: OverlayPro
               {(control) => (
                 <Select
                   {...control}
+                  name="usualSupplierId"
+                  autoComplete="off"
                   value={draft.usualSupplierId}
                   placeholder={v.supplierNone}
                   options={supplierOptions}
@@ -603,7 +630,10 @@ function PriceDialog({ product, variant, reload, onClose, onDone }: OverlayProps
   async function submit() {
     setChecked(true);
     const body = priceRequest(draft, v);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     if (await command.run(`/api/v1/products/${product.id}/variants/${v.id}/price`, body)) onDone();
   }
 
@@ -630,12 +660,15 @@ function PriceDialog({ product, variant, reload, onClose, onDone }: OverlayProps
         />
         <Field label={p.price.newPrice} hint={p.price.newPriceHint} error={message} required>
           {(control) => (
-            <NumberInput
+            <MoneyInput
               {...control}
-              inputMode="numeric"
-              min={1}
-              value={draft.price}
-              onChange={(event) => setDraft((state) => ({ ...state, price: event.target.value }))}
+              name="price"
+              unit="₫"
+              locale={locale}
+              value={draft.price === '' ? null : Number(draft.price)}
+              onValueChange={(value) =>
+                setDraft((state) => ({ ...state, price: value === null ? '' : String(value) }))
+              }
             />
           )}
         </Field>
@@ -643,6 +676,8 @@ function PriceDialog({ product, variant, reload, onClose, onDone }: OverlayProps
           {(control) => (
             <Textarea
               {...control}
+              name="reason"
+              autoComplete="off"
               rows={2}
               maxLength={500}
               value={draft.reason}
@@ -682,7 +717,10 @@ function PromotionDrawer({ product, variant, reload, onClose, onDone }: OverlayP
   async function submit() {
     setChecked(true);
     const body = promotionRequest(draft, v);
-    if (!body) return;
+    if (!body) {
+      focusInvalidSoon();
+      return;
+    }
     if (await command.run(`/api/v1/products/${product.id}/variants/${v.id}/promotions`, body)) {
       onDone();
     }
@@ -711,12 +749,13 @@ function PromotionDrawer({ product, variant, reload, onClose, onDone }: OverlayP
         />
         <Field label={m.price} hint={m.priceHint} error={text('price')} required>
           {(control) => (
-            <NumberInput
+            <MoneyInput
               {...control}
-              inputMode="numeric"
-              min={1}
-              value={draft.price}
-              onChange={(event) => set({ price: event.target.value })}
+              name="price"
+              unit="₫"
+              locale={locale}
+              value={draft.price === '' ? null : Number(draft.price)}
+              onValueChange={(value) => set({ price: value === null ? '' : String(value) })}
             />
           )}
         </Field>
@@ -724,6 +763,8 @@ function PromotionDrawer({ product, variant, reload, onClose, onDone }: OverlayP
           {(control) => (
             <TextInput
               {...control}
+              name="startsAt"
+              autoComplete="off"
               type="datetime-local"
               value={draft.startsAt}
               onChange={(event) => set({ startsAt: event.target.value })}
@@ -734,6 +775,8 @@ function PromotionDrawer({ product, variant, reload, onClose, onDone }: OverlayP
           {(control) => (
             <TextInput
               {...control}
+              name="endsAt"
+              autoComplete="off"
               type="datetime-local"
               value={draft.endsAt}
               onChange={(event) => set({ endsAt: event.target.value })}

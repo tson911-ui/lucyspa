@@ -136,11 +136,11 @@ test('texts: sessions, the sale picker label and combo errors, in both languages
   assert.equal(sessionsText(5, 1, 'en'), '5 sessions + 1 free');
   assert.equal(
     comboOptionLabel({ nameVi: 'Combo A', nameEn: 'Combo B', priceVnd: '1000000' }, 'vi'),
-    'Combo A · 1.000.000\u00a0₫',
+    'Combo A, 1.000.000\u00a0₫',
   );
   assert.equal(
     comboOptionLabel({ nameVi: 'Combo A', nameEn: 'Combo B', priceVnd: '1000000' }, 'en'),
-    'Combo B · 1,000,000\u00a0₫',
+    'Combo B, 1,000,000\u00a0₫',
   );
   const fallback = () => 'shared';
   const refusal = (code: string) => new ApiError(409, code);
@@ -220,22 +220,22 @@ test('the use texts: the picker label, the badge before and after the session is
     totalSessions: 6,
     lineIds: ['l1'],
   };
-  assert.equal(comboLookupLabel(found, 'vi'), 'Combo massage · 4/6');
-  assert.equal(comboLookupLabel(found, 'en'), 'Massage combo · 4/6');
-  assert.equal(comboUseBadgeText(use(), 'vi'), 'Combo massage · Chủ combo');
+  assert.equal(comboLookupLabel(found, 'vi'), 'Combo massage, 4/6');
+  assert.equal(comboLookupLabel(found, 'en'), 'Massage combo, 4/6');
+  assert.equal(comboUseBadgeText(use(), 'vi'), 'Combo massage, Chủ combo');
   assert.equal(
     comboUseBadgeText(
       use({ usedBy: 'RELATIVE', state: 'USED', sessionNo: 6, sessionKind: 'BONUS' }),
       'vi',
     ),
-    'Combo massage · buổi 6 (tặng) · Người thân',
+    'Combo massage, buổi 6 (tặng), Người thân',
   );
   assert.equal(
     comboUseBadgeText(use({ state: 'USED', sessionNo: 2, sessionKind: 'PAID' }), 'en'),
-    'Massage combo · session 2 (paid) · The combo owner',
+    'Massage combo, session 2 (paid), The combo owner',
   );
-  assert.equal(usageSessionText({ sessionNo: 6, sessionKind: 'BONUS' }, 'vi'), 'Buổi 6 · tặng');
-  assert.equal(usageSessionText({ sessionNo: 1, sessionKind: 'PAID' }, 'en'), 'Session 1 · paid');
+  assert.equal(usageSessionText({ sessionNo: 6, sessionKind: 'BONUS' }, 'vi'), 'Buổi 6, tặng');
+  assert.equal(usageSessionText({ sessionNo: 1, sessionKind: 'PAID' }, 'en'), 'Session 1, paid');
   assert.equal(comboUseTone('USED'), 'success');
   assert.equal(comboUseTone('SELECTED'), 'info');
   assert.equal(comboUseTone('RELEASED'), 'neutral');

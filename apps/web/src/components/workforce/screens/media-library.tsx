@@ -54,6 +54,7 @@ import {
 import { UploadQueue } from '../../../lib/workforce/media-upload';
 import { canGlobal } from '../../../lib/workforce/permissions';
 import { errorMessage, runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -67,10 +68,12 @@ import {
   useSuccessToast,
 } from '../ui';
 import { PagesPanel } from './website-pages';
+import { requestWebsiteTab } from './website-leave';
 import { PopupsPanel } from './website-popups';
 import { SeasonsPanel } from './website-seasons';
 import { ShopInfoPanel } from './website-shop-info';
 import { SlidesPanel, type SlideEditing } from './website-slides';
+import { RouterButtonLink } from './products-links';
 
 const QUEUE_PAGE_SIZE = 20;
 
@@ -84,8 +87,6 @@ const uploadTone = (status: UploadItem['status']) =>
         : 'neutral';
 
 const WEBSITE_TIME_ZONE = 'Asia/Ho_Chi_Minh';
-
-const decimalSeparator = (locale: string) => (locale === 'vi' ? ',' : '.');
 
 /** The message of one failed upload: a browser-side refusal or the API's typed code. */
 function uploadErrorText(error: unknown, t: WorkforceDictionary): string {
@@ -118,7 +119,7 @@ export function MediaLibraryScreen() {
 }
 
 function MediaLibrary() {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const notify = useSuccessToast();
   const [list, updateList] = useUrlState(MEDIA_LIST_DEFAULTS, {
     normalize: normalizeMediaList,
@@ -199,7 +200,7 @@ function MediaLibrary() {
       key: 'name',
       header: t.media.detail.file,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (item) => item.name,
     },
@@ -248,7 +249,6 @@ function MediaLibrary() {
   const items = library.data?.items ?? [];
   const total = library.data?.total ?? 0;
   const searching = list.q !== '';
-  const separator = decimalSeparator(locale);
 
   const onPopups = list.tab === 'popup';
   const onSlider = list.tab === 'slider';
@@ -284,7 +284,7 @@ function MediaLibrary() {
               id="media-q"
               value={list.q}
               label={t.media.search}
-              placeholder={t.media.search}
+              hint={t.media.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -315,7 +315,7 @@ function MediaLibrary() {
               key={asset.id}
               src={mediaVariantUrl(asset.id, 'thumb')}
               title={asset.originalFilename}
-              meta={mediaMeta(asset, separator)}
+              meta={mediaMeta(asset, locale)}
               badge={
                 missingAlt(asset) ? <Badge tone="warning">{t.media.missingAlt}</Badge> : undefined
               }
@@ -327,7 +327,7 @@ function MediaLibrary() {
                   items={[
                     {
                       id: 'edit',
-                      label: t.media.editAlt,
+                      label: opensInput(t.media.editAlt),
                       icon: 'edit',
                       onSelect: () => setOverlay({ kind: 'detail', id: asset.id }),
                     },
@@ -376,33 +376,21 @@ function MediaLibrary() {
         }
       >
         {onSeasons ? (
-          <Button
-            variant="primary"
-            icon="plus"
-            onClick={() => navigate?.(`${base}/website/seasons/new`)}
-          >
+          <RouterButtonLink href={`${base}/website/seasons/new`} variant="primary" icon="plus">
             {t.seasons.create}
-          </Button>
+          </RouterButtonLink>
         ) : onSlider ? (
           <Button variant="primary" icon="plus" onClick={() => setSlideEditing({ id: null })}>
-            {t.slides.create}
+            {opensInput(t.slides.create)}
           </Button>
         ) : onPopups ? (
-          <Button
-            variant="primary"
-            icon="plus"
-            onClick={() => navigate?.(`${base}/website/popups/new`)}
-          >
+          <RouterButtonLink href={`${base}/website/popups/new`} variant="primary" icon="plus">
             {t.popups.create}
-          </Button>
+          </RouterButtonLink>
         ) : onPages ? (
-          <Button
-            variant="primary"
-            icon="plus"
-            onClick={() => navigate?.(`${base}/website/pages/new`)}
-          >
+          <RouterButtonLink href={`${base}/website/pages/new`} variant="primary" icon="plus">
             {t.pages.create}
-          </Button>
+          </RouterButtonLink>
         ) : onShop ? null : (
           <>
             {finished ? (
@@ -411,7 +399,7 @@ function MediaLibrary() {
               </Button>
             ) : null}
             <Button variant="primary" icon="upload" onClick={() => picker.current?.click()}>
-              {t.media.upload}
+              {opensInput(t.media.upload)}
             </Button>
           </>
         )}
@@ -432,7 +420,11 @@ function MediaLibrary() {
       <Tabs
         label={t.website.title}
         value={list.tab}
-        onChange={(tab) => updateList({ tab })}
+        // A form with unsaved edits in the open tab may hold the switch and ask first (website-leave.tsx).
+        onChange={(tab) => {
+          const go = () => updateList({ tab });
+          if (requestWebsiteTab(go)) go();
+        }}
         tabs={[
           { id: 'media', label: t.website.media, panel: mediaPanel },
           { id: 'popup', label: t.website.popup, panel: <PopupsPanel /> },
@@ -450,7 +442,6 @@ function MediaLibrary() {
         <MediaDetail
           key={overlay.id}
           id={overlay.id}
-          separator={separator}
           onClose={() => setOverlay(null)}
           onSaved={async () => {
             await library.reload();
@@ -532,7 +523,7 @@ function RemoveMedia({
         facts={[{ label: t.media.remove.fileFact, value: asset.originalFilename }]}
         tone="danger"
         confirmLabel={t.media.remove.confirm}
-        busyLabel={t.common.saving}
+        busyLabel={t.common.deleting}
         cancelLabel={t.common.cancel}
         referenceLabel={t.errors.reference}
         describeError={confirmError(t)}
@@ -581,12 +572,10 @@ function RemoveMedia({
 /** Image details: preview, facts, where it is used, and the alt text (the only editable data). */
 function MediaDetail({
   id,
-  separator,
   onClose,
   onSaved,
 }: {
   id: string;
-  separator: string;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
@@ -598,9 +587,13 @@ function MediaDetail({
   const asset = detail.data;
   const [form, setForm] = useState<{ altVi: string; altEn: string } | null>(null);
   const submit = useSubmit();
-  useEffect(() => {
-    if (asset) setForm({ altVi: asset.altVi ?? '', altEn: asset.altEn ?? '' });
-  }, [asset]);
+  // The form starts again from each loaded copy of the photo: adjusted while rendering, not mirrored in an effect (one render
+  // fewer, never a frame with the old text; rbp rerender-derived-state-no-effect).
+  const [seededFrom, setSeededFrom] = useState<typeof asset>(null);
+  if (asset && asset !== seededFrom) {
+    setSeededFrom(asset);
+    setForm({ altVi: asset.altVi ?? '', altEn: asset.altEn ?? '' });
+  }
   const dirty =
     asset !== null &&
     form !== null &&
@@ -649,12 +642,14 @@ function MediaDetail({
           <MediaPreview
             src={mediaVariantUrl(asset.id, 'md')}
             alt={fill(t.media.detail.preview, { name: asset.originalFilename })}
+            width={asset.width}
+            height={asset.height}
           />
           <DescriptionList
             columns={2}
             items={[
               { label: t.media.detail.file, value: asset.originalFilename },
-              { label: t.media.detail.size, value: mediaMeta(asset, separator) },
+              { label: t.media.detail.size, value: mediaMeta(asset, locale) },
               {
                 label: t.media.detail.uploadedAt,
                 value: formatDateTime(asset.createdAt, WEBSITE_TIME_ZONE, locale),
@@ -672,6 +667,8 @@ function MediaDetail({
             {(control) => (
               <TextInput
                 {...control}
+                name="altVi"
+                autoComplete="off"
                 maxLength={MEDIA_ALT_MAX}
                 value={form.altVi}
                 onChange={(event) => setForm({ ...form, altVi: event.target.value })}
@@ -682,6 +679,8 @@ function MediaDetail({
             {(control) => (
               <TextInput
                 {...control}
+                name="altEn"
+                autoComplete="off"
                 maxLength={MEDIA_ALT_MAX}
                 value={form.altEn}
                 onChange={(event) => setForm({ ...form, altEn: event.target.value })}

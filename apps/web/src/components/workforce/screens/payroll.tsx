@@ -6,7 +6,6 @@ import {
   Field,
   FormDialog,
   FormGrid,
-  ListSection,
   ListToolbar,
   Select,
   type DataTableColumn,
@@ -19,7 +18,7 @@ import { formatDate } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import { monthLabel, monthsToCreate } from '../../../lib/workforce/payroll';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
 import { PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, ErrorState, Loading, Notice, PageHeader, useResource } from '../ui';
@@ -52,7 +51,7 @@ export function PayrollList({ list, reload }: { list: PayRunListResponse; reload
   const { t, locale, base, navigate } = useWorkforce();
   const p = payrollDictionary(locale);
   const [creating, setCreating] = useState(false);
-  const paging = useClientPaging(t, p.title);
+  const paging = useUrlPaging('rp', t, p.title);
   const months = monthsToCreate(list);
   const columns: DataTableColumn<PayRunSummary>[] = [
     {
@@ -106,13 +105,15 @@ export function PayrollList({ list, reload }: { list: PayRunListResponse; reload
       {!live ? (
         <Notice tone="info">{p.list.notLive}</Notice>
       ) : (
-        <ListSection title={p.list.section}>
+        // The h1 already names the list: no "Các kỳ lương" h2 above the toolbar.
+        <div className="ls-list-section">
           <ListToolbar
             labels={toolbarLabels(t)}
             reload={{ label: t.common.reload, onClick: reload }}
             resultCount={fill(t.common.list.results, { count: list.items.length })}
           />
           <DataTable
+            drillDown
             mode="client"
             caption={fill(t.common.list.table, { list: p.list.section })}
             columns={columns}
@@ -121,7 +122,7 @@ export function PayrollList({ list, reload }: { list: PayRunListResponse; reload
             empty={<Empty>{p.list.none}</Empty>}
             paging={paging}
           />
-        </ListSection>
+        </div>
       )}
       {creating ? (
         <CreateRunDialog

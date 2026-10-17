@@ -11,6 +11,7 @@ import type {
 import {
   ConfirmDialog,
   DataTable,
+  EmptyState,
   FacetedFilter,
   Field,
   FormDialog,
@@ -64,20 +65,12 @@ import {
 } from '../../../lib/workforce/services-list';
 import { ApiError } from '../../../lib/workforce/api';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import { MediaPhotoField } from './media-photo-field';
 import { DurationFields } from './service-durations';
-import { PriceFields } from './service-price-fields';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSubmit,
-} from '../ui';
+import { PriceFields, focusFirstInvalidSoon } from './service-price-fields';
+import { Badge, Button, ErrorState, Notice, PageHeader, useResource, useSubmit } from '../ui';
 
 type Overlay =
   | { kind: 'createService' }
@@ -94,7 +87,7 @@ type Overlay =
  * row `⋮` menu offers Details, (De)activate and the permanent Delete of a wrongly created record.
  */
 export function ServicesScreen() {
-  const { api, t, base, locale, navigate } = useWorkforce();
+  const { api, t, base, locale } = useWorkforce();
   const { account } = useAccount();
   const manage = canGlobal(account, 'MANAGE_SERVICES');
   const canCreate = manage && canGlobal(account, 'MANAGE_SERVICE_PRICES');
@@ -139,10 +132,11 @@ export function ServicesScreen() {
   }
 
   const allCategories = categories.data?.categories ?? [];
-  const categoryName = (id: string) => {
-    const category = allCategories.find((entry) => entry.id === id);
-    return category ? localizedName(category, locale) : '—';
-  };
+  // One lookup map per render instead of a `find` per cell and per sort comparison (js-index-maps).
+  const categoryNames = new Map(
+    allCategories.map((category) => [category.id, localizedName(category, locale)]),
+  );
+  const categoryName = (id: string) => categoryNames.get(id) ?? '—';
   const allServices = withoutDeleted(services.data?.services ?? [], removed);
   const rows = filterServices(allServices, list);
   const shownCategories = orderCategories(withoutDeleted(allCategories, removed));
@@ -155,30 +149,18 @@ export function ServicesScreen() {
     setOverlay({ kind: 'delete', target });
   };
 
+  // The name leads (the record link, wraps by word, never cut); the code is a muted reference at the end (C15, C58b).
   const serviceColumns: DataTableColumn<ServiceResponse>[] = [
-    {
-      key: 'code',
-      header: t.common.code,
-      truncate: true,
-      width: 'md',
-      sortable: true,
-      sortValue: (service) => serviceSortValue(service, 'code', locale, categoryName),
-      cell: (service) => service.code,
-    },
     {
       key: 'name',
       header: t.common.name,
       mobileTitle: true,
-      truncate: true,
-      width: 'md',
+      wrap: true,
+      width: 'lg',
       sortable: true,
       sortValue: (service) => serviceSortValue(service, 'name', locale, categoryName),
       cell: (service) => (
-        <Link
-          className="ls-link"
-          href={`${base}/services/${service.id}`}
-          title={localizedName(service, locale)}
-        >
+        <Link className="ls-link" href={`${base}/services/${service.id}`}>
           {localizedName(service, locale)}
         </Link>
       ),
@@ -187,7 +169,7 @@ export function ServicesScreen() {
       key: 'category',
       header: t.services.category,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       sortable: true,
       sortValue: (service) => serviceSortValue(service, 'category', locale, categoryName),
@@ -219,6 +201,17 @@ export function ServicesScreen() {
       ),
     },
     {
+      key: 'code',
+      header: t.common.code,
+      sortable: true,
+      sortValue: (service) => serviceSortValue(service, 'code', locale, categoryName),
+      cell: (service) => (
+        <span className="ls-cat-code" translate="no">
+          {service.code}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       header: t.common.actions,
       actions: true,
@@ -227,18 +220,19 @@ export function ServicesScreen() {
         return (
           <RowActions
             menuLabel={fill(t.common.list.actionsFor, { name })}
+            LinkComponent={Link}
             items={[
               {
                 id: 'details',
                 label: t.common.details,
                 icon: 'eye',
-                onSelect: () => navigate?.(`${base}/services/${service.id}`),
+                href: `${base}/services/${service.id}`,
               },
               ...(manage
                 ? [
                     {
                       id: 'status',
-                      label: service.isActive ? t.common.deactivate : t.common.activate,
+                      label: opensInput(service.isActive ? t.common.deactivate : t.common.activate),
                       onSelect: () => {
                         setNotice(null);
                         setOverlay({ kind: 'serviceStatus', service });
@@ -272,12 +266,20 @@ export function ServicesScreen() {
   ];
 
   const categoryColumns: DataTableColumn<ServiceCategoryResponse>[] = [
-    { key: 'code', header: t.common.code, cell: (category) => category.code },
+    {
+      key: 'code',
+      header: t.common.code,
+      cell: (category) => (
+        <span className="ls-cat-code" translate="no">
+          {category.code}
+        </span>
+      ),
+    },
     {
       key: 'nameVi',
       header: t.services.nameVi,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (category) => category.nameVi,
     },
@@ -285,7 +287,7 @@ export function ServicesScreen() {
       key: 'nameEn',
       header: t.services.nameEn,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (category) => category.nameEn,
     },
@@ -319,7 +321,7 @@ export function ServicesScreen() {
                   items={[
                     {
                       id: 'edit',
-                      label: t.common.edit,
+                      label: opensInput(t.common.edit),
                       icon: 'edit',
                       onSelect: () => {
                         setNotice(null);
@@ -328,7 +330,9 @@ export function ServicesScreen() {
                     },
                     {
                       id: 'status',
-                      label: category.isActive ? t.common.deactivate : t.common.activate,
+                      label: opensInput(
+                        category.isActive ? t.common.deactivate : t.common.activate,
+                      ),
                       onSelect: () => {
                         setNotice(null);
                         setOverlay({ kind: 'categoryStatus', category });
@@ -372,7 +376,7 @@ export function ServicesScreen() {
               id="service-q"
               value={list.q}
               label={t.services.search}
-              placeholder={t.services.search}
+              hint={t.services.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -404,6 +408,7 @@ export function ServicesScreen() {
         />
       ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: t.services.services })}
         columns={serviceColumns}
@@ -421,7 +426,26 @@ export function ServicesScreen() {
         }
         empty={
           services.data ? (
-            <Empty>{allServices.length === 0 ? t.common.empty : t.services.noMatch}</Empty>
+            allServices.length === 0 ? (
+              <EmptyState icon={false} title={t.services.emptyTitle}>
+                {t.services.emptyText}
+              </EmptyState>
+            ) : (
+              <EmptyState
+                icon="search"
+                title={t.services.noMatchTitle}
+                action={
+                  <Button
+                    variant="secondary"
+                    onClick={() => updateList({ q: '', category: '', status: '' })}
+                  >
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {t.services.noMatch}
+              </EmptyState>
+            )
           ) : undefined
         }
         paging={{
@@ -449,7 +473,13 @@ export function ServicesScreen() {
           <ErrorState error={categories.error} t={t} onRetry={() => void categories.reload()} />
         ) : undefined
       }
-      empty={categories.data ? <Empty>{t.common.empty}</Empty> : undefined}
+      empty={
+        categories.data ? (
+          <EmptyState icon={false} title={t.services.categoriesEmptyTitle}>
+            {t.services.categoriesEmptyText}
+          </EmptyState>
+        ) : undefined
+      }
       paging={{
         page: list.cpage,
         pageSize: list.cpageSize,
@@ -496,12 +526,13 @@ export function ServicesScreen() {
         tabs={[
           {
             id: 'services',
-            label: `${t.services.services} (${allServices.length})`,
+            // No count beside a tab label (Owner count rule): the table's "Hiển thị" line carries it.
+            label: t.services.services,
             panel: servicesPanel,
           },
           {
             id: 'categories',
-            label: `${t.services.categories} (${shownCategories.length})`,
+            label: t.services.categories,
             panel: categoriesPanel,
           },
         ]}
@@ -549,7 +580,7 @@ export function ServicesScreen() {
         <ConfirmDialog
           {...deleteConfirmation(overlay.target, t)}
           tone="danger"
-          busyLabel={t.common.saving}
+          busyLabel={t.common.deleting}
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}
           describeError={(error) => ({
@@ -598,10 +629,13 @@ export function StatusConfirm({
     <ConfirmDialog
       title={title}
       description={description}
-      facts={[{ label: t.common.code, value: `${record.code} · ${localizedName(record, locale)}` }]}
+      facts={[
+        { label: t.common.name, value: localizedName(record, locale) },
+        { label: t.common.code, value: record.code },
+      ]}
       tone={deactivating ? 'danger' : 'neutral'}
       confirmLabel={deactivating ? t.common.deactivate : t.common.activate}
-      busyLabel={t.common.saving}
+      busyLabel={deactivating ? t.common.deactivating : t.common.activating}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{
@@ -641,8 +675,17 @@ function CategoryCreate({
   const { api, t } = useWorkforce();
   const [form, setForm] = useState({ code: '', nameVi: '', nameEn: '', sortOrder: '0' });
   const submit = useSubmit();
+  // Validate on submit: a missing required field says so at the field and the first one takes focus.
+  const [checked, setChecked] = useState(false);
+  const missing = (value: string) =>
+    checked && value.trim() === '' ? t.common.form.fieldRequired : undefined;
 
   async function save() {
+    if (!form.code.trim() || !form.nameVi.trim() || !form.nameEn.trim()) {
+      setChecked(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -662,7 +705,7 @@ function CategoryCreate({
 
   return (
     <FormDialog
-      title={t.services.createCategory}
+      title={t.services.createCategoryTitle}
       labels={formOverlayLabels(t, t.common.create)}
       busy={submit.pending}
       dirty={form.code !== '' || form.nameVi !== '' || form.nameEn !== '' || form.sortOrder !== '0'}
@@ -671,11 +714,14 @@ function CategoryCreate({
       onSubmit={save}
     >
       <FormGrid cols={2}>
-        <Field label={t.common.code} required>
+        <Field label={t.common.code} required error={missing(form.code)}>
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="none"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
@@ -685,6 +731,7 @@ function CategoryCreate({
           {(control) => (
             <NumberInput
               {...control}
+              name="sortOrder"
               min={0}
               max={100000}
               step={1}
@@ -693,20 +740,22 @@ function CategoryCreate({
             />
           )}
         </Field>
-        <Field label={t.services.nameVi} required>
+        <Field label={t.services.nameVi} required error={missing(form.nameVi)}>
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               maxLength={200}
               value={form.nameVi}
               onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.services.nameEn} required>
+        <Field label={t.services.nameEn} required error={missing(form.nameEn)}>
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               maxLength={200}
               value={form.nameEn}
               onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
@@ -736,6 +785,9 @@ function CategoryEdit({
     photoMediaId: category.photoMediaId ?? '',
   });
   const submit = useSubmit();
+  const [checked, setChecked] = useState(false);
+  const missing = (value: string) =>
+    checked && value.trim() === '' ? t.common.form.fieldRequired : undefined;
   const changed =
     form.nameVi !== category.nameVi ||
     form.nameEn !== category.nameEn ||
@@ -743,6 +795,16 @@ function CategoryEdit({
     form.photoMediaId !== (category.photoMediaId ?? '');
 
   async function save() {
+    // Saving with nothing changed simply closes the dialog (the button is never disabled to signal that).
+    if (!changed) {
+      onClose();
+      return;
+    }
+    if (!form.nameVi.trim() || !form.nameEn.trim()) {
+      setChecked(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -771,26 +833,27 @@ function CategoryEdit({
       labels={formOverlayLabels(t, t.common.save)}
       busy={submit.pending}
       dirty={changed}
-      submitDisabled={!changed}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid cols={2}>
-        <Field label={t.services.nameVi} required>
+        <Field label={t.services.nameVi} required error={missing(form.nameVi)}>
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               maxLength={200}
               value={form.nameVi}
               onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.services.nameEn} required>
+        <Field label={t.services.nameEn} required error={missing(form.nameEn)}>
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               maxLength={200}
               value={form.nameEn}
               onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
@@ -801,6 +864,7 @@ function CategoryEdit({
           {(control) => (
             <NumberInput
               {...control}
+              name="sortOrder"
               min={0}
               max={100000}
               step={1}
@@ -846,15 +910,32 @@ function ServiceCreate({
 }) {
   const { api, t, locale } = useWorkforce();
   const [form, setForm] = useState(EMPTY_SERVICE);
+  const [checked, setChecked] = useState(false);
   const submit = useSubmit();
+  const required = {
+    code: form.code.trim() === '',
+    categoryId: form.categoryId === '',
+    nameVi: form.nameVi.trim() === '',
+    nameEn: form.nameEn.trim() === '',
+  };
   const valid =
-    priceProblem(form) === null && quantityProblem(form) === null && durationProblem(form) === null;
+    !Object.values(required).some(Boolean) &&
+    priceProblem(form) === null &&
+    quantityProblem(form) === null &&
+    durationProblem(form) === null;
+  // Required fields say so at the field after a submit (the button stays enabled).
+  const missing = (key: keyof typeof required, text: string) =>
+    checked && required[key] ? text : undefined;
   const dirty = (Object.keys(EMPTY_SERVICE) as Array<keyof typeof EMPTY_SERVICE>).some(
     (key) => form[key] !== EMPTY_SERVICE[key],
   );
 
   async function save() {
-    if (!valid) return;
+    if (!valid) {
+      setChecked(true);
+      focusFirstInvalidSoon();
+      return;
+    }
     const body: ServiceCreateRequest = {
       code: form.code,
       categoryId: form.categoryId,
@@ -875,31 +956,37 @@ function ServiceCreate({
 
   return (
     <FormDrawer
-      title={t.services.createService}
+      title={t.services.createServiceTitle}
       labels={formOverlayLabels(t, t.common.create)}
       busy={submit.pending}
       dirty={dirty}
-      submitDisabled={!valid}
       error={submit.error ? <ErrorState error={submit.error} t={t} /> : undefined}
       onClose={onClose}
       onSubmit={save}
     >
       <FormGrid cols={2}>
-        <Field label={t.common.code} required>
+        <Field label={t.common.code} required error={missing('code', t.common.form.fieldRequired)}>
           {(control) => (
             <TextInput
               {...control}
+              name="code"
               maxLength={64}
+              spellCheck={false}
+              autoCapitalize="none"
               value={form.code}
               onChange={(event) => setForm({ ...form, code: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.services.category} required>
+        <Field
+          label={t.services.category}
+          required
+          error={missing('categoryId', t.services.categoryRequired)}
+        >
           {(control) => (
             <Select
               {...control}
-              placeholder="—"
+              placeholder={t.services.categoryPlaceholder}
               value={form.categoryId}
               options={categories.map((category) => ({
                 value: category.id,
@@ -909,20 +996,30 @@ function ServiceCreate({
             />
           )}
         </Field>
-        <Field label={t.services.nameVi} required>
+        <Field
+          label={t.services.nameVi}
+          required
+          error={missing('nameVi', t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
               maxLength={200}
               value={form.nameVi}
               onChange={(event) => setForm({ ...form, nameVi: event.target.value })}
             />
           )}
         </Field>
-        <Field label={t.services.nameEn} required>
+        <Field
+          label={t.services.nameEn}
+          required
+          error={missing('nameEn', t.common.form.fieldRequired)}
+        >
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
               maxLength={200}
               value={form.nameEn}
               onChange={(event) => setForm({ ...form, nameEn: event.target.value })}
@@ -936,12 +1033,14 @@ function ServiceCreate({
         onChange={(next) => setForm({ ...form, ...next })}
         t={t}
         locale={locale}
+        showErrors={checked}
       />
       <DurationFields
         idPrefix="svc"
         value={form}
         onChange={(next) => setForm({ ...form, ...next })}
         t={t}
+        showErrors={checked}
       />
     </FormDrawer>
   );

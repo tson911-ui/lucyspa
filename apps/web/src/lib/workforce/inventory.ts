@@ -24,6 +24,7 @@ import { inventoryDictionary } from '../../i18n/inventory';
 import { ApiError } from './api';
 import { vndAmount } from './products';
 import { normalizePage, normalizePageSize } from './list-view';
+import { todayIn } from './format';
 
 /**
  * Phase 6 P6-4: the inventory screens' pure logic (list state, filters, drafts, requests, display rules). Nothing here decides
@@ -37,12 +38,7 @@ const ZONE = 'Asia/Ho_Chi_Minh';
 
 /** Today's business date (`YYYY-MM-DD`) in the shop's time zone. */
 export function todayInShop(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+  return todayIn(ZONE, now);
 }
 
 const clean = (text: string): string => text.normalize('NFC').trim();
@@ -421,7 +417,8 @@ export function variantOptionLabel(
   },
   locale: Locale,
 ): string {
-  return `${option.sku} · ${itemTitle(option, locale)}`;
+  // Name first, the SKU in brackets (no middle-dot meta string, session 10).
+  return `${itemTitle(option, locale)} (${option.sku})`;
 }
 
 // ---------------------------------------------------------------------------------------------------- adjustment

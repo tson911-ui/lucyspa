@@ -14,8 +14,17 @@ import {
   useOptionalToast,
   type Tone as UiTone,
 } from '@lucy-spa/ui';
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { WorkforceDictionary } from '../../i18n/workforce';
+import { cachedRead, invalidateCachedReads, peekCachedRead } from '../../lib/customer/fetch-cache';
 import { ApiError } from '../../lib/workforce/api';
 import { errorMessage } from '../../lib/workforce/workflows';
 
@@ -24,12 +33,15 @@ export function PageHeader({
   title,
   intro,
   breadcrumbs,
+  status,
   children,
 }: {
   title: string;
   intro?: string;
   /** Detail pages only (contract 4.1): the Breadcrumbs above the title. */
   breadcrumbs?: ReactNode;
+  /** The record's status badge, under the title (never inside the heading). */
+  status?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -37,6 +49,7 @@ export function PageHeader({
       title={title}
       {...(intro ? { description: intro } : {})}
       {...(breadcrumbs ? { breadcrumbs } : {})}
+      {...(status ? { status } : {})}
       {...(children ? { actions: children } : {})}
     />
   );
@@ -89,8 +102,21 @@ export function Loading({ t, page = false }: { t: WorkforceDictionary; page?: bo
   return <LoadingState label={t.common.loading} variant={page ? 'page' : 'block'} />;
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <EmptyState icon={false}>{children}</EmptyState>;
+/** An empty list or section: an optional heading, one sentence and at most one action (session 10 empty-state anatomy). */
+export function Empty({
+  children,
+  title,
+  action,
+}: {
+  children: ReactNode;
+  title?: string | undefined;
+  action?: ReactNode | undefined;
+}) {
+  return (
+    <EmptyState icon={false} title={title} action={action}>
+      {children}
+    </EmptyState>
+  );
 }
 
 export function ErrorState({
@@ -119,12 +145,15 @@ export function Field({
   required,
   hint,
   labelAction,
+  error,
   children,
 }: {
   id: string;
   label: string;
   required?: boolean;
   hint?: string;
+  /** The field's own error, shown under it and linked to it (validation on submit). */
+  error?: string | undefined;
   /** Link or button at the right end of the label row. */
   labelAction?: ReactNode;
   children: ReactNode;
@@ -136,6 +165,7 @@ export function Field({
       {...(required ? { required } : {})}
       {...(hint ? { hint } : {})}
       {...(labelAction ? { labelAction } : {})}
+      {...(error ? { error } : {})}
     >
       {children}
     </UiField>
@@ -171,19 +201,50 @@ export interface Resource<T> {
   reload: () => Promise<void>;
 }
 
-/** Loads one resource and exposes `reload` (used after commands and on 409 conflicts). */
-export function useResource<T>(load: () => Promise<T>, deps: readonly unknown[]): Resource<T> {
+/** Every staff cache key starts with this, so leaving the staff area forgets them all at once. */
+export const STAFF_READ_PREFIX = 'staff:';
+
+/**
+ * Loads one resource and exposes `reload` (used after commands and on 409 conflicts).
+ *
+ * `cacheKey` (opt-in, `staff:`-prefixed, reference data only: branches, employee names) shares one request among the screens
+ * and widgets that read the same thing at once and reuses a settled answer for 30 s (rbp client-swr-dedup, the member area's
+ * `lib/customer/fetch-cache`). Work data (bookings, POS, invoices, stock) never passes a key: it must never look old. `reload()`
+ * always reads again. The shell forgets every staff entry when the person leaves the staff area (sign-out, session end).
+ */
+export function useResource<T>(
+  load: () => Promise<T>,
+  deps: readonly unknown[],
+  options?: { cacheKey?: string | null | undefined },
+): Resource<T> {
+  const key = options?.cacheKey ?? null;
+  // The first render matches the server's (nothing loaded, loading): a shared answer read during render would make a part that hydrates
+  // later paint data the server did not (hydration mismatch, React #418). A recent answer is applied in a layout effect, before paint.
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
+  useLayoutEffect(() => {
+    if (key === null) return;
+    const recent = peekCachedRead<T>(key);
+    if (recent === undefined) return;
+    setData(recent);
+    setLoading(false);
+  }, [key]);
   const loader = useRef(load);
   loader.current = load;
+  const cacheKey = useRef(key);
+  cacheKey.current = key;
   const generation = useRef(0);
-  const reload = useCallback(async () => {
+  const run = useCallback(async (again: boolean) => {
     const current = ++generation.current;
-    setLoading(true);
+    const shared = cacheKey.current;
+    if (shared !== null && again) invalidateCachedReads(shared);
+    // A recent shared answer paints at once, without a loading flash.
+    if (shared === null || again || peekCachedRead(shared) === undefined) setLoading(true);
     try {
-      const value = await loader.current();
+      const value = await (shared === null
+        ? loader.current()
+        : cachedRead(shared, () => loader.current()));
       if (current === generation.current) {
         setData(value);
         setError(null);
@@ -194,8 +255,9 @@ export function useResource<T>(load: () => Promise<T>, deps: readonly unknown[])
       if (current === generation.current) setLoading(false);
     }
   }, []);
+  const reload = useCallback(() => run(true), [run]);
   useEffect(() => {
-    void reload();
+    void run(false);
   }, deps);
   return { data, error, loading, reload };
 }

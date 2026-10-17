@@ -14,8 +14,10 @@ import {
   DataTable,
   DescriptionList,
   Drawer,
+  Icon,
   ListSection,
   ListToolbar,
+  PageHeader as KitPageHeader,
   RowActions,
   SearchInput,
   type DataTableColumn,
@@ -28,7 +30,10 @@ import { formatDate, formatDateTime } from '../../../lib/workforce/format';
 import { toolbarLabels } from '../../../lib/workforce/list-view';
 import { monthLabel } from '../../../lib/workforce/payroll';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
-import { PrefetchLink as Link } from '../link';
+import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
+import { useUrlList } from './payroll-url-list';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -107,12 +112,12 @@ export function RunView({
   slips: PayslipListResponse | null;
   reload: () => void;
 }) {
-  const { t, locale, base, navigate } = useWorkforce();
+  const { t, locale, base } = useWorkforce();
   const p = payrollDictionary(locale);
   const x = p.run;
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [query, setQuery] = useState('');
-  const paging = useClientPaging(t, x.lines);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const { query, setQuery, paging } = useUrlList('l', t, x.lines);
   const notify = useSuccessToast();
   const run = view.run;
   const draft = run.status === 'DRAFT';
@@ -148,12 +153,14 @@ export function RunView({
       key: 'employee',
       header: x.columns.employee,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (line) => (
         <>
           {line.employee.name}
-          <span className="ls-hint"> · {line.employee.code}</span>
+          <span className="ls-adminb-sub" translate="no">
+            {line.employee.code}
+          </span>
         </>
       ),
     },
@@ -190,7 +197,7 @@ export function RunView({
           {
             key: 'notes',
             header: x.columns.notes,
-            truncate: true,
+            wrap: true,
             hideBelow: 'lg',
             hidePhone: true,
             width: 'lg',
@@ -209,6 +216,7 @@ export function RunView({
         return (
           <RowActions
             menuLabel={fill(t.common.list.actionsFor, { name: line.employee.name })}
+            LinkComponent={Link}
             items={[
               {
                 id: 'items',
@@ -232,7 +240,7 @@ export function RunView({
                       id: 'slip',
                       label: x.viewSlip,
                       icon: 'receipt' as const,
-                      onSelect: () => navigate?.(`${base}/payroll/slip/${slip.id}`),
+                      href: `${base}/payroll/slip/${slip.id}`,
                     },
                   ]
                 : []),
@@ -240,7 +248,7 @@ export function RunView({
                 ? [
                     {
                       id: 'reverse',
-                      label: x.reverse,
+                      label: opensInput(x.reverse),
                       icon: 'refresh' as const,
                       tone: 'danger' as const,
                       onSelect: () => setOverlay({ kind: 'reverse', slip }),
@@ -261,31 +269,32 @@ export function RunView({
   const pending = slips?.items.some((slip) => slip.status === 'PENDING') ?? false;
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={fill(x.title, { month })}
-        intro={fill(x.period, {
+        status={<Badge tone={STATUS_TONE[run.status]}>{p.runStatuses[run.status]}</Badge>}
+        description={fill(x.period, {
           from: formatDate(run.periodFrom, locale),
           to: formatDate(run.periodTo, locale),
         })}
         breadcrumbs={
           <Breadcrumbs
             label={p.common.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: p.title, href: `${base}/payroll` }, { label: month }]}
           />
         }
-      >
-        {draft && view.canApprove ? (
-          <Button variant="primary" onClick={() => setOverlay({ kind: 'close' })}>
-            {x.closeButton}
-          </Button>
-        ) : null}
-        {!draft && run.status === 'CLOSED' && canApprove && pending ? (
-          <Button variant="primary" onClick={() => setOverlay({ kind: 'pay' })}>
-            {x.payButton}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          draft && view.canApprove ? (
+            <Button variant="primary" onClick={() => setOverlay({ kind: 'close' })}>
+              {x.closeButton}
+            </Button>
+          ) : !draft && run.status === 'CLOSED' && canApprove && pending ? (
+            <Button variant="primary" onClick={() => setOverlay({ kind: 'pay' })}>
+              {x.payButton}
+            </Button>
+          ) : undefined
+        }
+      />
 
       <Card as="section" aria-label={x.summary}>
         <CardHeader
@@ -296,7 +305,11 @@ export function RunView({
                 <Button variant="secondary" onClick={() => setOverlay({ kind: 'day' })}>
                   {run.paymentDay ? x.changeDay : x.setDay}
                 </Button>
-                <RefreshButton run={run} onDone={() => done(x.refreshed)} />
+                <RefreshButton
+                  run={run}
+                  onDone={() => done(x.refreshed)}
+                  onError={setRefreshError}
+                />
               </>
             ) : undefined
           }
@@ -315,10 +328,6 @@ export function RunView({
               label: p.common.paymentDay,
               value: run.paymentDay ? formatDate(run.paymentDay, locale) : p.common.notSet,
             },
-            {
-              label: p.list.columns.status,
-              value: <Badge tone={STATUS_TONE[run.status]}>{p.runStatuses[run.status]}</Badge>,
-            },
             ...(draft && run.refreshedAt
               ? [
                   {
@@ -335,6 +344,12 @@ export function RunView({
           ]}
         />
         {draft && view.stale ? <p className="ls-hint">{x.stale}</p> : null}
+        {refreshError ? (
+          <p className="ls-adminb-note" data-tone="danger" role="alert">
+            <Icon name="x-circle" size={16} />
+            <span>{refreshError}</span>
+          </p>
+        ) : null}
       </Card>
 
       {draft ? (
@@ -362,7 +377,6 @@ export function RunView({
               id="payroll-q"
               value={query}
               label={x.search}
-              placeholder={x.search}
               clearLabel={t.common.list.clearSearch}
               onSearch={setQuery}
             />
@@ -447,16 +461,28 @@ export function RunView({
   );
 }
 
-function RefreshButton({ run, onDone }: { run: PayRunDetailResponse['run']; onDone: () => void }) {
-  const { api, locale } = useWorkforce();
+function RefreshButton({
+  run,
+  onDone,
+  onError,
+}: {
+  run: PayRunDetailResponse['run'];
+  onDone: () => void;
+  /** A refused or failed refresh is said in words next to the summary (never swallowed). */
+  onError: (message: string | null) => void;
+}) {
+  const { api, t, locale } = useWorkforce();
   const p = payrollDictionary(locale);
   const [busy, setBusy] = useState(false);
   async function refresh() {
     if (busy) return;
     setBusy(true);
+    onError(null);
     try {
       await api.post(`/api/v1/pay/runs/${run.id}/refresh`, { expectedVersion: run.version });
       onDone();
+    } catch (failure) {
+      onError(errorMessage(failure, t));
     } finally {
       setBusy(false);
     }
@@ -494,7 +520,7 @@ function ItemsDrawer({
       item.flag && item.flag !== 'UNAGREED' ? p.warnings[item.flag] : null,
       item.voidReason,
     ].filter(Boolean);
-    return parts.length > 0 ? parts.join(' · ') : null;
+    return parts.length > 0 ? parts.join('; ') : null;
   };
   const columns: DataTableColumn<PayRunItemView>[] = [
     {
@@ -505,7 +531,7 @@ function ItemsDrawer({
         <>
           {p.kinds[item.kind]}
           {item.quantity ? (
-            <span className="ls-hint"> · {fill(x.qty, { count: item.quantity })}</span>
+            <span className="ls-adminb-sub">{fill(x.qty, { count: item.quantity })}</span>
           ) : null}
           {item.voided ? (
             <>
@@ -513,7 +539,7 @@ function ItemsDrawer({
               <Badge tone="neutral">{x.voided}</Badge>
             </>
           ) : null}
-          {noteOf(item) ? <span className="ls-hint"> · {noteOf(item)}</span> : null}
+          {noteOf(item) ? <span className="ls-adminb-sub">{noteOf(item)}</span> : null}
         </>
       ),
     },
@@ -534,7 +560,7 @@ function ItemsDrawer({
             items={[
               {
                 id: 'void',
-                label: x.voidItem,
+                label: opensInput(x.voidItem),
                 icon: 'trash',
                 tone: 'danger',
                 onSelect: () => onVoid(item),

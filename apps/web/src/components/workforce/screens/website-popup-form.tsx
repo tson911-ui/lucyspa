@@ -10,6 +10,7 @@ import {
   Breadcrumbs,
   Card,
   Cluster,
+  DateTimeInput,
   Field,
   focusFirstInvalid,
   FormActions,
@@ -23,10 +24,9 @@ import {
   Switch,
   Textarea,
   TextInput,
-  useUnsavedChangesGuard,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { ListCrumbLink } from '../link';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/api/client';
@@ -48,10 +48,12 @@ import {
   type PopupProblem,
 } from '../../../lib/workforce/popups';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import { Button, Empty, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 import { MediaPicker } from './media-picker';
 import { SeasonSelect } from './season-select';
+import { useWebsiteLeaveGuard } from './website-leave';
 
 const PROBLEMS: ReadonlySet<string> = new Set<PopupProblem>([
   'content',
@@ -102,7 +104,7 @@ export function PopupFormScreen({
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: t.website.title, href: back }, { label: title }]}
           />
         }
@@ -130,6 +132,7 @@ function PopupForm({
   presetSeason: string | null;
 }) {
   const { api, t, locale, navigate } = useWorkforce();
+  const enabledHintId = useId();
   const notify = useSuccessToast();
   const text = t.popups.form;
   const loaded = useResource(
@@ -155,34 +158,35 @@ function PopupForm({
   const [pending, setPending] = useState(false);
   const [picking, setPicking] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
-
-  useEffect(() => {
-    if (loaded.data) {
-      const next = formOfPopup(loaded.data);
-      setInitial(next);
-      setForm(next);
-      setVersion(loaded.data.rowVersion);
-    }
-  }, [loaded.data]);
-  useEffect(() => {
-    if (!id && presetSeason && !starting.loading) {
-      const season = starting.data;
-      const next = {
-        ...emptyPopupForm(new Date(), season ? presetSeason : ''),
-        ...(season
-          ? { startsAt: isoToVnLocal(season.startsAt), endsAt: isoToVnLocal(season.endsAt) }
-          : {}),
-      };
-      setInitial(next);
-      setForm(next);
-    }
-  }, [id, presetSeason, starting.loading, starting.data]);
+  // A newly loaded popup (first load, or the reload after a conflict), and a new popup's season once it is known, reset the form
+  // while rendering, not in an effect (rerender-derived-state-no-effect): the old values never paint once.
+  const [seen, setSeen] = useState<WebsitePopupResponse | null>(null);
+  if (loaded.data && loaded.data !== seen) {
+    const next = formOfPopup(loaded.data);
+    setSeen(loaded.data);
+    setInitial(next);
+    setForm(next);
+    setVersion(loaded.data.rowVersion);
+  }
+  const [seenStart, setSeenStart] = useState<WebsiteSeasonResponse | null | undefined>(undefined);
+  if (!id && presetSeason && !starting.loading && starting.data !== seenStart) {
+    const season = starting.data;
+    const next = {
+      ...emptyPopupForm(new Date(), season ? presetSeason : ''),
+      ...(season
+        ? { startsAt: isoToVnLocal(season.startsAt), endsAt: isoToVnLocal(season.endsAt) }
+        : {}),
+    };
+    setSeenStart(season);
+    setInitial(next);
+    setForm(next);
+  }
   useEffect(() => {
     if (problem && formRef.current) focusFirstInvalid(formRef.current);
   }, [problem]);
 
   const dirty = form !== null && initial !== null && popupFormChanged(form, initial);
-  useUnsavedChangesGuard(dirty && !pending);
+  const { leave, dialog } = useWebsiteLeaveGuard(dirty && !pending, navigate, t);
 
   if (id && loaded.error) {
     return loaded.error instanceof ApiError && loaded.error.code === 'NOT_FOUND' ? (
@@ -290,6 +294,7 @@ function PopupForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="title-vi"
                         value={form.titleVi}
                         onChange={(event) => change({ titleVi: event.target.value })}
                       />
@@ -299,6 +304,7 @@ function PopupForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="title-en"
                         value={form.titleEn}
                         onChange={(event) => change({ titleEn: event.target.value })}
                       />
@@ -312,6 +318,8 @@ function PopupForm({
                     {(control) => (
                       <Textarea
                         {...control}
+                        name="body-vi"
+                        autoComplete="off"
                         rows={4}
                         value={form.bodyVi}
                         onChange={(event) => change({ bodyVi: event.target.value })}
@@ -326,6 +334,8 @@ function PopupForm({
                     {(control) => (
                       <Textarea
                         {...control}
+                        name="body-en"
+                        autoComplete="off"
                         rows={4}
                         value={form.bodyEn}
                         onChange={(event) => change({ bodyEn: event.target.value })}
@@ -341,14 +351,16 @@ function PopupForm({
                       src={mediaVariantUrl(form.media.id, 'md')}
                       alt={fill(text.imagePreview, { name: form.media.filename })}
                     />
-                    <p className="ls-hint">{form.media.filename}</p>
+                    <p className="ls-hint ls-adminb-file" translate="no">
+                      {form.media.filename}
+                    </p>
                   </Stack>
                 ) : (
                   <p className="ls-hint">{text.imageNone}</p>
                 )}
                 <Cluster>
                   <Button variant="secondary" onClick={() => setPicking(true)}>
-                    {form.media ? text.imageChange : text.imageChoose}
+                    {opensInput(form.media ? text.imageChange : text.imageChoose)}
                   </Button>
                   {form.media ? (
                     <Button variant="ghost" onClick={() => change({ media: null })}>
@@ -363,6 +375,7 @@ function PopupForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="cta-label-vi"
                         value={form.ctaLabelVi}
                         onChange={(event) => change({ ctaLabelVi: event.target.value })}
                       />
@@ -372,6 +385,7 @@ function PopupForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="cta-label-en"
                         value={form.ctaLabelEn}
                         onChange={(event) => change({ ctaLabelEn: event.target.value })}
                       />
@@ -381,6 +395,9 @@ function PopupForm({
                     {(control) => (
                       <TextInput
                         {...control}
+                        name="cta-url"
+                        type="url"
+                        spellCheck={false}
                         inputMode="url"
                         autoComplete="off"
                         value={form.ctaUrl}
@@ -419,12 +436,15 @@ function PopupForm({
                     error={error('startsAt')}
                   >
                     {(control) => (
-                      <TextInput
-                        {...control}
-                        type="datetime-local"
+                      <DateTimeInput
+                        id={control.id}
+                        aria-describedby={control['aria-describedby']}
+                        invalid={control['aria-invalid'] === true}
+                        timeLabel={`${text.startsAt}, ${t.website.timeLabel}`}
+                        timeError={t.website.timeError}
                         disabled={form.seasonId !== ''}
                         value={form.startsAt}
-                        onChange={(event) => change({ startsAt: event.target.value })}
+                        onValueChange={(startsAt) => change({ startsAt })}
                       />
                     )}
                   </Field>
@@ -435,12 +455,15 @@ function PopupForm({
                     error={error('endsAt')}
                   >
                     {(control) => (
-                      <TextInput
-                        {...control}
-                        type="datetime-local"
+                      <DateTimeInput
+                        id={control.id}
+                        aria-describedby={control['aria-describedby']}
+                        invalid={control['aria-invalid'] === true}
+                        timeLabel={`${text.endsAt}, ${t.website.timeLabel}`}
+                        timeError={t.website.timeError}
                         disabled={form.seasonId !== ''}
                         value={form.endsAt}
-                        onChange={(event) => change({ endsAt: event.target.value })}
+                        onValueChange={(endsAt) => change({ endsAt })}
                       />
                     )}
                   </Field>
@@ -451,8 +474,11 @@ function PopupForm({
                   checked={form.isEnabled}
                   onCheckedChange={(isEnabled) => change({ isEnabled })}
                   label={text.enabled}
+                  aria-describedby={enabledHintId}
                 />
-                <p className="ls-hint">{text.enabledHint}</p>
+                <p className="ls-hint" id={enabledHintId}>
+                  {text.enabledHint}
+                </p>
               </FormSection>
               {message ? <Notice tone="error">{message}</Notice> : null}
             </Stack>
@@ -470,7 +496,7 @@ function PopupForm({
           </FormSection>
           <FormActions
             cancel={
-              <Button variant="secondary" onClick={() => navigate?.(back)} disabled={pending}>
+              <Button variant="secondary" onClick={() => leave(back)} disabled={pending}>
                 {t.common.cancel}
               </Button>
             }
@@ -483,6 +509,7 @@ function PopupForm({
         </Stack>
       </form>
       {picking ? <MediaPicker onPick={choose} onClose={() => setPicking(false)} /> : null}
+      {dialog}
     </>
   );
 }

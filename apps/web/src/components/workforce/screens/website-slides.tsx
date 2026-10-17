@@ -7,6 +7,7 @@ import { fill } from '../../../i18n/workforce';
 import { formatVnInstant } from '../../../lib/workforce/discounts';
 import { confirmError } from '../../../lib/workforce/form-labels';
 import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPage } from '../../../lib/workforce/use-url-paging';
 import { mediaVariantUrl } from '../../../lib/workforce/media';
 import {
   applyPageOrder,
@@ -17,7 +18,9 @@ import {
   visibleCount,
 } from '../../../lib/workforce/slides';
 import { errorMessage, runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
+import { metaLine } from './pos-format';
 import { Badge, Empty, ErrorState, Notice, Spinner, useResource, useSuccessToast } from '../ui';
 import { SlideDrawer } from './website-slide-drawer';
 
@@ -44,7 +47,8 @@ export function SlidesPanel({
     [api],
   );
   const [order, setOrder] = useState<string[] | null>(null);
-  const [page, setPage] = useState(1);
+  // The page number lives in the address bar under `slp` (no clash with the media page's `page`).
+  const [page, setPage] = useUrlPage('slp');
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [removing, setRemoving] = useState<WebsiteSlideResponse | null>(null);
@@ -142,9 +146,12 @@ export function SlidesPanel({
               <MediaRow
                 src={mediaVariantUrl(slide.media.id, 'thumb')}
                 title={nameOf(slide)}
-                meta={`${fill(t.slides.position, {
-                  position: (current - 1) * SLIDE_PAGE_SIZE + state.index + 1,
-                })} · ${windowText(slide)}`}
+                meta={metaLine(locale, [
+                  fill(t.slides.position, {
+                    position: (current - 1) * SLIDE_PAGE_SIZE + state.index + 1,
+                  }),
+                  windowText(slide),
+                ])}
                 badge={
                   <Badge tone={slideTone(slide.status)}>{t.slides.status[slide.status]}</Badge>
                 }
@@ -156,7 +163,7 @@ export function SlidesPanel({
                     items={[
                       {
                         id: 'edit',
-                        label: t.slides.edit,
+                        label: opensInput(t.slides.edit),
                         icon: 'edit',
                         onSelect: () => onEditing({ id: slide.id }),
                       },
@@ -215,7 +222,7 @@ export function SlidesPanel({
           facts={[{ label: t.slides.remove.fact, value: nameOf(removing) }]}
           tone="danger"
           confirmLabel={t.slides.remove.confirm}
-          busyLabel={t.common.saving}
+          busyLabel={t.slides.remove.busy}
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}
           describeError={confirmError(t)}

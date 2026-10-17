@@ -10,6 +10,7 @@ import {
   CardHeader,
   Cluster,
   DataTable,
+  EmptyState,
   Field,
   ListSection,
   RowActions,
@@ -19,6 +20,7 @@ import {
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useMemo, useState } from 'react';
+import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { rewardDictionary } from '../../../i18n/reward';
 import { fill } from '../../../i18n/workforce';
 import { formatDateTime } from '../../../lib/workforce/format';
@@ -26,9 +28,10 @@ import { paginationLabels } from '../../../lib/workforce/list-view';
 import { LOYALTY_PAGE_SIZE } from '../../../lib/workforce/loyalty-list';
 import { rewardBranches, rewardName, statusTone } from '../../../lib/workforce/reward';
 import { errorMessage } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
-import { Badge, Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
+import { Badge, Button, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
 import {
   IssueRewardDialog,
   RestoreUseDialog,
@@ -54,6 +57,7 @@ export function LoyaltyRewards() {
   const { account } = useAccount();
   const r = rewardDictionary(locale);
   const d = r.desk;
+  const l = loyaltyDictionary(locale);
   const notify = useSuccessToast();
   const branches = useBranches(api);
   const allowed = useMemo(() => rewardBranches(account, branches.data), [account, branches.data]);
@@ -64,6 +68,7 @@ export function LoyaltyRewards() {
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
   const [page, setPage] = useState(1);
   const [action, setAction] = useState<Action | null>(null);
 
@@ -79,7 +84,12 @@ export function LoyaltyRewards() {
   );
 
   async function search() {
-    if (searching || !phone.trim() || !branch) return;
+    // The button stays enabled: an empty number shows its error at the field (validate on submit).
+    if (!phone.trim()) {
+      setMissing(true);
+      return;
+    }
+    if (searching || !branch) return;
     setSearching(true);
     setError(null);
     try {
@@ -111,7 +121,7 @@ export function LoyaltyRewards() {
       key: 'item',
       header: d.list.item,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => rewardName(row.item, locale),
     },
@@ -160,7 +170,7 @@ export function LoyaltyRewards() {
               ? [
                   {
                     id: 'use',
-                    label: d.actions.use,
+                    label: opensInput(d.actions.use),
                     icon: 'check' as const,
                     onSelect: () => setAction({ kind: 'use', entitlement: row }),
                   },
@@ -170,7 +180,7 @@ export function LoyaltyRewards() {
               ? [
                   {
                     id: 'restore',
-                    label: d.actions.restore,
+                    label: opensInput(d.actions.restore),
                     icon: 'swap' as const,
                     onSelect: () => setAction({ kind: 'restore', entitlement: row }),
                   },
@@ -180,7 +190,7 @@ export function LoyaltyRewards() {
               ? [
                   {
                     id: 'revoke',
-                    label: d.actions.revoke,
+                    label: opensInput(d.actions.revoke),
                     icon: 'trash' as const,
                     tone: 'danger' as const,
                     onSelect: () => setAction({ kind: 'revoke', entitlement: row }),
@@ -193,7 +203,13 @@ export function LoyaltyRewards() {
     },
   ];
 
-  if (branches.data && allowed.length === 0) return <Empty>{d.noBranch}</Empty>;
+  if (branches.data && allowed.length === 0) {
+    return (
+      <EmptyState icon="building" title={l.empty.noBranchTitle}>
+        {d.noBranch}
+      </EmptyState>
+    );
+  }
   const live = list.data?.loyaltyLive ?? true;
   return (
     <Stack gap="page">
@@ -224,10 +240,15 @@ export function LoyaltyRewards() {
                   )}
                 </Field>
               ) : null}
-              <Field label={d.lookup.phone} width="lg">
+              <Field
+                label={d.lookup.phone}
+                width="lg"
+                error={missing ? d.lookup.required : undefined}
+              >
                 {(control) => (
                   <TextInput
                     {...control}
+                    name="reward-phone"
                     type="tel"
                     inputMode="tel"
                     autoComplete="off"
@@ -237,16 +258,17 @@ export function LoyaltyRewards() {
                       setPhone(event.target.value);
                       setMember(null);
                       setSearched(false);
+                      setMissing(false);
                     }}
                   />
                 )}
               </Field>
+              {/* One primary per view: once a member is found, "Cấp quà" below is the primary and this one steps back. */}
               <Button
                 type="submit"
-                variant="primary"
+                variant={member ? 'secondary' : 'primary'}
                 icon="search"
                 loading={searching}
-                disabled={!phone.trim()}
               >
                 {searching ? d.lookup.searching : d.lookup.search}
               </Button>
@@ -255,7 +277,7 @@ export function LoyaltyRewards() {
             {member ? (
               <Notice tone="success">
                 {fill(d.lookup.found, { name: member.displayName })}
-                {member.phoneMasked ? ` · ${member.phoneMasked}` : ''}
+                {member.phoneMasked ? ` (${member.phoneMasked})` : ''}
               </Notice>
             ) : null}
             {searched && !member ? <Notice tone="info">{d.lookup.notFound}</Notice> : null}
@@ -275,7 +297,7 @@ export function LoyaltyRewards() {
                   disabled={!live}
                   onClick={() => setAction({ kind: 'issue' })}
                 >
-                  {d.actions.issue}
+                  {opensInput(d.actions.issue)}
                 </Button>
               ) : undefined
             }
@@ -293,7 +315,11 @@ export function LoyaltyRewards() {
                   <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
                 ) : undefined
               }
-              empty={list.data ? <Empty>{d.list.none}</Empty> : undefined}
+              empty={
+                list.data ? (
+                  <EmptyState title={l.empty.rewardsTitle}>{l.empty.rewardsText}</EmptyState>
+                ) : undefined
+              }
               paging={{
                 page,
                 pageSize: LOYALTY_PAGE_SIZE,

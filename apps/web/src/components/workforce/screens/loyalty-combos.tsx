@@ -15,7 +15,8 @@ import { comboDictionary } from '../../../i18n/combo';
 import { fill } from '../../../i18n/workforce';
 import { comboName, sessionsText } from '../../../lib/workforce/combo';
 import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import { useUrlPaging } from '../../../lib/workforce/use-url-paging';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -41,7 +42,8 @@ export function LoyaltyCombos() {
   const list = useResource(() => api.get<ComboListResponse>('/api/v1/combos'), [api]);
   // `undefined` = closed, `null` = a new combo, a combo = editing it.
   const [editing, setEditing] = useState<ComboResponse | null | undefined>(undefined);
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+  // The pager lives in the address bar under its own key, so Back/Forward and a shared link restore the page.
+  const paging = useUrlPaging('cbp', t, c.list.title);
 
   if (list.error && !list.data) {
     return <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />;
@@ -55,7 +57,7 @@ export function LoyaltyCombos() {
       key: 'name',
       header: c.list.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (combo) => comboName(combo.current, locale),
     },
@@ -63,7 +65,7 @@ export function LoyaltyCombos() {
       key: 'service',
       header: c.list.service,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (combo) => comboName(combo.service, locale),
     },
@@ -111,7 +113,7 @@ export function LoyaltyCombos() {
           items={[
             {
               id: 'edit',
-              label: c.list.edit,
+              label: opensInput(c.list.edit),
               icon: 'edit',
               onSelect: () => setEditing(combo),
             },
@@ -131,7 +133,7 @@ export function LoyaltyCombos() {
             title={c.list.emptyTitle}
             actions={
               <Button variant="primary" icon="plus" onClick={() => setEditing(null)}>
-                {c.list.add}
+                {opensInput(c.list.add)}
               </Button>
             }
           />
@@ -142,7 +144,7 @@ export function LoyaltyCombos() {
           title={c.list.title}
           actions={
             <Button variant="primary" icon="plus" onClick={() => setEditing(null)}>
-              {c.list.add}
+              {opensInput(c.list.add)}
             </Button>
           }
         >
@@ -153,12 +155,7 @@ export function LoyaltyCombos() {
             rows={combos}
             rowKey={(combo) => `${combo.id}:${combo.current.versionNo}`}
             empty={<Empty>{c.list.emptyBody}</Empty>}
-            paging={{
-              ...paging,
-              onPageChange: (page) => setPaging((state) => ({ ...state, page })),
-              onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
-              labels: paginationLabels(t, c.list.title),
-            }}
+            paging={paging}
           />
         </ListSection>
       )}

@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { organizationDictionary } from '../../../i18n/organization';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { employee, owner, render } from '../../../test/support';
 import { OrganizationScreen } from './organization';
 
 const text = organizationDictionary('vi');
-/** A header or toolbar button (the same words also appear in tab labels). */
+/** A header button that opens a dialog (the same words also appear in tab labels); it ends with "…" (C39). */
 const hasButton = (markup: string, label: string) =>
-  markup.includes(`ls-btn-label">${label}</span>`);
+  markup.includes(`ls-btn-label">${opensInput(label)}</span>`);
 
 test('without any organization permission the screen only says so', () => {
   const markup = render(<OrganizationScreen />, employee([['VIEW_TEAMS', 'A']]));
@@ -22,9 +23,11 @@ test('viewers see the four tabs and no create action', () => {
   }
   assert.ok(!hasButton(markup, text.createRegion));
   assert.ok(!hasButton(markup, text.appoint));
-  // One page title, the owner and attendance notes in a single notice, no legacy disclosure.
+  // One page title, the owner and attendance notes as the page description, no legacy disclosure.
   assert.equal(markup.match(/<h1/g)?.length, 1);
   assert.ok(markup.includes(text.ownerNote));
+  // Tab labels carry no count (Owner rule); the count lives in each table's "Hiển thị" line.
+  assert.ok(!markup.includes(`${text.regions} (`));
   assert.ok(!markup.includes('<details'));
   assert.ok(!markup.includes('wf-table'));
 });

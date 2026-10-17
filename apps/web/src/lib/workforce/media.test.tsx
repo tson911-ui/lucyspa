@@ -7,6 +7,7 @@ import { ApiError } from './api';
 import {
   MEDIA_LIST_DEFAULTS,
   MEDIA_MAX_BYTES,
+  decimalMark,
   mediaMeta,
   mediaVariantUrl,
   missingAlt,
@@ -44,16 +45,18 @@ test('list state: search is bounded, page is a positive integer, the tab is one 
   assert.equal(normalizeMediaList({ q: '', page: 1, tab: 'banner' }).tab, 'media', 'unknown tab');
 });
 
-test('thumbnails come from the authenticated admin route; meta uses the locale separator', () => {
+test('thumbnails come from the authenticated admin route; meta uses the locale decimal mark from Intl', () => {
   assert.equal(mediaVariantUrl('abc', 'thumb'), '/api/v1/website/media/abc/thumb');
   assert.equal(mediaVariantUrl('abc', 'md'), '/api/v1/website/media/abc/md');
+  assert.equal(decimalMark('vi'), ',');
+  assert.equal(decimalMark('en'), '.');
   assert.equal(
-    mediaMeta({ bytes: 1_536_000, width: 1920, height: 800 }, ','),
-    '1,5 MB · 1920 × 800',
+    mediaMeta({ bytes: 1_536_000, width: 1920, height: 800 }, 'vi'),
+    '1,5 MB (1920 × 800)',
   );
   assert.equal(
-    mediaMeta({ bytes: 1_536_000, width: 1920, height: 800 }, '.'),
-    '1.5 MB · 1920 × 800',
+    mediaMeta({ bytes: 1_536_000, width: 1920, height: 800 }, 'en'),
+    '1.5 MB (1920 × 800)',
   );
 });
 

@@ -5,7 +5,6 @@ import { organizationDictionary } from '../../../i18n/organization';
 import { appointmentLabels } from '../../../lib/workforce/employee-appointments';
 import { canAnywhere } from '../../../lib/workforce/permissions';
 import { useAccount, useWorkforce } from '../session';
-import { Badge } from '../ui';
 
 /**
  * The management level (active Organization Appointments) is separate from the employment
@@ -39,13 +38,13 @@ export function ManagementLevels({
     area: (id) => account.organization?.areas.find((row) => row.id === id)?.name,
     branch: (id) => branches?.get(id)?.name,
   });
+  // One line per appointment in plain text: a level is a fact, not a status
+  // (no blue pill, no tooltip duplicate; the line wraps in full).
   return (
-    <>
+    <span className="ls-cell-stack">
       {labels.map((label, index) => (
-        <div key={`${appointments[index]!.id}`} title={label}>
-          <Badge tone="info">{label}</Badge>
-        </div>
+        <span key={appointments[index]!.id}>{label}</span>
       ))}
-    </>
+    </span>
   );
 }

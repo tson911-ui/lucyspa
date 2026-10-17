@@ -404,7 +404,7 @@ const en: Words = {
       bankBalance: 'Bank',
       days: 'Days off',
       alerts: 'Over the threshold',
-      alertsInfo: "Days off by at least the shop's alert threshold.",
+      alertsInfo: 'Days off by at least the shop’s alert threshold.',
     },
   },
   pay: {

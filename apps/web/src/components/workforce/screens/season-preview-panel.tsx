@@ -2,6 +2,7 @@
 
 import {
   FormSection,
+  Icon,
   SeasonLivePreview,
   isSeasonArtKit,
   type SeasonPreviewDevice,
@@ -11,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_SOURCE, parsePreviewMessage } from '../../../lib/season-preview';
 import { draftOfForm, type SeasonForm } from '../../../lib/workforce/seasons';
 import { useWorkforce } from '../session';
-import { Button, Notice } from '../ui';
+import { Button } from '../ui';
 
 /**
  * The full-page live preview of the season form (docs/UXUI_REDESIGN_S6_PLAN.md section 6): the real public home page
@@ -82,8 +83,19 @@ export function SeasonPreviewPanel({ form }: { form: SeasonForm }) {
         </Button>
       }
     >
-      {!isSeasonArtKit(form.presetKey) ? <Notice tone="info">{text.previewKitNote}</Notice> : null}
-      {!form.applyCustomer ? <Notice tone="info">{text.previewOffNote}</Notice> : null}
+      {/* What the preview leaves out, as muted lines above the frame (no tinted boxes; the season layer itself is exempt). */}
+      {!isSeasonArtKit(form.presetKey) ? (
+        <p className="ls-adminb-note">
+          <Icon name="info" size={16} />
+          <span>{text.previewKitNote}</span>
+        </p>
+      ) : null}
+      {!form.applyCustomer ? (
+        <p className="ls-adminb-note">
+          <Icon name="info" size={16} />
+          <span>{text.previewOffNote}</span>
+        </p>
+      ) : null}
       <SeasonLivePreview
         src={src}
         frameTitle={text.previewFrame}

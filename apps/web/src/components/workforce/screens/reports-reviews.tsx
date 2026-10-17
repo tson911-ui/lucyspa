@@ -5,11 +5,12 @@ import { ListSection, Stack, type DataTableColumn } from '@lucy-spa/ui';
 import { reportsDDictionary } from '../../../i18n/reports-d';
 import { bpToPercent, formatCount } from '../../../lib/workforce/reports-b';
 import { useWorkforce } from '../session';
-import { Badge, Notice } from '../ui';
+import { Badge } from '../ui';
 import {
   Kpi,
   KpiRow,
   ReportData,
+  ReportNote,
   ReportScreen,
   ReportTable,
   type ReportTabDef,
@@ -48,20 +49,27 @@ export function ReviewsScreen() {
   return <ReportScreen title={d.title} intro={d.intro} tabs={tabs} />;
 }
 
+const averageFormats = new Map<string, Intl.NumberFormat>();
+/** Two decimals in the language's notation; one formatter per language (rbp js-cache-function-results: one per row). */
+function averageFormat(locale: string): Intl.NumberFormat {
+  let format = averageFormats.get(locale);
+  if (!format) {
+    format = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    averageFormats.set(locale, format);
+  }
+  return format;
+}
+
 /** The average as stars with two decimals, or the words "not enough ratings". */
 function AverageCell({ summary }: { summary: RatingSummary }) {
   const { locale } = useWorkforce();
   const d = reportsDDictionary(locale);
   if (summary.averageHundredths === null) return <>—</>;
   if (!summary.enough) return <Badge tone="neutral">{d.notEnough}</Badge>;
-  return (
-    <strong>
-      {new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'vi-VN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(summary.averageHundredths / 100)}
-    </strong>
-  );
+  return <strong>{averageFormat(locale).format(summary.averageHundredths / 100)}</strong>;
 }
 
 function distributionColumns<Row extends RatingSummary>(
@@ -88,7 +96,7 @@ export function ReviewsBody({ data }: { data: ReviewsReport }) {
       key: 'branch',
       header: d.col['branch']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.branch.name,
     },
@@ -111,7 +119,7 @@ export function ReviewsBody({ data }: { data: ReviewsReport }) {
       key: 'name',
       header: d.col['name']!,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => row.name,
     },
@@ -120,7 +128,7 @@ export function ReviewsBody({ data }: { data: ReviewsReport }) {
       header: d.col['code']!,
       hideBelow: 'lg',
       hidePhone: true,
-      cell: (row) => row.employeeCode ?? '—',
+      cell: (row) => (row.employeeCode ? <span translate="no">{row.employeeCode}</span> : '—'),
     },
     {
       key: 'count',
@@ -138,7 +146,7 @@ export function ReviewsBody({ data }: { data: ReviewsReport }) {
   ];
   return (
     <Stack gap="page">
-      <Notice tone="info">{d.privateNote}</Notice>
+      <ReportNote>{d.privateNote}</ReportNote>
       <KpiRow>
         <Kpi
           label={k.ratings}
@@ -174,6 +182,7 @@ export function ReviewsBody({ data }: { data: ReviewsReport }) {
       ) : null}
       <ListSection title={d.byStaff}>
         <ReportTable
+          urlKey="tp2"
           label={d.byStaff}
           columns={staffColumns}
           rows={data.staff}

@@ -9,7 +9,9 @@ import {
   RowActions,
   scheduleLayout,
   ScheduleStrip,
+  useUrlState,
   type DataTableColumn,
+  type MenuLinkComponent,
   type ScheduleItem,
 } from '@lucy-spa/ui';
 import { PrefetchLink as Link } from '../link';
@@ -17,7 +19,12 @@ import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { formatVnInstant } from '../../../lib/workforce/discounts';
 import { confirmError } from '../../../lib/workforce/form-labels';
-import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  paginationLabels,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import {
   filterSeasons,
   presetName,
@@ -40,17 +47,35 @@ const stripTone = (status: WebsiteSeasonResponse['status']): ScheduleItem['tone'
  * schedule strip of the enabled ones, status and year filters, and the row menu (edit, enable or disable,
  * delete). Create and edit are their own pages because the form is long and carries a live preview.
  */
+/** The row menu's "Sửa" is a router link (Ctrl/Cmd/middle-click work, wig: links use <a>). */
+const RouterMenuLink: MenuLinkComponent = (props) => <Link {...props} />;
+
+/**
+ * Page, status and year of the seasons tab live in the address bar (Back/Forward and a shared link keep them); short keys that do
+ * not clash with the media page's `q`, `page`, `tab`. A filter change returns to page 1.
+ */
+const SEASON_LIST_DEFAULTS = { sp: 1, sst: '', sy: '' };
+const SEASON_LIST_OPTIONS = {
+  normalize: (state: typeof SEASON_LIST_DEFAULTS) => ({
+    sp: normalizePage(state.sp),
+    sst: state.sst.slice(0, 20),
+    sy: /^\d{4}$/.test(state.sy) ? state.sy : '',
+  }),
+  resetOnChange: ['sp'] as readonly string[],
+};
+
 export function SeasonsPanel() {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const notify = useSuccessToast();
   const text = t.seasons;
   const seasons = useResource(
     () => api.get<WebsiteSeasonListResponse>('/api/v1/website/seasons'),
     [api],
   );
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState('');
-  const [year, setYear] = useState('');
+  const [list, updateList] = useUrlState(SEASON_LIST_DEFAULTS, SEASON_LIST_OPTIONS);
+  const page = list.sp;
+  const status = list.sst;
+  const year = list.sy;
   const [problem, setProblem] = useState<string | null>(null);
   const [removing, setRemoving] = useState<WebsiteSeasonResponse | null>(null);
   const all = seasons.data?.items ?? [];
@@ -97,7 +122,7 @@ export function SeasonsPanel() {
       key: 'season',
       header: text.columns.season,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (season) => (
         <Link className="ls-link" href={`${base}/website/seasons/${season.id}`}>
@@ -109,7 +134,7 @@ export function SeasonsPanel() {
       key: 'preset',
       header: text.form.presetLabel,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (season) => presetName(season.presetKey, locale),
     },
@@ -129,7 +154,7 @@ export function SeasonsPanel() {
       key: 'effects',
       header: text.columns.effects,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: effects,
     },
@@ -149,12 +174,13 @@ export function SeasonsPanel() {
       cell: (season) => (
         <RowActions
           menuLabel={fill(text.actionsFor, { name: season.label })}
+          LinkComponent={RouterMenuLink}
           items={[
             {
               id: 'edit',
               label: text.edit,
               icon: 'edit',
-              onSelect: () => navigate?.(`${base}/website/seasons/${season.id}`),
+              href: `${base}/website/seasons/${season.id}`,
             },
             {
               id: 'toggle',
@@ -184,7 +210,7 @@ export function SeasonsPanel() {
     start: Date.parse(season.startsAt),
     end: Date.parse(season.endsAt),
     tone: stripTone(season.status),
-    label: `${season.label} · ${text.status[season.status]}`,
+    label: `${season.label} (${text.status[season.status]})`,
   }));
   const range = scheduleLayout(strip, now);
 
@@ -206,11 +232,7 @@ export function SeasonsPanel() {
           labels={toolbarLabels(t)}
           activeFilters={activeFilters}
           resultCount={resultsText(t, rows.length)}
-          onReset={() => {
-            setStatus('');
-            setYear('');
-            setPage(1);
-          }}
+          onReset={() => updateList({ sst: '', sy: '' })}
           reload={{ label: t.common.reload, onClick: () => void seasons.reload() }}
           filters={
             <>
@@ -222,26 +244,21 @@ export function SeasonsPanel() {
                   label: text.status[value],
                 }))}
                 selected={status ? [status] : []}
-                onChange={([value]) => {
-                  setStatus(value ?? '');
-                  setPage(1);
-                }}
+                onChange={([value]) => updateList({ sst: value ?? '' })}
               />
               <FacetedFilter
                 label={text.filterYear}
                 clearLabel={t.common.list.clearChoice}
                 options={years.map((value) => ({ value: String(value), label: String(value) }))}
                 selected={year ? [year] : []}
-                onChange={([value]) => {
-                  setYear(value ?? '');
-                  setPage(1);
-                }}
+                onChange={([value]) => updateList({ sy: value ?? '' })}
               />
             </>
           }
         />
       ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: text.listLabel })}
         columns={columns}
@@ -258,7 +275,7 @@ export function SeasonsPanel() {
         paging={{
           page,
           pageSize: SEASON_PAGE_SIZE,
-          onPageChange: setPage,
+          onPageChange: (next) => updateList({ sp: next }),
           labels: paginationLabels(t, text.listLabel),
         }}
       />
@@ -280,7 +297,7 @@ export function SeasonsPanel() {
           facts={[{ label: text.remove.fact, value: removing.label }]}
           tone="danger"
           confirmLabel={text.remove.confirm}
-          busyLabel={t.common.saving}
+          busyLabel={text.remove.busy}
           cancelLabel={t.common.cancel}
           referenceLabel={t.errors.reference}
           describeError={confirmError(t)}

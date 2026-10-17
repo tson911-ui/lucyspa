@@ -14,15 +14,19 @@ import { WidgetBoundary, WidgetMessage, WidgetSkeleton } from './widget-frame';
 export function WidgetHost({
   placed,
   branchId,
+  branchesPending = false,
 }: {
   placed: PlacedWidget;
   branchId: string | null;
+  /** The branch list is still loading: a branch widget shows its skeleton, not the "no branch" message. */
+  branchesPending?: boolean;
 }) {
   const { t } = useWorkforce();
   const { account } = useAccount();
   const { meta, size } = placed;
   const title = t.dashboard.widgets[meta.id];
   if (meta.scope === 'branch') {
+    if (!branchId && branchesPending) return <WidgetSkeleton title={title} size={size} />;
     if (!branchId) {
       return (
         <WidgetMessage

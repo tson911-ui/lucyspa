@@ -4,6 +4,7 @@ import type { WebsiteSeasonListResponse, WebsiteSeasonResponse } from '@lucy-spa
 import { Field, FormSection, Select } from '@lucy-spa/ui';
 import { presetName, seasonWindowText } from '../../../lib/workforce/seasons';
 import { useWorkforce } from '../session';
+import { metaLine } from './pos-format';
 import { useResource } from '../ui';
 
 /**
@@ -32,7 +33,7 @@ export function SeasonSelect({
   if (items.length === 0 && value === '') return null;
   const options = items.map((season) => ({
     value: season.id,
-    label: `${season.label} · ${presetName(season.presetKey, locale)} · ${seasonWindowText(season, locale)}`,
+    label: `${season.label} (${metaLine(locale, [presetName(season.presetKey, locale), seasonWindowText(season, locale)])})`,
   }));
   // A followed season that the list does not know (deleted meanwhile) still shows as the current choice.
   if (value !== '' && !items.some((season) => season.id === value)) {

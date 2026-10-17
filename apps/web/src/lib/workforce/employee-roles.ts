@@ -114,9 +114,14 @@ export function scopeLabel(
 ): string {
   if (scope.kind === 'GLOBAL') return t.roles.global;
   if (scope.kind === 'REGION')
-    return `${t.nav.organization} · ${organization?.regions.find((entry) => entry.id === scope.regionId)?.name ?? scope.regionId}`;
+    return fill(t.roles.atRegion, {
+      name:
+        organization?.regions.find((entry) => entry.id === scope.regionId)?.name ?? scope.regionId,
+    });
   if (scope.kind === 'AREA')
-    return `${t.nav.organization} · ${organization?.areas.find((entry) => entry.id === scope.areaId)?.name ?? scope.areaId}`;
+    return fill(t.roles.atArea, {
+      name: organization?.areas.find((entry) => entry.id === scope.areaId)?.name ?? scope.areaId,
+    });
   const branch = branches?.get(scope.branchId);
   return fill(t.roles.atBranch, { branch: branch ? branch.name : t.common.unknownBranch });
 }

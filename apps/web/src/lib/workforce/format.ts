@@ -84,12 +84,33 @@ export function formatDateTime(instant: string, timeZone: string, locale: Locale
 
 /** Today's calendar date (`YYYY-MM-DD`) in an IANA timezone. */
 export function todayIn(timeZone: string, now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now);
+  return cached(
+    `today-${timeZone}`,
+    () =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }),
+  ).format(now);
+}
+
+/** A wall-clock parts formatter for an IANA timezone (24 h), built once per locale tag and zone. */
+function wallClock(tag: 'en-US' | 'en-CA', timeZone: string): Intl.DateTimeFormat {
+  return cached(
+    `wall-${tag}-${timeZone}`,
+    () =>
+      new Intl.DateTimeFormat(tag, {
+        timeZone,
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+  );
 }
 
 /** Inclusive calendar-day count between two `YYYY-MM-DD` dates (null when invalid). */
@@ -111,15 +132,7 @@ export function zonedInstant(local: string, timeZone: string): string | null {
   const [, y, mo, d, h, mi] = match.map(Number) as [number, number, number, number, number, number];
   const wall = Date.UTC(y, mo - 1, d, h, mi);
   const offsetAt = (instant: number) => {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hourCycle: 'h23',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).formatToParts(new Date(instant));
+    const parts = wallClock('en-US', timeZone).formatToParts(new Date(instant));
     const get = (type: string) => Number(parts.find((part) => part.type === type)?.value);
     return (
       Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute')) - instant
@@ -132,15 +145,7 @@ export function zonedInstant(local: string, timeZone: string): string | null {
 
 /** An instant as the `YYYY-MM-DDTHH:MM` wall clock of an IANA timezone (form inputs). */
 export function zonedLocal(instant: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).formatToParts(new Date(instant));
+  const parts = wallClock('en-CA', timeZone).formatToParts(new Date(instant));
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '00';
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
 }

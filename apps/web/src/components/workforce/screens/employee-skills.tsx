@@ -19,9 +19,11 @@ import {
   Select,
   Stack,
   TextInput,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
+import { organizationDictionary } from '../../../i18n/organization';
 import { fill } from '../../../i18n/workforce';
 import {
   assignableSkills,
@@ -35,8 +37,9 @@ import {
 import { ApiError } from '../../../lib/workforce/api';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDateTime } from '../../../lib/workforce/format';
-import { paginationLabels } from '../../../lib/workforce/list-view';
+import { normalizePage, paginationLabels } from '../../../lib/workforce/list-view';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
@@ -82,6 +85,12 @@ export function SkillsSection({
   );
 }
 
+/** The removed-skills page lives in the address bar (`?shp=`), its own key beside the branch-history pager (`?bhp=`). */
+const SKILL_HISTORY_DEFAULTS = { shp: 1 };
+const SKILL_HISTORY_OPTIONS = {
+  normalize: (state: typeof SKILL_HISTORY_DEFAULTS) => ({ shp: normalizePage(state.shp) }),
+};
+
 type Overlay = { kind: 'grant' } | { kind: 'revoke'; entry: EmployeeSkillEntry };
 
 /** The skills view for loaded data (renders without a network in tests). */
@@ -112,7 +121,10 @@ export function SkillsView({
   const blocker = assignBlocker(employee, ended);
   const available = assignableSkills(catalog, held);
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const [historyPage, setHistoryPage] = useState(1);
+  const [{ shp: historyPage }, updateHistory] = useUrlState(
+    SKILL_HISTORY_DEFAULTS,
+    SKILL_HISTORY_OPTIONS,
+  );
   const name = (skill: { nameVi: string; nameEn: string }) =>
     locale === 'vi' ? skill.nameVi : skill.nameEn;
   // Grant times in the member's (first) branch timezone.
@@ -126,17 +138,21 @@ export function SkillsView({
     notify(message);
   };
 
+  // Name first, the code as a muted second line (no parenthesised code squeezed beside the name).
   const skillCell = (skill: EmployeeSkillEntry['skill']) => (
-    <>
-      <strong>{name(skill)}</strong> <span className="ls-hint">({skill.code})</span>
-    </>
+    <span className="ls-cell-stack">
+      <span className="ls-cell-main">{name(skill)}</span>
+      <span className="ls-cell-sub" translate="no">
+        {skill.code}
+      </span>
+    </span>
   );
   const columns: DataTableColumn<EmployeeSkillEntry>[] = [
     {
       key: 'skill',
       header: t.employees.skills,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (entry) => skillCell(entry.skill),
     },
@@ -144,10 +160,10 @@ export function SkillsView({
       key: 'status',
       header: t.common.status,
       cell: (entry) => (
-        <>
+        <span className="ls-cell-stack">
           <Badge tone="success">{texts.active}</Badge>
-          {!entry.skill.isActive ? <span className="ls-hint"> {texts.skillOff}</span> : null}
-        </>
+          {!entry.skill.isActive ? <span className="ls-cell-sub">{texts.skillOff}</span> : null}
+        </span>
       ),
     },
     {
@@ -168,7 +184,7 @@ export function SkillsView({
                 items={[
                   {
                     id: 'revoke',
-                    label: t.employees.revokeSkill,
+                    label: opensInput(t.employees.revokeSkill),
                     tone: 'danger',
                     onSelect: () => setOverlay({ kind: 'revoke', entry }),
                   },
@@ -184,7 +200,7 @@ export function SkillsView({
       key: 'skill',
       header: t.employees.skills,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (entry) => skillCell(entry.skill),
     },
@@ -210,8 +226,9 @@ export function SkillsView({
         {manage && !blocker && emptyCatalog ? (
           <Notice tone="info">{texts.emptyCatalog}</Notice>
         ) : null}
+        {/* The tab is named "Kỹ năng"; the section says what it lists (current skills), beside "Lịch sử" below. */}
         <ListSection
-          title={t.employees.skills}
+          title={texts.current}
           actions={
             showGrant ? (
               <Button
@@ -220,7 +237,7 @@ export function SkillsView({
                 disabled={available.length === 0}
                 onClick={() => setOverlay({ kind: 'grant' })}
               >
-                {texts.assign}
+                {opensInput(texts.assign)}
               </Button>
             ) : undefined
           }
@@ -230,11 +247,17 @@ export function SkillsView({
           {loading && !held ? <Loading t={t} /> : null}
           <DataTable
             mode="client"
-            caption={t.employees.skills}
+            caption={texts.current}
             columns={columns}
             rows={held?.skills ?? []}
             rowKey={(entry) => entry.skill.id}
-            empty={held ? <Empty>{t.employees.noSkills}</Empty> : undefined}
+            empty={
+              held ? (
+                <Empty title={organizationDictionary(locale).people.noSkillsTitle}>
+                  {t.employees.noSkills}
+                </Empty>
+              ) : undefined
+            }
             paging={{ off: 'The catalog is short: a member holds a few dozen skills at most.' }}
           />
         </ListSection>
@@ -249,7 +272,7 @@ export function SkillsView({
               paging={{
                 page: historyPage,
                 pageSize: 20,
-                onPageChange: setHistoryPage,
+                onPageChange: (page) => updateHistory({ shp: page }),
                 labels: paginationLabels(t, texts.history),
               }}
             />
@@ -298,8 +321,14 @@ export function GrantSkillDialog({
   const [reason, setReason] = useState('');
   const submit = useSubmit();
 
+  // Validate on submit: the button stays enabled and an empty choice says so at the field.
+  const [tried, setTried] = useState(false);
+
   async function save() {
-    if (skillId === '') return;
+    if (skillId === '') {
+      setTried(true);
+      return;
+    }
     const ok = await submit.run(
       () =>
         runMutation(
@@ -320,7 +349,6 @@ export function GrantSkillDialog({
       labels={formOverlayLabels(t, texts.assign)}
       busy={submit.pending}
       dirty={skillId !== '' || reason !== ''}
-      submitDisabled={skillId === ''}
       error={
         submit.error ? (
           <Notice tone="error">{skillErrorMessage(submit.error, t)}</Notice>
@@ -330,11 +358,15 @@ export function GrantSkillDialog({
       onSubmit={save}
     >
       <FormGrid>
-        <Field label={t.employees.skills} required>
+        <Field
+          label={t.employees.skills}
+          required
+          error={tried && skillId === '' ? t.common.form.choiceRequired : undefined}
+        >
           {(control) => (
             <Select
               {...control}
-              placeholder="—"
+              placeholder={t.common.form.choose}
               value={skillId}
               onChange={(event) => setSkillId(event.target.value)}
               options={available.map((skill) => ({
@@ -348,6 +380,7 @@ export function GrantSkillDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -389,7 +422,7 @@ export function RevokeSkillDialog({
       ]}
       tone="danger"
       confirmLabel={t.employees.revokeSkill}
-      busyLabel={t.common.saving}
+      busyLabel={t.common.removing}
       cancelLabel={t.common.cancel}
       referenceLabel={t.errors.reference}
       reasonField={{ label: t.common.reasonOptional, hint: texts.reasonHint }}

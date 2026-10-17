@@ -69,10 +69,10 @@ function row(patch: Partial<ProductImportRowResponse>): ProductImportRowResponse
 test('the preview lists every row with its result and its problem in words, and offers the one primary action', () => {
   const markup = render(<ImportView job={job()} reload={noop} />, owner);
   for (const sku of ['KEM-50', 'SRM-1', 'BAD']) assert.ok(markup.includes(sku), sku);
-  assert.ok(markup.includes('Không có thương hiệu &quot;Hãng Z&quot;'), 'the error is a sentence');
+  assert.ok(markup.includes('Không có thương hiệu “Hãng Z”'), 'the error is a sentence');
   assert.ok(markup.includes('Sẽ đổi: Phân loại (VI)'), 'an update names its columns');
   assert.ok(markup.includes(text.detail.apply), 'the primary action');
-  assert.ok(markup.includes('Bỏ qua cột &quot;Màu&quot;'), 'an unknown column is a warning');
+  assert.ok(markup.includes('Bỏ qua cột “Màu”'), 'an unknown column is a warning');
   for (const result of ['Tạo mới', 'Cập nhật', 'Có lỗi']) assert.ok(markup.includes(result));
   assert.ok(!/khám/i.test(markup));
 });
@@ -145,7 +145,8 @@ test('opening stock shows the quantity and the lot, the branch and no price or c
   );
   assert.ok(markup.includes('04 Nguyễn Quang Bích'));
   assert.ok(markup.includes('>24<'));
-  assert.ok(markup.includes('L1 · 2027-12-31'));
+  // Lot and expiry as one line of facts (Intl list), never joined with a middle dot.
+  assert.ok(markup.includes('L1, 2027-12-31'));
   assert.ok(
     !markup.includes(text.detail.columns.name) || markup.includes(text.detail.columns.quantity),
   );

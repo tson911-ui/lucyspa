@@ -156,7 +156,8 @@ const vi: Words = {
   },
   common: {
     truncated: 'Chỉ hiện {count} dòng đầu. Tổng ở trên vẫn tính đủ; tệp xuất có đầy đủ.',
-    noAccess: 'Bạn không xem được báo cáo này ở chi nhánh đã chọn.',
+    noAccess:
+      'Bạn không xem được báo cáo này ở chi nhánh đã chọn. Chọn chi nhánh khác, hoặc nhờ chủ spa cấp quyền.',
     asOfNow: 'Số liệu tại thời điểm xem.',
     days: 'Số ngày',
     daysOptions: { '30': '30 ngày', '60': '60 ngày', '90': '90 ngày', '180': '180 ngày' },
@@ -462,7 +463,8 @@ const en: Words = {
   common: {
     truncated:
       'Showing the first {count} rows. The totals above still count everything; the export file has them all.',
-    noAccess: 'You cannot see this report at the selected branch.',
+    noAccess:
+      'You cannot see this report at the selected branch. Choose another branch, or ask the spa owner for access.',
     asOfNow: 'Figures as of now.',
     days: 'Days',
     daysOptions: { '30': '30 days', '60': '60 days', '90': '90 days', '180': '180 days' },

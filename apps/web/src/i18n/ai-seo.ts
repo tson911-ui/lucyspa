@@ -9,10 +9,13 @@ const vi = {
   nav: 'Mô tả tìm kiếm',
   title: 'Mô tả tìm kiếm và tiếng Anh',
   intro:
-    'Bản nháp do AI viết: mô tả hiện trên Google cho từng dịch vụ và trang chủ, và bản tiếng Anh khi còn trống. Bạn đọc, sửa nếu cần rồi bấm Áp dụng từng bản; chữ tiếng Việt của tiệm không bị thay.',
-  noAccess: 'Bạn không có quyền xem các bản nháp này.',
+    'AI viết nháp mô tả trên Google và bản tiếng Anh còn trống; bạn đọc, sửa rồi áp dụng từng bản, chữ tiếng Việt của tiệm giữ nguyên.',
+  noAccess:
+    'Bạn không có quyền xem các bản nháp này. Nhờ chủ spa hoặc quản lý cấp quyền nếu bạn cần dùng mục này.',
   table: 'Danh sách bản nháp',
-  empty: 'Chưa có bản nháp nào. Bấm “Tạo bản nháp” để bắt đầu.',
+  emptyTitle: 'Chưa có bản nháp',
+  empty:
+    'AI viết nháp mô tả cho các dịch vụ và trang chủ; chưa có gì lên trang web cho đến khi bạn áp dụng.',
   emptyFiltered: 'Không có bản nháp nào ở trạng thái này.',
   loadFailed: 'Không tải được các bản nháp.',
   filterStatus: 'Trạng thái',
@@ -92,6 +95,7 @@ const vi = {
     regenerateBody: 'AI viết bản mới. Bạn có thể dặn một câu ngắn (tùy chọn); tối đa 3 lần.',
     regenerateField: 'Dặn thêm',
     regenerateConfirm: 'Viết lại',
+    regenerating: 'Đang viết lại…',
     regenerated: 'Đã xếp vào hàng chờ để viết lại.',
     retry: 'Thử lại',
     retried: 'Đã xếp lại vào hàng chờ.',
@@ -143,10 +147,13 @@ const en: AiSeoText = {
   nav: 'Search descriptions',
   title: 'Search descriptions and English',
   intro:
-    'Drafts written by the AI: the description shown on Google for each service and the home page, and an English text where it is still empty. Read, edit if needed, then press Apply one by one; the shop’s own Vietnamese text is never replaced.',
-  noAccess: 'You do not have access to these drafts.',
+    'The AI drafts the Google descriptions and the missing English texts; read, edit and apply them one by one, the shop’s Vietnamese text stays as it is.',
+  noAccess:
+    'You do not have access to these drafts. Ask the spa owner or a manager for access if you need it.',
   table: 'Draft list',
-  empty: 'There are no drafts yet. Press “Create drafts” to start.',
+  emptyTitle: 'No drafts yet',
+  empty:
+    'The AI drafts descriptions for the services and the home page; nothing goes on the website until you apply it.',
   emptyFiltered: 'No drafts have this status.',
   loadFailed: 'The drafts could not be loaded.',
   filterStatus: 'Status',
@@ -223,6 +230,7 @@ const en: AiSeoText = {
       'The AI writes a new one. You may add one short line of guidance (optional); at most 3 times.',
     regenerateField: 'Extra guidance',
     regenerateConfirm: 'Write again',
+    regenerating: 'Writing again…',
     regenerated: 'Queued to be written again.',
     retry: 'Try again',
     retried: 'Queued again.',

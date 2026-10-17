@@ -47,14 +47,33 @@ export function boardStamp(
   zone: string,
   locale: string,
 ): string {
-  const time = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    timeZone: zone,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso));
+  // Cached Intl formatters, one per locale and zone (rbp js-cache-function-results, pos.ts:50); the day and month through Intl
+  // too, not cut from the date string by hand (wig Locale & i18n). Both languages show day/month like formatDate.
+  const time = stampFormat(
+    `time|${locale}|${zone}`,
+    () =>
+      new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+        timeZone: zone,
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+  ).format(new Date(iso));
   if (businessDate === shownDate) return time;
-  const [, month, day] = businessDate.split('-');
-  return `${day}/${month} ${time}`;
+  const day = stampFormat(
+    'day',
+    () => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: '2-digit', month: '2-digit' }),
+  ).format(new Date(`${businessDate}T00:00:00Z`));
+  return `${day} ${time}`;
+}
+
+const stampFormats = new Map<string, Intl.DateTimeFormat>();
+function stampFormat(key: string, make: () => Intl.DateTimeFormat): Intl.DateTimeFormat {
+  let format = stampFormats.get(key);
+  if (!format) {
+    format = make();
+    stampFormats.set(key, format);
+  }
+  return format;
 }
 
 /** What an invoice on the board is for, in the cashier's words (the visit code stays on the invoice itself). */

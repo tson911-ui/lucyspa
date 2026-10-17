@@ -5,16 +5,22 @@ import {
   Button,
   ConfirmDialog,
   DataTable,
+  DEFAULT_PAGE_SIZE,
   DateTextInput,
+  EmptyState,
   Field as KitField,
   FormDrawer,
   FormGrid,
   ListToolbar,
+  MoneyInput,
   RadioGroup,
   RowActions,
   Select,
   TextInput,
   TimeInput,
+  focusFirstInvalid,
+  useUrlState,
+  type DataTablePaging,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useState } from 'react';
@@ -34,15 +40,21 @@ import {
 import { businessToday, isCalendarDate } from '../../../lib/workforce/employee-create';
 import { confirmError, formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { formatDate } from '../../../lib/workforce/format';
-import { resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
+import {
+  normalizePage,
+  normalizePageSize,
+  resultsText,
+  toolbarLabels,
+} from '../../../lib/workforce/list-view';
 import { canAnywhere, canAt } from '../../../lib/workforce/permissions';
+import { urlPaging } from '../../../lib/workforce/url-paging';
 import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { runMutation } from '../../../lib/workforce/workflows';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import {
   Badge,
-  Empty,
   ErrorState,
   Loading,
   Notice,
@@ -54,6 +66,21 @@ import {
 } from '../ui';
 
 type Branches = ReadonlyMap<string, BranchSummary> | null;
+
+/** An ISO date from the address bar, or '' (the default range around today). */
+const isoDate = (value: string) => (isCalendarDate(value) ? value : '');
+/** Address-bar state of the schedule (session 10: Back/Forward and a shared link restore the view). */
+const SCHEDULE_DEFAULTS = { branch: '', from: '', to: '', page: 1, size: DEFAULT_PAGE_SIZE };
+const SCHEDULE_OPTIONS = {
+  normalize: (state: typeof SCHEDULE_DEFAULTS) => ({
+    branch: state.branch,
+    from: isoDate(state.from),
+    to: isoDate(state.to),
+    page: normalizePage(state.page),
+    size: normalizePageSize(state.size),
+  }),
+  resetOnChange: ['page'],
+};
 
 /**
  * "Lịch làm CTV / Collaborator schedule" (follow-up Step 6). Functional management view:
@@ -67,8 +94,12 @@ export function CollaboratorScheduleScreen() {
   const texts = t.collaboratorWork;
   const today = businessToday([...(branches.data?.keys() ?? [])], branches.data ?? null);
   const defaults = scheduleRange(today);
-  const [range, setRange] = useState(defaults);
-  const [branchId, setBranchId] = useState('');
+  // Branch, date range and pager in the address bar (Back/Forward and a shared link restore the view); an empty date means the
+  // default range around today, which moves with the day.
+  const [url, update] = useUrlState(SCHEDULE_DEFAULTS, SCHEDULE_OPTIONS);
+  const range = { from: url.from || defaults.from, to: url.to || defaults.to };
+  const branchId = url.branch;
+  const setBranchId = (value: string) => update({ branch: value });
   const [creating, setCreating] = useState(false);
   const list = useResource(
     () =>
@@ -79,16 +110,13 @@ export function CollaboratorScheduleScreen() {
       }),
     [api, range.from, range.to, branchId],
   );
-  const activeFilters =
-    (branchId ? 1 : 0) +
-    (range.from !== defaults.from ? 1 : 0) +
-    (range.to !== defaults.to ? 1 : 0);
+  const activeFilters = [url.branch, url.from, url.to].filter(Boolean).length;
   return (
     <>
       <PageHeader title={texts.title} intro={texts.intro}>
         {canAnywhere(account, 'MANAGE_WORK_SCHEDULE') ? (
           <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-            {texts.create}
+            {opensInput(texts.create)}
           </Button>
         ) : null}
       </PageHeader>
@@ -96,7 +124,7 @@ export function CollaboratorScheduleScreen() {
         labels={toolbarLabels(t)}
         activeFilters={activeFilters}
         resultCount={list.data ? resultsText(t, list.data.items.length) : undefined}
-        onReset={() => (setRange(defaults), setBranchId(''))}
+        onReset={() => update({ branch: '', from: '', to: '' })}
         reload={{ label: t.common.reload, onClick: () => void list.reload(), busy: list.loading }}
         search={
           <Select
@@ -120,16 +148,14 @@ export function CollaboratorScheduleScreen() {
               aria-label={texts.from}
               title={texts.from}
               value={range.from}
-              onChange={(event) =>
-                setRange((current) => ({ ...current, from: event.target.value }))
-              }
+              onChange={(event) => update({ from: event.target.value })}
             />
             <DateTextInput
               id="work-to"
               aria-label={texts.to}
               title={texts.to}
               value={range.to}
-              onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))}
+              onChange={(event) => update({ to: event.target.value })}
             />
           </>
         }
@@ -144,6 +170,20 @@ export function CollaboratorScheduleScreen() {
           branches={branches.data}
           today={today}
           onChanged={list.reload}
+          paging={urlPaging(
+            url.page,
+            url.size,
+            ({ page, pageSize }) =>
+              update({
+                ...(page !== undefined ? { page } : {}),
+                ...(pageSize !== undefined ? { size: pageSize } : {}),
+              }),
+            t,
+            texts.title,
+          )}
+          {...(canAnywhere(account, 'MANAGE_WORK_SCHEDULE')
+            ? { onCreate: () => setCreating(true) }
+            : {})}
         />
       ) : null}
       {creating ? (
@@ -168,21 +208,44 @@ export function ScheduleTable({
   branches,
   today,
   onChanged,
+  onCreate,
+  paging: urlPager,
 }: {
   items: CollaboratorWorkOccurrence[];
   branches: Branches;
   today: string;
   onChanged: () => Promise<void>;
+  /** Opens the schedule drawer from the empty state (only for those who may schedule). */
+  onCreate?: (() => void) | undefined;
+  /** The pager kept in the address bar by the page; elsewhere (tests) the table pages in memory. */
+  paging?: DataTablePaging | undefined;
 }) {
   const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const notify = useSuccessToast();
   const texts = t.collaboratorWork;
-  const paging = useClientPaging(t, texts.title);
+  const localPaging = useClientPaging(t, texts.title);
+  const paging = urlPager ?? localPaging;
   const [editing, setEditing] = useState<CollaboratorWorkOccurrence | null>(null);
   const [cancelling, setCancelling] = useState<CollaboratorWorkOccurrence | null>(null);
   const [cancelled, setCancelled] = useState(false);
-  if (items.length === 0) return <Empty>{texts.empty}</Empty>;
+  // Heading, one sentence and the next step (secondary: the page header keeps the one primary).
+  if (items.length === 0)
+    return (
+      <EmptyState
+        icon="calendar"
+        title={texts.emptyTitle}
+        action={
+          onCreate ? (
+            <Button variant="secondary" icon="plus" onClick={onCreate}>
+              {opensInput(texts.create)}
+            </Button>
+          ) : undefined
+        }
+      >
+        {texts.empty}
+      </EmptyState>
+    );
 
   const columns: DataTableColumn<CollaboratorWorkOccurrence>[] = [
     {
@@ -192,10 +255,10 @@ export function ScheduleTable({
       width: 'sm',
       cell: (row) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-title" title={row.employeeName}>
-            {row.employeeName}
+          <span className="ls-cell-main">{row.employeeName}</span>
+          <span className="ls-cell-sub" translate="no">
+            {row.employeeCode}
           </span>
-          <span className="ls-cell-sub">{row.employeeCode}</span>
         </span>
       ),
     },
@@ -216,7 +279,7 @@ export function ScheduleTable({
       key: 'branch',
       header: texts.branch,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => branches?.get(row.branchId)?.name ?? '—',
     },
@@ -245,13 +308,13 @@ export function ScheduleTable({
             items={[
               {
                 id: 'edit',
-                label: texts.edit,
+                label: opensInput(texts.edit),
                 icon: 'edit',
                 onSelect: () => setEditing(row),
               },
               {
                 id: 'cancel',
-                label: texts.cancel,
+                label: opensInput(texts.cancel),
                 icon: 'x-circle',
                 tone: 'danger',
                 onSelect: () => setCancelling(row),
@@ -295,7 +358,7 @@ export function ScheduleTable({
             { label: texts.collaborator, value: cancelling.employeeName },
             {
               label: texts.workDate,
-              value: `${formatDate(cancelling.workDate, locale)} · ${cancelling.startTime}–${cancelling.endTime}`,
+              value: `${formatDate(cancelling.workDate, locale)}, ${cancelling.startTime}–${cancelling.endTime}`,
             },
           ]}
           reasonField={{
@@ -345,7 +408,7 @@ export function WorkDrawer({
   onClose: () => void;
   onDone: () => Promise<void>;
 }) {
-  const { api, t } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
   const { account } = useAccount();
   const texts = t.collaboratorWork;
   const creating = row === null;
@@ -374,10 +437,22 @@ export function WorkDrawer({
   const showPay = row === null ? form.branchId !== '' : 'agreedPayVnd' in row;
   const canPay = form.branchId !== '' && canAt(account, 'MANAGE_EMPLOYEE_PAY', form.branchId);
   const dirty = (Object.keys(form) as (keyof WorkForm)[]).some((key) => form[key] !== initial[key]);
+  const pickable = ready && (options.data?.collaborators.length ?? 0) > 0;
+  // The one problem shows at its own field (wig: inline errors); a missing collaborator before a branch and a day are chosen
+  // points at the field that comes first.
+  const target =
+    problem === 'employeeId' && form.branchId === ''
+      ? 'branchId'
+      : problem === 'employeeId' && !isCalendarDate(form.workDate)
+        ? 'workDate'
+        : problem;
+  const fieldError = (key: NonNullable<typeof problem>) =>
+    shown && target === key ? texts.problems[key] : undefined;
 
   async function save() {
     if (problem !== null) {
       setShown(true);
+      requestAnimationFrame(() => focusFirstInvalid(document));
       return;
     }
     const ok = await submit.run(
@@ -401,8 +476,9 @@ export function WorkDrawer({
       busy={submit.pending}
       dirty={dirty}
       error={
-        shown && problem !== null ? (
-          <Notice tone="error">{texts.problems[problem]}</Notice>
+        // Only when the field the problem belongs to is not on screen (no collaborator to pick yet).
+        shown && target === 'employeeId' && !pickable ? (
+          <Notice tone="error">{texts.problems.employeeId}</Notice>
         ) : submit.error ? (
           <Notice tone="error">{workErrorMessage(submit.error, t)}</Notice>
         ) : undefined
@@ -411,12 +487,17 @@ export function WorkDrawer({
       onSubmit={save}
     >
       <FormGrid cols={2}>
-        <KitField label={texts.branch} required requiredLabel={t.common.required}>
+        <KitField
+          label={texts.branch}
+          required
+          requiredLabel={t.common.required}
+          error={fieldError('branchId')}
+        >
           {(control) => (
             <Select
               {...control}
               value={form.branchId}
-              placeholder="—"
+              placeholder={t.common.form.choose}
               options={schedulable.map((branch) => ({ value: branch.id, label: branch.name }))}
               onChange={(event) => {
                 set('branchId', event.target.value);
@@ -429,11 +510,13 @@ export function WorkDrawer({
           label={texts.workDate}
           required
           requiredLabel={t.common.required}
+          error={fieldError('workDate')}
           {...(past ? { hint: texts.reasonHint } : {})}
         >
           {(control) => (
             <DateTextInput
               {...control}
+              name="workDate"
               value={form.workDate}
               onChange={(event) => {
                 set('workDate', event.target.value);
@@ -451,12 +534,18 @@ export function WorkDrawer({
           </div>
         ) : null}
         {ready && options.data && options.data.collaborators.length > 0 ? (
-          <KitField label={texts.collaborator} required requiredLabel={t.common.required} full>
+          <KitField
+            label={texts.collaborator}
+            required
+            requiredLabel={t.common.required}
+            error={fieldError('employeeId')}
+            full
+          >
             {(control) => (
               <Select
                 {...control}
                 value={form.employeeId}
-                placeholder="—"
+                placeholder={t.common.form.choose}
                 options={options.data!.collaborators.map((person) => ({
                   value: person.id,
                   label: `${person.fullName} (${person.employeeCode})`,
@@ -485,15 +574,22 @@ export function WorkDrawer({
               {(control) => (
                 <TimeInput
                   {...control}
+                  name="startTime"
                   value={form.startTime}
                   onChange={(event) => set('startTime', event.target.value)}
                 />
               )}
             </KitField>
-            <KitField label={texts.end} required requiredLabel={t.common.required}>
+            <KitField
+              label={texts.end}
+              required
+              requiredLabel={t.common.required}
+              error={fieldError('times')}
+            >
               {(control) => (
                 <TimeInput
                   {...control}
+                  name="endTime"
                   value={form.endTime}
                   onChange={(event) => set('endTime', event.target.value)}
                 />
@@ -513,15 +609,17 @@ export function WorkDrawer({
           <p className="ls-hint ls-field-full">{texts.payNoPermission}</p>
         ) : null}
         {showPay && canPay ? (
-          <KitField label={texts.pay} hint={texts.payHint} full>
+          <KitField label={texts.pay} hint={texts.payHint} error={fieldError('pay')} full>
             {(control) => (
-              <TextInput
+              // Grouped money with the ₫ unit (wig collaborator-schedule.tsx:518); the form keeps digits.
+              <MoneyInput
                 {...control}
-                inputMode="numeric"
-                pattern="[0-9]*"
+                name="agreed-pay"
+                unit="₫"
+                separator={locale === 'vi' ? '.' : ','}
                 maxLength={18}
-                value={form.agreedPayVnd}
-                onChange={(event) => set('agreedPayVnd', event.target.value)}
+                value={/^\d+$/.test(form.agreedPayVnd) ? Number(form.agreedPayVnd) : null}
+                onValueChange={(value) => set('agreedPayVnd', value === null ? '' : String(value))}
               />
             )}
           </KitField>
@@ -531,6 +629,7 @@ export function WorkDrawer({
             {(control) => (
               <TextInput
                 {...control}
+                name="note"
                 maxLength={500}
                 value={form.note}
                 onChange={(event) => set('note', event.target.value)}
@@ -541,12 +640,14 @@ export function WorkDrawer({
         <KitField
           label={texts.reason}
           hint={texts.reasonHint}
+          error={fieldError('reason')}
           full
           {...(past ? { required: true, requiredLabel: t.common.required } : {})}
         >
           {(control) => (
             <TextInput
               {...control}
+              name="reason"
               maxLength={500}
               value={form.reason}
               onChange={(event) => set('reason', event.target.value)}

@@ -406,7 +406,8 @@ test('advances: the table with the stage and what is still owed; one primary act
   assert.match(html, new RegExp(text.advances.request));
   assert.match(html, new RegExp(text.advances.status.REQUESTED));
   assert.match(html, new RegExp(text.advances.status.PAID));
-  assert.match(html, /600\.000 ₫/);
+  // Intl grouping, the ₫ kept on the amount's line by a no-break space.
+  assert.match(html, /600\.000\s₫/);
   assert.equal(
     buttons(
       render(

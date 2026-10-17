@@ -8,6 +8,7 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   DataTable,
+  EmptyState,
   Field,
   FacetedFilter,
   FormDialog,
@@ -42,19 +43,12 @@ import {
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { canGlobal } from '../../../lib/workforce/permissions';
+import { opensInput } from '../../../lib/workforce/opens-input';
 import { PrefetchLink as Link } from '../link';
 import { useAccount, useWorkforce } from '../session';
-import {
-  Badge,
-  Button,
-  Empty,
-  ErrorState,
-  Notice,
-  PageHeader,
-  useResource,
-  useSuccessToast,
-} from '../ui';
+import { Badge, Button, ErrorState, Notice, PageHeader, useResource, useSuccessToast } from '../ui';
 import { useCampaignAction } from './campaign-dialogs';
+import { RouterMenuLink } from './products-links';
 
 const STATES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'ENDED'] as const;
 
@@ -93,7 +87,7 @@ export function CampaignsScreen() {
   const rows = campaigns.data?.rows ?? [];
   const total = campaigns.data?.total ?? 0;
   const active = (list.q ? 1 : 0) + (list.state ? 1 : 0);
-  const open = (row: CampaignListRow) => navigate?.(`${base}/product-campaigns/${row.id}`);
+  const open = (row: CampaignListRow) => `${base}/product-campaigns/${row.id}`;
   const filtered = active > 0;
 
   const columns: DataTableColumn<CampaignListRow>[] = [
@@ -101,14 +95,10 @@ export function CampaignsScreen() {
       key: 'name',
       header: c.list.name,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => (
-        <Link
-          className="ls-link"
-          href={`${base}/product-campaigns/${row.id}`}
-          title={campaignName(row, locale)}
-        >
+        <Link className="ls-link" href={open(row)}>
           {campaignName(row, locale)}
         </Link>
       ),
@@ -143,7 +133,8 @@ export function CampaignsScreen() {
       cell: (row) => (
         <RowActions
           menuLabel={fill(t.common.list.actionsFor, { name: campaignName(row, locale) })}
-          items={[{ id: 'open', label: c.list.open, icon: 'eye', onSelect: () => open(row) }]}
+          LinkComponent={RouterMenuLink}
+          items={[{ id: 'open', label: c.list.open, icon: 'eye', href: open(row) }]}
         />
       ),
     },
@@ -153,7 +144,7 @@ export function CampaignsScreen() {
     <>
       <PageHeader title={c.title} intro={c.intro}>
         <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-          {c.list.create}
+          {opensInput(c.list.create)}
         </Button>
       </PageHeader>
       {campaigns.data && (total > 0 || filtered) ? (
@@ -168,7 +159,7 @@ export function CampaignsScreen() {
               id="campaign-q"
               value={list.q}
               label={c.list.search}
-              placeholder={c.list.search}
+              hint={c.list.searchPlaceholder}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -185,6 +176,7 @@ export function CampaignsScreen() {
         />
       ) : null}
       <DataTable
+        drillDown
         mode="server"
         caption={fill(t.common.list.table, { list: c.title })}
         columns={columns}
@@ -198,7 +190,33 @@ export function CampaignsScreen() {
           ) : undefined
         }
         empty={
-          campaigns.data ? <Empty>{filtered ? c.list.noMatch : c.list.empty}</Empty> : undefined
+          campaigns.data ? (
+            filtered ? (
+              <EmptyState
+                icon="search"
+                title={c.list.noMatchTitle}
+                action={
+                  <Button variant="secondary" onClick={() => updateList({ q: '', state: '' })}>
+                    {t.common.list.reset}
+                  </Button>
+                }
+              >
+                {c.list.noMatch}
+              </EmptyState>
+            ) : (
+              <EmptyState
+                icon="tag"
+                title={c.list.emptyTitle}
+                action={
+                  <Button variant="secondary" icon="plus" onClick={() => setCreating(true)}>
+                    {opensInput(c.list.create)}
+                  </Button>
+                }
+              >
+                {c.list.empty}
+              </EmptyState>
+            )
+          ) : undefined
         }
         paging={{
           page: list.page,
@@ -286,6 +304,8 @@ function CampaignCreateDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="nameVi"
+              autoComplete="off"
               value={draft.nameVi}
               onChange={(event) => setDraft(withName(draft, { nameVi: event.target.value }))}
             />
@@ -295,6 +315,8 @@ function CampaignCreateDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="nameEn"
+              autoComplete="off"
               value={draft.nameEn}
               onChange={(event) => setDraft(withName(draft, { nameEn: event.target.value }))}
             />
@@ -311,6 +333,7 @@ function CampaignCreateDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="slug"
               autoComplete="off"
               spellCheck={false}
               value={draft.slug}
@@ -331,6 +354,8 @@ function CampaignCreateDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="startsAt"
+              autoComplete="off"
               type="datetime-local"
               value={draft.startsAt}
               onChange={(event) => setDraft({ ...draft, startsAt: event.target.value })}
@@ -341,6 +366,8 @@ function CampaignCreateDialog({
           {(control) => (
             <TextInput
               {...control}
+              name="endsAt"
+              autoComplete="off"
               type="datetime-local"
               value={draft.endsAt}
               onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })}
@@ -357,6 +384,8 @@ function CampaignCreateDialog({
           {(control) => (
             <Textarea
               {...control}
+              name="note"
+              autoComplete="off"
               rows={3}
               value={draft.note}
               onChange={(event) => setDraft({ ...draft, note: event.target.value })}
