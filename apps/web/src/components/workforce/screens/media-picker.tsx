@@ -272,6 +272,9 @@ function Describe({
         aria-label={text.altTitle}
         onSubmit={(event) => {
           event.preventDefault();
+          // The picker opens inside the host's form (a brand, service, popup or season form) and the Dialog is not portaled: without
+          // this the submit bubbles on and saves or closes the host form before the image is handed back (hotfix 1, 2026-10-17).
+          event.stopPropagation();
           void save();
         }}
       >

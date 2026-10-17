@@ -122,6 +122,9 @@ function useFormOverlay({
       ref={formRef}
       className="ls-form"
       onSubmit={(event) => {
+        // A dialog opened from inside this form (the image picker's description step) renders inline, so its own form's submit
+        // bubbles here through React; it is that form's business, never a save of this one (hotfix 1, 2026-10-17).
+        if (event.target !== event.currentTarget) return;
         event.preventDefault();
         if (!busy) void onSubmit();
       }}

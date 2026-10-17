@@ -176,6 +176,67 @@ test('FormDialog: the discard prompt suspends the form, so one modal is on the s
   view.unmount();
 });
 
+// Hotfix 1 (2026-10-17): the image picker's description step is a Dialog with its own form, opened inside a FormDialog (the brand
+// form). Dialogs are not portaled, so its submit bubbled into the brand form, which saved and closed before the image came back.
+function NestedForms({ calls }: { calls: string[] }) {
+  const [describing, setDescribing] = useState(true);
+  return (
+    <ui.FormDialog
+      title="Sửa thương hiệu"
+      labels={labels}
+      onClose={() => undefined}
+      onSubmit={() => {
+        calls.push('host saved');
+      }}
+    >
+      <input aria-label="Tên thương hiệu" />
+      {describing ? (
+        <ui.Dialog
+          title="Thêm mô tả cho ảnh"
+          onClose={() => setDescribing(false)}
+          footer={
+            <ui.Button type="submit" form="describe" variant="primary">
+              Lưu mô tả và dùng ảnh
+            </ui.Button>
+          }
+        >
+          <form
+            id="describe"
+            onSubmit={(event) => {
+              event.preventDefault();
+              calls.push('description saved');
+              setDescribing(false);
+            }}
+          >
+            <input aria-label="Mô tả" />
+          </form>
+        </ui.Dialog>
+      ) : null}
+    </ui.FormDialog>
+  );
+}
+
+test('FormDialog: a nested dialog form submits only itself; the host form stays open and unsaved until its own Save', () => {
+  const calls: string[] = [];
+  const view = mount(<NestedForms calls={calls} />);
+  const inner = $('form#describe')!;
+  const host = inner.parentElement!.closest('form')!;
+  assert.ok(
+    host.contains(inner),
+    'the description form sits inside the host form, as on the brand form',
+  );
+  act(() => {
+    inner.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  });
+  assert.deepEqual(calls, ['description saved']);
+  assert.equal($('form#describe'), null);
+  act(() => {
+    host.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  });
+  assert.deepEqual(calls, ['description saved', 'host saved']);
+  view.unmount();
+});
+
 // C60: a confirmation whose command needs a second question (the staff password check) is suspended while that question is open,
 // then comes back with its reason; the requests run in the same order as before (command, check, command again).
 function CheckedConfirm({ calls }: { calls: string[] }) {
