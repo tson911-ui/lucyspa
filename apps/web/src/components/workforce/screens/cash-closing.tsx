@@ -20,7 +20,7 @@ import {
   Textarea,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { cashDictionary } from '../../../i18n/cash';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -48,8 +48,7 @@ import {
   useSuccessToast,
 } from '../ui';
 import { useCommand } from './cash-book';
-
-const ZONE = 'Asia/Ho_Chi_Minh';
+import { focusFirstInvalid } from './pos-dom';
 
 /**
  * The daily closing of one cash fund (Phase 7 P7-6, design 7.4): the history of closed days, and the closing itself in a drawer that
@@ -63,9 +62,12 @@ export function CashClosing({
   defaultFloat,
   canClose,
   reloadToken,
+  zone,
   onChanged,
 }: {
   fund: CashFundItem;
+  /** The fund's branch time zone (wig cash-closing.tsx:52). */
+  zone: string;
   page: number;
   onPage: (page: number) => void;
   defaultFloat: number;
@@ -105,7 +107,7 @@ export function CashClosing({
         <DataTable
           mode="server"
           caption={fill(t.common.list.table, { list: k.history })}
-          columns={historyColumns(c, t, locale)}
+          columns={historyColumns(c, locale, zone)}
           rows={rows}
           rowKey={(row) => row.id}
           loading={list.loading && !list.data}
@@ -128,6 +130,7 @@ export function CashClosing({
       {closing ? (
         <CloseDrawer
           fund={fund}
+          zone={zone}
           defaultFloat={defaultFloat}
           onDone={() => {
             setClosing(false);
@@ -143,8 +146,8 @@ export function CashClosing({
 
 function historyColumns(
   c: ReturnType<typeof cashDictionary>,
-  t: ReturnType<typeof useWorkforce>['t'],
   locale: ReturnType<typeof useWorkforce>['locale'],
+  zone: string,
 ): DataTableColumn<CashClosingItem>[] {
   const k = c.closing.columns;
   return [
@@ -171,15 +174,19 @@ function historyColumns(
       key: 'difference',
       header: k.difference,
       numeric: true,
+      // The reason of a difference is shown under it, not only in a tooltip (wig :175).
       cell: (row) => (
-        <span title={row.reason ?? undefined}>
-          {row.differenceVnd === '0' ? '—' : signedVnd(row.differenceVnd, locale)}
-          {row.alert ? (
-            <>
-              {' '}
-              <Badge tone="warning">{c.closing.alert}</Badge>
-            </>
-          ) : null}
+        <span className="ls-cell-stack">
+          <span>
+            {row.differenceVnd === '0' ? '—' : signedVnd(row.differenceVnd, locale)}
+            {row.alert ? (
+              <>
+                {' '}
+                <Badge tone="warning">{c.closing.alert}</Badge>
+              </>
+            ) : null}
+          </span>
+          {row.reason ? <span className="ls-cell-sub ls-pos-name">{row.reason}</span> : null}
         </span>
       ),
     },
@@ -201,23 +208,28 @@ function historyColumns(
       key: 'by',
       header: k.by,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       width: 'sm',
+      // Who closed it, with when under the name (wig :207: not only in a tooltip).
       cell: (row) => (
-        <span title={formatDateTime(row.closedAt, ZONE, locale)}>{row.closedBy.name}</span>
+        <span className="ls-cell-stack">
+          <span>{row.closedBy.name}</span>
+          <span className="ls-cell-sub">{formatDateTime(row.closedAt, zone, locale)}</span>
+        </span>
       ),
     },
-    { key: 'actions', header: t.common.actions, actions: true, cell: () => null },
   ];
 }
 
 function CloseDrawer({
   fund,
+  zone,
   defaultFloat,
   onDone,
   onClose,
 }: {
   fund: CashFundItem;
+  zone: string;
   defaultFloat: number;
   onDone: () => void;
   onClose: () => void;
@@ -225,7 +237,8 @@ function CloseDrawer({
   const { api, t, locale } = useWorkforce();
   const c = cashDictionary(locale);
   const k = c.closing;
-  const today = todayIn(ZONE);
+  // Read once per zone, not on every keystroke in the form (rbp :231).
+  const today = useMemo(() => todayIn(zone), [zone]);
   const [draft, setDraft] = useState<CloseDraft>({
     date: defaultCloseDate(fund.lastClosedDate, today),
     counted: null,
@@ -246,7 +259,7 @@ function CloseDrawer({
   const figures = closingFigures(expected, draft);
   const problems = closeProblems(expected, draft);
   const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+    checked && problems.includes(name) ? c.problems[name as keyof typeof c.problems] : undefined;
   const blocked = data && !data.closable ? k.blocked[data.blockedBy ?? 'UNPOSTED'] : null;
   const suggestion = suggestedWithdrawal(draft.counted, defaultFloat);
 
@@ -254,7 +267,8 @@ function CloseDrawer({
     setChecked(true);
     if (!data || !data.closable) return;
     const body = closeBody(expected, draft, command.requestId);
-    if (!body) return;
+    // A refused close moves focus to the first field to fix (wig Forms: focus the first error on submit).
+    if (!body) return focusFirstInvalid();
     await command.run<CashClosingResponse>(`/api/v1/cash/funds/${fund.id}/close`, body, onDone);
   }
 
@@ -264,7 +278,8 @@ function CloseDrawer({
         title={k.title}
         labels={{ ...formOverlayLabels(t, k.submit), submitting: k.submitting }}
         busy={command.pending}
-        dirty={draft.counted !== null || draft.reason !== ''}
+        // Any typed figure counts, the withdrawal too, so closing the drawer never drops it without asking (wig Forms).
+        dirty={draft.counted !== null || draft.withdrawal !== null || draft.reason !== ''}
         submitDisabled={!data || !data.closable}
         error={command.error ? <Notice tone="error">{command.error}</Notice> : undefined}
         onClose={onClose}
@@ -278,7 +293,9 @@ function CloseDrawer({
                 {...control}
                 value={draft.date}
                 max={today}
-                onChange={(event) => setDraft({ ...draft, date: event.target.value })}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, date: event.target.value }))
+                }
               />
             )}
           </Field>
@@ -311,17 +328,18 @@ function CloseDrawer({
                   <MoneyInput
                     {...control}
                     unit="₫"
-                    separator={locale === 'vi' ? '.' : ','}
+                    locale={locale}
                     value={draft.counted}
-                    onValueChange={(counted) => setDraft({ ...draft, counted })}
+                    onValueChange={(counted) => setDraft((current) => ({ ...current, counted }))}
                   />
                 )}
               </Field>
               <Field
                 label={k.withdrawal}
                 hint={
+                  // One dictionary text per case (wig :324), not two sentences glued in code.
                   suggestion > 0
-                    ? `${k.withdrawalHint} ${fill(k.suggest, { amount: signedVnd(suggestion, locale) })}`
+                    ? fill(k.withdrawalHintSuggest, { amount: signedVnd(suggestion, locale) })
                     : k.withdrawalHint
                 }
                 error={invalid('withdrawal')}
@@ -331,32 +349,46 @@ function CloseDrawer({
                   <MoneyInput
                     {...control}
                     unit="₫"
-                    separator={locale === 'vi' ? '.' : ','}
+                    locale={locale}
                     value={draft.withdrawal}
-                    onValueChange={(withdrawal) => setDraft({ ...draft, withdrawal })}
+                    onValueChange={(withdrawal) =>
+                      setDraft((current) => ({ ...current, withdrawal }))
+                    }
                   />
                 )}
               </Field>
             </FormGrid>
-            {draft.counted !== null ? (
+            {/* Always on the form (no jump under the withdrawal field when the first digit is typed) and a polite live region,
+                so the difference and tomorrow's cash are read out as they change (wig :341). */}
+            <div aria-live="polite" aria-atomic="true">
               <DescriptionList
                 layout="totals"
                 items={[
                   {
                     label: k.difference,
                     value:
-                      figures.difference === 0
-                        ? k.differenceNone
-                        : `${figures.difference < 0 ? k.differenceShort : k.differenceOver}: ${signedVnd(Math.abs(figures.difference), locale)}`,
+                      draft.counted === null
+                        ? '—'
+                        : figures.difference === 0
+                          ? k.differenceNone
+                          : fill(
+                              figures.difference < 0 ? k.differenceShortBy : k.differenceOverBy,
+                              {
+                                amount: signedVnd(Math.abs(figures.difference), locale),
+                              },
+                            ),
                   },
                   {
                     label: k.nextFloat,
-                    value: signedVnd(Math.max(0, figures.nextFloat), locale),
+                    value:
+                      draft.counted === null
+                        ? '—'
+                        : signedVnd(Math.max(0, figures.nextFloat), locale),
                     strong: true,
                   },
                 ]}
               />
-            ) : null}
+            </div>
             {figures.needsReason ? (
               <FormGrid>
                 <Field label={k.reason} hint={k.reasonHint} error={invalid('reason')} required full>
@@ -366,7 +398,9 @@ function CloseDrawer({
                       rows={3}
                       maxLength={500}
                       value={draft.reason}
-                      onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
+                      onChange={(event) =>
+                        setDraft((current) => ({ ...current, reason: event.target.value }))
+                      }
                     />
                   )}
                 </Field>

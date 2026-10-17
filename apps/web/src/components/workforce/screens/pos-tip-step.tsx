@@ -9,6 +9,7 @@ import { formatVnd } from '../../../lib/workforce/format';
 import { tipDraftAmount, tipTotal, type TipDraft, type TipPick } from '../../../lib/workforce/pay';
 import { useWorkforce } from '../session';
 import { Notice } from '../ui';
+import { groupedNumber, groupSeparator } from './pos-format';
 
 /**
  * "Thêm tip" (Phase 7 P7-17, Owner decision of 2026-10-12): the optional step of a PayOS payment where the CUSTOMER chooses a tip for the
@@ -30,19 +31,20 @@ export function TipStep({
   invoiceVnd: string;
   showProblems: boolean;
 }) {
-  const { locale } = useWorkforce();
+  const { t, locale } = useWorkforce();
   const c = payDictionary(locale).tips.step;
-  const grouping = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US');
+  // A cached Intl formatter per locale, not a new one on every keystroke (rbp js-cache-function-results, wig :79).
   const options: { value: TipPick; label: string }[] = [
     { value: 'NONE', label: c.none },
     ...TIP_PRESETS_VND.map((preset) => ({
       value: preset as TipPick,
-      label: grouping.format(Number(preset)),
+      label: groupedNumber(locale, Number(preset)),
     })),
     { value: 'OTHER', label: c.other },
   ];
-  const nameOf = (id: string) =>
-    served.find((item) => item.employee.id === id)?.employee.name ?? '';
+  // One map of the served names (rbp js-index-maps); a person the offer no longer lists still gets a legend (wig :45).
+  const names = new Map(served.map((item) => [item.employee.id, item.employee.name]));
+  const nameOf = (id: string) => names.get(id) || t.pos.colStaff;
   const single = drafts.length === 1;
   const update = (index: number, change: Partial<TipDraft>) =>
     onChange(drafts.map((draft, at) => (at === index ? { ...draft, ...change } : draft)));
@@ -76,7 +78,7 @@ export function TipStep({
                   <MoneyInput
                     {...props}
                     unit="₫"
-                    separator={locale === 'vi' ? '.' : ','}
+                    separator={groupSeparator(locale)}
                     value={draft.other}
                     onValueChange={(other) => update(index, { other })}
                   />

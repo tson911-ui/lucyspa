@@ -7,6 +7,7 @@ import type { Locale } from './locales';
 const vi = {
   open: 'Thông tin khách',
   title: 'Thông tin khách',
+  titleFor: 'Thông tin khách: {service}',
   intro: 'Chỉ người phục vụ khách này thấy. Mỗi lượt xem đều được ghi lại.',
   close: 'Đóng',
   loadFailed: 'Không mở được thông tin khách. Thử lại sau.',
@@ -54,6 +55,7 @@ type BriefText = typeof vi;
 const en: BriefText = {
   open: 'Customer info',
   title: 'Customer info',
+  titleFor: 'Customer info: {service}',
   intro: 'Only the person serving this customer sees this. Every view is recorded.',
   close: 'Close',
   loadFailed: 'Could not open the customer info. Try again later.',

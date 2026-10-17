@@ -5,7 +5,7 @@ import type {
   InvoiceOpenedResponse,
   WalkInMemberLookupResponse,
 } from '@lucy-spa/contracts';
-import { Field, FormDialog, FormGrid, Select, TextInput } from '@lucy-spa/ui';
+import { Field, FormDialog, FormGrid, RadioGroup, Select, TextInput } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
 import { fill } from '../../../i18n/workforce';
@@ -15,6 +15,8 @@ import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { posErrorMessage } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
 import { ErrorState, Loading, Notice, useResource } from '../ui';
+import { metaLine } from './pos-format';
+import { focusFirstInvalid } from './pos-dom';
 
 /**
  * Sell a combo at the counter (Phase 5 P5-7): choose the combo, find the member who buys it by the exact phone or email, then
@@ -46,6 +48,7 @@ export function ComboSaleDialog({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingCombo, setMissingCombo] = useState(false);
+  const [missingValue, setMissingValue] = useState(false);
   const member = lookup?.members[0] ?? null;
 
   const loaded = options.data;
@@ -59,6 +62,7 @@ export function ComboSaleDialog({
     if (member) {
       if (!chosen) {
         setMissingCombo(true);
+        focusFirstInvalid();
         return;
       }
       setStarting(true);
@@ -74,7 +78,13 @@ export function ComboSaleDialog({
       }
       return;
     }
-    if (!value.trim()) return;
+    // An empty search says what is missing on the field instead of doing nothing (wig Forms).
+    if (!value.trim()) {
+      setMissingValue(true);
+      focusFirstInvalid();
+      return;
+    }
+    setMissingValue(false);
     setSearching(true);
     try {
       setLookup(
@@ -140,40 +150,47 @@ export function ComboSaleDialog({
             />
           )}
         </Field>
-        <Field label={s.lookupBy}>
-          {(control) => (
-            <Select
-              {...control}
-              value={lookupBy}
-              options={[
-                { value: 'phone', label: s.phone },
-                { value: 'email', label: s.email },
-              ]}
-              onChange={(event) => (
-                setLookupBy(event.target.value as 'phone' | 'email'),
-                setLookup(null)
-              )}
-            />
-          )}
-        </Field>
-        <Field label={lookupBy === 'phone' ? s.phone : s.email}>
+        {/* Two choices are a toggle, not a pop-up menu (C47). */}
+        <RadioGroup
+          legend={s.lookupBy}
+          name="combo-sale-lookup-by"
+          layout="inline"
+          value={lookupBy}
+          options={[
+            { value: 'phone', label: s.phone },
+            { value: 'email', label: s.email },
+          ]}
+          onValueChange={(next) => (setLookupBy(next as 'phone' | 'email'), setLookup(null))}
+        />
+        <Field
+          label={lookupBy === 'phone' ? s.phone : s.email}
+          {...(missingValue ? { error: t.pos.lookupNeedValue } : {})}
+        >
           {(control) => (
             <TextInput
               {...control}
               type={lookupBy === 'phone' ? 'tel' : 'email'}
               inputMode={lookupBy === 'phone' ? 'tel' : 'email'}
               autoComplete="off"
+              spellCheck={false}
               maxLength={lookupBy === 'phone' ? 32 : 320}
               value={value}
-              onChange={(event) => (setValue(event.target.value), setLookup(null))}
+              onChange={(event) => (
+                setValue(event.target.value),
+                setLookup(null),
+                setMissingValue(false)
+              )}
             />
           )}
         </Field>
         {member ? (
           <Notice tone="success">
-            {fill(s.found, { name: member.displayName })}
-            {member.phoneMasked ? ` · ${member.phoneMasked}` : ''}
-            {member.emailMasked ? ` · ${member.emailMasked}` : ''}
+            {/* The found member and the masked contacts as one Intl list, not commas glued in JSX. */}
+            {metaLine(locale, [
+              fill(s.found, { name: member.displayName }),
+              member.phoneMasked,
+              member.emailMasked,
+            ])}
           </Notice>
         ) : null}
         {lookup && lookup.members.length === 0 ? <Notice tone="info">{s.notFound}</Notice> : null}

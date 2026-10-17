@@ -5,12 +5,14 @@ import type {
   ReassignmentScope,
   ReplacementOptionsResponse,
 } from '@lucy-spa/contracts';
+import { useState } from 'react';
 import {
   CheckField,
   DescriptionList,
   Field,
   FormDialog,
   FormGrid,
+  RadioGroup,
   Select,
   Textarea,
 } from '@lucy-spa/ui';
@@ -18,11 +20,13 @@ import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { reassignmentBody } from '../../../lib/workforce/reassignment';
 import { useWorkforce } from '../session';
 import { Loading, Notice } from '../ui';
+import { metaLine } from './pos-format';
+import { focusFirstInvalid } from './pos-dom';
 
 /**
  * Choose the replacement for one affected service (or all of the customer's unstarted services with the same
- * staff). The screen owns the option loading and the request; this dialog only shows the choices and keeps the
- * confirm button disabled until `reassignmentBody` accepts them (versions come from the displayed options).
+ * staff). The screen owns the option loading and the request; this dialog shows the choices and, on a refused submit,
+ * marks what `reassignmentBody` still needs (versions come from the displayed options).
  */
 export function ReassignmentDialog({
   anchor,
@@ -61,36 +65,50 @@ export function ReassignmentDialog({
   onSubmit: () => Promise<void>;
   onClose: () => void;
 }) {
-  const { t } = useWorkforce();
+  const { t, locale } = useWorkforce();
   const r = t.reassignment;
+  // The confirm button stays enabled until the request starts (wig :74); a refused submit marks each missing piece inline and
+  // moves focus to the first one.
+  const [checked, setChecked] = useState(false);
+  const note = reason.normalize('NFC').trim();
+  const missing = {
+    replacement: !options?.candidates.some((candidate) => candidate.id === replacement),
+    reason: [...note].length < 3 || [...note].length > 500 || !/[\p{L}\p{N}]/u.test(note),
+    acknowledge: Boolean(options?.requiresSpecificAcknowledgement) && !acknowledged,
+  };
   return (
     <FormDialog
       title={r.dialogTitle}
-      description={`${anchor.parentCode} · ${serviceName(anchor)}`}
+      description={metaLine(locale, [anchor.parentCode, serviceName(anchor)])}
       size="lg"
       labels={{ ...formOverlayLabels(t, r.confirm), submitting: r.saving }}
       busy={saving}
       dirty={replacement !== '' || reason !== '' || acknowledged}
-      submitDisabled={!reassignmentBody(options, replacement, reason, acknowledged)}
+      submitDisabled={!options}
       error={error ? <Notice tone="error">{error}</Notice> : undefined}
       onClose={onClose}
-      onSubmit={onSubmit}
+      onSubmit={async () => {
+        if (!reassignmentBody(options, replacement, reason, acknowledged)) {
+          setChecked(true);
+          focusFirstInvalid();
+          return;
+        }
+        await onSubmit();
+      }}
     >
       <FormGrid>
-        <Field label={r.scope}>
-          {(control) => (
-            <Select
-              {...control}
-              value={scope}
-              disabled={saving}
-              options={[
-                { value: 'PARTICIPANT', label: r.participant },
-                { value: 'LINE', label: r.line },
-              ]}
-              onChange={(event) => onScope(event.target.value as ReassignmentScope)}
-            />
-          )}
-        </Field>
+        {/* Two choices are a toggle, not a pop-up menu (C47). */}
+        <RadioGroup
+          legend={r.scope}
+          name="reassignment-scope"
+          layout="inline"
+          value={scope}
+          options={[
+            { value: 'PARTICIPANT', label: r.participant, disabled: saving },
+            { value: 'LINE', label: r.line, disabled: saving },
+          ]}
+          onValueChange={(next) => onScope(next as ReassignmentScope)}
+        />
         {loading ? <Loading t={t} /> : null}
         {options ? (
           <>
@@ -102,9 +120,12 @@ export function ReassignmentDialog({
                     <ul className="ls-list-plain">
                       {options.lines.map((line) => (
                         <li key={line.id}>
-                          {serviceName(line)} · {timestamp(line.plannedStartAt)} ·{' '}
-                          {line.employee.displayName} ·{' '}
-                          {line.assignmentMode === 'SPECIFIC' ? r.specific : r.any}
+                          {metaLine(locale, [
+                            serviceName(line),
+                            timestamp(line.plannedStartAt),
+                            line.employee.displayName,
+                            line.assignmentMode === 'SPECIFIC' ? r.specific : r.any,
+                          ])}
                         </li>
                       ))}
                     </ul>
@@ -113,7 +134,12 @@ export function ReassignmentDialog({
               ]}
             />
             {options.candidates.length === 0 ? <Notice tone="warning">{r.none}</Notice> : null}
-            <Field label={r.replacement} required requiredLabel={t.common.required}>
+            <Field
+              label={r.replacement}
+              required
+              requiredLabel={t.common.required}
+              {...(checked && missing.replacement ? { error: r.needReplacement } : {})}
+            >
               {(control) => (
                 <Select
                   {...control}
@@ -122,13 +148,21 @@ export function ReassignmentDialog({
                   placeholder={r.choose}
                   options={options.candidates.map((candidate) => ({
                     value: candidate.id,
-                    label: `${candidate.displayName}${candidate.preferred ? ` · ${r.preferred}` : ''}`,
+                    label: candidate.preferred
+                      ? metaLine(locale, [candidate.displayName, r.preferred])
+                      : candidate.displayName,
                   }))}
                   onChange={(event) => onReplacement(event.target.value)}
                 />
               )}
             </Field>
-            <Field label={r.reason} hint={r.reasonHint} required requiredLabel={t.common.required}>
+            <Field
+              label={r.reason}
+              hint={r.reasonHint}
+              required
+              requiredLabel={t.common.required}
+              {...(checked && missing.reason ? { error: r.needReason } : {})}
+            >
               {(control) => (
                 <Textarea
                   {...control}
@@ -141,10 +175,14 @@ export function ReassignmentDialog({
               )}
             </Field>
             {options.requiresSpecificAcknowledgement ? (
+              // A missing acknowledgement is said at the box itself, which takes focus like the other fields (wig Forms: errors
+              // inline, not in a notice at the top of the dialog).
               <CheckField
                 checked={acknowledged}
                 disabled={saving}
                 label={r.acknowledge}
+                invalid={checked && missing.acknowledge}
+                hint={checked && missing.acknowledge ? r.needAcknowledge : undefined}
                 onChange={(event) => onAcknowledged(event.target.checked)}
               />
             ) : null}

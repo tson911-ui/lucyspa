@@ -204,7 +204,7 @@ test('while the old goods wait, the card offers "Hoàn tất đổi"; the correc
   assert.ok(markup.includes(text.complete.action));
   assert.ok(markup.includes(text.statuses.AWAITING_COMPLETION));
   assert.ok(!markup.includes(text.blocked.OPEN_EXCHANGE), 'the status of the exchange says it');
-  assert.ok(!markup.includes(text.correct.action));
+  assert.ok(!markup.includes(text.correct.action.replace(/…$/, '')));
   const noComplete = render(
     <ExchangesSection
       summary={summary({ exchanges: [exchange()] })}
@@ -261,11 +261,16 @@ test('a cheaper exchange shows what was handed back, how, the reference and its 
   assert.ok(markup.includes(`${text.exchange.refund}: 60.000`));
   assert.ok(markup.includes(text.methods.BANK_TRANSFER_MANUAL));
   assert.ok(markup.includes('FT0002'));
-  assert.ok(markup.includes(`${text.exchange.referenceFirst}: FT0001`));
+  assert.ok(
+    markup.includes(
+      text.exchange.referenceFirstWas.replace('{reference}', '<span translate="no">FT0001</span>'),
+    ),
+  );
   assert.ok(markup.includes(text.restocks.SELLABLE));
   assert.ok(markup.includes('TH000001-E'));
   assert.ok(markup.includes(text.exchange.pointsNone));
-  assert.ok(markup.includes(text.correct.action));
+  // The opener ends with "…" (C39); the check is on its words.
+  assert.ok(markup.includes(text.correct.action.replace(/…$/, '')));
   const earned = render(
     <ExchangesSection
       summary={summary({ exchanges: [exchange({ status: 'COMPLETED', beautyPointsEarned: 100 })] })}

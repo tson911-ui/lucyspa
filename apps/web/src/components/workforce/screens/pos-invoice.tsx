@@ -1,9 +1,12 @@
 'use client';
 
 import type {
+  ComboUseRequest,
   InvoiceComboLineResponse,
+  InvoiceLineComboUseResponse,
   InvoiceLineResponse,
   InvoiceProductLineAddRequest,
+  InvoiceProductLineResponse,
   InvoiceProductLineUpdateRequest,
   InvoiceResponse,
   PaymentPayosRequest,
@@ -15,14 +18,15 @@ import {
   Breadcrumbs,
   Card,
   CardHeader,
-  Cluster,
   DataTable,
   DescriptionList,
+  PageHeader as KitPageHeader,
   RowActions,
+  useOptionalToast,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { PrefetchLink as Link } from '../link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { ListCrumbLink } from '../link';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
 import { productExchangesDictionary } from '../../../i18n/product-exchanges';
 import { productSaleDictionary } from '../../../i18n/product-sale';
@@ -30,7 +34,7 @@ import { fill, type WorkforceDictionary } from '../../../i18n/workforce';
 import { organizationDictionary } from '../../../i18n/organization';
 import { comboErrorText, comboName, sessionsText } from '../../../lib/workforce/combo';
 import { hasPreOrderLine } from '../../../lib/workforce/product-orders';
-import { productErrorText } from '../../../lib/workforce/product-sale';
+import { productErrorText, productTitle } from '../../../lib/workforce/product-sale';
 import { formatDate, formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import {
   hasPriceRange,
@@ -42,7 +46,7 @@ import {
 } from '../../../lib/workforce/pos';
 import { withReauthentication } from '../../../lib/workforce/reauth';
 import { useReauthentication } from '../reauth-dialog';
-import { useWorkforce } from '../session';
+import { useWorkforce, WorkforceContext } from '../session';
 import {
   Badge,
   Button,
@@ -69,7 +73,9 @@ import { ComboUseCard, ComboUseDialog } from './pos-combo-use';
 import { cashBalanceOf, PosPaymentsSection } from './pos-payments';
 import { PreOrderContactDialog, ProductOrderCard } from './pos-pre-orders';
 import { ProductAddDialog, ProductEditDialog, ProductLinesCard, SidesCard } from './pos-products';
+import { minusMoney } from './pos-format';
 import { DiscountCard, PayerCard, VouchersCard } from './pos-sections';
+import { useBackQuery } from './pos-url';
 
 type Feedback = { tone: 'success' | 'error'; text: string } | null;
 
@@ -99,7 +105,9 @@ type Overlay =
  */
 export function PosInvoiceScreen({ id }: { id: string }) {
   const { api, t, locale, base } = useWorkforce();
-  const { confirm, dialog } = useReauthentication();
+  // The board's view the invoice was opened from (C70): the breadcrumb returns to the same day, filters and page.
+  const backQuery = useBackQuery();
+  const { confirm, dialog, asking } = useReauthentication();
   const notify = useSuccessToast();
   const text = organizationDictionary(locale);
   const c = comboDictionary(locale);
@@ -110,13 +118,25 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const busy = useRef(false);
   const [working, setWorking] = useState<string | null>(null);
+  // C72: removing a product line offers "Hoàn tác" in the toast (8 s, kit action). Without a toast provider (component tests,
+  // screens outside the shell) the same undo is an inline line above the products, kept until the next command.
+  const toast = useOptionalToast();
+  const [removedLine, setRemovedLine] = useState<InvoiceProductLineResponse | null>(null);
+  // The toast's button runs the undo of the latest render (its invoice version), never one captured when the toast opened.
+  const restoreRef = useRef<{
+    restoreProduct: (line: InvoiceProductLineResponse) => void;
+    reapplyCombo: (lineId: string, use: InvoiceLineComboUseResponse) => void;
+    reapplyVoucher: (code: string) => void;
+  } | null>(null);
   // One idempotency key per intended payment, kept while a dialog is closed and reopened (see pos-dialogs).
   const cashAttempt: Attempt = useRef(null);
   const payosAttempt: Attempt = useRef(null);
 
   const load = useCallback(async () => {
     try {
-      setInvoice(await api.get<InvoiceResponse>(`/api/v1/pos/invoices/${id}`));
+      const next = await api.get<InvoiceResponse>(`/api/v1/pos/invoices/${id}`);
+      // The 5 s PayOS check usually brings the same invoice back: keep the current object so nothing re-renders (rbp :129-136).
+      setInvoice((current) => (current && sameInvoice(current, next) ? current : next));
       setLoadError(null);
     } catch (error) {
       setLoadError(error);
@@ -125,6 +145,53 @@ export function PosInvoiceScreen({ id }: { id: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  // The tips and earnings of a paid invoice need only its id: they are asked at the same time as the invoice, not after it
+  // arrives and the cards mount (rbp async-parallel, pos-invoice.tsx:589-590). The cards read these answers through the context
+  // below; an unpaid invoice simply never uses them, and a refusal is left to the card's own request.
+  const workforce = useContext(WorkforceContext);
+  const early = useRef(new Map<string, Promise<unknown>>());
+  useEffect(() => {
+    const ahead = early.current;
+    for (const path of [`/api/v1/pay/invoices/${id}/tips`, `/api/v1/pay/invoices/${id}/earnings`]) {
+      const request = api.get<unknown>(path, {}, { passive: true });
+      request.catch(() => ahead.delete(path));
+      ahead.set(path, request);
+    }
+    return () => ahead.clear();
+  }, [api, id]);
+  const cardsContext = useMemo(() => {
+    if (!workforce) return null;
+    const client = Object.create(workforce.api) as typeof workforce.api;
+    client.get = <T,>(...args: Parameters<typeof workforce.api.get>) => {
+      const [path, query] = args;
+      const ready = early.current.get(path);
+      if (ready && (!query || Object.keys(query).length === 0)) {
+        early.current.delete(path);
+        return ready as Promise<T>;
+      }
+      return workforce.api.get<T>(...args);
+    };
+    return { ...workforce, api: client };
+  }, [workforce]);
+  // Keyboard first (DESIGN 10, wig pos-products.tsx:224): "/" opens "Thêm sản phẩm" on a draft the cashier may add to.
+  const addShortcut = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing)
+        return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+      )
+        return;
+      if (!addShortcut.current || document.querySelector('[aria-modal="true"]')) return;
+      event.preventDefault();
+      addShortcut.current();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
   // While a PayOS request waits, re-read the invoice so a confirmation appears without a manual reload.
   const waiting = invoice?.payments.some((payment) => payment.status === 'PENDING') ?? false;
   useEffect(() => {
@@ -152,11 +219,14 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     busy.current = true;
     setWorking(name);
     setFeedback(null);
+    // Any later command ends the undo window of a removed line (the undo itself included).
+    setRemovedLine(null);
     try {
       const result = await work();
       setInvoice(result);
       const message = success(result);
-      notify(message, () => setFeedback({ tone: 'success', text: message }));
+      // An empty message means the caller reports the success itself (the removal's toast with its undo).
+      if (message) notify(message, () => setFeedback({ tone: 'success', text: message }));
       return true;
     } catch (error) {
       if (!rethrow) {
@@ -236,16 +306,96 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         ),
       () => p.lines.saved,
     );
-  const removeProduct = (lineId: string) =>
-    void command(
+  const removeProduct = async (lineId: string) => {
+    const line = invoice.productLines.find((entry) => entry.id === lineId) ?? null;
+    const removed = await command(
       `product-remove-${lineId}`,
       () =>
         api.post<InvoiceResponse>(
           `/api/v1/pos/invoices/${invoice.id}/product-lines/${lineId}/remove`,
           { expectedVersion: version },
         ),
-      () => p.lines.removed,
+      () => (line && toast ? '' : p.lines.removed),
     );
+    if (!removed || !line) return;
+    const offered = offerUndo(fill(p.lines.removedLine, { name: productTitle(line, locale) }), () =>
+      restoreRef.current?.restoreProduct(line),
+    );
+    if (!offered) setRemovedLine(line);
+  };
+  // Undo = add the same variant, quantity, seller and mode again with the existing call. The version is the one of the invoice
+  // the removal returned (this render), never the one captured before the removal; the server prices the line again.
+  const restoreProduct = (line: InvoiceProductLineResponse) =>
+    void command(
+      'product-restore',
+      () =>
+        api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/product-lines`, {
+          expectedVersion: version,
+          variantId: line.variantId,
+          quantity: line.quantity,
+          ...(line.seller ? { sellerUserId: line.seller.id } : {}),
+          fulfilmentMode: line.fulfilmentMode,
+        } satisfies InvoiceProductLineAddRequest),
+      () => fill(p.lines.restored, { name: productTitle(line, locale) }),
+    );
+  // Undo of "clear combo use" (wig :335): the same purchase, user and note again through the existing combo-use call.
+  const reapplyCombo = (lineId: string, use: InvoiceLineComboUseResponse) =>
+    void command(
+      `combo-use-${lineId}`,
+      () =>
+        api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/lines/${lineId}/combo-use`, {
+          expectedVersion: version,
+          purchaseId: use.purchaseId,
+          usedBy: use.usedBy,
+          ...(use.relationshipNote ? { relationshipNote: use.relationshipNote } : {}),
+        } satisfies ComboUseRequest),
+      () => c.use.done,
+    );
+  // Undo of "remove voucher" (wig pos-sections.tsx:270): the same code again through the existing voucher call.
+  const reapplyVoucher = (code: string) =>
+    void command(
+      'voucher',
+      () =>
+        api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/vouchers`, {
+          expectedVersion: version,
+          code,
+        }),
+      () => t.pos.voucherSupplied,
+    );
+  restoreRef.current = { restoreProduct, reapplyCombo, reapplyVoucher };
+  const clearCombo = async (lineId: string) => {
+    const use = invoice.lines.find((line) => line.id === lineId)?.comboUse ?? null;
+    const cleared = await command(
+      `combo-clear-${lineId}`,
+      () =>
+        api.post<InvoiceResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/lines/${lineId}/combo-use/clear`,
+          { expectedVersion: version },
+        ),
+      () => (use && toast ? '' : c.use.cleared),
+    );
+    if (cleared && use)
+      offerUndo(c.use.cleared, () => restoreRef.current?.reapplyCombo(lineId, use));
+  };
+  const removeVoucher = async (entry: { id: string; code: string }) => {
+    const removed = await command(
+      `voucher-${entry.id}`,
+      () =>
+        api.post<InvoiceResponse>(
+          `/api/v1/pos/invoices/${invoice.id}/vouchers/${entry.id}/remove`,
+          { expectedVersion: version },
+        ),
+      () => (toast ? '' : t.pos.voucherRemoved),
+    );
+    if (removed)
+      offerUndo(t.pos.voucherRemoved, () => restoreRef.current?.reapplyVoucher(entry.code));
+  };
+  /** A toast with "Hoàn tác" (C72); false when no toast provider is mounted. The undo runs on the latest render's invoice. */
+  const offerUndo = (message: string, undo: () => void) => {
+    if (!toast) return false;
+    toast.push({ tone: 'success', message, action: { label: p.lines.undo, onAction: undo } });
+    return true;
+  };
   const collect = (body: PaymentRecordRequest) =>
     command(
       'collect',
@@ -332,16 +482,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     c,
     onEdit: (lineId) => setOverlay({ kind: 'line', lineId }),
     onUseCombo: (lineId) => setOverlay({ kind: 'combo-use', lineId }),
-    onClearCombo: (lineId) =>
-      void command(
-        `combo-clear-${lineId}`,
-        () =>
-          api.post<InvoiceResponse>(
-            `/api/v1/pos/invoices/${invoice.id}/lines/${lineId}/combo-use/clear`,
-            { expectedVersion: version },
-          ),
-        () => c.use.cleared,
-      ),
+    onClearCombo: (lineId) => void clearCombo(lineId),
   });
   const comboSale = invoice.kind === 'COMBO_SALE';
   // Phase 6 P6-10: a product-only sale has no service lines; a visit invoice shows the product card when it has products or when a
@@ -352,6 +493,10 @@ export function PosInvoiceScreen({ id }: { id: string }) {
     invoice.productLines.length > 0 ||
     (draft && invoice.actions.sellProducts && !comboSale);
   const noLines = productOnly && invoice.productLines.length === 0;
+  addShortcut.current =
+    showProducts && draft && invoice.actions.sellProducts && idle && overlay === null
+      ? () => setOverlay({ kind: 'product-add' })
+      : null;
   // The totals close the last card of the lines: the products when the invoice has any, otherwise the services (a visit invoice with an
   // empty product card keeps its totals where it always had them).
   const totalsInProducts = productOnly || invoice.productLines.length > 0;
@@ -369,7 +514,8 @@ export function PosInvoiceScreen({ id }: { id: string }) {
             label: invoice.exchange
               ? productExchangesDictionary(locale).invoicePage.creditRow
               : t.pos.discountRow,
-            value: `− ${formatVnd(invoice.discountTotalVnd, locale)}`,
+            // The minus sign from Intl, not typed by hand (wig Locale & i18n).
+            value: minusMoney(locale, invoice.discountTotalVnd),
           },
         ]
       : []),
@@ -378,14 +524,15 @@ export function PosInvoiceScreen({ id }: { id: string }) {
 
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={fill(t.pos.detailTitle, { code: invoice.code })}
-        intro={
+        description={
           invoice.visit
-            ? `${fill(t.pos.visitInfo, {
+            ? fill(t.pos.visitInfo, {
                 code: invoice.visit.code,
                 date: formatDate(invoice.visit.serviceDate, locale),
-              })} · ${invoice.branch.name}`
+                branch: invoice.branch.name,
+              })
             : invoice.exchange
               ? fill(productExchangesDictionary(locale).invoicePage.intro, {
                   code: invoice.exchange.code,
@@ -399,52 +546,62 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
-            items={[{ label: t.pos.title, href: `${base}/pos` }, { label: invoice.code }]}
-          />
-        }
-      >
-        {invoice.actions.cancel ? (
-          <RowActions
-            menuLabel={text.moreActions}
+            LinkComponent={ListCrumbLink}
             items={[
-              {
-                id: 'cancel',
-                label: t.pos.cancel,
-                tone: 'danger',
-                disabled: !idle,
-                onSelect: () => setOverlay({ kind: 'cancel' }),
-              },
+              { label: t.pos.title, href: `${base}/pos${backQuery ? `?${backQuery}` : ''}` },
+              { label: invoice.code },
             ]}
           />
-        ) : null}
-        {draft && invoice.actions.finalize ? (
-          <Button
-            variant="primary"
-            disabled={!idle || !invoice.readiness.ready}
-            loading={working === 'finalize'}
-            onClick={() =>
-              // Phase 6 P6-16: a pre-order needs the customer's phone number, asked in one dialog whose action is the finalization.
-              hasPreOrderLine(invoice)
-                ? setOverlay({ kind: 'pre-order-contact' })
-                : void command(
-                    'finalize',
-                    () =>
-                      api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/finalize`, {
-                        expectedVersion: version,
-                      }),
-                    (result) => (result.status === 'PAID' ? t.pos.finalizedPaid : t.pos.finalized),
-                  )
-            }
-          >
-            {working === 'finalize' ? t.pos.finalizing : t.pos.finalize}
-          </Button>
-        ) : null}
-      </PageHeader>
-      <Cluster gap="inline">
-        <span className="ls-hint">{t.pos.status}:</span>
-        <Badge tone={invoiceTone(invoice.status)}>{t.pos.statuses[invoice.status]}</Badge>
-      </Cluster>
+        }
+        // The status sits under the title (kit status slot), never inside the heading. A persistent polite region: when the
+        // 5 s PayOS check turns the invoice to "Đã thanh toán" the change is read out (wig :130); an unchanged status is not.
+        status={
+          <span role="status">
+            <Badge tone={invoiceTone(invoice.status)}>{t.pos.statuses[invoice.status]}</Badge>
+          </span>
+        }
+        actions={
+          <>
+            {invoice.actions.cancel ? (
+              <RowActions
+                menuLabel={text.moreActions}
+                items={[
+                  {
+                    id: 'cancel',
+                    label: t.pos.cancelOpen,
+                    tone: 'danger',
+                    disabled: !idle,
+                    onSelect: () => setOverlay({ kind: 'cancel' }),
+                  },
+                ]}
+              />
+            ) : null}
+            {draft && invoice.actions.finalize ? (
+              <Button
+                variant="primary"
+                disabled={!idle || !invoice.readiness.ready}
+                loading={working === 'finalize'}
+                onClick={() =>
+                  // Phase 6 P6-16: a pre-order needs the customer's phone number, asked in one dialog whose action is the finalization.
+                  hasPreOrderLine(invoice)
+                    ? setOverlay({ kind: 'pre-order-contact' })
+                    : void command(
+                        'finalize',
+                        () =>
+                          api.post<InvoiceResponse>(`/api/v1/pos/invoices/${invoice.id}/finalize`, {
+                            expectedVersion: version,
+                          }),
+                        (result) =>
+                          result.status === 'PAID' ? t.pos.finalizedPaid : t.pos.finalized,
+                      )
+                }
+              >
+                {working === 'finalize' ? t.pos.finalizing : t.pos.finalize}
+              </Button>
+            ) : null}
+          </>
+        }
+      />
       {feedback && overlay === null ? <Notice tone={feedback.tone}>{feedback.text}</Notice> : null}
       {draft && noLines ? <Notice tone="info">{p.lines.needLines}</Notice> : null}
       {draft && invoice.actions.finalize ? (
@@ -458,9 +615,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           ) : null}
         </>
       ) : null}
-      {invoice.status === 'PENDING_PAYMENT' ? (
-        <Notice tone="info">{t.pos.pendingNote}</Notice>
-      ) : null}
+      {/* PENDING_PAYMENT says nothing the status badge above does not: no second notice for it (plan: one status, one place). */}
       {invoice.status === 'PAID' ? (
         <Notice tone="success">
           {invoice.payments.length === 0 ? t.pos.paidNote : t.pos.paidFullNote}
@@ -496,7 +651,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           onCreatePayos={() => setOverlay({ kind: 'payos' })}
           onReverse={(paymentId) => setOverlay({ kind: 'reverse', paymentId })}
           onRefreshPayos={(paymentId) => void refreshPayos(paymentId)}
-          onCancelPayos={(paymentId) => void cancelPayos(paymentId)}
+          onCancelPayos={(paymentId) => cancelPayos(paymentId)}
           onReviewAnomaly={(anomalyId) => setOverlay({ kind: 'anomaly', anomalyId })}
           onAddNote={() => setOverlay({ kind: 'note' })}
         />
@@ -535,7 +690,26 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           idle={idle}
           onAdd={() => setOverlay({ kind: 'product-add' })}
           onEdit={(lineId) => setOverlay({ kind: 'product-edit', lineId })}
-          onRemove={removeProduct}
+          onRemove={(lineId) => void removeProduct(lineId)}
+          {...(removedLine && draft
+            ? {
+                undo: (
+                  <div className="ls-pos-undo" role="status">
+                    <span>
+                      {fill(p.lines.removedLine, { name: productTitle(removedLine, locale) })}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      disabled={!idle}
+                      loading={working === 'product-restore'}
+                      onClick={() => restoreProduct(removedLine)}
+                    >
+                      {working === 'product-restore' ? p.lines.restoring : p.lines.undo}
+                    </Button>
+                  </div>
+                ),
+              }
+            : {})}
           {...(totalsInProducts
             ? { footer: <DescriptionList layout="totals" items={totals} /> }
             : {})}
@@ -567,17 +741,7 @@ export function PosInvoiceScreen({ id }: { id: string }) {
           invoice={invoice}
           working={!idle}
           onEnter={() => setOverlay({ kind: 'voucher' })}
-          onRemove={(entry) =>
-            void command(
-              `voucher-${entry.id}`,
-              () =>
-                api.post<InvoiceResponse>(
-                  `/api/v1/pos/invoices/${invoice.id}/vouchers/${entry.id}/remove`,
-                  { expectedVersion: version },
-                ),
-              () => t.pos.voucherRemoved,
-            )
-          }
+          onRemove={(entry) => void removeVoucher(entry)}
         />
       )}
       <PayerCard
@@ -586,8 +750,12 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         onFind={() => setOverlay({ kind: 'payer' })}
         onSetPayer={(payerUserId) => void setPayer(payerUserId)}
       />
-      {invoice.status === 'PAID' ? <InvoiceTipsCard invoiceId={invoice.id} /> : null}
-      {invoice.status === 'PAID' ? <InvoiceEarningsCard invoiceId={invoice.id} /> : null}
+      {invoice.status === 'PAID' && cardsContext ? (
+        <WorkforceContext.Provider value={cardsContext}>
+          <InvoiceTipsCard invoiceId={invoice.id} />
+          <InvoiceEarningsCard invoiceId={invoice.id} />
+        </WorkforceContext.Provider>
+      ) : null}
 
       {overlay?.kind === 'pre-order-contact' ? (
         <PreOrderContactDialog
@@ -747,7 +915,12 @@ export function PosInvoiceScreen({ id }: { id: string }) {
         />
       ) : null}
       {reverseTarget ? (
-        <ReverseConfirm payment={reverseTarget} onReverse={reversePayment} onClose={closeOverlay} />
+        <ReverseConfirm
+          payment={reverseTarget}
+          onReverse={reversePayment}
+          onClose={closeOverlay}
+          suspended={asking}
+        />
       ) : null}
       {overlay?.kind === 'cancel' ? (
         <CancelConfirm
@@ -767,12 +940,19 @@ export function PosInvoiceScreen({ id }: { id: string }) {
             );
           }}
           onClose={closeOverlay}
+          suspended={asking}
         />
       ) : null}
-      {/* Last, so the password confirmation sits above a confirmation dialog that asked for it. */}
+      {/* The password check (C60): the confirm that asked for it is suspended (out of sight, reason kept) while it is open, so it
+          is the only modal on screen; the confirm is back after it, with the retried command's result. */}
       {dialog}
     </>
   );
+}
+
+/** The same answer again (a PayOS state change may come without a new version, so the whole answer is compared). */
+function sameInvoice(a: InvoiceResponse, b: InvoiceResponse): boolean {
+  return a.version === b.version && JSON.stringify(a) === JSON.stringify(b);
 }
 
 /** The columns of a combo sale: the one combo line, its price fixed by the combo (nothing to choose, so no row menu). */
@@ -788,7 +968,7 @@ function comboColumnsOf({
       key: 'combo',
       header: c.invoice.colCombo,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (line) => comboName(line, locale),
     },
@@ -796,7 +976,7 @@ function comboColumnsOf({
       key: 'service',
       header: c.invoice.colService,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       cell: (line) => comboName(line.service, locale),
     },
     {
@@ -858,7 +1038,7 @@ function lineColumnsOf({
       key: 'service',
       header: t.pos.colService,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (line) => (
         <>
@@ -882,14 +1062,14 @@ function lineColumnsOf({
       key: 'guest',
       header: t.pos.colGuest,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       cell: (line) => line.participant.displayName ?? '—',
     },
     {
       key: 'staff',
       header: t.pos.colStaff,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       cell: (line) => line.employee.displayName,
     },
     {
@@ -933,7 +1113,7 @@ function lineColumnsOf({
               ? [
                   {
                     id: 'edit',
-                    label: t.pos.editLine,
+                    label: t.pos.editLineOpen,
                     icon: 'edit' as const,
                     disabled: !idle,
                     onSelect: () => onEdit(line.id),

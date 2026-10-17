@@ -1,11 +1,12 @@
 'use client';
 
-import type {
-  ProductExchangeOptionsResponse,
-  ProductExchangePreviewResponse,
-  ProductExchangeResponse,
-  ProductExchangeSummaryResponse,
-  ProductReturnCaseResponse,
+import {
+  PRODUCT_REFUND_REFERENCE,
+  type ProductExchangeOptionsResponse,
+  type ProductExchangePreviewResponse,
+  type ProductExchangeResponse,
+  type ProductExchangeSummaryResponse,
+  type ProductReturnCaseResponse,
 } from '@lucy-spa/contracts';
 import {
   Combobox,
@@ -48,6 +49,9 @@ import { PrefetchLink as Link } from '../link';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import { Button, ErrorState, Notice, Section } from '../ui';
+import { metaLine } from './pos-format';
+import { Code, factNodes, fillNodes } from './product-returns-facts';
+import { focusFirstInvalid } from './pos-dom';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 const PATH = (caseId: string) => `/api/v1/product-returns/cases/${caseId}/exchanges`;
@@ -102,7 +106,12 @@ export function ExchangesSection({
         items={[
           { label: text.summary.quantity, value: summary.caseQuantity },
           ...(summary.creditVnd !== null
-            ? [{ label: text.summary.credit, value: money(summary.creditVnd) }]
+            ? [
+                {
+                  label: text.summary.credit,
+                  value: <span className="ls-pos-figure">{money(summary.creditVnd)}</span>,
+                },
+              ]
             : []),
         ]}
       />
@@ -112,7 +121,8 @@ export function ExchangesSection({
         <DescriptionList
           columns={1}
           items={summary.exchanges.map((exchange) => ({
-            label: `${exchange.code} · ${text.statuses[exchange.status]}`,
+            // A list label is plain text: the code and the status as an Intl list.
+            label: metaLine(locale, [exchange.code, text.statuses[exchange.status]]),
             value: <ExchangeDetails exchange={exchange} base={base} when={when} />,
           }))}
         />
@@ -163,87 +173,112 @@ function ExchangeDetails({
       : fill(e.pointsEarned, { points: exchange.beautyPointsEarned });
   const difference =
     exchange.payableVnd !== '0'
-      ? `${e.payable}: ${money(exchange.payableVnd)}`
+      ? fill(e.fact, { label: e.payable, value: money(exchange.payableVnd) })
       : exchange.refundVnd !== '0'
-        ? `${e.refund}: ${money(exchange.refundVnd)}`
+        ? fill(e.fact, { label: e.refund, value: money(exchange.refundVnd) })
         : e.none;
+  // Facts as Intl lists and "label: value" as one dictionary template; only codes are `translate="no"` (Step 7).
   return (
     <>
       <p className="ls-hint">
         {fill(e.when, { name: exchange.actorName, time: when(exchange.occurredAt) })}
       </p>
-      <p>
-        {e.replacement}:{' '}
-        {fill(e.replacementLine, {
-          name: productTitle(
-            {
-              nameVi: exchange.replacement.nameVi,
-              nameEn: exchange.replacement.nameEn,
-              variantLabelVi: exchange.replacement.variantLabelVi,
-              variantLabelEn: exchange.replacement.variantLabelEn,
-            },
-            locale,
-          ),
-          sku: exchange.replacement.sku,
-          quantity: exchange.quantity,
-          price: money(exchange.replacement.unitPriceVnd),
+      {/* Lines that carry money keep tabular figures (wig :166, :193, :207, :211). */}
+      <p className="ls-pos-figure-text">
+        {fillNodes(e.fact, {
+          label: e.replacement,
+          value: fillNodes(e.replacementLine, {
+            name: productTitle(
+              {
+                nameVi: exchange.replacement.nameVi,
+                nameEn: exchange.replacement.nameEn,
+                variantLabelVi: exchange.replacement.variantLabelVi,
+                variantLabelEn: exchange.replacement.variantLabelEn,
+              },
+              locale,
+            ),
+            sku: <Code>{exchange.replacement.sku}</Code>,
+            quantity: exchange.quantity,
+            price: money(exchange.replacement.unitPriceVnd),
+          }),
         })}
       </p>
-      <p>
-        {e.credit}: {money(exchange.creditVnd)} · {difference}
+      <p className="ls-pos-figure-text">
+        {metaLine(locale, [
+          fill(e.fact, { label: e.credit, value: money(exchange.creditVnd) }),
+          difference,
+        ])}
       </p>
       <p>{text.rules[exchange.rule]}</p>
       {exchange.refund ? (
         <p>
-          {text.methods[exchange.refund.method]}
-          {exchange.refund.bankReference ? ` · ${exchange.refund.bankReference}` : ''}
+          {factNodes(locale, [
+            text.methods[exchange.refund.method],
+            exchange.refund.bankReference ? <Code>{exchange.refund.bankReference}</Code> : null,
+          ])}
         </p>
       ) : null}
-      <p>
-        {e.invoice}:{' '}
-        <Link className="ls-link" href={`${base}/pos/${exchange.invoice.id}`}>
-          {fill(e.invoiceLine, {
-            code: exchange.invoice.code,
-            total: money(exchange.invoice.totalVnd),
-          })}
-        </Link>
-        {exchange.invoice.balanceVnd !== '0'
-          ? ` · ${fill(e.invoiceBalance, { amount: money(exchange.invoice.balanceVnd) })}`
-          : ''}
+      <p className="ls-pos-figure-text">
+        {fillNodes(e.fact, {
+          label: e.invoice,
+          value: factNodes(locale, [
+            <Link key="invoice" className="ls-link" href={`${base}/pos/${exchange.invoice.id}`}>
+              {fillNodes(e.invoiceLine, {
+                code: <Code>{exchange.invoice.code}</Code>,
+                total: money(exchange.invoice.totalVnd),
+              })}
+            </Link>,
+            exchange.invoice.balanceVnd !== '0'
+              ? fill(e.invoiceBalance, { amount: money(exchange.invoice.balanceVnd) })
+              : null,
+          ]),
+        })}
       </p>
       <p>
-        {e.goods}:{' '}
-        {exchange.completion
-          ? `${text.restocks[exchange.completion.restock]} · ${
-              exchange.completion.lotCodes.length > 0
-                ? fill(e.lots, { lots: exchange.completion.lotCodes.join(', ') })
-                : e.noStock
-            }`
-          : exchange.status === 'CANCELLED'
-            ? e.noStock
-            : e.goodsPending}
+        {fillNodes(e.fact, {
+          label: e.goods,
+          value: exchange.completion
+            ? factNodes(locale, [
+                text.restocks[exchange.completion.restock],
+                exchange.completion.lotCodes.length > 0
+                  ? fillNodes(e.lots, {
+                      lots: factNodes(
+                        locale,
+                        exchange.completion.lotCodes.map((lot) => <Code key={lot}>{lot}</Code>),
+                      ),
+                    })
+                  : e.noStock,
+              ])
+            : exchange.status === 'CANCELLED'
+              ? e.noStock
+              : e.goodsPending,
+        })}
       </p>
-      <p>
-        {e.points}: {points}
-      </p>
-      <p>
-        {e.reason}: {exchange.reason}
-      </p>
+      <p>{fill(e.fact, { label: e.points, value: points })}</p>
+      <p>{fill(e.fact, { label: e.reason, value: exchange.reason })}</p>
       {exchange.refund && exchange.refund.corrections.length > 0 ? (
         <p className="ls-hint">
-          {e.corrections}:{' '}
-          {exchange.refund.corrections
-            .map((correction) =>
-              fill(e.correctionLine, {
-                reference: correction.bankReference,
-                name: correction.actorName,
-                time: when(correction.occurredAt),
-              }),
-            )
-            .join('; ')}
-          {exchange.refund.firstBankReference
-            ? ` (${e.referenceFirst}: ${exchange.refund.firstBankReference})`
-            : ''}
+          {/* One dictionary sentence with an Intl list of the corrections (wig :243). */}
+          {fillNodes(e.correctionsList, {
+            list: factNodes(
+              locale,
+              exchange.refund.corrections.map((correction) =>
+                fillNodes(e.correctionLine, {
+                  reference: <Code>{correction.bankReference}</Code>,
+                  name: correction.actorName,
+                  time: when(correction.occurredAt),
+                }),
+              ),
+            ),
+          })}
+          {exchange.refund.firstBankReference ? (
+            <>
+              {' '}
+              {fillNodes(e.referenceFirstWas, {
+                reference: <Code>{exchange.refund.firstBankReference}</Code>,
+              })}
+            </>
+          ) : null}
         </p>
       ) : null}
     </>
@@ -344,24 +379,25 @@ export function ExchangeDrawer({
   const { api, t, locale } = useWorkforce();
   const text = productExchangesDictionary(locale);
   const f = text.form;
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const options = useExchangeOptions(item.id);
-  const [draft, setDraft] = useState<ExchangeDraft>(() => emptyExchangeDraft(null));
+  const [stored, setDraft] = useState<ExchangeDraft>(() => emptyExchangeDraft(null));
+  const [sellerChosen, setSellerChosen] = useState(false);
   const loaded = options.data;
+  // The seller starts as the one the API proposes (the seller of the old line, else the person) once the list is known: derived
+  // in render until the person picks one, not copied into state by an effect (rbp rerender-derived-state-no-effect).
+  const draft: ExchangeDraft =
+    !sellerChosen && stored.sellerUserId === '' && loaded?.defaultSellerUserId
+      ? { ...stored, sellerUserId: loaded.defaultSellerUserId }
+      : stored;
   const view = useExchangePreview(item.id, draft.option?.variantId ?? null);
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // The first id is made once, not on every render (rbp rerender-lazy-state-init).
+  const [firstRequestId] = useState(() => globalThis.crypto.randomUUID());
+  const requestId = useRef(firstRequestId);
   const set = (patch: Partial<ExchangeDraft>) => setDraft((state) => ({ ...state, ...patch }));
-  // The seller starts as the one the API proposes (the seller of the old line, else the person) once the list is known.
-  useEffect(() => {
-    if (loaded?.defaultSellerUserId) {
-      setDraft((state) =>
-        state.sellerUserId === '' ? { ...state, sellerUserId: loaded.defaultSellerUserId! } : state,
-      );
-    }
-  }, [loaded?.defaultSellerUserId]);
   const results = useMemo(() => {
     const list = loaded?.options ?? [];
     const chosen = draft.option;
@@ -381,7 +417,7 @@ export function ExchangeDrawer({
     setChecked(true);
     setError(null);
     const body = exchangeRequest(draft, preview, needSeller, requestId.current);
-    if (!body) return;
+    if (!body) return focusFirstInvalid();
     setPending(true);
     try {
       const result = await withReauthentication(
@@ -410,10 +446,15 @@ export function ExchangeDrawer({
   return (
     <>
       <FormDrawer
+        suspended={asking}
         title={f.title}
         labels={{ ...formOverlayLabels(t, f.submit), submitting: f.submitting }}
         busy={pending}
-        dirty={draft.option !== null || draft.reason !== ''}
+        // Any change counts, the seller, the method and the restock choice included (wig :416).
+        dirty={
+          JSON.stringify(draft) !==
+          JSON.stringify(emptyExchangeDraft(loaded?.defaultSellerUserId ?? null))
+        }
         submitDisabled={!loaded}
         error={
           error || failedLoad ? <Notice tone="error">{error ?? failedLoad}</Notice> : undefined
@@ -468,18 +509,40 @@ export function ExchangeDrawer({
           ) : null}
           {preview ? (
             <>
+              {/* Figures the cashier compares, in tabular figures (wig :480); the line math is one dictionary text (wig :477). */}
               <DescriptionList
                 columns={1}
                 items={[
-                  { label: f.credit, value: money(preview.creditVnd) },
+                  {
+                    label: f.credit,
+                    value: <span className="ls-pos-figure">{money(preview.creditVnd)}</span>,
+                  },
                   {
                     label: f.gross,
-                    value: `${money(preview.replacementGrossVnd)} (${preview.quantity} × ${money(preview.option.unitPriceVnd)})`,
+                    value: (
+                      <span className="ls-pos-figure-text">
+                        {fill(f.grossOf, {
+                          gross: money(preview.replacementGrossVnd),
+                          quantity: preview.quantity,
+                          price: money(preview.option.unitPriceVnd),
+                        })}
+                      </span>
+                    ),
                   },
                   needs.payable
-                    ? { label: f.payable, value: <strong>{money(preview.payableVnd)}</strong> }
+                    ? {
+                        label: f.payable,
+                        value: (
+                          <strong className="ls-pos-figure">{money(preview.payableVnd)}</strong>
+                        ),
+                      }
                     : needs.refund
-                      ? { label: f.refund, value: <strong>{money(preview.refundVnd)}</strong> }
+                      ? {
+                          label: f.refund,
+                          value: (
+                            <strong className="ls-pos-figure">{money(preview.refundVnd)}</strong>
+                          ),
+                        }
                       : { label: f.figures, value: <strong>{f.none0}</strong> },
                 ]}
               />
@@ -505,7 +568,10 @@ export function ExchangeDrawer({
                     value: seller.userId,
                     label: seller.displayName,
                   }))}
-                  onChange={(event) => set({ sellerUserId: event.target.value })}
+                  onChange={(event) => {
+                    setSellerChosen(true);
+                    set({ sellerUserId: event.target.value });
+                  }}
                 />
               )}
             </Field>
@@ -542,6 +608,7 @@ export function ExchangeDrawer({
                     {...control}
                     autoComplete="off"
                     maxLength={64}
+                    spellCheck={false}
                     value={draft.bankReference}
                     onChange={(event) => set({ bankReference: event.target.value })}
                   />
@@ -632,7 +699,7 @@ export function CompleteExchangeDialog({
     setChecked(true);
     setError(null);
     const body = completeRequest(restock);
-    if (!body) return;
+    if (!body) return focusFirstInvalid();
     setPending(true);
     try {
       await api.post(`${PATH(item.id)}/${target.id}/completion`, body);
@@ -660,7 +727,15 @@ export function CompleteExchangeDialog({
         {target ? (
           <DescriptionList
             columns={1}
-            items={[{ label: c.which, value: `${target.code} · ${target.invoice.code}` }]}
+            items={[
+              {
+                label: c.which,
+                value: factNodes(locale, [
+                  <Code key="exchange">{target.code}</Code>,
+                  <Code key="invoice">{target.invoice.code}</Code>,
+                ]),
+              },
+            ]}
           />
         ) : null}
         <RadioGroup
@@ -717,14 +792,15 @@ export function ExchangeCorrectionDialog({
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const referenceOk = /^[A-Za-z0-9._/-]{4,64}$/.test(reference.trim());
+  // The shared reference pattern, made once (rbp js-hoist-regexp), same rule as the exchange form.
+  const referenceOk = PRODUCT_REFUND_REFERENCE.test(reference.trim());
   const reasonOk = reason.trim() !== '' && [...reason.trim()].length <= EXCHANGE_REASON_MAX;
 
   async function submit() {
     if (pending) return;
     setChecked(true);
     setError(null);
-    if (!exchangeId || !referenceOk || !reasonOk) return;
+    if (!exchangeId || !referenceOk || !reasonOk) return focusFirstInvalid();
     setPending(true);
     try {
       await api.post(`${PATH(item.id)}/${exchangeId}/corrections`, {
@@ -745,7 +821,8 @@ export function ExchangeCorrectionDialog({
       description={c.description}
       labels={{ ...formOverlayLabels(t, c.submit), submitting: c.submitting }}
       busy={pending}
-      dirty={reference !== '' || reason !== ''}
+      // Any change counts, the chosen exchange included (wig Forms: warn before losing changes).
+      dirty={reference !== '' || reason !== '' || exchangeId !== (transfers.at(-1)?.id ?? '')}
       error={error ? <Notice tone="error">{error}</Notice> : undefined}
       onClose={onClose}
       onSubmit={submit}
@@ -759,7 +836,8 @@ export function ExchangeCorrectionDialog({
                 value={exchangeId}
                 options={transfers.map((exchange) => ({
                   value: exchange.id,
-                  label: `${exchange.code} · ${exchange.refund?.bankReference ?? ''}`,
+                  // An option is plain text: the code and the reference as an Intl list.
+                  label: metaLine(locale, [exchange.code, exchange.refund?.bankReference]),
                 }))}
                 onChange={(event) => setExchangeId(event.target.value)}
               />
@@ -777,6 +855,7 @@ export function ExchangeCorrectionDialog({
               {...control}
               autoComplete="off"
               maxLength={64}
+              spellCheck={false}
               value={reference}
               onChange={(event) => setReference(event.target.value)}
             />

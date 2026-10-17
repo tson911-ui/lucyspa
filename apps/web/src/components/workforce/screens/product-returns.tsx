@@ -12,12 +12,14 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Breadcrumbs,
+  buttonClass,
   Card,
   ConfirmDialog,
   DataTable,
   DescriptionList,
   FacetedFilter,
   Field,
+  Icon,
   FormActions,
   FormDialog,
   FormGrid,
@@ -36,8 +38,10 @@ import {
   Textarea,
   TextInput,
   CheckField,
+  useUnsavedChangesGuard,
   useUrlState,
   type DataTableColumn,
+  PageHeader as KitPageHeader,
 } from '@lucy-spa/ui';
 import { useRef, useState, type FormEvent } from 'react';
 import { productExchangesDictionary } from '../../../i18n/product-exchanges';
@@ -60,7 +64,6 @@ import {
   reasonOpen,
   reasonPastWindow,
   removedPhotoCount,
-  returnDraftValid,
   returnErrorText,
   returnOpenRequest,
   returnPhotoUrl,
@@ -80,7 +83,7 @@ import {
 import { isExchangeConflict } from '../../../lib/workforce/product-exchanges';
 import { isRefundConflict } from '../../../lib/workforce/product-refunds';
 import { errorMessage } from '../../../lib/workforce/workflows';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import {
   CompleteExchangeDialog,
   ExchangeCorrectionDialog,
@@ -103,6 +106,11 @@ import {
   useSuccessToast,
   type Resource,
 } from '../ui';
+import { RouterMenuLink } from './pos-links';
+import { metaLine } from './pos-format';
+import { Code, factNodes } from './product-returns-facts';
+import { backParam, useBackQuery } from './pos-url';
+import { focusFirstInvalid } from './pos-dom';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 const PAGE_SIZE = 20;
@@ -169,7 +177,7 @@ export function ProductReturnsList({
   updateList: (patch: Partial<ReturnListState>, change?: { replace?: boolean }) => void;
   cases: Resource<ProductReturnListResponse | null>;
 }) {
-  const { t, locale, base, navigate } = useWorkforce();
+  const { t, locale, base } = useWorkforce();
   const text = productReturnsDictionary(locale);
   const l = text.list;
   const branch = resolveBranch(context, list.branch);
@@ -183,7 +191,9 @@ export function ProductReturnsList({
   }
   const rows = cases.data?.items ?? [];
   const active = (list.q ? 1 : 0) + (list.status ? 1 : 0) + (list.reason ? 1 : 0);
-  const open = (item: ProductReturnListItem) => `${base}/product-returns/${item.id}`;
+  // The list's view travels with the record link, so the case's breadcrumb returns to the same filters and page (C70).
+  const open = (item: ProductReturnListItem) =>
+    `${base}/product-returns/${item.id}${backParam(list, RETURN_LIST_DEFAULTS)}`;
 
   const columns: DataTableColumn<ProductReturnListItem>[] = [
     {
@@ -191,7 +201,7 @@ export function ProductReturnsList({
       header: l.columns.code,
       mobileTitle: true,
       cell: (item) => (
-        <Link className="ls-link" href={open(item)}>
+        <Link className="ls-link" href={open(item)} translate="no">
           {item.code}
         </Link>
       ),
@@ -200,7 +210,7 @@ export function ProductReturnsList({
       key: 'product',
       header: l.columns.product,
       phoneEmphasis: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (item) => returnProductName(item, locale),
     },
@@ -209,7 +219,7 @@ export function ProductReturnsList({
       header: l.columns.invoice,
       hideBelow: 'md',
       hidePhone: true,
-      cell: (item) => item.invoiceCode,
+      cell: (item) => <Code>{item.invoiceCode}</Code>,
     },
     {
       key: 'quantity',
@@ -242,7 +252,7 @@ export function ProductReturnsList({
     {
       key: 'reason',
       header: l.columns.reason,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: '2xl',
       hidePhone: true,
@@ -251,7 +261,7 @@ export function ProductReturnsList({
     {
       key: 'openedBy',
       header: l.columns.openedBy,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: '2xl',
       hidePhone: true,
@@ -271,10 +281,9 @@ export function ProductReturnsList({
       actions: true,
       cell: (item) => (
         <RowActions
+          LinkComponent={RouterMenuLink}
           menuLabel={fill(t.common.list.actionsFor, { name: item.code })}
-          items={[
-            { id: 'open', label: l.open, icon: 'eye', onSelect: () => navigate?.(open(item)) },
-          ]}
+          items={[{ id: 'open', label: l.open, icon: 'eye', href: open(item) }]}
         />
       ),
     },
@@ -294,15 +303,14 @@ export function ProductReturnsList({
     <>
       <PageHeader title={text.title} intro={text.intro}>
         {branch.manage ? (
-          <Button
-            variant="primary"
-            icon="plus"
-            onClick={() =>
-              navigate?.(`${base}/product-returns/new?branch=${encodeURIComponent(branch.id)}`)
-            }
+          // A real router link (wig :300): it opens the form page, so Ctrl/Cmd+click works and the shell stays.
+          <Link
+            className={buttonClass('primary')}
+            href={`${base}/product-returns/new?branch=${encodeURIComponent(branch.id)}`}
           >
-            {l.add}
-          </Button>
+            <Icon name="plus" />
+            <span className="ls-btn-label">{l.add}</span>
+          </Link>
         ) : null}
       </PageHeader>
       <>
@@ -317,7 +325,6 @@ export function ProductReturnsList({
               id="return-q"
               value={list.q}
               label={l.search}
-              placeholder={l.search}
               clearLabel={t.common.list.clearSearch}
               onSearch={(q) => updateList({ q }, { replace: true })}
             />
@@ -349,6 +356,7 @@ export function ProductReturnsList({
           }
         />
         <DataTable
+          drillDown
           mode="server"
           phoneRows="compact"
           caption={fill(t.common.list.table, { list: text.title })}
@@ -426,9 +434,15 @@ export function ProductReturnForm({
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const attempt = useRef(newClientRequestId());
+  // One id for this attempt, made once and not on every render (rbp rerender-lazy-state-init).
+  const [attemptId] = useState(newClientRequestId);
+  // Each lookup has a number; only the answer to the latest one is used (wig :556, no late answer overwrites a newer one).
+  const lookupRun = useRef(0);
   const set = (patch: Partial<ReturnDraft>) => setDraft((state) => ({ ...state, ...patch }));
   const back = `${base}/product-returns${branchId ? `?branch=${encodeURIComponent(branchId)}` : ''}`;
+  // A started form is not lost by leaving the page by accident (wig :519): anything typed or chosen counts.
+  const started = JSON.stringify(draft) !== JSON.stringify(emptyReturnDraft());
+  useUnsavedChangesGuard(started && !pending);
 
   const found = lookup.state === 'found' ? lookup.found : null;
   const line: ProductReturnLookupLine | null =
@@ -440,6 +454,7 @@ export function ProductReturnForm({
   async function find(event?: FormEvent) {
     event?.preventDefault();
     const code = draft.invoiceCode.trim();
+    const run = ++lookupRun.current;
     if (code === '' || !branchId) {
       setLookup({ state: 'failed', message: text.errors.fields.invoiceCode });
       return;
@@ -451,6 +466,7 @@ export function ProductReturnForm({
         branchId,
         invoiceCode: code,
       });
+      if (run !== lookupRun.current) return;
       const only = result.lines.length === 1 ? result.lines[0]! : null;
       setLookup({ state: 'found', found: result });
       set({
@@ -459,6 +475,7 @@ export function ProductReturnForm({
         quantity: '1',
       });
     } catch (failure) {
+      if (run !== lookupRun.current) return;
       const message =
         failure instanceof ApiError && failure.code === 'NOT_FOUND'
           ? f.notFound
@@ -474,8 +491,9 @@ export function ProductReturnForm({
     if (pending) return;
     setChecked(true);
     setError(null);
-    const body = returnOpenRequest(draft, line, branchId, attempt.current, canException);
-    if (!body) return;
+    const body = returnOpenRequest(draft, line, branchId, attemptId, canException);
+    // A refused submit moves focus to the first field that needs attention (wig :478).
+    if (!body) return focusFirstInvalid();
     setPending(true);
     try {
       const created = await api.post<ProductReturnCaseResponse>(
@@ -508,7 +526,7 @@ export function ProductReturnForm({
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[{ label: text.title, href: back }, { label: f.title }]}
           />
         }
@@ -532,6 +550,8 @@ export function ProductReturnForm({
                             label: entry.name,
                           }))}
                           onChange={(event) => {
+                            // A lookup still on its way belongs to the old branch: its answer is ignored.
+                            lookupRun.current += 1;
                             setBranchId(event.target.value);
                             setLookup({ state: 'idle' });
                             set({ lineId: '', reason: '' });
@@ -551,10 +571,13 @@ export function ProductReturnForm({
                         {...control}
                         autoComplete="off"
                         maxLength={40}
+                        spellCheck={false}
                         value={draft.invoiceCode}
                         onChange={(event) => set({ invoiceCode: event.target.value })}
                         onKeyDown={(event) => {
-                          if (event.key === 'Enter') void find(event);
+                          // An IME composition's Enter picks the word; it does not start a lookup (wig :556).
+                          if (event.key === 'Enter' && !event.nativeEvent.isComposing)
+                            void find(event);
                         }}
                       />
                     )}
@@ -571,15 +594,22 @@ export function ProductReturnForm({
                   </Button>
                 </div>
                 {lookup.state === 'failed' ? <Notice tone="error">{lookup.message}</Notice> : null}
-                {found ? (
-                  <p className="ls-hint">
-                    {found.invoice.code} ·{' '}
-                    {fill(f.paidAt, { time: formatDateTime(found.invoice.paidAt, ZONE, locale) })} ·{' '}
-                    {found.invoice.customerName
-                      ? fill(f.customer, { name: found.invoice.customerName })
-                      : f.guest}
-                  </p>
-                ) : null}
+                {/* Always on the page so the found invoice is announced when it arrives (wig :575); facts as one comma list. */}
+                <div role="status">
+                  {found ? (
+                    <p className="ls-hint">
+                      {factNodes(locale, [
+                        <Code key="code">{found.invoice.code}</Code>,
+                        fill(f.paidAt, {
+                          time: formatDateTime(found.invoice.paidAt, ZONE, locale),
+                        }),
+                        found.invoice.customerName
+                          ? fill(f.customer, { name: found.invoice.customerName })
+                          : f.guest,
+                      ])}
+                    </p>
+                  ) : null}
+                </div>
               </Stack>
             </Card>
             {found && found.lines.length === 0 ? <Notice tone="info">{f.noProducts}</Notice> : null}
@@ -594,7 +624,8 @@ export function ProductReturnForm({
                     onValueChange={(lineId) => set({ lineId, reason: '', quantity: '1' })}
                     options={found.lines.map((entry) => ({
                       value: entry.lineId,
-                      label: `${returnProductName(entry, locale)} (${entry.sku})`,
+                      // An option label is plain text: the product and its SKU as an Intl list.
+                      label: metaLine(locale, [returnProductName(entry, locale), entry.sku]),
                       hint: fill(entry.availableQuantity > 0 ? f.lineBought : f.lineNothingLeft, {
                         bought: entry.quantity,
                         left: entry.availableQuantity,
@@ -686,6 +717,7 @@ export function ProductReturnForm({
                       {(control) => (
                         <NumberInput
                           {...control}
+                          inputMode="numeric"
                           min={1}
                           max={line.availableQuantity}
                           step={1}
@@ -729,16 +761,17 @@ export function ProductReturnForm({
             {line ? (
               <FormActions
                 cancel={
-                  <Button variant="secondary" onClick={() => navigate?.(back)}>
-                    {t.common.cancel}
-                  </Button>
+                  // A real link back to the list (wig :300 family).
+                  <Link className={buttonClass('secondary')} href={back}>
+                    <span className="ls-btn-label">{t.common.cancel}</span>
+                  </Link>
                 }
                 primary={
                   <Button
                     type="submit"
                     variant="primary"
                     loading={pending}
-                    disabled={checked && !returnDraftValid(errors)}
+                    // Enabled until the request starts (wig :741); a refused submit marks the fields instead.
                   >
                     {pending ? f.submitting : f.submit}
                   </Button>
@@ -851,6 +884,7 @@ export function ProductReturnCaseView({
   } | null;
 }) {
   const { api, t, locale, base } = useWorkforce();
+  const backQuery = useBackQuery();
   const text = productReturnsDictionary(locale);
   const v = text.view;
   const notify = useSuccessToast();
@@ -873,36 +907,39 @@ export function ProductReturnCaseView({
 
   return (
     <>
-      <PageHeader
-        title={item.code}
+      <KitPageHeader
+        title={fill(v.caseTitle, { code: item.code })}
+        // The case's status under the title (kit status slot), not buried as the first fact of the card (plan).
+        status={<Badge tone={returnStatusTone(item.status)}>{text.statuses[item.status]}</Badge>}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               {
                 label: text.title,
-                href: `${base}/product-returns?branch=${encodeURIComponent(item.branchId)}`,
+                href: `${base}/product-returns?${backQuery || `branch=${encodeURIComponent(item.branchId)}`}`,
               },
               { label: item.code },
             ]}
           />
         }
-      >
-        {item.can.decide ? (
-          <Button variant="primary" onClick={() => setOverlay('accept')}>
-            {v.accept}
-          </Button>
-        ) : refundSummary?.can.refund ? (
-          <Button variant="primary" onClick={() => setOverlay('refund')}>
-            {productRefundsDictionary(locale).action}
-          </Button>
-        ) : exchangeSummary?.can.exchange ? (
-          <Button variant="primary" onClick={() => setOverlay('exchange')}>
-            {productExchangesDictionary(locale).action}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          item.can.decide ? (
+            <Button variant="primary" onClick={() => setOverlay('accept')}>
+              {v.acceptOpen}
+            </Button>
+          ) : refundSummary?.can.refund ? (
+            <Button variant="primary" onClick={() => setOverlay('refund')}>
+              {productRefundsDictionary(locale).action}
+            </Button>
+          ) : exchangeSummary?.can.exchange ? (
+            <Button variant="primary" onClick={() => setOverlay('exchange')}>
+              {productExchangesDictionary(locale).action}
+            </Button>
+          ) : undefined
+        }
+      />
       <Stack gap="page">
         {item.status === 'ACCEPTED' && !refundSlot && !exchangeSlot ? (
           <Notice tone="info">{v.acceptedNotice}</Notice>
@@ -926,7 +963,7 @@ export function ProductReturnCaseView({
                     ? [
                         {
                           id: 'decline',
-                          label: v.decline,
+                          label: v.declineOpen,
                           tone: 'danger' as const,
                           onSelect: () => setOverlay('decline'),
                         },
@@ -936,7 +973,7 @@ export function ProductReturnCaseView({
                     ? [
                         {
                           id: 'cancel',
-                          label: v.cancel,
+                          label: v.cancelOpen,
                           tone: 'danger' as const,
                           onSelect: () => setOverlay('cancel'),
                         },
@@ -950,12 +987,6 @@ export function ProductReturnCaseView({
           <DescriptionList
             columns={2}
             items={[
-              {
-                label: v.fields.status,
-                value: (
-                  <Badge tone={returnStatusTone(item.status)}>{text.statuses[item.status]}</Badge>
-                ),
-              },
               { label: v.fields.reason, value: text.reasons[item.reason] },
               { label: v.fields.wanted, value: text.outcomes[item.requestedOutcome] },
               ...(item.decidedOutcome
@@ -963,7 +994,10 @@ export function ProductReturnCaseView({
                 : []),
               {
                 label: v.fields.product,
-                value: `${returnProductName(item.line, locale)} (${item.line.sku})`,
+                value: factNodes(locale, [
+                  returnProductName(item.line, locale),
+                  <Code key="sku">{item.line.sku}</Code>,
+                ]),
               },
               {
                 label: v.fields.quantity,
@@ -972,7 +1006,7 @@ export function ProductReturnCaseView({
                   sold: item.line.soldQuantity,
                 }),
               },
-              { label: v.fields.invoice, value: item.invoice.code },
+              { label: v.fields.invoice, value: <Code>{item.invoice.code}</Code> },
               { label: v.fields.customer, value: item.invoice.customerName ?? v.guest },
               {
                 label: v.fields.seal,
@@ -1007,13 +1041,16 @@ export function ProductReturnCaseView({
               { label: v.fields.branch, value: item.branchName },
               {
                 label: v.fields.openedBy,
-                value: `${item.openedByName} · ${when(item.openedAt)}`,
+                value: fill(v.actorAt, { name: item.openedByName, time: when(item.openedAt) }),
               },
               ...(item.closedAt
                 ? [
                     {
                       label: v.fields.closedBy,
-                      value: `${item.closedByName ?? text.none} · ${when(item.closedAt)}`,
+                      value: fill(v.actorAt, {
+                        name: item.closedByName ?? text.none,
+                        time: when(item.closedAt),
+                      }),
                     },
                   ]
                 : []),
@@ -1375,7 +1412,9 @@ function PhotosSection({
     for (const file of files) {
       const problem = precheckReturnPhoto(file);
       if (problem) {
-        failed.push(`${file.name}: ${photoProblemText(problem, locale)}`);
+        failed.push(
+          fill(v.fileProblem, { file: file.name, problem: photoProblemText(problem, locale) }),
+        );
         continue;
       }
       try {
@@ -1387,7 +1426,10 @@ function PhotosSection({
         );
       } catch (failure) {
         failed.push(
-          `${file.name}: ${returnErrorText(failure, locale, (cause) => errorMessage(cause, t))}`,
+          fill(v.fileProblem, {
+            file: file.name,
+            problem: returnErrorText(failure, locale, (cause) => errorMessage(cause, t)),
+          }),
         );
         if (isReturnConflict(failure)) break;
       }

@@ -83,7 +83,7 @@ test('the list shows the columns, a link to each case, the words of each status,
   for (const header of Object.values(text.list.columns)) assert.ok(markup.includes(header), header);
   assert.ok(markup.includes('/vi/workforce/product-returns/c1'), 'a link to the case');
   for (const status of Object.values(text.statuses)) assert.ok(markup.includes(status), status);
-  assert.ok(markup.includes('Kem dưỡng · 50 ml'));
+  assert.ok(markup.includes('Kem dưỡng (50 ml)'));
   assert.ok(markup.includes('HD000042'));
   assert.equal(markup.match(/<h1/g)?.length, 1, 'one h1');
   assert.equal(
@@ -219,7 +219,7 @@ test('after the lookup: the products with what is left, the reasons whose window
   );
   assert.ok(markup.includes('HD000042'));
   assert.ok(markup.includes('Nguyễn Lan'));
-  assert.ok(markup.includes('Kem dưỡng · 50 ml (KEM-50)'));
+  assert.ok(markup.includes('Kem dưỡng (50 ml), KEM-50'));
   assert.ok(markup.includes('Đã mua 3, còn trả được 2'));
   assert.ok(markup.includes('Đã mua 1, không còn gì để trả'), 'a fully claimed line says so');
   for (const reason of Object.values(text.reasons)) assert.ok(markup.includes(reason), reason);
@@ -325,18 +325,18 @@ test('an open case: the facts, one primary action, the others in the menu, the h
   assert.ok(markup.includes('TH000001'));
   assert.ok(markup.includes(text.reasons.PERSONAL_PREFERENCE));
   assert.ok(markup.includes(text.outcomes.EXCHANGE));
-  assert.ok(markup.includes('Kem dưỡng · 50 ml (KEM-50)'));
+  assert.ok(markup.includes('Kem dưỡng (50 ml), <span translate="no">KEM-50</span>'));
   assert.ok(markup.includes('2 trên 3'));
   assert.ok(markup.includes(text.view.guest), 'a guest customer');
   assert.ok(markup.includes(text.view.sealYes));
   assert.ok(markup.includes(text.statuses.OPEN));
   assert.equal(
-    markup.match(new RegExp(`>${text.view.accept}<`, 'g'))?.length,
+    markup.match(new RegExp(`>${text.view.acceptOpen}<`, 'g'))?.length,
     1,
     'one primary action',
   );
   assert.ok(
-    !markup.includes(`>${text.view.decline}<`),
+    !markup.includes(`>${text.view.declineOpen}<`),
     'decline and cancel are in the menu, not on the page',
   );
   assert.ok(markup.includes(text.view.history));
@@ -360,7 +360,7 @@ test('who may do what comes from the case: no decision, no note, no photo withou
       },
     }),
   );
-  assert.ok(!nothing.includes(`>${text.view.accept}<`));
+  assert.ok(!nothing.includes(`>${text.view.acceptOpen}<`));
   assert.ok(!nothing.includes(text.view.addNote));
   assert.ok(!nothing.includes(text.view.dropHint));
   assert.ok(!nothing.includes(text.view.moreActions));
@@ -484,7 +484,7 @@ test('an accepted case says no money or stock has moved yet; a declined or cance
   assert.ok(accepted.includes(text.view.acceptedNotice));
   assert.ok(accepted.includes(text.outcomes.REFUND));
   assert.ok(accepted.includes('Đủ điều kiện'));
-  assert.ok(!accepted.includes(`>${text.view.accept}<`));
+  assert.ok(!accepted.includes(`>${text.view.acceptOpen}<`));
   const declined = view(
     item({
       status: 'DECLINED',
@@ -593,6 +593,6 @@ test('the English page says the same things', () => {
   const markup = render(<ProductReturnCaseView item={item()} reload={noop} />, owner, 'en');
   const en = productReturnsDictionary('en');
   assert.ok(markup.includes(en.reasons.PERSONAL_PREFERENCE));
-  assert.ok(markup.includes(en.view.accept));
+  assert.ok(markup.includes(en.view.acceptOpen));
   assert.ok(markup.includes(en.statuses.OPEN));
 });

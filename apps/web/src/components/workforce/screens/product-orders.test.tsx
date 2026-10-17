@@ -145,9 +145,9 @@ test('the "to order" tab groups the paid lines by supplier, those without one la
   assert.match(html, /Nhà cung cấp A/);
   assert.match(html, /Chưa có nhà cung cấp/);
   assert.ok(html.indexOf('Nhà cung cấp A') < html.indexOf('Chưa có nhà cung cấp'));
-  assert.match(html, /Kem dưỡng · 50 ml/);
+  assert.match(html, /Kem dưỡng \(50 ml\)/);
   assert.match(html, />5</);
-  assert.match(html, /Thao tác cho Kem dưỡng · 50 ml/);
+  assert.match(html, /Thao tác cho Kem dưỡng \(50 ml\)/);
   assert.doesNotMatch(html, /khám/i);
 });
 
@@ -160,7 +160,8 @@ test('the five tabs are always there, the chosen one is selected, and headings c
 
 test('an ordered line shows its order code as a link, the customer, the status and the expected range', () => {
   const html = list('ORDERED', queue([queueRow()]));
-  assert.match(html, /href="[^"]*\/product-orders\/o1"/);
+  // Session 10: the list view (tab, search, page) travels with the link so the breadcrumb comes back to it.
+  assert.match(html, /href="[^"]*\/product-orders\/o1\?back=tab%3DORDERED"/);
   assert.match(html, /DT000012/);
   assert.match(html, /Chị Lan/);
   assert.match(html, />Đã đặt hàng</);
@@ -283,11 +284,11 @@ const page = (order: ProductOrderDetailResponse) =>
 
 test('the order page shows the contact, each line with its status, and has no primary button', () => {
   const html = page(detail());
-  assert.match(html, /<h1[^>]*>Đơn DT000012<\/h1>/);
+  assert.match(html, /<h1[^>]*>Đơn đặt trước DT000012<\/h1>/);
   assert.match(html, /\+84901234567/);
   assert.match(html, /Chị Lan/);
   assert.match(html, /HD000042/);
-  assert.match(html, /Kem dưỡng · 50 ml/);
+  assert.match(html, /Kem dưỡng \(50 ml\)/);
   assert.doesNotMatch(html, /ls-btn-primary/);
   assert.doesNotMatch(html, /khám/i);
 });
@@ -300,7 +301,9 @@ test('a masked phone number is labelled as partly hidden', () => {
 
 test('warnings: a line waiting too long, a late line, a cancelled invoice and an unpaid order each say so', () => {
   assert.match(page(detail({}, [detailLine({ heldTooLong: true })])), re(text.detail.held));
-  assert.match(page(detail({}, [detailLine({ late: true })])), re(text.detail.late));
+  // Session 10: the late line says so once, as its "Trễ hẹn" badge (clock icon + word), not a second banner.
+  assert.match(page(detail({}, [detailLine({ late: true })])), re(text.queue.late));
+  assert.doesNotMatch(page(detail({}, [detailLine({ late: true })])), re(text.detail.late));
   assert.match(page(detail({ invoiceStatus: 'CANCELLED' })), re(text.detail.invoiceCancelled));
   assert.match(page(detail({ invoiceStatus: 'PENDING_PAYMENT' })), re(text.detail.notPaid));
   assert.doesNotMatch(page(detail()), re(text.detail.notPaid));
@@ -378,6 +381,6 @@ test('the cancel dialog asks for the amount only for a change of mind, starting 
 
 test('English renders every new text', () => {
   const html = render(<ProductOrderDetailView order={detail()} reload={noop} />, owner, 'en');
-  assert.match(html, /Order DT000012/);
+  assert.match(html, /Pre-order DT000012/);
   assert.match(html, /Goods in the order/);
 });

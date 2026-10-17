@@ -11,13 +11,17 @@ import {
   CursorPagination,
   DataTable,
   DateTextInput,
+  EmptyState,
   ListToolbar,
   RowActions,
+  SegmentedControl,
   Select,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
+import { formatDate } from '../../../lib/workforce/format';
 import { cursorLabels, paginationLabels, toolbarLabels } from '../../../lib/workforce/list-view';
 import {
   reassignmentBody,
@@ -28,6 +32,19 @@ import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Badge, Empty, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
 import { ReassignmentDialog } from './reassignment-dialog';
+import { PAGE_SIZE } from './pos-url';
+
+// The list's view in the address (module constants, as useUrlState asks); the page returns to 1 when a filter changes.
+const REASSIGN_DEFAULTS: { branch: string; from: string; to: string; show: string; page: number } =
+  {
+    branch: '',
+    from: '',
+    to: '',
+    show: 'conflicts',
+    page: 1,
+  };
+const REASSIGN_URL_OPTIONS = { resetOnChange: ['page'] } as const;
+const REASSIGN_SHOW = ['conflicts', 'all'] as const;
 
 export function ReassignmentScreen() {
   const { api, t, locale } = useWorkforce();
@@ -38,10 +55,14 @@ export function ReassignmentScreen() {
     () => reassignmentBranches(account, branches.data),
     [account, branches.data],
   );
-  const [branchId, setBranchId] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [conflictsOnly, setConflictsOnly] = useState(true);
+  // Branch, dates, the conflict filter and the page live in the address (wig :42): Back/Forward and a shared link restore them.
+  const [view, setView] = useUrlState(REASSIGN_DEFAULTS, REASSIGN_URL_OPTIONS);
+  // The first allowed branch is derived, not copied in by an effect (rbp :62-64).
+  const branchId = allowed.some((branch) => branch.id === view.branch)
+    ? view.branch
+    : (allowed[0]?.id ?? '');
+  const { from, to } = view;
+  const conflictsOnly = view.show !== 'all';
   const [board, setBoard] = useState<ReassignmentWorkResponse | null>(null);
   const [anchor, setAnchor] = useState<ReassignmentLine | null>(null);
   const [scope, setScope] = useState<ReassignmentScope>('PARTICIPANT');
@@ -54,22 +75,22 @@ export function ReassignmentScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
   const generation = useRef(0);
   const optionGeneration = useRef(0);
   const mutation = useRef(false);
 
-  useEffect(() => {
-    if (!allowed.some((b) => b.id === branchId)) setBranchId(allowed[0]?.id ?? '');
-  }, [allowed, branchId]);
+  // `keepDialog`: after a refused reassign the board is read again but the dialog stays open with the chosen replacement and the
+  // typed reason, and shows the refusal there (wig :169).
   const load = useCallback(
-    async (cursor?: string) => {
+    async (cursor?: string, keepDialog = false) => {
       if (!branchId) return;
       const current = ++generation.current;
-      optionGeneration.current += 1;
-      setAnchor(null);
-      setOptions(null);
-      setOptionsLoading(false);
+      if (!keepDialog) {
+        optionGeneration.current += 1;
+        setAnchor(null);
+        setOptions(null);
+        setOptionsLoading(false);
+      }
       setLoading(true);
       try {
         const result = await api.get<ReassignmentWorkResponse>(
@@ -98,7 +119,6 @@ export function ReassignmentScreen() {
   useEffect(() => {
     setBoard(null);
     setSuccess(false);
-    setPaging((current) => ({ ...current, page: 1 }));
     void load();
     return () => {
       generation.current += 1;
@@ -106,17 +126,26 @@ export function ReassignmentScreen() {
     };
   }, [load]);
 
-  async function inspect(line: ReassignmentLine, selectedScope: ReassignmentScope) {
+  async function inspect(
+    line: ReassignmentLine,
+    selectedScope: ReassignmentScope,
+    keepError = false,
+  ) {
     if (mutation.current) return;
     const current = ++optionGeneration.current;
+    // A new service starts clean; changing the scope of the same one keeps the typed reason and the acknowledgement (wig :117),
+    // only the replacement is chosen again from the new candidates.
+    const sameLine = anchor !== null && anchor.id === line.id && anchor.kind === line.kind;
     setAnchor(line);
     setScope(selectedScope);
     setOptions(null);
     setOptionsLoading(true);
-    setReplacement('');
-    setReason('');
-    setAcknowledged(false);
-    setError(null);
+    if (!keepError) setReplacement('');
+    if (!sameLine) {
+      setReason('');
+      setAcknowledged(false);
+    }
+    if (!keepError) setError(null);
     setSuccess(false);
     try {
       const result = await api.get<ReplacementOptionsResponse>(
@@ -134,6 +163,7 @@ export function ReassignmentScreen() {
   async function submit() {
     const body = reassignmentBody(options, replacement, reason, acknowledged);
     if (!anchor || !body || mutation.current) return;
+    let failed: { cause: unknown } | null = null;
     mutation.current = true;
     setSaving(true);
     setError(null);
@@ -145,14 +175,14 @@ export function ReassignmentScreen() {
         `/api/v1/operations/assignment-lines/${anchor.kind}/${anchor.id}/reassign`,
         body,
       );
+      // One lookup map of the moved lines instead of a find per board line (rbp js-index-maps).
+      const moved = new Map(result.lines.map((entry) => [`${entry.kind}:${entry.id}`, entry]));
       setBoard((previous) =>
         previous
           ? {
               ...previous,
               lines: previous.lines.flatMap((line) => {
-                const updated = result.lines.find(
-                  (entry) => entry.id === line.id && entry.kind === line.kind,
-                );
+                const updated = moved.get(`${line.kind}:${line.id}`);
                 return updated
                   ? conflictsOnly && !updated.leaveConflict
                     ? []
@@ -165,25 +195,35 @@ export function ReassignmentScreen() {
       notify(t.reassignment.success, () => setSuccess(true));
       await load();
     } catch (cause) {
-      // A stale candidate/version must be inspected again; retain the safe error after reload.
-      await load();
-      setError(cause);
+      failed = { cause };
     } finally {
       mutation.current = false;
       setSaving(false);
     }
+    if (failed) {
+      // A stale candidate/version must be inspected again: the board is read again, the dialog keeps its input and shows why.
+      await load(undefined, true);
+      setError(failed.cause);
+      void inspect(anchor, scope, true);
+    }
   }
-  const timestamp = (iso: string) =>
-    new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-      timeZone: board?.branch.timezone ?? 'UTC',
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
+  // One cached formatter per locale and zone, not one per call (rbp js-cache-function-results).
+  const zone = board?.branch.timezone ?? 'UTC';
+  const stampFormat = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+        timeZone: zone,
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    [locale, zone],
+  );
+  const timestamp = (iso: string) => stampFormat.format(new Date(iso));
   const serviceName = (line: ReassignmentLine) =>
     locale === 'vi' ? line.service.nameVi : line.service.nameEn;
-  const rows = board?.branch.id === branchId ? board.lines : [];
+  const rows = board && board.branch.id === branchId ? board.lines : [];
   const r = t.reassignment;
   const activeFilters = (from ? 1 : 0) + (to ? 1 : 0) + (conflictsOnly ? 0 : 1);
 
@@ -194,7 +234,9 @@ export function ReassignmentScreen() {
       mobileTitle: true,
       cell: (line) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-main">{line.parentCode}</span>
+          <span className="ls-cell-main" translate="no">
+            {line.parentCode}
+          </span>
           <span className="ls-cell-sub">{line.participantName ?? t.execution.participant}</span>
         </span>
       ),
@@ -207,12 +249,9 @@ export function ReassignmentScreen() {
         const request = line.assignmentMode === 'SPECIFIC' ? r.specificShort : r.anyShort;
         return (
           <span className="ls-cell-stack">
-            <span className="ls-cell-title" title={serviceName(line)}>
-              {serviceName(line)}
-            </span>
-            <span className="ls-cell-sub ls-cell-title" title={request}>
-              {request}
-            </span>
+            {/* Wrapped by word, never cut (Owner answer 7). */}
+            <span className="ls-pos-name">{serviceName(line)}</span>
+            <span className="ls-cell-sub ls-pos-name">{request}</span>
           </span>
         );
       },
@@ -232,7 +271,7 @@ export function ReassignmentScreen() {
       key: 'current',
       header: r.current,
       hideBelow: 'xl',
-      truncate: true,
+      wrap: true,
       cell: (line) => line.employee.displayName,
     },
     {
@@ -253,6 +292,8 @@ export function ReassignmentScreen() {
               label: r.inspect,
               icon: 'swap',
               disabled: saving || loading || Boolean(error),
+              // Why it is unavailable is said in the item (wig :255).
+              ...(error && !saving && !loading ? { disabledReason: r.reloadFirst } : {}),
               onSelect: () => void inspect(line, 'PARTICIPANT'),
             },
           ]}
@@ -271,8 +312,13 @@ export function ReassignmentScreen() {
         <ListToolbar
           labels={toolbarLabels(t)}
           activeFilters={activeFilters}
-          resultCount={board ? `${board.from} – ${board.to}` : undefined}
-          onReset={() => (setFrom(''), setTo(''), setConflictsOnly(true))}
+          // The range in the person's date format, not raw ISO (wig :274).
+          resultCount={
+            board
+              ? `${formatDate(board.from, locale)} – ${formatDate(board.to, locale)}`
+              : undefined
+          }
+          onReset={() => setView({ from: '', to: '', show: 'conflicts' })}
           reload={{
             label: r.refresh,
             onClick: () => void load(),
@@ -285,11 +331,7 @@ export function ReassignmentScreen() {
               value={branchId}
               disabled={saving}
               options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
-              onChange={(event) => {
-                setFrom('');
-                setTo('');
-                setBranchId(event.target.value);
-              }}
+              onChange={(event) => setView({ branch: event.target.value, from: '', to: '' })}
             />
           }
           filters={
@@ -300,7 +342,7 @@ export function ReassignmentScreen() {
                 title={r.from}
                 value={from}
                 disabled={saving}
-                onChange={(event) => setFrom(event.target.value)}
+                onChange={(event) => setView({ from: event.target.value })}
               />
               <DateTextInput
                 id="reassignment-to"
@@ -308,18 +350,19 @@ export function ReassignmentScreen() {
                 title={r.to}
                 value={to}
                 disabled={saving}
-                onChange={(event) => setTo(event.target.value)}
+                onChange={(event) => setView({ to: event.target.value })}
               />
-              <Select
-                id="reassignment-conflicts"
-                aria-label={r.conflictsOnly}
+              {/* C47/C48: two exclusive choices are a segmented control, blocked as a whole while a reassignment saves. */}
+              <SegmentedControl
+                label={r.showLabel}
+                className="ls-pos-reassign-show"
                 value={conflictsOnly ? 'conflicts' : 'all'}
                 disabled={saving}
-                options={[
-                  { value: 'conflicts', label: r.conflictsOnly },
-                  { value: 'all', label: r.allLines },
-                ]}
-                onChange={(event) => setConflictsOnly(event.target.value === 'conflicts')}
+                options={REASSIGN_SHOW.map((value) => ({
+                  value,
+                  label: value === 'conflicts' ? r.conflictsOnly : r.allLines,
+                }))}
+                onChange={(show) => setView({ show })}
               />
             </>
           }
@@ -337,11 +380,11 @@ export function ReassignmentScreen() {
             rowKey={(line) => `${line.kind}:${line.id}`}
             loading={loading && rows.length === 0}
             loadingLabel={t.common.loading}
-            empty={board ? <Empty>{r.empty}</Empty> : undefined}
+            empty={board ? <EmptyState icon="calendar-check">{r.empty}</EmptyState> : undefined}
             paging={{
-              ...paging,
-              onPageChange: (page) => setPaging((current) => ({ ...current, page })),
-              onPageSizeChange: (pageSize) => setPaging({ page: 1, pageSize }),
+              page: view.page,
+              pageSize: PAGE_SIZE,
+              onPageChange: (page) => setView({ page }),
               labels: paginationLabels(t, r.title),
             }}
           />

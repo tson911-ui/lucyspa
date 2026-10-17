@@ -1,9 +1,10 @@
 'use client';
 
-import type {
-  ProductRefundResponse,
-  ProductRefundSummaryResponse,
-  ProductReturnCaseResponse,
+import {
+  PRODUCT_REFUND_REFERENCE,
+  type ProductRefundResponse,
+  type ProductRefundSummaryResponse,
+  type ProductReturnCaseResponse,
 } from '@lucy-spa/contracts';
 import {
   DescriptionList,
@@ -39,6 +40,9 @@ import { errorMessage } from '../../../lib/workforce/workflows';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import { ErrorState, Notice, Section } from '../ui';
+import { metaLine, sentence } from './pos-format';
+import { Code, factNodes, fillNodes } from './product-returns-facts';
+import { focusFirstInvalid } from './pos-dom';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 const PATH = (caseId: string) => `/api/v1/product-returns/cases/${caseId}/refunds`;
@@ -55,6 +59,8 @@ export function RefundsSection({
   const { locale } = useWorkforce();
   const text = productRefundsDictionary(locale);
   const money = (value: string) => formatVnd(value, locale);
+  // Money the cashier compares keeps tabular figures (wig :94-96).
+  const figure = (value: string) => <span className="ls-pos-figure">{money(value)}</span>;
   const when = (instant: string) => formatDateTime(instant, ZONE, locale);
   return (
     <Section
@@ -91,9 +97,9 @@ export function RefundsSection({
             }),
           },
           ...(summary.lineNetVnd !== null
-            ? [{ label: text.summary.paid, value: money(summary.lineNetVnd) }]
+            ? [{ label: text.summary.paid, value: figure(summary.lineNetVnd) }]
             : []),
-          { label: text.summary.refunded, value: money(summary.lineRefundedVnd) },
+          { label: text.summary.refunded, value: figure(summary.lineRefundedVnd) },
         ]}
       />
       {summary.refunds.length === 0 ? (
@@ -102,8 +108,14 @@ export function RefundsSection({
         <DescriptionList
           columns={1}
           items={summary.refunds.map((refund) => ({
-            label: `${refund.code} · ${money(refund.amountVnd)}`,
-            value: <RefundDetails refund={refund} when={when} />,
+            // The code names the refund; its amount opens the details in tabular figures, not glued into the label (wig :105).
+            label: refund.code,
+            value: (
+              <>
+                <p>{figure(refund.amountVnd)}</p>
+                <RefundDetails refund={refund} when={when} />
+              </>
+            ),
           }))}
         />
       )}
@@ -158,35 +170,52 @@ function RefundDetails({
       <p className="ls-hint">
         {fill(r.when, { name: refund.actorName, time: when(refund.occurredAt) })}
       </p>
+      {/* Facts as Intl lists and "label: value" as one dictionary template; only the codes are `translate="no"` (Step 7). */}
       <p>
-        {r.quantity}: {refund.quantity} · {text.methods[refund.method]}
-        {refund.bankReference ? ` · ${refund.bankReference}` : ''}
+        {factNodes(locale, [
+          fill(r.fact, { label: r.quantity, value: refund.quantity }),
+          text.methods[refund.method],
+          refund.bankReference ? <Code>{refund.bankReference}</Code> : null,
+        ])}
       </p>
       <p>
-        {text.restocks[refund.restock]} ·{' '}
-        {refund.lotCodes.length > 0
-          ? fill(r.lots, { lots: refund.lotCodes.join(', ') })
-          : r.noStock}
+        {factNodes(locale, [
+          text.restocks[refund.restock],
+          refund.lotCodes.length > 0
+            ? fillNodes(r.lots, {
+                lots: factNodes(
+                  locale,
+                  refund.lotCodes.map((lot) => <Code key={lot}>{lot}</Code>),
+                ),
+              })
+            : r.noStock,
+        ])}
       </p>
-      <p>
-        {r.points}: {points}
-      </p>
-      <p>
-        {r.reason}: {refund.reason}
-      </p>
+      <p>{fill(r.fact, { label: r.points, value: points })}</p>
+      <p>{fill(r.fact, { label: r.reason, value: refund.reason })}</p>
       {refund.corrections.length > 0 ? (
         <p className="ls-hint">
-          {r.corrections}:{' '}
-          {refund.corrections
-            .map((correction) =>
-              fill(r.correctionLine, {
-                reference: correction.bankReference,
-                name: correction.actorName,
-                time: when(correction.occurredAt),
-              }),
-            )
-            .join('; ')}
-          {refund.firstBankReference ? ` (${r.referenceFirst}: ${refund.firstBankReference})` : ''}
+          {/* One dictionary sentence with an Intl list of the corrections (wig :188, :162 family). */}
+          {fillNodes(r.correctionsList, {
+            list: factNodes(
+              locale,
+              refund.corrections.map((correction) =>
+                fillNodes(r.correctionLine, {
+                  reference: <Code>{correction.bankReference}</Code>,
+                  name: correction.actorName,
+                  time: when(correction.occurredAt),
+                }),
+              ),
+            ),
+          })}
+          {refund.firstBankReference ? (
+            <>
+              {' '}
+              {fillNodes(r.referenceFirstWas, {
+                reference: <Code>{refund.firstBankReference}</Code>,
+              })}
+            </>
+          ) : null}
         </p>
       ) : null}
     </>
@@ -214,15 +243,18 @@ export function RefundDialog({
   const { api, t, locale } = useWorkforce();
   const text = productRefundsDictionary(locale);
   const f = text.form;
-  const { confirm, dialog } = useReauthentication();
-  const [draft, setDraft] = useState<RefundDraft>(() => ({
+  const { confirm, dialog, asking } = useReauthentication();
+  const [initialDraft] = useState<RefundDraft>(() => ({
     ...emptyRefundDraft(),
     quantity: String(Math.min(1, summary.caseRemainingQuantity) || 1),
   }));
+  const [draft, setDraft] = useState<RefundDraft>(initialDraft);
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // The first id is made once, not on every render (rbp rerender-lazy-state-init).
+  const [firstRequestId] = useState(() => globalThis.crypto.randomUUID());
+  const requestId = useRef(firstRequestId);
   const errors = validateRefundDraft(draft, summary);
   const amount = refundPreview(summary, draft.quantity);
   const shown = (key: keyof typeof errors, invalid: string) =>
@@ -234,7 +266,7 @@ export function RefundDialog({
     setChecked(true);
     setError(null);
     const body = refundRequest(draft, summary, requestId.current);
-    if (!body) return;
+    if (!body) return focusFirstInvalid();
     setPending(true);
     try {
       const result = await withReauthentication(
@@ -256,11 +288,13 @@ export function RefundDialog({
   return (
     <>
       <FormDialog
+        suspended={asking}
         title={f.title}
         description={f.description}
         labels={{ ...formOverlayLabels(t, f.submit), submitting: f.submitting }}
         busy={pending}
-        dirty={draft.reason !== '' || draft.restock !== '' || draft.bankReference !== ''}
+        // Any change counts, the quantity and the method included (wig :263).
+        dirty={JSON.stringify(draft) !== JSON.stringify(initialDraft)}
         error={error ? <Notice tone="error">{error}</Notice> : undefined}
         onClose={onClose}
         onSubmit={submit}
@@ -276,6 +310,10 @@ export function RefundDialog({
               {(control) => (
                 <NumberInput
                   {...control}
+                  inputMode="numeric"
+                  min={1}
+                  max={summary.caseRemainingQuantity}
+                  step={1}
                   value={draft.quantity}
                   onChange={(event) => set({ quantity: event.target.value })}
                 />
@@ -306,6 +344,7 @@ export function RefundDialog({
                     {...control}
                     autoComplete="off"
                     maxLength={64}
+                    spellCheck={false}
                     value={draft.bankReference}
                     onChange={(event) => set({ bankReference: event.target.value })}
                   />
@@ -351,9 +390,18 @@ export function RefundDialog({
               )}
             </Field>
           </FormGrid>
+          {/* The amount in tabular figures; the hint is its own sentence, not glued to it (wig :355, :356). */}
           <Notice tone="info">
-            {amount === null ? f.noAmount : fill(f.amount, { amount: formatVnd(amount, locale) })}
-            {amount === null ? '' : ` ${f.amountHint}`}
+            {amount === null ? (
+              f.noAmount
+            ) : (
+              <>
+                <span className="ls-pos-figure-text">
+                  {sentence(fill(f.amount, { amount: formatVnd(amount, locale) }))}
+                </span>{' '}
+                <span>{f.amountHint}</span>
+              </>
+            )}
           </Notice>
           <Notice tone="warning">{f.warning}</Notice>
           <p className="ls-hint">{f.pointsNote}</p>
@@ -388,14 +436,15 @@ export function CorrectionDialog({
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const referenceOk = /^[A-Za-z0-9._/-]{4,64}$/.test(reference.trim());
+  // The shared reference pattern, made once (rbp js-hoist-regexp), same rule as the refund form.
+  const referenceOk = PRODUCT_REFUND_REFERENCE.test(reference.trim());
   const reasonOk = reason.trim() !== '' && [...reason.trim()].length <= REFUND_REASON_MAX;
 
   async function submit() {
     if (pending) return;
     setChecked(true);
     setError(null);
-    if (!refundId || !referenceOk || !reasonOk) return;
+    if (!refundId || !referenceOk || !reasonOk) return focusFirstInvalid();
     setPending(true);
     try {
       await api.post(`${PATH(item.id)}/${refundId}/corrections`, {
@@ -416,7 +465,8 @@ export function CorrectionDialog({
       description={c.description}
       labels={{ ...formOverlayLabels(t, c.submit), submitting: c.submitting }}
       busy={pending}
-      dirty={reference !== '' || reason !== ''}
+      // Any change counts, the chosen refund included (wig Forms: warn before losing changes).
+      dirty={reference !== '' || reason !== '' || refundId !== (transfers.at(-1)?.id ?? '')}
       error={error ? <Notice tone="error">{error}</Notice> : undefined}
       onClose={onClose}
       onSubmit={submit}
@@ -430,7 +480,8 @@ export function CorrectionDialog({
                 value={refundId}
                 options={transfers.map((refund) => ({
                   value: refund.id,
-                  label: `${refund.code} · ${refund.bankReference ?? ''}`,
+                  // An option is plain text: the code and the reference as an Intl list.
+                  label: metaLine(locale, [refund.code, refund.bankReference]),
                 }))}
                 onChange={(event) => setRefundId(event.target.value)}
               />
@@ -448,6 +499,7 @@ export function CorrectionDialog({
               {...control}
               autoComplete="off"
               maxLength={64}
+              spellCheck={false}
               value={reference}
               onChange={(event) => setReference(event.target.value)}
             />

@@ -9,7 +9,7 @@ import type { Locale } from './locales';
  */
 const vi = {
   required: 'Nhập mục này.',
-  action: 'Đổi hàng',
+  action: 'Đổi hàng…',
   title: 'Các lần đổi hàng',
   empty: 'Chưa đổi hàng lần nào.',
   loading: 'Đang tải các lần đổi hàng…',
@@ -39,7 +39,7 @@ const vi = {
     LINE_IN_USE: 'Số lượng còn lại của dòng hàng không đủ cho hồ sơ này.',
   },
   exchange: {
-    when: '{name} · {time}',
+    when: '{name}, {time}',
     replacement: 'Hàng mới',
     replacementLine: '{name} ({sku}) × {quantity}, giá {price}',
     returned: 'Hàng khách trả',
@@ -51,7 +51,7 @@ const vi = {
     reference: 'Mã giao dịch',
     referenceFirst: 'Mã đã nhập lúc đầu',
     invoice: 'Hóa đơn đổi hàng',
-    invoiceLine: '{code} · {total}',
+    invoiceLine: '{code}, {total}',
     invoiceBalance: 'còn thu {amount}',
     openInvoice: 'Mở hóa đơn',
     goods: 'Hàng khách trả',
@@ -63,7 +63,10 @@ const vi = {
     pointsNone: 'Không cộng điểm; điểm cũ giữ nguyên',
     reason: 'Lý do',
     corrections: 'Sửa mã giao dịch',
-    correctionLine: '{reference} · {name} · {time}',
+    correctionsList: 'Sửa mã giao dịch: {list}',
+    referenceFirstWas: '(mã đã nhập lúc đầu: {reference})',
+    correctionLine: '{reference}, {name}, {time}',
+    fact: '{label}: {value}',
   },
   form: {
     title: 'Đổi hàng',
@@ -87,13 +90,14 @@ const vi = {
     figures: 'Tiền của lần đổi',
     credit: 'Khách đã trả cho hàng cũ',
     gross: 'Giá hàng mới hôm nay',
+    grossOf: '{gross} ({quantity} × {price})',
     payable: 'Khách trả thêm',
     refund: 'Hoàn lại cho khách',
     none0: 'Không có chênh lệch',
     sameItem:
       'Đổi cùng sản phẩm: hàng mới được đổi miễn phí, không tính chênh lệch dù giá hôm nay khác.',
     payableNote:
-      'Hóa đơn đổi hàng được tạo ngay. Khách thanh toán phần chênh ở đó như một hóa đơn thường (tiền mặt hoặc PayOS), rồi bạn bấm "Hoàn tất đổi" để nhận lại hàng cũ.',
+      'Hóa đơn đổi hàng được tạo ngay. Khách thanh toán phần chênh ở đó như một hóa đơn thường (tiền mặt hoặc PayOS), rồi bạn bấm “Hoàn tất đổi” để nhận lại hàng cũ.',
     refundNote:
       'Hóa đơn đổi hàng được tạo và tất toán ngay. Chỉ ghi nhận sau khi bạn đã đưa tiền hoặc chuyển khoản cho khách.',
     equalNote: 'Hóa đơn đổi hàng được tạo và tất toán ngay.',
@@ -108,23 +112,23 @@ const vi = {
     goodsNotSellable: 'Không bán lại được',
     goodsNotSellableHint: 'Kho không thay đổi. Dùng khi hàng đã mở, hỏng hoặc hết hạn.',
     goodsLater:
-      'Bạn sẽ chọn hàng cũ bán lại được hay không khi bấm "Hoàn tất đổi", sau khi khách thanh toán.',
+      'Bạn sẽ chọn hàng cũ bán lại được hay không khi bấm “Hoàn tất đổi”, sau khi khách thanh toán.',
     reason: 'Lý do đổi hàng',
     reasonHint: 'Ghi vào nhật ký. Ví dụ: sản phẩm lỗi, khách đổi sang loại khác.',
     submit: 'Đổi hàng',
     submitting: 'Đang ghi nhận…',
     done: 'Đã tạo lần đổi {code}.',
     warning:
-      'Mỗi lần đổi cần nhập lại mật khẩu, và nếu có hoàn tiền thì Chủ nhận thông báo. Lần đổi không sửa được; mã chuyển khoản gõ sai thì sửa ở mục "Sửa mã giao dịch".',
+      'Mỗi lần đổi cần nhập lại mật khẩu, và nếu có hoàn tiền thì Chủ nhận thông báo. Lần đổi không sửa được; mã chuyển khoản gõ sai thì sửa ở mục “Sửa mã giao dịch”.',
     pointsNote:
       'Điểm Beauty đã tích từ hóa đơn gốc được giữ nguyên. Điểm chỉ được cộng thêm trên phần khách trả thêm. Đổi sang hàng bằng giá hoặc rẻ hơn không cộng và không trừ điểm. Voucher hoặc quà đã dùng trên hóa đơn gốc không tự trả lại.',
   },
   invoicePage: {
-    intro: 'Hóa đơn của lần đổi hàng {code} (hồ sơ {case}) · {branch}',
+    intro: 'Hóa đơn của lần đổi hàng {code} (hồ sơ {case}), {branch}',
     creditRow: 'Trừ số tiền đã trả cho hàng cũ',
   },
   complete: {
-    action: 'Hoàn tất đổi',
+    action: 'Hoàn tất đổi…',
     title: 'Nhận lại hàng cũ',
     description:
       'Khách đã thanh toán hóa đơn đổi hàng. Cho biết hàng khách trả có bán lại được không để hoàn tất lần đổi.',
@@ -134,7 +138,7 @@ const vi = {
     done: 'Đã hoàn tất lần đổi.',
   },
   correct: {
-    action: 'Sửa mã giao dịch',
+    action: 'Sửa mã giao dịch…',
     title: 'Sửa mã giao dịch chuyển khoản',
     description:
       'Lần đổi không bị sửa. Hệ thống ghi thêm một dòng sửa và mã mới được dùng từ bây giờ.',
@@ -153,16 +157,19 @@ const vi = {
     EXCHANGE_NOTHING_PAID: 'Khách không phải trả tiền cho phần hàng này nên không có gì để đổi.',
     EXCHANGE_FIGURES_CHANGED:
       'Giá hoặc số tiền khách đã trả vừa thay đổi. Đã tải lại số liệu mới, hãy kiểm tra rồi bấm lại.',
-    EXCHANGE_NOT_PAID: 'Hóa đơn đổi hàng chưa được thanh toán đủ.',
+    EXCHANGE_NOT_PAID: 'Hóa đơn đổi hàng chưa được thanh toán đủ. Thu đủ tiền rồi hoàn tất.',
     EXCHANGE_STOCK_PENDING:
-      'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn "Không bán lại được".',
+      'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn “Không bán lại được”.',
     INVOICE_HAS_EXCHANGE:
       'Hóa đơn có lần đổi hàng nên giữ nguyên các lần thanh toán và không đảo hay hủy được.',
-    PRODUCT_OUT_OF_STOCK: 'Hàng mới không đủ số lượng trong kho.',
-    PRODUCT_NOT_SELLABLE: 'Sản phẩm này hiện không bán được.',
-    PRODUCT_SELLER_INVALID: 'Người bán phải là nhân viên đang làm ở chi nhánh này.',
+    PRODUCT_OUT_OF_STOCK: 'Hàng mới không đủ số lượng trong kho. Chọn một sản phẩm khác.',
+    PRODUCT_NOT_SELLABLE:
+      'Sản phẩm này hiện không bán được (có thể đã ngừng bán hoặc hết hàng). Chọn một sản phẩm khác để đổi.',
+    PRODUCT_SELLER_INVALID:
+      'Người bán phải là nhân viên đang làm ở chi nhánh này. Chọn người bán khác.',
     PRODUCT_SELLER_REQUIRED: 'Chọn người bán.',
-    INVOICE_STATE_INVALID: 'Hóa đơn không còn ở trạng thái đã thanh toán.',
+    INVOICE_STATE_INVALID:
+      'Hóa đơn không còn ở trạng thái đã thanh toán. Tải lại trang để xem tình trạng mới.',
     conflict:
       'Dữ liệu vừa được người khác thay đổi. Đã tải lại dữ liệu mới, hãy kiểm tra rồi thử lại.',
     fields: {
@@ -182,7 +189,7 @@ type Dictionary = typeof vi;
 
 const en: Dictionary = {
   required: 'Fill in this field.',
-  action: 'Exchange',
+  action: 'Exchange…',
   title: 'Exchanges made',
   empty: 'Nothing has been exchanged yet.',
   loading: 'Loading the exchanges…',
@@ -214,7 +221,7 @@ const en: Dictionary = {
     LINE_IN_USE: 'The units left on the line are not enough for this case.',
   },
   exchange: {
-    when: '{name} · {time}',
+    when: '{name}, {time}',
     replacement: 'New goods',
     replacementLine: '{name} ({sku}) × {quantity}, price {price}',
     returned: 'Goods brought back',
@@ -226,7 +233,7 @@ const en: Dictionary = {
     reference: 'Transfer reference',
     referenceFirst: 'Reference first typed',
     invoice: 'Exchange invoice',
-    invoiceLine: '{code} · {total}',
+    invoiceLine: '{code}, {total}',
     invoiceBalance: '{amount} left to collect',
     openInvoice: 'Open the invoice',
     goods: 'Goods brought back',
@@ -238,7 +245,10 @@ const en: Dictionary = {
     pointsNone: 'No points added; the old points are kept',
     reason: 'Reason',
     corrections: 'Reference corrections',
-    correctionLine: '{reference} · {name} · {time}',
+    correctionsList: 'Reference corrections: {list}',
+    referenceFirstWas: '(reference first typed: {reference})',
+    correctionLine: '{reference}, {name}, {time}',
+    fact: '{label}: {value}',
   },
   form: {
     title: 'Exchange goods',
@@ -262,6 +272,7 @@ const en: Dictionary = {
     figures: 'The money of the exchange',
     credit: 'Paid for the old goods',
     gross: 'Price of the new goods today',
+    grossOf: '{gross} ({quantity} × {price})',
     payable: 'Customer pays more',
     refund: 'Handed back to the customer',
     none0: 'No difference',
@@ -295,11 +306,11 @@ const en: Dictionary = {
       'The Beauty points earned on the original invoice are kept. Points are added only on the extra amount the customer pays. An equal or cheaper replacement adds none and takes none. A voucher or gift used on the original invoice is not given back.',
   },
   invoicePage: {
-    intro: 'Invoice of exchange {code} (case {case}) · {branch}',
+    intro: 'Invoice of exchange {code} (case {case}), {branch}',
     creditRow: 'Less what was paid for the old goods',
   },
   complete: {
-    action: 'Complete the exchange',
+    action: 'Complete the exchange…',
     title: 'Take the old goods in',
     description:
       'The customer has paid the exchange invoice. Say whether the goods they brought back can be sold again to complete the exchange.',
@@ -309,7 +320,7 @@ const en: Dictionary = {
     done: 'The exchange is completed.',
   },
   correct: {
-    action: 'Correct reference',
+    action: 'Correct reference…',
     title: 'Correct the transfer reference',
     description:
       'The exchange itself is not edited. A correction line is added and the new reference is used from now on.',
@@ -329,16 +340,19 @@ const en: Dictionary = {
       'The customer paid nothing for these units, so there is nothing to exchange.',
     EXCHANGE_FIGURES_CHANGED:
       'The price or what the customer paid just changed. The latest figures were loaded; check them and press again.',
-    EXCHANGE_NOT_PAID: 'The exchange invoice is not fully paid yet.',
+    EXCHANGE_NOT_PAID:
+      'The exchange invoice is not fully paid yet. Collect the rest, then complete it.',
     EXCHANGE_STOCK_PENDING:
       'Stock has not recorded this sale yet. Try again in a moment, or choose “Cannot be sold again”.',
     INVOICE_HAS_EXCHANGE:
       'An invoice with an exchange keeps its payments; they cannot be reversed or cancelled.',
-    PRODUCT_OUT_OF_STOCK: 'There is not enough of the new goods in stock.',
-    PRODUCT_NOT_SELLABLE: 'This product cannot be sold now.',
-    PRODUCT_SELLER_INVALID: 'The seller must be an active employee of this branch.',
+    PRODUCT_OUT_OF_STOCK: 'There is not enough of the new goods in stock. Choose another product.',
+    PRODUCT_NOT_SELLABLE:
+      'This product cannot be sold now (it may no longer be sold or be out of stock). Choose another product for the exchange.',
+    PRODUCT_SELLER_INVALID:
+      'The seller must be an active employee of this branch. Choose another seller.',
     PRODUCT_SELLER_REQUIRED: 'Choose the seller.',
-    INVOICE_STATE_INVALID: 'The invoice is no longer paid.',
+    INVOICE_STATE_INVALID: 'The invoice is no longer paid. Reload the page to see where it stands.',
     conflict:
       'The data was just changed by someone else. The latest data was loaded; check it and try again.',
     fields: {

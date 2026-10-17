@@ -9,6 +9,7 @@ import type {
 } from '@lucy-spa/contracts';
 import {
   Card,
+  ConfirmDialog,
   CardHeader,
   DataTable,
   DescriptionList,
@@ -20,7 +21,7 @@ import {
   TextInput,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { productOrdersDictionary } from '../../../i18n/product-orders';
 import type { WorkforceApi } from '../../../lib/workforce/api';
 import { fill } from '../../../i18n/workforce';
@@ -38,6 +39,7 @@ import { posErrorMessage } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, Notice } from '../ui';
 import { useQrImage } from '../use-qr-image';
+import { focusFirstInvalid } from './pos-dom';
 
 const errorNotice = (error: string | null) =>
   error ? <Notice tone="error">{error}</Notice> : undefined;
@@ -69,6 +71,7 @@ export function PreOrderContactDialog({
     const result = contactBody({ phone, name });
     if ('problem' in result) {
       setProblem(result.problem);
+      focusFirstInvalid();
       return;
     }
     setProblem(null);
@@ -178,11 +181,14 @@ export function TicketLinkDialog({
           </Button>
         </div>
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-        {image ? (
-          // A data URL generated here from the link; not a remote image.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt={d.qrAlt} width={240} height={240} />
-        ) : null}
+        {/* The 240 px box is there before the image is drawn, so nothing below it moves (wig :181). */}
+        <div className="ls-pos-qr">
+          {image ? (
+            // A data URL generated here from the link; not a remote image.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt={d.qrAlt} width={240} height={240} />
+          ) : null}
+        </div>
         <p className="ls-hint">{d.once}</p>
       </Stack>
     </Dialog>
@@ -214,13 +220,22 @@ export function ProductOrderCard({
   const [link, setLink] = useState<ProductOrderTicketLinkResponse | null>(null);
   const [working, setWorking] = useState<'make' | 'revoke' | null>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  // Revoking or replacing the customer's link asks first (wig :313, :323): the link they hold stops working.
+  const [confirming, setConfirming] = useState<'revoke' | 'make' | null>(null);
+  // The clock is state, read when the card mounts and every minute after, so the expiry is re-checked while the card is
+  // open and nothing reads the clock while rendering (wig :223).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const member = order.customer !== null;
   // The link of a customer without an account dies 30 days after the order was closed (the Owner, 2026-10-09).
   const expiresOn = order.ticketExpiresAt
     ? formatDateTime(order.ticketExpiresAt, invoice.branch.timezone, locale)
     : '';
   const expired =
-    !member && order.ticketExpiresAt !== null && Date.parse(order.ticketExpiresAt) <= Date.now();
+    !member && order.ticketExpiresAt !== null && Date.parse(order.ticketExpiresAt) <= now;
   const mayLink =
     invoice.actions.orderTicket && !member && order.status !== 'CANCELLED' && !expired;
 
@@ -263,7 +278,7 @@ export function ProductOrderCard({
       key: 'product',
       header: d.card.colProduct,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (line) => productTitle(line, locale),
     },
@@ -310,17 +325,17 @@ export function ProductOrderCard({
                   variant="secondary"
                   disabled={!idle || working !== null}
                   loading={working === 'revoke'}
-                  onClick={() => void revoke()}
+                  onClick={() => setConfirming('revoke')}
                 >
                   {working === 'revoke' ? d.ticket.revoking : d.ticket.revoke}
                 </Button>
               ) : null}
               <Button
                 variant="secondary"
-
                 disabled={!idle || working !== null}
                 loading={working === 'make'}
-                onClick={() => void make()}
+                // A first link replaces nothing; a new one kills the link the customer holds, so that one asks first.
+                onClick={() => (order.ticketLinkActive ? setConfirming('make') : void make())}
               >
                 {working === 'make'
                   ? d.ticket.making
@@ -335,7 +350,7 @@ export function ProductOrderCard({
       <DescriptionList
         columns={2}
         items={[
-          { label: d.card.code, value: order.code },
+          { label: d.card.code, value: <span translate="no">{order.code}</span> },
           {
             label: d.card.status,
             value: <Badge tone={orderStatusTone(order.status)}>{d.status[order.status]}</Badge>,
@@ -367,10 +382,30 @@ export function ProductOrderCard({
         columns={columns}
         rows={order.lines}
         rowKey={(line) => `${line.id}:${line.rowVersion}`}
-        empty={<Empty>{d.card.title}</Empty>}
+        empty={<Empty>{d.card.noLines}</Empty>}
         paging={{ off: 'the order lines of one invoice' }}
       />
       {link ? <TicketLinkDialog link={link} onClose={() => setLink(null)} /> : null}
+      {confirming ? (
+        <ConfirmDialog
+          title={confirming === 'revoke' ? d.ticket.revokeTitle : d.ticket.makeAgainTitle}
+          description={confirming === 'revoke' ? d.ticket.revokeBody : d.ticket.makeAgainBody}
+          facts={[{ label: d.card.code, value: order.code }]}
+          tone={confirming === 'revoke' ? 'danger' : 'warning'}
+          confirmLabel={confirming === 'revoke' ? d.ticket.revoke : d.ticket.makeAgain}
+          busyLabel={confirming === 'revoke' ? d.ticket.revoking : d.ticket.making}
+          cancelLabel={d.ticket.keep}
+          referenceLabel={t.errors.reference}
+          describeError={(failure) => ({ message: posErrorMessage(failure, t), reference: null })}
+          onCancel={() => setConfirming(null)}
+          onConfirm={async () => {
+            const action = confirming;
+            setConfirming(null);
+            // Both report their own result next to the card (H11).
+            await (action === 'revoke' ? revoke() : make());
+          }}
+        />
+      ) : null}
     </Card>
   );
 }

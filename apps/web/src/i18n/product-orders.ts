@@ -62,6 +62,7 @@ const vi = {
     name: 'Tên khách',
     created: 'Tạo lúc',
     colProduct: 'Sản phẩm',
+    noLines: 'Đơn này chưa có dòng hàng nào.',
     colQuantity: 'Số lượng',
     colStatus: 'Trạng thái',
     colExpected: 'Dự kiến có hàng',
@@ -92,6 +93,12 @@ const vi = {
     revoke: 'Thu hồi liên kết',
     revoking: 'Đang thu hồi…',
     revoked: 'Đã thu hồi liên kết.',
+    revokeTitle: 'Thu hồi liên kết của khách?',
+    revokeBody: 'Khách sẽ không mở được phiếu bằng liên kết này nữa.',
+    makeAgainTitle: 'Tạo liên kết mới?',
+    makeAgainBody:
+      'Liên kết khách đang có sẽ không dùng được nữa; hãy gửi lại liên kết mới cho khách.',
+    keep: 'Giữ liên kết',
     dialogTitle: 'Liên kết phiếu hẹn nhận hàng',
     dialogDescription:
       'Gửi liên kết hoặc mã QR này cho khách qua Zalo. Khách xem được phiếu mà không cần tài khoản.',
@@ -104,7 +111,8 @@ const vi = {
     close: 'Đóng',
   },
   errors: {
-    PRODUCT_PRE_ORDER_NOT_ALLOWED: 'Sản phẩm này không bán đặt trước.',
+    PRODUCT_PRE_ORDER_NOT_ALLOWED:
+      'Sản phẩm này không bán đặt trước. Chọn “Hàng có sẵn” khi kho còn hàng, hoặc chọn sản phẩm khác.',
     PRODUCT_PRE_ORDER_NOT_NEEDED: 'Kho đang đủ hàng cho {names}. Hãy bán như hàng có sẵn.',
     PRE_ORDER_CONTACT_REQUIRED: 'Cần số điện thoại của khách đặt trước.',
   },
@@ -147,7 +155,8 @@ const vi = {
       DONE: 'Đã giao',
       CANCELLED: 'Đã hủy',
     },
-    search: 'Tìm đơn, sản phẩm, điện thoại',
+    search: 'Tìm theo mã đơn, sản phẩm hoặc số điện thoại',
+    quantityOf: '{quantity} × {name}',
     allocate: 'Cấp hàng',
     allocating: 'Đang cấp…',
     allocated: 'Đã cấp hàng cho {count} dòng.',
@@ -160,7 +169,7 @@ const vi = {
       DONE: 'Chưa có hàng nào được giao.',
       CANCELLED: 'Chưa có dòng hàng nào bị hủy.',
     },
-    noMatch: 'Không có dòng hàng nào khớp với tìm kiếm.',
+    noMatch: 'Không có dòng hàng nào khớp với tìm kiếm. Thử từ khóa khác.',
     columns: {
       code: 'Mã đơn',
       product: 'Sản phẩm',
@@ -179,20 +188,21 @@ const vi = {
     late: 'Trễ hẹn',
     held: 'Chờ nhận lâu',
     open: 'Xem đơn',
-    markOrdered: 'Đã đặt hàng',
-    handOver: 'Giao hàng',
+    markOrdered: 'Đánh dấu đã đặt hàng',
+    handOver: 'Giao hàng…',
     markTitle: 'Đánh dấu đã đặt hàng',
     markBody:
       'Xác nhận cửa hàng đã đặt {quantity} × {name} với nhà cung cấp. Khách chưa được báo gì cho đến khi hàng về.',
     markFactProduct: 'Sản phẩm',
     markFactOrders: 'Số đơn',
-    markConfirm: 'Đã đặt hàng',
+    markConfirm: 'Đánh dấu đã đặt hàng',
     markKeep: 'Chưa đặt',
     working: 'Đang lưu…',
   },
   detail: {
     breadcrumbs: 'Đường dẫn',
-    title: 'Đơn {code}',
+    title: 'Đơn đặt trước {code}',
+    refundFor: 'Hoàn tiền cho {name}',
     info: 'Thông tin đơn',
     fields: {
       status: 'Trạng thái',
@@ -219,11 +229,11 @@ const vi = {
     methods: { CASH: 'tiền mặt', BANK_TRANSFER_MANUAL: 'chuyển khoản' },
     noRefund: 'Chưa thu tiền cho dòng này, không có gì để hoàn.',
     actionsFor: 'Thao tác cho {name}',
-    markOrdered: 'Đã đặt hàng',
-    handOver: 'Giao hàng',
-    cancel: 'Hủy và hoàn tiền',
-    decline: 'Từ chối hủy',
-    correct: 'Sửa mã giao dịch',
+    markOrdered: 'Đánh dấu đã đặt hàng',
+    handOver: 'Giao hàng…',
+    cancel: 'Hủy và hoàn tiền…',
+    decline: 'Từ chối hủy…',
+    correct: 'Sửa mã giao dịch…',
     invoiceCancelled: 'Hóa đơn đã bị hủy nên các dòng đã được hủy theo.',
     notPaid: 'Đơn chưa thanh toán. Hàng chỉ được đặt sau khi khách thanh toán.',
   },
@@ -262,8 +272,8 @@ const vi = {
     referenceHint: 'Mã trên biên lai chuyển khoản, tối đa 64 ký tự.',
     amount: 'Hoàn cho khách {amount}.',
     amountField: 'Số tiền hoàn',
-    amountHint: 'Chủ hoặc quản lý quyết định số tiền, từ 1 ₫ đến toàn bộ số đã thu.',
-    badAmount: 'Nhập số tiền nguyên, ít nhất 1 ₫ và nhiều nhất {share}.',
+    amountHint: 'Chủ hoặc quản lý quyết định số tiền, từ 1 ₫ đến toàn bộ số đã thu.',
+    badAmount: 'Nhập số tiền nguyên, ít nhất 1 ₫ và nhiều nhất {share}.',
     partial: 'Hoàn cho khách {amount} trong tổng {share} đã thu.',
     noAmount: 'Dòng này chưa thu tiền nên không hoàn tiền.',
     warning: 'Khoản hoàn không sửa được sau khi lưu. Bạn sẽ được hỏi lại mật khẩu.',
@@ -275,7 +285,8 @@ const vi = {
     doneNoMoney: 'Đã hủy dòng hàng.',
     required: 'Cần nhập.',
     badReference: 'Nhập mã giao dịch (tối đa 64 ký tự).',
-    noCause: 'Dòng hàng này chưa thể hủy lúc này.',
+    noCause:
+      'Dòng hàng này chưa thể hủy lúc này vì tình trạng của nó không cho phép. Tải lại trang để xem tình trạng mới.',
   },
   decline: {
     title: 'Từ chối yêu cầu hủy',
@@ -299,7 +310,8 @@ const vi = {
   queueErrors: {
     ORDER_LINE_STATE_INVALID: 'Dòng hàng đã đổi trạng thái. Hãy tải lại trang.',
     ORDER_HANDOVER_PROOF_INVALID: 'Mã đơn hoặc 4 số cuối không khớp với đơn. Hãy hỏi lại khách.',
-    ORDER_CANCEL_CAUSE_INVALID: 'Lý do này không dùng được cho dòng hàng ở tình trạng hiện tại.',
+    ORDER_CANCEL_CAUSE_INVALID:
+      'Lý do này không dùng được cho dòng hàng ở tình trạng hiện tại. Chọn một lý do khác trong danh sách.',
     ORDER_TICKET_EXPIRED:
       'Đơn đã đóng quá 30 ngày nên liên kết phiếu đã hết hạn. Không tạo liên kết mới được.',
     CONFLICT: 'Dòng hàng vừa được người khác cập nhật. Hãy tải lại trang rồi thử lại.',
@@ -373,6 +385,7 @@ const en: Dictionary = {
     name: 'Customer name',
     created: 'Created',
     colProduct: 'Product',
+    noLines: 'This order has no lines yet.',
     colQuantity: 'Quantity',
     colStatus: 'Status',
     colExpected: 'Expected arrival',
@@ -404,6 +417,11 @@ const en: Dictionary = {
     revoke: 'Revoke link',
     revoking: 'Revoking…',
     revoked: 'The link was revoked.',
+    revokeTitle: 'Revoke the customer’s link?',
+    revokeBody: 'The customer can no longer open the ticket with this link.',
+    makeAgainTitle: 'Create a new link?',
+    makeAgainBody: 'The link the customer has stops working; send them the new one.',
+    keep: 'Keep the link',
     dialogTitle: 'Pick-up ticket link',
     dialogDescription:
       'Send this link or QR code to the customer through Zalo. They can read the ticket without an account.',
@@ -416,7 +434,8 @@ const en: Dictionary = {
     close: 'Close',
   },
   errors: {
-    PRODUCT_PRE_ORDER_NOT_ALLOWED: 'This product cannot be pre-ordered.',
+    PRODUCT_PRE_ORDER_NOT_ALLOWED:
+      'This product cannot be pre-ordered. Choose “In stock” while there is stock, or choose another product.',
     PRODUCT_PRE_ORDER_NOT_NEEDED:
       'The stock already covers {names}. Sell it as an in-stock product.',
     PRE_ORDER_CONTACT_REQUIRED: 'The pre-order customer’s phone number is required.',
@@ -460,7 +479,8 @@ const en: Dictionary = {
       DONE: 'Handed over',
       CANCELLED: 'Cancelled',
     },
-    search: 'Search orders, products, phones',
+    search: 'Search by order code, product or phone',
+    quantityOf: '{quantity} × {name}',
     allocate: 'Allocate stock',
     allocating: 'Allocating…',
     allocated: 'Stock given to {count} lines.',
@@ -473,7 +493,7 @@ const en: Dictionary = {
       DONE: 'Nothing has been handed over yet.',
       CANCELLED: 'No line has been cancelled.',
     },
-    noMatch: 'No line matches the search.',
+    noMatch: 'No line matches the search. Try other words.',
     columns: {
       code: 'Order code',
       product: 'Product',
@@ -493,7 +513,7 @@ const en: Dictionary = {
     held: 'Waiting long',
     open: 'View order',
     markOrdered: 'Mark ordered',
-    handOver: 'Hand over',
+    handOver: 'Hand over…',
     markTitle: 'Mark as ordered',
     markBody:
       'Confirm the shop has ordered {quantity} × {name} from the supplier. The customers are told nothing until the goods arrive.',
@@ -505,7 +525,8 @@ const en: Dictionary = {
   },
   detail: {
     breadcrumbs: 'Breadcrumb',
-    title: 'Order {code}',
+    title: 'Pre-order {code}',
+    refundFor: 'Refund for {name}',
     info: 'Order details',
     fields: {
       status: 'Status',
@@ -533,10 +554,10 @@ const en: Dictionary = {
     noRefund: 'Nothing was paid for this line, so there is nothing to refund.',
     actionsFor: 'Actions for {name}',
     markOrdered: 'Mark ordered',
-    handOver: 'Hand over',
-    cancel: 'Cancel and refund',
-    decline: 'Decline cancelling',
-    correct: 'Correct reference',
+    handOver: 'Hand over…',
+    cancel: 'Cancel and refund…',
+    decline: 'Decline cancelling…',
+    correct: 'Correct reference…',
     invoiceCancelled: 'The invoice was cancelled, so its lines were cancelled with it.',
     notPaid: 'The order is not paid. The goods are ordered only after the customer pays.',
   },
@@ -575,8 +596,8 @@ const en: Dictionary = {
     referenceHint: 'The reference on the transfer receipt, up to 64 characters.',
     amount: 'Refund to the customer: {amount}.',
     amountField: 'Refund amount',
-    amountHint: 'The Owner or a manager decides the amount, from 1 ₫ up to everything collected.',
-    badAmount: 'Enter a whole amount, at least 1 ₫ and at most {share}.',
+    amountHint: 'The Owner or a manager decides the amount, from 1 ₫ up to everything collected.',
+    badAmount: 'Enter a whole amount, at least 1 ₫ and at most {share}.',
     partial: 'Refund to the customer: {amount} of the {share} collected.',
     noAmount: 'Nothing was paid for this line, so nothing is refunded.',
     warning: 'A refund cannot be changed once saved. You will be asked for your password again.',
@@ -589,7 +610,8 @@ const en: Dictionary = {
     doneNoMoney: 'The line was cancelled.',
     required: 'Required.',
     badReference: 'Enter the transfer reference (up to 64 characters).',
-    noCause: 'This line cannot be cancelled right now.',
+    noCause:
+      'This line cannot be cancelled right now because of its state. Reload the page to see the latest state.',
   },
   decline: {
     title: 'Decline the request to cancel',
@@ -615,7 +637,8 @@ const en: Dictionary = {
     ORDER_LINE_STATE_INVALID: 'The line has changed state. Reload the page.',
     ORDER_HANDOVER_PROOF_INVALID:
       'The order code or the last 4 digits do not match the order. Ask the customer again.',
-    ORDER_CANCEL_CAUSE_INVALID: 'This reason cannot be used for the line in its current state.',
+    ORDER_CANCEL_CAUSE_INVALID:
+      'This reason cannot be used for the line in its current state. Choose another reason from the list.',
     ORDER_TICKET_EXPIRED:
       'The order was closed more than 30 days ago, so its ticket link has expired and a new one cannot be made.',
     CONFLICT: 'Someone else just updated the line. Reload the page and try again.',

@@ -20,7 +20,7 @@ import {
   FormDialog,
   FormGrid,
   MoneyInput,
-  Select,
+  RadioGroup,
   Textarea,
   TextInput,
 } from '@lucy-spa/ui';
@@ -52,7 +52,9 @@ import {
 } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
 import { Notice, useResource } from '../ui';
+import { metaLine } from './pos-format';
 import { TipStep } from './pos-tip-step';
+import { focusFirstInvalid } from './pos-dom';
 
 // Every dialog here only collects a choice and hands it to the screen's `command()`, which sends it to the
 // API exactly as the inline forms did. A dialog stays open when the command fails, so the same input (and,
@@ -105,6 +107,7 @@ export function LineDialog({
     const result = priceBody(line, input, version);
     if ('problem' in result) {
       setProblem(result.problem);
+      focusFirstInvalid();
       return;
     }
     setProblem(null);
@@ -139,7 +142,7 @@ export function LineDialog({
               <VndInput
                 control={control}
                 value={input.price}
-                onChange={(price) => setInput({ ...input, price })}
+                onChange={(price) => setInput((current) => ({ ...current, price }))}
               />
             )}
           </Field>
@@ -158,7 +161,9 @@ export function LineDialog({
                 autoComplete="off"
                 maxLength={9}
                 value={input.quantity}
-                onChange={(event) => setInput({ ...input, quantity: event.target.value })}
+                onChange={(event) =>
+                  setInput((current) => ({ ...current, quantity: event.target.value }))
+                }
               />
             )}
           </Field>
@@ -188,6 +193,7 @@ export function VoucherDialog({
     const code = voucherCodeOf(text);
     if (!code) {
       setMissing(true);
+      focusFirstInvalid();
       return;
     }
     setMissing(false);
@@ -216,6 +222,7 @@ export function VoucherDialog({
               autoComplete="off"
               autoCapitalize="characters"
               maxLength={64}
+              spellCheck={false}
               value={text}
               onChange={(event) => setText(event.target.value.toUpperCase())}
             />
@@ -243,20 +250,33 @@ export function PayerDialog({
   onSetPayer: (payerUserId: string) => Promise<boolean>;
   onClose: () => void;
 }) {
-  const { api, t } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
   const [lookupBy, setLookupBy] = useState<'phone' | 'email'>('phone');
   const [value, setValue] = useState('');
   const [lookup, setLookup] = useState<WalkInMemberLookupResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [missingValue, setMissingValue] = useState(false);
   const member = lookup?.members[0] ?? null;
 
+  // The button stays enabled until a request starts (wig :288); what blocks it is said in the dialog instead.
   async function submit() {
     if (member) {
+      if (invoice.payer?.id === member.id) {
+        setSearchError(t.pos.payerAlready);
+        return;
+      }
       if (await onSetPayer(member.id)) onClose();
       return;
     }
-    if (!value.trim() || searching) return;
+    if (searching) return;
+    if (!value.trim()) {
+      // Said on the field itself, which takes focus (wig Forms: errors inline, focus the first one).
+      setMissingValue(true);
+      focusFirstInvalid();
+      return;
+    }
+    setMissingValue(false);
     setSearching(true);
     setSearchError(null);
     try {
@@ -285,46 +305,52 @@ export function PayerDialog({
       }}
       busy={working || searching}
       dirty={value !== ''}
-      submitDisabled={member !== null && invoice.payer?.id === member.id}
       error={errorNotice(searchError ?? error)}
       onClose={onClose}
       onSubmit={submit}
     >
       <FormGrid>
-        <Field label={t.pos.lookupBy}>
-          {(control) => (
-            <Select
-              {...control}
-              value={lookupBy}
-              options={[
-                { value: 'phone', label: t.pos.phone },
-                { value: 'email', label: t.pos.email },
-              ]}
-              onChange={(event) => (
-                setLookupBy(event.target.value as 'phone' | 'email'),
-                setLookup(null)
-              )}
-            />
-          )}
-        </Field>
-        <Field label={lookupBy === 'phone' ? t.pos.phone : t.pos.email}>
+        {/* Two choices are a toggle, not a pop-up menu (C47). */}
+        <RadioGroup
+          legend={t.pos.lookupBy}
+          name="payer-lookup-by"
+          layout="inline"
+          value={lookupBy}
+          options={[
+            { value: 'phone', label: t.pos.phone },
+            { value: 'email', label: t.pos.email },
+          ]}
+          onValueChange={(next) => (setLookupBy(next as 'phone' | 'email'), setLookup(null))}
+        />
+        <Field
+          label={lookupBy === 'phone' ? t.pos.phone : t.pos.email}
+          {...(missingValue ? { error: t.pos.lookupNeedValue } : {})}
+        >
           {(control) => (
             <TextInput
               {...control}
               type={lookupBy === 'phone' ? 'tel' : 'email'}
               inputMode={lookupBy === 'phone' ? 'tel' : 'email'}
               autoComplete="off"
+              spellCheck={false}
               maxLength={lookupBy === 'phone' ? 32 : 320}
               value={value}
-              onChange={(event) => (setValue(event.target.value), setLookup(null))}
+              onChange={(event) => (
+                setValue(event.target.value),
+                setLookup(null),
+                setMissingValue(false)
+              )}
             />
           )}
         </Field>
         {member ? (
           <Notice tone="success">
-            {fill(t.pos.found, { name: member.displayName })}
-            {member.phoneMasked ? ` · ${member.phoneMasked}` : ''}
-            {member.emailMasked ? ` · ${member.emailMasked}` : ''}
+            {/* The found member and the masked contacts as one Intl list, not commas glued in JSX. */}
+            {metaLine(locale, [
+              fill(t.pos.found, { name: member.displayName }),
+              member.phoneMasked,
+              member.emailMasked,
+            ])}
           </Notice>
         ) : null}
         {lookup && lookup.members.length === 0 ? (
@@ -393,6 +419,7 @@ export function CashDialog({
     const result = paymentBody(input, balance, attempt.current.key);
     if ('problem' in result) {
       setProblem(result.problem);
+      focusFirstInvalid();
       return;
     }
     setProblem(null);
@@ -445,7 +472,7 @@ export function CashDialog({
             <VndInput
               control={control}
               value={input.tendered}
-              onChange={(tendered) => setInput({ ...input, tendered })}
+              onChange={(tendered) => setInput((current) => ({ ...current, tendered }))}
             />
           )}
         </Field>
@@ -458,6 +485,25 @@ export function CashDialog({
       </FormGrid>
     </FormDialog>
   );
+}
+
+type Api = ReturnType<typeof useWorkforce>['api'];
+// One tip-offer request started ahead of the click, used once by the dialog that opens (then a later open asks again).
+const tipOffers = new Map<string, Promise<InvoiceTipsResponse>>();
+
+/** Starts the tip-offer request for an invoice when the cashier points at or focuses the PayOS button (async-parallel). */
+export function prefetchTipOffer(api: Api, invoiceId: string): void {
+  if (tipOffers.has(invoiceId)) return;
+  const request = api.get<InvoiceTipsResponse>(`/api/v1/pay/invoices/${invoiceId}/tips`);
+  // A failed prefetch is simply asked again by the dialog.
+  request.catch(() => tipOffers.delete(invoiceId));
+  tipOffers.set(invoiceId, request);
+}
+
+function takeTipOffer(api: Api, invoiceId: string): Promise<InvoiceTipsResponse> {
+  const ready = tipOffers.get(invoiceId);
+  tipOffers.delete(invoiceId);
+  return ready ?? api.get<InvoiceTipsResponse>(`/api/v1/pay/invoices/${invoiceId}/tips`);
 }
 
 /**
@@ -484,10 +530,8 @@ export function PayosDialog({
 }) {
   const { t, api, locale } = useWorkforce();
   const c = payDictionary(locale).tips.step;
-  const offer = useResource(
-    () => api.get<InvoiceTipsResponse>(`/api/v1/pay/invoices/${invoiceId}/tips`),
-    [api, invoiceId],
-  );
+  // Started on hover/focus of "Tạo mã QR" (prefetchTipOffer), so the dialog usually finds it answered (rbp :487-490).
+  const offer = useResource(() => takeTipOffer(api, invoiceId), [api, invoiceId]);
   const [amount, setAmount] = useState(balance);
   const [problem, setProblem] = useState(false);
   const [step, setStep] = useState<'amount' | 'tip'>('amount');
@@ -505,6 +549,7 @@ export function PayosDialog({
     const result = payosBody(amount, balance, attempt.current.key);
     if ('problem' in result) {
       setProblem(true);
+      focusFirstInvalid();
       setStep('amount');
       return;
     }
@@ -521,6 +566,7 @@ export function PayosDialog({
       const result = payosBody(amount, balance, 'check');
       if ('problem' in result) {
         setProblem(true);
+        focusFirstInvalid();
         return;
       }
       setProblem(false);
@@ -535,6 +581,7 @@ export function PayosDialog({
     const tips = drafts ? tipChoices(drafts) : [];
     if (tips === null) {
       setChecked(true);
+      focusFirstInvalid();
       return;
     }
     await create(tips);
@@ -625,6 +672,7 @@ export function NoteDialog({
     const body = noteBody(text);
     if (!body) {
       setProblem(true);
+      focusFirstInvalid();
       return;
     }
     setProblem(false);
@@ -668,14 +716,18 @@ export function ReverseConfirm({
   payment,
   onReverse,
   onClose,
+  suspended = false,
 }: {
   payment: InvoicePaymentResponse;
   onReverse: (paymentId: string, body: PaymentReverseRequest) => Promise<void>;
   onClose: () => void;
+  /** The password check is open (C60): this confirm steps out of sight until it closes. */
+  suspended?: boolean | undefined;
 }) {
   const { t, locale } = useWorkforce();
   return (
     <ConfirmDialog
+      suspended={suspended}
       title={t.pos.reverseTitle}
       description={t.pos.reverseHint}
       facts={[
@@ -710,20 +762,25 @@ export function CancelConfirm({
   invoice,
   onCancelInvoice,
   onClose,
+  suspended = false,
 }: {
   invoice: InvoiceResponse;
   onCancelInvoice: (body: NonNullable<ReturnType<typeof cancelBody>>) => Promise<void>;
   onClose: () => void;
+  /** The password check is open (C60): this confirm steps out of sight until it closes. */
+  suspended?: boolean | undefined;
 }) {
   const { t } = useWorkforce();
   const needsReauth = invoice.actions.cancelNeedsReauth;
   return (
     <ConfirmDialog
+      suspended={suspended}
       title={t.pos.cancelTitle}
       description={
-        needsReauth
-          ? `${fill(t.pos.cancelConfirmBody, { code: invoice.code })} ${t.pos.cancelNeedsReauth}`
-          : fill(t.pos.cancelConfirmBody, { code: invoice.code })
+        // One dictionary sentence per case (wig :725), not two glued together.
+        fill(needsReauth ? t.pos.cancelConfirmBodyReauth : t.pos.cancelConfirmBody, {
+          code: invoice.code,
+        })
       }
       facts={[{ label: t.pos.code, value: invoice.code }]}
       tone="danger"
@@ -744,6 +801,40 @@ export function CancelConfirm({
         const body = cancelBody(reason ?? '', invoice.version);
         if (!body) throw new FormProblem(t.pos.needReason);
         await onCancelInvoice(body);
+        onClose();
+      }}
+    />
+  );
+}
+
+/**
+ * Cancelling a waiting PayOS code (wig pos-payments.tsx:348): the customer may be mid-transfer, so the cashier confirms first.
+ * Focus starts on "Giữ mã" (the kit dialog's cancel), the destructive confirm is the only solid button.
+ */
+export function PayosCancelConfirm({
+  amountVnd,
+  onConfirm,
+  onClose,
+}: {
+  amountVnd: string;
+  onConfirm: () => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const { t, locale } = useWorkforce();
+  return (
+    <ConfirmDialog
+      title={t.pos.payosCancelTitle}
+      description={t.pos.payosCancelHint}
+      facts={[{ label: t.pos.colCredited, value: formatVnd(amountVnd, locale) }]}
+      tone="danger"
+      confirmLabel={t.pos.payosCancel}
+      busyLabel={t.pos.payosCancelling}
+      cancelLabel={t.pos.payosCancelKeep}
+      referenceLabel={t.errors.reference}
+      describeError={describe(t)}
+      onCancel={onClose}
+      onConfirm={async () => {
+        await onConfirm();
         onClose();
       }}
     />

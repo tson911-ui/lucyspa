@@ -16,6 +16,7 @@ import {
   Field,
   FormDialog,
   FormGrid,
+  Icon,
   IconButton,
   ListSection,
   ListToolbar,
@@ -23,7 +24,10 @@ import {
   RowActions,
   Stack,
   Textarea,
+  useUnsavedChangesGuard,
   type DataTableColumn,
+  PageHeader as KitPageHeader,
+  useOptionalToast,
 } from '@lucy-spa/ui';
 import { useState, type ReactNode } from 'react';
 import { inventoryDictionary } from '../../../i18n/inventory';
@@ -38,8 +42,8 @@ import {
   countLinesRequest,
   countTone,
   countValues,
-  differenceText,
   inventoryErrorText,
+  INVENTORY_LIST_DEFAULTS,
   isConflict,
   itemTitle,
   parseCounted,
@@ -48,7 +52,7 @@ import {
 } from '../../../lib/workforce/inventory';
 import { paginationLabels, resultsText, toolbarLabels } from '../../../lib/workforce/list-view';
 import { errorMessage } from '../../../lib/workforce/workflows';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -57,12 +61,18 @@ import {
   ErrorState,
   Loading,
   Notice,
-  PageHeader,
   Section,
   useResource,
   useSuccessToast,
 } from '../ui';
+import { RouterMenuLink } from './pos-links';
 import { useInventoryCommand } from './use-inventory-command';
+import { listFormat, signedNumber } from './pos-format';
+import { focusFirstInvalid } from './pos-dom';
+import { backParam, useBackQuery, useUrlPage } from './pos-url';
+
+// The notice that names the rows with a wrong count; each such count field points at it.
+const INVALID_ID = 'count-invalid-rows';
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 
@@ -80,7 +90,7 @@ export function CountsTab({
   list: InventoryListState;
   updateList: (patch: Partial<InventoryListState>, change?: { replace?: boolean }) => void;
 }) {
-  const { api, t, locale, base, navigate } = useWorkforce();
+  const { api, t, locale, base } = useWorkforce();
   const text = inventoryDictionary(locale);
   const c = text.counts;
   const counts = useResource(
@@ -91,14 +101,15 @@ export function CountsTab({
     [api, branchId],
   );
   const rows = counts.data?.counts ?? [];
-  const open = (count: StockCountListItem) => `${base}/inventory/counts/${count.id}`;
+  const open = (count: StockCountListItem) =>
+    `${base}/inventory/counts/${count.id}${backParam({ ...list, tab: 'counts' }, INVENTORY_LIST_DEFAULTS)}`;
   const columns: DataTableColumn<StockCountListItem>[] = [
     {
       key: 'code',
       header: c.columns.code,
       mobileTitle: true,
       cell: (count) => (
-        <Link className="ls-link" href={open(count)}>
+        <Link className="ls-link" href={open(count)} translate="no">
           {count.code}
         </Link>
       ),
@@ -119,7 +130,7 @@ export function CountsTab({
     {
       key: 'createdBy',
       header: c.columns.createdBy,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: 'lg',
       cell: (count) => count.createdByName,
@@ -136,13 +147,14 @@ export function CountsTab({
       actions: true,
       cell: (count) => (
         <RowActions
+          LinkComponent={RouterMenuLink}
           menuLabel={fill(t.common.list.actionsFor, { name: count.code })}
           items={[
             {
               id: 'open',
               label: c.open,
               icon: 'eye',
-              onSelect: () => navigate?.(open(count)),
+              href: open(count),
             },
           ]}
         />
@@ -158,10 +170,11 @@ export function CountsTab({
           reload={{ label: t.common.reload, onClick: () => void counts.reload() }}
           filters={branchControl}
         />
-      ) : (
-        branchControl && <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
-      )}
+      ) : branchControl ? (
+        <ListToolbar labels={toolbarLabels(t)} filters={branchControl} />
+      ) : null}
       <DataTable
+        drillDown
         mode="client"
         caption={fill(t.common.list.table, { list: text.tabs.counts })}
         columns={columns}
@@ -251,6 +264,9 @@ export function CountScreen({ id }: { id: string }) {
     [api, id],
   );
   const [notice, setNotice] = useState<string | null>(null);
+  // The page of the count sheet lives above the remount on every save, so saving keeps the counter where they were (wig :584),
+  // and in the address, so Back/Forward and a shared link show the same page (wig Navigation & State); 20 rows a page.
+  const sheet = useUrlPage('lpage');
   if (count.error && !count.data) {
     return <ErrorState error={count.error} t={t} onRetry={() => void count.reload()} />;
   }
@@ -262,9 +278,13 @@ export function CountScreen({ id }: { id: string }) {
       reload={count.reload}
       notice={notice}
       onNotice={setNotice}
+      page={{ page: sheet.page, pageSize: sheet.pageSize }}
+      onPage={(next) => sheet.onPageChange(next.page)}
     />
   );
 }
+
+type SheetPage = { page: number; pageSize: number };
 
 type Overlay = 'approve' | 'cancel' | 'add' | null;
 
@@ -278,13 +298,20 @@ export function CountView({
   reload,
   notice = null,
   onNotice = () => undefined,
+  page,
+  onPage,
 }: {
   count: StockCountResponse;
   reload: () => Promise<void>;
   notice?: string | null;
   onNotice?: (message: string | null) => void;
+  /** The sheet's page, held by the caller so a save (which remounts this view) keeps it. */
+  page?: SheetPage;
+  onPage?: (page: SheetPage) => void;
 }) {
   const { api, t, locale, base } = useWorkforce();
+  // The counts tab's view the count was opened from (C70): the breadcrumb returns to the same branch and page.
+  const backQuery = useBackQuery();
   const text = inventoryDictionary(locale);
   const c = text.count;
   const notify = useSuccessToast();
@@ -292,9 +319,13 @@ export function CountView({
   const editable = open && count.canAdjust;
   const [values, setValues] = useState<Record<string, string>>(() => countValues(count));
   const [removed, setRemoved] = useState<string[]>([]);
+  // C72 for the count sheet: the line just removed (removal is a draft until "Lưu số đếm") can be put back with one click.
+  const [lastRemoved, setLastRemoved] = useState<StockCountLineResponse | null>(null);
+  const toast = useOptionalToast();
   const [overlay, setOverlay] = useState<Overlay>(null);
   const command = useInventoryCommand(reload);
-  const visible = count.lines.filter((line) => !removed.includes(line.variantId));
+  const removedIds = new Set(removed);
+  const visible = count.lines.filter((line) => !removedIds.has(line.variantId));
   const changed = changedCountLines(count, values);
   const invalid = changed === null;
   const dirty = invalid || (changed?.length ?? 0) > 0 || removed.length > 0;
@@ -302,22 +333,43 @@ export function CountView({
     message: inventoryErrorText(error, locale, (cause) => errorMessage(cause, t)),
     reference: error instanceof ApiError ? error.requestId : null,
   });
+  // Typed counts are not lost by leaving the page by accident (wig :300).
+  useUnsavedChangesGuard(editable && dirty && !command.pending);
+
+  // Lines whose typed count is not a whole number of 0 or more, named in the notice and marked on the row (wig :341).
+  const invalidLines = visible.filter(
+    (line) => parseCounted(values[line.variantId] ?? String(line.countedQuantity)) === null,
+  );
 
   async function save() {
     onNotice(null);
     const body = countLinesRequest(count, values, removed);
-    if (!body) return;
+    if (!body) {
+      // "Lưu số đếm" stays enabled (wig :486): a refused save opens the page of the first wrong row and puts the cursor there.
+      const first = invalidLines[0];
+      if (first && page && onPage) {
+        const index = visible.indexOf(first);
+        onPage({ ...page, page: Math.floor(index / page.pageSize) + 1 });
+      }
+      focusFirstInvalid();
+      return;
+    }
     const result = await command.run(`/api/v1/stock-counts/${count.id}/lines`, body);
     if (result.ok) notify(c.saved);
   }
 
   const columns: DataTableColumn<StockCountLineResponse>[] = [
-    { key: 'sku', header: c.columns.sku, hideBelow: 'lg', cell: (line) => line.sku },
+    {
+      key: 'sku',
+      header: c.columns.sku,
+      hideBelow: 'lg',
+      cell: (line) => <span translate="no">{line.sku}</span>,
+    },
     {
       key: 'product',
       header: c.columns.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (line) => itemTitle(line, locale),
     },
@@ -334,11 +386,15 @@ export function CountView({
       cell: (line) =>
         editable ? (
           <NumberInput
-            aria-label={fill(c.countedLabel, { sku: line.sku })}
+            // The row's product is named, not only its SKU (wig :336).
+            aria-label={fill(c.countedLabelOf, { name: itemTitle(line, locale), sku: line.sku })}
             inputMode="numeric"
             min={0}
             value={values[line.variantId] ?? String(line.countedQuantity)}
             invalid={parseCounted(values[line.variantId] ?? '') === null}
+            {...(parseCounted(values[line.variantId] ?? '') === null
+              ? { 'aria-describedby': INVALID_ID }
+              : {})}
             onChange={(event) =>
               setValues((state) => ({ ...state, [line.variantId]: event.target.value }))
             }
@@ -355,18 +411,18 @@ export function CountView({
         const difference = editable
           ? countDifference(line, parseCounted(values[line.variantId] ?? ''))
           : line.difference;
+        // Data, not a decoration: a signed tabular number (no circled pill); a shortfall or a surplus carries an arrow icon
+        // and the status colour, a match stays plain. Nothing animates while it recalculates (G5).
+        if (difference === null) return text.none;
+        if (difference === 0)
+          return <span className="ls-pos-figure">{signedNumber(locale, 0)}</span>;
         return (
-          <Badge
-            tone={
-              difference === null || difference === 0
-                ? 'neutral'
-                : difference > 0
-                  ? 'info'
-                  : 'warning'
-            }
+          <span
+            className={`ls-pos-figure ls-pos-diff ${difference < 0 ? 'ls-pos-diff-under' : 'ls-pos-diff-over'}`}
           >
-            {differenceText(difference)}
-          </Badge>
+            <Icon name={difference < 0 ? 'arrow-down' : 'arrow-up'} size={16} />
+            {signedNumber(locale, difference)}
+          </span>
         );
       },
     },
@@ -380,7 +436,21 @@ export function CountView({
               <IconButton
                 icon="trash"
                 label={fill(c.removeLine, { sku: line.sku })}
-                onClick={() => setRemoved((state) => [...state, line.variantId])}
+                onClick={() => {
+                  setRemoved((state) => [...state, line.variantId]);
+                  // C72: "Hoàn tác" in the toast (8 s); without a toast provider, an inline line above the sheet.
+                  if (toast) {
+                    toast.push({
+                      tone: 'info',
+                      message: fill(c.removedLine, { sku: itemTitle(line, locale) }),
+                      action: {
+                        label: c.undo,
+                        onAction: () =>
+                          setRemoved((state) => state.filter((id) => id !== line.variantId)),
+                      },
+                    });
+                  } else setLastRemoved(line);
+                }}
               />
             ),
           },
@@ -390,34 +460,40 @@ export function CountView({
 
   return (
     <>
-      <PageHeader
-        title={count.code}
-        {...(editable && dirty ? { intro: c.saveFirst } : {})}
-        {...(!open ? { intro: c.closedHint } : {})}
+      <KitPageHeader
+        title={fill(c.title, { code: count.code })}
+        {...(editable && dirty ? { description: c.saveFirst } : {})}
+        {...(!open ? { description: c.closedHint } : {})}
+        // The count's status under the title (kit status slot), not buried among the facts (plan).
+        status={<Badge tone={countTone(count.status)}>{text.counts.statuses[count.status]}</Badge>}
         breadcrumbs={
           <Breadcrumbs
             label={text.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               {
                 label: text.title,
-                href: `${base}/inventory?tab=counts&branch=${encodeURIComponent(count.branchId)}`,
+                href: `${base}/inventory?${backQuery || `tab=counts&branch=${encodeURIComponent(count.branchId)}`}`,
               },
               { label: count.code },
             ]}
           />
         }
-      >
-        {editable ? (
-          <Button
-            variant="primary"
-            disabled={dirty || count.lines.length === 0}
-            onClick={() => setOverlay('approve')}
-          >
-            {c.approve}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          editable ? (
+            // One filled button at a time: while counts are unsaved, "Lưu số đếm" is the primary and this waits as a secondary.
+            <Button
+              variant={dirty ? 'secondary' : 'primary'}
+              disabled={dirty || count.lines.length === 0}
+              // The blocked approve says why (wig Forms: no silently disabled action); the header says it too.
+              {...(dirty ? { disabledReason: c.saveFirst } : {})}
+              onClick={() => setOverlay('approve')}
+            >
+              {c.approve}
+            </Button>
+          ) : undefined
+        }
+      />
       <Stack gap="page">
         {notice ? <Notice tone="error">{notice}</Notice> : null}
         <Section
@@ -443,20 +519,20 @@ export function CountView({
             items={[
               { label: c.fields.branch, value: count.branchName },
               {
-                label: c.fields.status,
-                value: (
-                  <Badge tone={countTone(count.status)}>{text.counts.statuses[count.status]}</Badge>
-                ),
-              },
-              {
                 label: c.fields.createdBy,
-                value: `${count.createdByName} · ${formatDateTime(count.createdAt, ZONE, locale)}`,
+                value: fill(c.actorAt, {
+                  name: count.createdByName,
+                  time: formatDateTime(count.createdAt, ZONE, locale),
+                }),
               },
               ...(count.approvedAt
                 ? [
                     {
                       label: c.fields.approvedBy,
-                      value: `${count.approvedByName ?? text.none} · ${formatDateTime(count.approvedAt, ZONE, locale)}`,
+                      value: fill(c.actorAt, {
+                        name: count.approvedByName ?? text.none,
+                        time: formatDateTime(count.approvedAt, ZONE, locale),
+                      }),
                     },
                   ]
                 : []),
@@ -481,9 +557,9 @@ export function CountView({
                   {c.add}
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant={dirty ? 'primary' : 'secondary'}
                   loading={command.pending}
-                  disabled={!dirty || invalid}
+                  disabled={!dirty}
                   onClick={() => void save()}
                 >
                   {c.save}
@@ -492,9 +568,37 @@ export function CountView({
             ) : undefined
           }
         >
-          {editable && invalid ? <Notice tone="error">{c.invalidCounted}</Notice> : null}
+          {editable && invalid ? (
+            <div id={INVALID_ID}>
+              <Notice tone="error">
+                {fill(c.invalidCountedRows, {
+                  names: listFormat(locale).format(
+                    invalidLines.map((line) => itemTitle(line, locale)),
+                  ),
+                })}
+              </Notice>
+            </div>
+          ) : null}
           {command.message ? <Notice tone="error">{command.message}</Notice> : null}
-          <CountLines columns={columns} rows={visible} />
+          {editable && lastRemoved && removed.includes(lastRemoved.variantId) ? (
+            <div className="ls-pos-undo" role="status">
+              <span>{fill(c.removedLine, { sku: itemTitle(lastRemoved, locale) })}</span>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setRemoved((state) => state.filter((id) => id !== lastRemoved.variantId));
+                  setLastRemoved(null);
+                }}
+              >
+                {c.undo}
+              </Button>
+            </div>
+          ) : null}
+          <CountLines
+            columns={columns}
+            rows={visible}
+            {...(page && onPage ? { page, onPage } : {})}
+          />
         </ListSection>
       </Stack>
       {overlay === 'add' ? (
@@ -575,13 +679,20 @@ export function CountView({
 function CountLines({
   columns,
   rows,
+  page: heldPage,
+  onPage,
 }: {
   columns: DataTableColumn<StockCountLineResponse>[];
   rows: StockCountLineResponse[];
+  page?: SheetPage;
+  onPage?: (page: SheetPage) => void;
 }) {
   const { t, locale } = useWorkforce();
   const text = inventoryDictionary(locale);
-  const [page, setPage] = useState({ page: 1, pageSize: 20 });
+  const [ownPage, setOwnPage] = useState<SheetPage>({ page: 1, pageSize: 20 });
+  const page = heldPage ?? ownPage;
+  const setPage = (update: (state: SheetPage) => SheetPage) =>
+    onPage ? onPage(update(page)) : setOwnPage(update);
   return (
     <DataTable
       mode="client"
@@ -592,8 +703,8 @@ function CountLines({
       empty={<Empty>{text.count.itemsEmpty}</Empty>}
       paging={{
         ...page,
+        // 20 rows a page, no page-size choice (DESIGN 8.8).
         onPageChange: (next) => setPage((state) => ({ ...state, page: next })),
-        onPageSizeChange: (pageSize) => setPage({ page: 1, pageSize }),
         labels: paginationLabels(t, text.count.items),
       }}
     />
@@ -631,7 +742,8 @@ function AddItemDialog({
   async function submit() {
     setChecked(true);
     const body = countAddRequest(count, variantId, counted);
-    if (!body) return;
+    // A refused add moves focus to the first field that needs attention (wig Forms).
+    if (!body) return focusFirstInvalid();
     const result = await command.run(`/api/v1/stock-counts/${count.id}/lines`, body);
     if (result.ok) onDone();
   }

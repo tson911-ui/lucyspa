@@ -91,12 +91,12 @@ const vi = {
   intro:
     'Tiền mặt của từng chi nhánh và tài khoản ngân hàng của cửa hàng. Mọi khoản thu từ hóa đơn và hoàn tiền được ghi tự động; thu chi khác nhập tay kèm lý do.',
   loadError: 'Không tải được sổ quỹ.',
-  noAccess: 'Bạn chưa có quyền xem sổ quỹ.',
+  noAccess: 'Bạn chưa có quyền xem sổ quỹ. Hỏi Chủ cửa hàng nếu bạn cần xem.',
   notLive: {
     title: 'Chưa bắt đầu dùng sổ quỹ',
     body: 'Chủ cửa hàng đếm tiền mặt thật của từng chi nhánh và số dư ngân hàng, rồi bắt đầu sổ quỹ. Từ lúc đó, mọi khoản thu chi được ghi vào sổ; trước đó không ghi gì và không nhập bù.',
     waiting: 'Sổ quỹ sẽ dùng được sau khi Chủ cửa hàng bắt đầu.',
-    start: 'Bắt đầu sổ quỹ',
+    start: 'Bắt đầu sổ quỹ…',
   },
   goLive: {
     title: 'Bắt đầu sổ quỹ',
@@ -111,6 +111,7 @@ const vi = {
   },
   alertLabel: 'Chốt quỹ lệch lớn (30 ngày qua)',
   alert: '{n} lần, mỗi lần lệch từ {amount} trở lên',
+  alertShort: 'Lệch lớn',
   fund: {
     label: 'Quỹ',
     summary: 'Tình hình quỹ',
@@ -124,7 +125,7 @@ const vi = {
   },
   tabsLabel: 'Các mục của sổ quỹ',
   tabs: { book: 'Sổ quỹ', closing: 'Chốt ngày', reconcile: 'Đối chiếu' },
-  actions: { record: 'Ghi sổ quỹ', transfer: 'Chuyển quỹ' },
+  actions: { record: 'Ghi sổ quỹ…', transfer: 'Chuyển quỹ…' },
   directions: { IN: 'Thu', OUT: 'Chi' },
   categories: categories.vi,
   book: {
@@ -140,11 +141,12 @@ const vi = {
     auto: 'Tự động',
     reversed: 'Đã điều chỉnh',
     reverseOf: 'Điều chỉnh cho một bút toán trước',
-    reverse: 'Điều chỉnh (hoàn tác)',
+    reverse: 'Điều chỉnh (hoàn tác)…',
   },
   entry: {
     title: 'Ghi sổ quỹ',
     description: 'Ghi một khoản thu hoặc chi vào quỹ này. Luôn cần số tiền và lý do.',
+    descriptionFor: 'Ghi một khoản thu hoặc chi vào {fund}. Luôn cần số tiền và lý do.',
     kind: 'Loại',
     kinds: kinds.vi,
     amount: 'Số tiền',
@@ -171,6 +173,8 @@ const vi = {
   reverse: {
     title: 'Điều chỉnh bút toán',
     description: 'Tạo bút toán ngược lại để hoàn tác khoản này. Bút toán cũ vẫn được giữ.',
+    descriptionFor:
+      'Tạo bút toán ngược lại để hoàn tác khoản {category} {amount}. Bút toán cũ vẫn được giữ.',
     reason: 'Lý do điều chỉnh',
     submit: 'Điều chỉnh',
     submitting: 'Đang điều chỉnh…',
@@ -180,7 +184,7 @@ const vi = {
     title: 'Chốt ngày',
     intro:
       'Đếm tiền trong ngăn kéo và két, nhập số đã đếm. Sổ so với số đếm; nếu lệch phải ghi lý do. Ngày đã chốt bị khóa và không mở lại.',
-    start: 'Chốt ngày',
+    start: 'Chốt ngày…',
     date: 'Ngày chốt',
     opening: 'Tiền đầu ngày',
     cashIn: 'Thu trong ngày',
@@ -192,9 +196,13 @@ const vi = {
     differenceShort: 'Thiếu',
     differenceOver: 'Thừa',
     differenceNone: 'Khớp sổ',
+    differenceShortBy: 'Thiếu {amount}',
+    differenceOverBy: 'Thừa {amount}',
     withdrawal: 'Chủ rút tiền',
     withdrawalHint: 'Số tiền Chủ lấy đi khi chốt. Phần còn lại là tiền đầu ngày hôm sau.',
     suggest: 'Gợi ý rút {amount} để chừa tiền đầu ngày như thường lệ.',
+    withdrawalHintSuggest:
+      'Số tiền Chủ lấy đi khi chốt. Phần còn lại là tiền đầu ngày hôm sau. Gợi ý rút {amount} để chừa tiền đầu ngày như thường lệ.',
     nextFloat: 'Tiền để lại cho ngày sau',
     reason: 'Lý do chênh lệch',
     reasonHint: 'Bắt buộc khi số đếm khác số theo sổ. Chênh lệch không bị trừ vào lương.',
@@ -202,8 +210,8 @@ const vi = {
     submitting: 'Đang chốt…',
     done: 'Đã chốt ngày.',
     blocked: {
-      ALREADY_CLOSED: 'Ngày này đã được chốt.',
-      FUTURE_DAY: 'Chưa đến ngày này.',
+      ALREADY_CLOSED: 'Ngày này đã được chốt. Chọn ngày khác.',
+      FUTURE_DAY: 'Chưa đến ngày này. Chọn hôm nay hoặc một ngày trước đó.',
       UNPOSTED: 'Còn khoản chưa vào sổ. Thử lại sau ít giây.',
     },
     history: 'Các ngày đã chốt',
@@ -240,17 +248,31 @@ const vi = {
       delta: 'Lệch',
       unposted: 'Chưa vào sổ',
     },
-    none: 'Không có khoản nào trong khoảng ngày này.',
+    none: 'Không có khoản nào trong khoảng ngày này. Thử đổi khoảng ngày.',
+  },
+  // What is wrong with one field and how to fix it (wig cash.tsx:178): never the generic "Dữ liệu chưa hợp lệ".
+  problems: {
+    amount: 'Nhập số tiền lớn hơn 0.',
+    opening: 'Nhập số dư đếm được, có thể là 0.',
+    reason: 'Ghi lý do, tối đa 500 ký tự.',
+    branch: 'Chọn chi nhánh của khoản này.',
+    from: 'Chọn quỹ chuyển đi.',
+    to: 'Chọn quỹ nhận, khác quỹ chuyển đi.',
+    counted: 'Nhập số tiền đã đếm, có thể là 0.',
+    withdrawal: 'Nhập số tiền Chủ rút, không lớn hơn số tiền đã đếm.',
+    date: 'Chọn ngày cần chốt.',
+    range: 'Ngày bắt đầu không được sau ngày kết thúc.',
   },
   errors: {
-    FINANCE_NOT_LIVE: 'Sổ quỹ chưa được bắt đầu.',
-    FINANCE_ALREADY_LIVE: 'Sổ quỹ đã được bắt đầu rồi.',
+    // Each refusal says what to do next (wig Content & Copy), not only what went wrong.
+    FINANCE_NOT_LIVE: 'Sổ quỹ chưa được bắt đầu. Chủ cửa hàng cần bắt đầu sổ quỹ trước.',
+    FINANCE_ALREADY_LIVE: 'Sổ quỹ đã được bắt đầu rồi. Tải lại trang để xem sổ.',
     CASH_OPENING_INVALID:
       'Phải nhập số tiền đã đếm cho đúng các chi nhánh đang hoạt động và cho ngân hàng.',
-    CASH_INSUFFICIENT: 'Quỹ không đủ tiền cho khoản này.',
+    CASH_INSUFFICIENT: 'Quỹ không đủ tiền cho khoản này. Nhập số tiền không lớn hơn số dư của quỹ.',
     CASH_ENTRY_NOT_REVERSIBLE:
       'Bút toán này không điều chỉnh được (đã điều chỉnh hoặc ghi tự động).',
-    CASH_DAY_CLOSED: 'Ngày này đã được chốt.',
+    CASH_DAY_CLOSED: 'Ngày này đã được chốt. Tải lại trang để xem số liệu mới nhất.',
     CASH_UNPOSTED: 'Còn khoản chưa vào sổ. Thử lại sau ít giây.',
   },
 };
@@ -258,14 +280,14 @@ const vi = {
 const en: typeof vi = {
   title: 'Cash book',
   intro:
-    "Each branch's cash and the shop's bank account. Money from invoices and refunds is recorded automatically; other money in and out is entered by hand with a reason.",
+    'Each branch’s cash and the shop’s bank account. Money from invoices and refunds is recorded automatically; other money in and out is entered by hand with a reason.',
   loadError: 'The cash book could not be loaded.',
-  noAccess: 'You do not have access to the cash book.',
+  noAccess: 'You do not have access to the cash book. Ask the owner if you need it.',
   notLive: {
     title: 'The cash book has not been started',
-    body: "The owner counts each branch's real cash and the bank balance, then starts the cash book. From that moment every money movement is recorded; nothing before it is recorded or back-filled.",
+    body: 'The owner counts each branch’s real cash and the bank balance, then starts the cash book. From that moment every money movement is recorded; nothing before it is recorded or back-filled.',
     waiting: 'The cash book will be available once the owner starts it.',
-    start: 'Start the cash book',
+    start: 'Start the cash book…',
   },
   goLive: {
     title: 'Start the cash book',
@@ -280,6 +302,7 @@ const en: typeof vi = {
   },
   alertLabel: 'Large count differences (last 30 days)',
   alert: '{n} time(s), each off by {amount} or more',
+  alertShort: 'Large difference',
   fund: {
     label: 'Fund',
     summary: 'Fund status',
@@ -293,7 +316,7 @@ const en: typeof vi = {
   },
   tabsLabel: 'Cash book sections',
   tabs: { book: 'Book', closing: 'Daily closing', reconcile: 'Reconciliation' },
-  actions: { record: 'Record entry', transfer: 'Transfer' },
+  actions: { record: 'Record entry…', transfer: 'Transfer…' },
   directions: { IN: 'In', OUT: 'Out' },
   categories: categories.en,
   book: {
@@ -309,11 +332,12 @@ const en: typeof vi = {
     auto: 'Automatic',
     reversed: 'Corrected',
     reverseOf: 'Corrects an earlier entry',
-    reverse: 'Correct (reverse)',
+    reverse: 'Correct (reverse)…',
   },
   entry: {
     title: 'Record entry',
     description: 'Record money in or out of this fund. An amount and a reason are always required.',
+    descriptionFor: 'Record money in or out of {fund}. An amount and a reason are always required.',
     kind: 'Type',
     kinds: kinds.en,
     amount: 'Amount',
@@ -340,6 +364,8 @@ const en: typeof vi = {
   reverse: {
     title: 'Correct an entry',
     description: 'Creates an opposite entry that undoes this one. The original stays in the book.',
+    descriptionFor:
+      'Creates an opposite entry that undoes the {category} entry of {amount}. The original stays in the book.',
     reason: 'Reason for the correction',
     submit: 'Correct',
     submitting: 'Correcting…',
@@ -349,7 +375,7 @@ const en: typeof vi = {
     title: 'Daily closing',
     intro:
       'Count the cash in the drawer and the safe and enter it. The book is compared with your count; a difference needs a reason. A closed day is locked and never reopened.',
-    start: 'Close the day',
+    start: 'Close the day…',
     date: 'Day to close',
     opening: 'Opening cash',
     cashIn: 'Money in today',
@@ -361,10 +387,14 @@ const en: typeof vi = {
     differenceShort: 'Short',
     differenceOver: 'Over',
     differenceNone: 'Matches the book',
+    differenceShortBy: 'Short by {amount}',
+    differenceOverBy: 'Over by {amount}',
     withdrawal: 'Owner withdrawal',
     withdrawalHint:
       'What the owner takes when closing. The rest is the opening cash of the next day.',
     suggest: 'Suggestion: take {amount} to leave the usual opening cash.',
+    withdrawalHintSuggest:
+      'What the owner takes when closing. The rest is the opening cash of the next day. Suggestion: take {amount} to leave the usual opening cash.',
     nextFloat: 'Cash left for the next day',
     reason: 'Reason for the difference',
     reasonHint:
@@ -373,8 +403,8 @@ const en: typeof vi = {
     submitting: 'Closing…',
     done: 'The day is closed.',
     blocked: {
-      ALREADY_CLOSED: 'This day is already closed.',
-      FUTURE_DAY: 'This day has not come yet.',
+      ALREADY_CLOSED: 'This day is already closed. Choose another day.',
+      FUTURE_DAY: 'This day has not come yet. Choose today or an earlier day.',
       UNPOSTED: 'Some items are not in the book yet. Try again in a few seconds.',
     },
     history: 'Closed days',
@@ -411,16 +441,29 @@ const en: typeof vi = {
       delta: 'Difference',
       unposted: 'Not in the book',
     },
-    none: 'Nothing in this period.',
+    none: 'Nothing in this period. Try other dates.',
+  },
+  problems: {
+    amount: 'Enter an amount above 0.',
+    opening: 'Enter the counted balance; 0 is allowed.',
+    reason: 'Write a reason of up to 500 characters.',
+    branch: 'Choose the branch of this entry.',
+    from: 'Choose the fund the money leaves.',
+    to: 'Choose the receiving fund, not the same one.',
+    counted: 'Enter the counted amount; 0 is allowed.',
+    withdrawal: 'Enter the Owner withdrawal, not more than the counted amount.',
+    date: 'Choose the day to close.',
+    range: 'The start date cannot be after the end date.',
   },
   errors: {
-    FINANCE_NOT_LIVE: 'The cash book has not been started.',
-    FINANCE_ALREADY_LIVE: 'The cash book has already been started.',
+    FINANCE_NOT_LIVE: 'The cash book has not been started. The owner needs to start it first.',
+    FINANCE_ALREADY_LIVE: 'The cash book has already been started. Reload the page to see it.',
     CASH_OPENING_INVALID:
       'Enter the counted amount for exactly the active branches and for the bank.',
-    CASH_INSUFFICIENT: 'The fund does not hold enough money for this.',
+    CASH_INSUFFICIENT:
+      'The fund does not hold enough money for this. Enter an amount no larger than the fund balance.',
     CASH_ENTRY_NOT_REVERSIBLE: 'This entry cannot be corrected (already corrected or automatic).',
-    CASH_DAY_CLOSED: 'This day is already closed.',
+    CASH_DAY_CLOSED: 'This day is already closed. Reload the page to see the latest figures.',
     CASH_UNPOSTED: 'Some items are not in the book yet. Try again in a few seconds.',
   },
 };

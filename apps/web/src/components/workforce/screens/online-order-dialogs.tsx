@@ -20,7 +20,7 @@ import {
   Textarea,
   TextInput,
 } from '@lucy-spa/ui';
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { onlineFulfilmentDictionary } from '../../../i18n/online-fulfilment';
 import { productOrdersDictionary } from '../../../i18n/product-orders';
 import { fill } from '../../../i18n/workforce';
@@ -74,6 +74,8 @@ import { errorMessage } from '../../../lib/workforce/workflows';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import { Notice } from '../ui';
+import { focusFirstInvalid } from './pos-dom';
+import { signedMoney } from './pos-format';
 
 type Order = OnlineStaffOrderResponse;
 
@@ -102,6 +104,7 @@ function CommandDialog({
   onConflict,
   nameOf,
   extra,
+  suspended = false,
   children,
 }: {
   title: string;
@@ -117,6 +120,8 @@ function CommandDialog({
   nameOf?: (id: string) => string | null;
   /** Rendered beside the form (the password confirmation). */
   extra?: ReactNode;
+  /** The password confirmation is open (C60): the form steps out of sight until it closes, its input kept. */
+  suspended?: boolean;
   children: (view: View) => ReactNode;
 }) {
   const { t, locale } = useWorkforce();
@@ -131,7 +136,8 @@ function CommandDialog({
     setError(null);
     setField(null);
     const call = run();
-    if (!call) return;
+    // A refused draft: the messages show and the first invalid field takes focus (wig Forms).
+    if (!call) return focusFirstInvalid();
     setPending(true);
     try {
       const next = await call;
@@ -167,6 +173,7 @@ function CommandDialog({
       {drawer ? (
         <FormDrawer
           title={title}
+          suspended={suspended}
           labels={labels}
           busy={pending}
           dirty={dirty}
@@ -179,6 +186,7 @@ function CommandDialog({
       ) : (
         <FormDialog
           title={title}
+          suspended={suspended}
           {...(description ? { description } : {})}
           labels={labels}
           busy={pending}
@@ -202,8 +210,6 @@ interface DialogProps {
   onConflict: () => Promise<void> | void;
 }
 
-const useMoneySeparator = () => (useWorkforce().locale === 'vi' ? '.' : ',');
-
 /** The name of an order line by its id, for the message about lines that are not ready. */
 function useNameOf(order: Order) {
   const { locale } = useWorkforce();
@@ -220,7 +226,6 @@ const url = (order: Order, path: string) => `/api/v1/online-orders/${order.id}/$
 export function ShipDialog({ order, onClose, onDone, onConflict }: DialogProps) {
   const { api, locale } = useWorkforce();
   const d = onlineFulfilmentDictionary(locale).ship;
-  const separator = useMoneySeparator();
   const nameOf = useNameOf(order);
   const [draft, setDraft] = useState<ShipDraft>(() => emptyShipDraft(order.carriers));
   const problems = validateShip(draft);
@@ -247,9 +252,10 @@ export function ShipDialog({ order, onClose, onDone, onConflict }: DialogProps) 
         <>
           <DescriptionList
             layout="totals"
+            // The product and its quantity (one dictionary format); no decorative "1." numbering, the order is the list order.
             items={parcel.map((line) => ({
-              label: `${line.sequence}. ${productTitle(line, locale)}`,
-              value: `× ${line.quantity}`,
+              label: productTitle(line, locale),
+              value: fill(d.parcelQuantity, { quantity: line.quantity }),
             }))}
           />
           {order.carriers.length === 0 ? <Notice tone="warning">{d.noCarriers}</Notice> : null}
@@ -291,6 +297,7 @@ export function ShipDialog({ order, onClose, onDone, onConflict }: DialogProps) 
                   {...control}
                   autoComplete="off"
                   maxLength={80}
+                  spellCheck={false}
                   value={draft.trackingCode}
                   onChange={(event) => set({ trackingCode: event.target.value })}
                 />
@@ -307,7 +314,7 @@ export function ShipDialog({ order, onClose, onDone, onConflict }: DialogProps) 
                 <MoneyInput
                   {...control}
                   unit="₫"
-                  separator={separator}
+                  locale={locale}
                   value={draft.fee}
                   onValueChange={(value) => set({ fee: value })}
                 />
@@ -326,7 +333,6 @@ export function CorrectShipmentDialog({ order, onClose, onDone, onConflict }: Di
   const { api, locale } = useWorkforce();
   const d = onlineFulfilmentDictionary(locale).correctShipment;
   const ship = onlineFulfilmentDictionary(locale).ship;
-  const separator = useMoneySeparator();
   const shipment = order.shipment;
   const [draft, setDraft] = useState<CorrectShipmentDraft | null>(() =>
     shipment ? correctShipmentDraft(shipment) : null,
@@ -374,6 +380,7 @@ export function CorrectShipmentDialog({ order, onClose, onDone, onConflict }: Di
                   {...control}
                   autoComplete="off"
                   maxLength={80}
+                  spellCheck={false}
                   value={draft.trackingCode}
                   onChange={(event) => set({ trackingCode: event.target.value })}
                 />
@@ -392,7 +399,7 @@ export function CorrectShipmentDialog({ order, onClose, onDone, onConflict }: Di
                   <MoneyInput
                     {...control}
                     unit="₫"
-                    separator={separator}
+                    locale={locale}
                     value={draft.fee}
                     onValueChange={(value) => set({ fee: value })}
                   />
@@ -665,6 +672,8 @@ export function AddressDialog({ order, onClose, onDone, onConflict }: DialogProp
                 {(control) => (
                   <TextInput
                     {...control}
+                    // A phone field (tel keyboard); autofill stays off: it is the recipient's number, not the staff member's.
+                    type="tel"
                     inputMode="tel"
                     maxLength={40}
                     autoComplete="off"
@@ -756,8 +765,7 @@ export function OnlineCancelDialog({
   const text = productOrdersDictionary(locale);
   const c = text.cancel;
   const own = onlineFulfilmentDictionary(locale).cancel;
-  const { confirm, dialog } = useReauthentication();
-  const separator = useMoneySeparator();
+  const { confirm, dialog, asking } = useReauthentication();
   const causes = line.cancelCauses.filter((cause) => cause !== 'INVOICE_CANCELLED');
   const share = line.refundShareVnd;
   const [draft, setDraft] = useState<CancelDraft>(() => ({
@@ -766,7 +774,8 @@ export function OnlineCancelDialog({
     // A change of mind starts at the whole share; the Owner or a manager lowers it when they decide so.
     amount: causes.length === 1 && causes[0] === 'CUSTOMER_CHANGED_MIND' ? share : '',
   }));
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // The request id is made once, not on every render (rbp rerender-lazy-state-init); it stays for a retry.
+  const [requestId] = useState(() => globalThis.crypto.randomUUID());
   const problems = validateCancel(draft, share);
   const set = (patch: Partial<CancelDraft>) => setDraft((state) => ({ ...state, ...patch }));
   const money = share !== '0';
@@ -783,7 +792,7 @@ export function OnlineCancelDialog({
       submitting={c.submitting}
       dirty={draft.note !== '' || draft.bankReference !== '' || partial}
       run={() => {
-        const body = cancelRequest(draft, line.rowVersion, requestId.current, share);
+        const body = cancelRequest(draft, line.rowVersion, requestId, share);
         if (!body) return null;
         return withReauthentication(
           () => api.post<Order>(`/api/v1/online-orders/lines/${line.id}/cancel`, body),
@@ -794,10 +803,16 @@ export function OnlineCancelDialog({
       onDone={onDone}
       onConflict={onConflict}
       extra={dialog}
+      suspended={asking}
     >
       {({ checked }) => (
         <>
-          <Notice tone="info">{`${line.quantity} × ${productTitle(line, locale)}`}</Notice>
+          <Notice tone="info">
+            {fill(text.queue.quantityOf, {
+              quantity: line.quantity,
+              name: productTitle(line, locale),
+            })}
+          </Notice>
           {causes.length === 0 ? <Notice tone="warning">{c.noCause}</Notice> : null}
           <FormGrid>
             <Field
@@ -839,7 +854,7 @@ export function OnlineCancelDialog({
                   <MoneyInput
                     {...control}
                     unit="₫"
-                    separator={separator}
+                    locale={locale}
                     value={draft.amount === '' ? null : Number(draft.amount)}
                     onValueChange={(value) => set({ amount: value === null ? '' : String(value) })}
                   />
@@ -878,6 +893,7 @@ export function OnlineCancelDialog({
                     {...control}
                     autoComplete="off"
                     maxLength={BANK_REFERENCE_MAX}
+                    spellCheck={false}
                     value={draft.bankReference}
                     onChange={(event) => set({ bankReference: event.target.value })}
                   />
@@ -904,15 +920,18 @@ export function OnlineCancelDialog({
               )}
             </Field>
           </FormGrid>
+          {/* The amount the cashier checks is in tabular figures (wig :911). */}
           <Notice tone="info">
-            {!money
-              ? c.noAmount
-              : partial
-                ? fill(c.partial, {
-                    amount: formatVnd(draft.amount.trim(), locale),
-                    share: formatVnd(share, locale),
-                  })
-                : fill(c.amount, { amount: formatVnd(share, locale) })}
+            <span className="ls-pos-figure-text">
+              {!money
+                ? c.noAmount
+                : partial
+                  ? fill(c.partial, {
+                      amount: formatVnd(draft.amount.trim(), locale),
+                      share: formatVnd(share, locale),
+                    })
+                  : fill(c.amount, { amount: formatVnd(share, locale) })}
+            </span>
           </Notice>
           {line.mode === 'PRE_ORDER' && line.status === 'ARRIVED' ? (
             <p className="ls-hint">{c.goods}</p>
@@ -930,10 +949,10 @@ export function OnlineCancelDialog({
 export function SettleDialog({ order, onClose, onDone, onConflict }: DialogProps) {
   const { api, locale } = useWorkforce();
   const d = onlineFulfilmentDictionary(locale).settle;
-  const { confirm, dialog } = useReauthentication();
-  const separator = useMoneySeparator();
+  const { confirm, dialog, asking } = useReauthentication();
   const [draft, setDraft] = useState<SettleDraft>(emptySettleDraft);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // Made once (rbp rerender-lazy-state-init); it stays for a retry.
+  const [requestId] = useState(() => globalThis.crypto.randomUUID());
   const figures = settleFigures(order, draft.back);
   const problems = validateSettle(draft, figures);
   const set = (patch: Partial<SettleDraft>) => setDraft((state) => ({ ...state, ...patch }));
@@ -948,7 +967,7 @@ export function SettleDialog({ order, onClose, onDone, onConflict }: DialogProps
       submitting={d.submitting}
       dirty={draft.back !== null || draft.reason !== '' || draft.bankReference !== ''}
       run={() => {
-        const body = settleRequest(draft, order, requestId.current);
+        const body = settleRequest(draft, order, requestId);
         if (!body) return null;
         return withReauthentication(() => api.post<Order>(url(order, 'settlement'), body), confirm);
       }}
@@ -956,6 +975,7 @@ export function SettleDialog({ order, onClose, onDone, onConflict }: DialogProps
       onDone={onDone}
       onConflict={onConflict}
       extra={dialog}
+      suspended={asking}
     >
       {({ checked, field }) => (
         <>
@@ -974,7 +994,7 @@ export function SettleDialog({ order, onClose, onDone, onConflict }: DialogProps
                 <MoneyInput
                   {...control}
                   unit="₫"
-                  separator={separator}
+                  locale={locale}
                   value={draft.back}
                   onValueChange={(value) => set({ back: value })}
                 />
@@ -986,13 +1006,14 @@ export function SettleDialog({ order, onClose, onDone, onConflict }: DialogProps
               layout="totals"
               items={[
                 { label: d.goods, value: money(figures.goods) },
+                // The costs taken off carry their minus sign from Intl, not glued on by hand (wig :991, :995).
                 {
                   label: d.out,
-                  value: figures.out === null ? null : `−${money(figures.out)}`,
+                  value: figures.out === null ? null : signedMoney(locale, -figures.out),
                 },
                 {
                   label: d.back,
-                  value: figures.back > 0n ? `−${money(figures.back)}` : money(figures.back),
+                  value: signedMoney(locale, -figures.back),
                 },
                 {
                   label: d.refund,
@@ -1040,6 +1061,7 @@ export function SettleDialog({ order, onClose, onDone, onConflict }: DialogProps
                       {...control}
                       autoComplete="off"
                       maxLength={BANK_REFERENCE_MAX}
+                      spellCheck={false}
                       value={draft.bankReference}
                       onChange={(event) => set({ bankReference: event.target.value })}
                     />
@@ -1099,7 +1121,6 @@ export function ReturnCostDialog({
 }: Omit<DialogProps, 'order'> & { returnCase: OnlineStaffReturnCase }) {
   const { api, locale } = useWorkforce();
   const d = onlineFulfilmentDictionary(locale).returnCost;
-  const separator = useMoneySeparator();
   const [cost, setCost] = useState<number | null>(null);
   const [note, setNote] = useState('');
   const body = returnCostRequest(cost, note);
@@ -1122,7 +1143,7 @@ export function ReturnCostDialog({
       {({ checked, field }) => (
         <FormGrid cols={1}>
           <Field
-            label={`${d.cost} (${returnCase.code})`}
+            label={fill(d.costFor, { code: returnCase.code })}
             error={(checked && body === null) || field === 'costVnd' ? d.badCost : undefined}
             required
             full
@@ -1131,7 +1152,7 @@ export function ReturnCostDialog({
               <MoneyInput
                 {...control}
                 unit="₫"
-                separator={separator}
+                locale={locale}
                 value={cost}
                 onValueChange={setCost}
               />

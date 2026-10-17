@@ -116,7 +116,9 @@ test('late and overdue orders say so in words, not only in colour', () => {
     ),
   );
   assert.match(html, re(text.queue.overdue));
-  assert.match(html, /GHN, G1/);
+  // The carrier, with its tracking code under it as an untranslated code.
+  assert.match(html, />GHN</);
+  assert.match(html, /translate="no">G1</);
 });
 
 test('an empty tab says what is missing, and a search that finds nothing says so', () => {
@@ -451,7 +453,7 @@ test('the delivered dialog has an optional day that cannot be after today', () =
   const html = render(<DeliveredDialog order={shipped()} {...props} />, owner);
   assert.match(html, re(text.delivered.day));
   // Typed as dd/mm/yyyy; the field itself refuses a day after today (see date-text-input.test.tsx in the UI package).
-  assert.match(html, /placeholder="dd\/mm\/yyyy"/);
+  assert.match(html, /placeholder="dd\/mm\/yyyy…"/);
 });
 
 test('the log dialog offers only what the parcel allows', () => {
@@ -497,7 +499,8 @@ test('the settlement dialog shows the formula live: goods, cost out, cost back a
   );
   assert.match(html, re(text.settle.goods));
   assert.match(html, /500\.000\u00a0₫/);
-  assert.match(html, /−30\.000\u00a0₫/);
+  // The cost taken off carries its minus sign from Intl (signDisplay), so either minus glyph is accepted.
+  assert.match(html, /[−-]30\.000\u00a0₫/);
   assert.match(html, re(text.settle.formula));
   // Cost back is empty at first, so the refund is goods - cost out.
   assert.match(html, /470\.000\u00a0₫/);

@@ -12,10 +12,10 @@ const vi = {
       'Đơn khách mua trên website, đã thanh toán trước bằng PayOS. Đóng gói, gửi hàng và theo dõi giao hàng tại đây.',
     breadcrumbs: 'Đường dẫn',
     branch: 'Chi nhánh',
-    search: 'Mã đơn, tên, số điện thoại',
+    search: 'Tìm theo mã đơn, tên hoặc số điện thoại',
     tabsLabel: 'Trạng thái đơn',
     noAccess: 'Bạn chưa được giao xử lý đơn online ở chi nhánh nào.',
-    noMatch: 'Không có đơn nào khớp với tìm kiếm.',
+    noMatch: 'Không có đơn nào khớp với tìm kiếm. Thử từ khóa khác.',
     open: 'Mở đơn',
     tabs: {
       TO_SHIP: 'Cần gửi',
@@ -84,7 +84,7 @@ const vi = {
       deliveryFailed:
         'Giao hàng chưa thành công. Hãy liên hệ khách và ghi lại vào nhật ký giao hàng.',
       returnStarted:
-        'Khách không muốn nhận hàng nữa. Khi kiện hàng về đến cửa hàng, bấm "Hàng đã về cửa hàng".',
+        'Khách không muốn nhận hàng nữa. Khi kiện hàng về đến cửa hàng, bấm “Hàng đã về cửa hàng”.',
       returnedToShop:
         'Kiện hàng đã về cửa hàng. Người có quyền hoàn tiền sẽ xử lý kết quả giao thất bại.',
       cancelled: 'Đơn đã bị hủy.',
@@ -97,11 +97,12 @@ const vi = {
     },
     addressCorrected: 'Địa chỉ này đã được sửa sau khi khách đặt hàng.',
     shipment: 'Vận chuyển',
-    notShipped: 'Chưa gửi hàng.',
+    notShipped: 'Chưa gửi hàng. Bấm “Gửi hàng” khi đơn đã đóng gói.',
     shipmentFields: {
       carrier: 'Đơn vị vận chuyển',
       tracking: 'Mã vận đơn',
-      track: 'Tra cứu',
+      /** The cue after the tracking code in its link. */
+      track: '(tra cứu)',
       shippedAt: 'Ngày gửi',
       shippedBy: 'Người gửi',
       fee: 'Phí trả đơn vị vận chuyển (chiều đi)',
@@ -113,6 +114,10 @@ const vi = {
       correctionText: '{time}, {actor}: mã {code}. Lý do: {reason}',
       /** With {fee}. */
       correctionFee: 'Phí chiều đi {fee}.',
+      /** With {time}, {actor}, {code}, {reason}, {fee}. */
+      correctionTextFee: '{time}, {actor}: mã {code}. Lý do: {reason}. Phí chiều đi {fee}.',
+      /** With {time}, {by}. */
+      deliveredAtBy: '{time} ({by})',
     },
     internalFee: 'Phí vận chuyển là chi phí nội bộ, khách không nhìn thấy.',
     lines: 'Sản phẩm',
@@ -129,7 +134,7 @@ const vi = {
     ready: 'Sẵn sàng gửi',
     preOrder: 'Đặt trước',
     actionsFor: 'Thao tác với {name}',
-    cancelLine: 'Hủy và hoàn tiền',
+    cancelLine: 'Hủy và hoàn tiền…',
     log: 'Nhật ký giao hàng',
     logColumns: {
       time: 'Thời gian',
@@ -159,7 +164,7 @@ const vi = {
       WRONG_OR_DAMAGED: 'Hàng sai hoặc hỏng',
       SKIN_IRRITATION: 'Kích ứng da',
     },
-    recordCost: 'Ghi phí gửi hàng về',
+    recordCost: 'Ghi phí gửi hàng về…',
     openReturn: 'Mở đơn trả hàng',
     settlement: 'Kết quả giao thất bại',
     settlementFields: {
@@ -175,13 +180,13 @@ const vi = {
     /** With {name}, {time}. */
     settledBy: '{name}, {time}',
     actions: {
-      ship: 'Gửi hàng',
-      correctShipment: 'Sửa vận đơn',
-      markDelivered: 'Ghi nhận đã giao',
-      log: 'Ghi nhật ký',
-      markReturned: 'Hàng đã về cửa hàng',
-      correctAddress: 'Sửa địa chỉ',
-      settle: 'Xử lý giao thất bại',
+      ship: 'Gửi hàng…',
+      correctShipment: 'Sửa vận đơn…',
+      markDelivered: 'Ghi nhận đã giao…',
+      log: 'Ghi nhật ký…',
+      markReturned: 'Ghi nhận hàng đã về…',
+      correctAddress: 'Sửa địa chỉ…',
+      settle: 'Xử lý giao thất bại…',
     },
   },
   ship: {
@@ -189,6 +194,8 @@ const vi = {
     description:
       'Cả đơn đi trong một kiện. Nhập đơn vị vận chuyển, mã vận đơn và phí cửa hàng trả cho đơn vị đó. Khách sẽ nhận thông báo đã gửi hàng.',
     parcel: 'Hàng trong kiện',
+    /** With {quantity}: the quantity of a product in the parcel. */
+    parcelQuantity: '× {quantity}',
     carrier: 'Đơn vị vận chuyển',
     carrierPlaceholder: 'Chọn đơn vị',
     noCarriers:
@@ -199,7 +206,7 @@ const vi = {
     feeHint: 'Chi phí nội bộ, khách không thấy. Nhập 0 nếu không mất phí.',
     required: 'Cần nhập.',
     badTracking: 'Mã chỉ gồm chữ, số và các ký tự . _ - /, tối đa 80 ký tự.',
-    badFee: 'Nhập số tiền nguyên từ 0 đến 100.000.000 ₫.',
+    badFee: 'Nhập số tiền nguyên từ 0 đến 100.000.000 ₫.',
     badCarrier: 'Chọn một đơn vị vận chuyển đang dùng.',
     submit: 'Gửi hàng',
     submitting: 'Đang lưu…',
@@ -306,7 +313,7 @@ const vi = {
     back: 'Phí gửi về (cửa hàng đã trả)',
     backHint: 'Chi phí nội bộ. Nhập 0 nếu không mất phí.',
     refund: 'Hoàn cho khách',
-    formula: 'Tiền hoàn = tiền hàng − phí gửi đi − phí gửi về, thấp nhất là 0 ₫.',
+    formula: 'Tiền hoàn = tiền hàng − phí gửi đi − phí gửi về, thấp nhất là 0 ₫.',
     noRefund: 'Không hoàn tiền vì phí vận chuyển bằng hoặc lớn hơn tiền hàng. Đơn được đóng lại.',
     noPreview: 'Không xem được phí gửi đi của đơn này nên chưa tính được tiền hoàn.',
     method: 'Hình thức hoàn',
@@ -324,7 +331,7 @@ const vi = {
     reason: 'Lý do',
     reasonHint: 'Ghi rõ chuyện gì đã xảy ra. Nội dung này được lưu lại.',
     required: 'Cần nhập.',
-    badBack: 'Nhập số tiền nguyên từ 0 đến 100.000.000 ₫.',
+    badBack: 'Nhập số tiền nguyên từ 0 đến 100.000.000 ₫.',
     warning: 'Kết quả không sửa được sau khi lưu. Khi có hoàn tiền, bạn sẽ được hỏi lại mật khẩu.',
     owner: 'Chủ sở hữu sẽ nhận thông báo về khoản hoàn này.',
     submit: 'Xác nhận xử lý',
@@ -336,9 +343,10 @@ const vi = {
     title: 'Ghi phí gửi hàng về',
     description:
       'Số tiền cửa hàng đã trả để hàng được gửi về. Đây là chi phí nội bộ, không trừ vào tiền hoàn cho khách. Mỗi lần ghi được cộng vào tổng của đơn trả này.',
-    cost: 'Số tiền',
+    /** With {code}: the return case. */
+    costFor: 'Số tiền cho đơn trả {code}',
     note: 'Ghi chú',
-    badCost: 'Nhập số tiền nguyên từ 0 đến 100.000.000 ₫.',
+    badCost: 'Nhập số tiền nguyên từ 0 đến 100.000.000 ₫.',
     submit: 'Lưu phí',
     submitting: 'Đang lưu…',
     done: 'Đã ghi phí gửi hàng về.',
@@ -349,14 +357,14 @@ const vi = {
       'Các đơn vị cửa hàng dùng để gửi đơn online. Cửa hàng tự đặt chuyến với đơn vị vận chuyển, hệ thống chỉ lưu mã vận đơn.',
     breadcrumbs: 'Đường dẫn',
     noAccess: 'Bạn không có quyền quản lý đơn vị vận chuyển.',
-    add: 'Thêm đơn vị',
+    add: 'Thêm đơn vị…',
     empty: 'Chưa có đơn vị vận chuyển. Hãy thêm đơn vị đầu tiên để có thể gửi hàng.',
     columns: { name: 'Tên', template: 'Liên kết tra cứu', status: 'Trạng thái' },
     noTemplate: 'Không có',
     active: 'Đang dùng',
     inactive: 'Ngừng dùng',
     actionsFor: 'Thao tác với {name}',
-    edit: 'Sửa',
+    edit: 'Sửa…',
     deactivate: 'Ngừng dùng',
     activate: 'Dùng lại',
     createTitle: 'Thêm đơn vị vận chuyển',
@@ -394,18 +402,21 @@ const vi = {
     /** With {names}. */
     ONLINE_ORDER_NOT_READY: 'Chưa gửi được vì còn dòng chưa sẵn sàng: {names}.',
     ORDER_LINE_STATE_INVALID: 'Dòng hàng đã đổi trạng thái. Trang đã tải lại, hãy thử lại.',
-    ORDER_CANCEL_CAUSE_INVALID: 'Lý do này không dùng được cho dòng hàng ở tình trạng hiện tại.',
+    ORDER_CANCEL_CAUSE_INVALID:
+      'Lý do này không dùng được cho dòng hàng ở tình trạng hiện tại. Chọn một lý do khác trong danh sách.',
     CONFLICT: 'Đơn vừa được người khác cập nhật. Trang đã tải lại, hãy kiểm tra rồi thử lại.',
     REFUND_STOCK_PENDING:
-      'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn "Không bán lại được".',
+      'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn “Không bán lại được”.',
     REFUND_NOTHING_PAID: 'Khách không phải trả tiền cho phần hàng này nên không có gì để hoàn.',
-    INVOICE_STATE_INVALID: 'Hóa đơn không còn ở trạng thái đã thanh toán.',
+    INVOICE_STATE_INVALID:
+      'Hóa đơn không còn ở trạng thái đã thanh toán. Mở hóa đơn để xem tình trạng hiện tại.',
     EXCHANGE_IN_PROGRESS:
       'Dòng hàng này đang có một lần đổi chưa xong. Hoàn tất hoặc hủy lần đổi đó trước.',
     CARRIER_NAME_TAKEN: 'Tên này đã có. Hãy chọn tên khác.',
     REAUTHENTICATION_REQUIRED: 'Cần xác nhận lại mật khẩu của bạn.',
-    FORBIDDEN: 'Bạn không có quyền thực hiện thao tác này ở chi nhánh của đơn.',
-    NOT_FOUND: 'Không tìm thấy đơn này.',
+    FORBIDDEN:
+      'Bạn không có quyền thực hiện thao tác này ở chi nhánh của đơn. Hãy nhờ người được giao việc này.',
+    NOT_FOUND: 'Không tìm thấy đơn này. Mở lại đơn từ danh sách Đơn online.',
   },
   customer: {
     title: 'Giao hàng',
@@ -448,10 +459,10 @@ const en: OnlineFulfilmentText = {
       'Orders customers bought on the website, paid in advance with PayOS. Pack, ship and follow the delivery here.',
     breadcrumbs: 'Breadcrumb',
     branch: 'Branch',
-    search: 'Order code, name, phone',
+    search: 'Search by order code, name or phone',
     tabsLabel: 'Order status',
     noAccess: 'You are not assigned to handle online orders at any branch.',
-    noMatch: 'No order matches the search.',
+    noMatch: 'No order matches the search. Try other words.',
     open: 'Open order',
     tabs: {
       TO_SHIP: 'To ship',
@@ -519,7 +530,7 @@ const en: OnlineFulfilmentText = {
       deliveryFailed:
         'The delivery did not succeed. Contact the customer and write it in the delivery log.',
       returnStarted:
-        'The customer no longer wants the parcel. When it is back at the shop, press "Parcel back at the shop".',
+        'The customer no longer wants the parcel. When it is back at the shop, press “Parcel back at the shop”.',
       returnedToShop:
         'The parcel is back at the shop. A person who may refund will settle the failed delivery.',
       cancelled: 'The order was cancelled.',
@@ -532,11 +543,11 @@ const en: OnlineFulfilmentText = {
     },
     addressCorrected: 'This address was corrected after the customer placed the order.',
     shipment: 'Shipping',
-    notShipped: 'Not shipped yet.',
+    notShipped: 'Not shipped yet. Press “Ship” once the order is packed.',
     shipmentFields: {
       carrier: 'Carrier',
       tracking: 'Tracking code',
-      track: 'Track',
+      track: '(track)',
       shippedAt: 'Shipped on',
       shippedBy: 'Shipped by',
       fee: 'Carrier cost (way there)',
@@ -545,6 +556,8 @@ const en: OnlineFulfilmentText = {
       correction: 'Correction {number}',
       correctionText: '{time}, {actor}: code {code}. Reason: {reason}',
       correctionFee: 'Cost there {fee}.',
+      correctionTextFee: '{time}, {actor}: code {code}. Reason: {reason}. Cost there {fee}.',
+      deliveredAtBy: '{time} ({by})',
     },
     internalFee: 'The carrier cost is an internal figure; the customer cannot see it.',
     lines: 'Products',
@@ -561,7 +574,7 @@ const en: OnlineFulfilmentText = {
     ready: 'Ready to ship',
     preOrder: 'Pre-order',
     actionsFor: 'Actions for {name}',
-    cancelLine: 'Cancel and refund',
+    cancelLine: 'Cancel and refund…',
     log: 'Delivery log',
     logColumns: { time: 'Time', kind: 'Entry', reason: 'Reason', note: 'Note', by: 'Written by' },
     logActors: { CUSTOMER: 'Customer', SYSTEM: 'System' },
@@ -585,7 +598,7 @@ const en: OnlineFulfilmentText = {
       WRONG_OR_DAMAGED: 'Wrong or damaged goods',
       SKIN_IRRITATION: 'Skin irritation',
     },
-    recordCost: 'Record the cost to send back',
+    recordCost: 'Record the cost to send back…',
     openReturn: 'Open the return',
     settlement: 'Failed delivery result',
     settlementFields: {
@@ -603,13 +616,13 @@ const en: OnlineFulfilmentText = {
     },
     settledBy: '{name}, {time}',
     actions: {
-      ship: 'Ship',
-      correctShipment: 'Edit shipping',
-      markDelivered: 'Mark delivered',
-      log: 'Add to the log',
-      markReturned: 'Parcel back at the shop',
-      correctAddress: 'Edit address',
-      settle: 'Settle failed delivery',
+      ship: 'Ship…',
+      correctShipment: 'Edit shipping…',
+      markDelivered: 'Mark delivered…',
+      log: 'Add to the log…',
+      markReturned: 'Record the parcel back…',
+      correctAddress: 'Edit address…',
+      settle: 'Settle failed delivery…',
     },
   },
   ship: {
@@ -617,6 +630,7 @@ const en: OnlineFulfilmentText = {
     description:
       'The whole order goes in one parcel. Enter the carrier, the tracking code and the cost the shop pays the carrier. The customer is told the order was shipped.',
     parcel: 'Goods in the parcel',
+    parcelQuantity: '× {quantity}',
     carrier: 'Carrier',
     carrierPlaceholder: 'Choose a carrier',
     noCarriers:
@@ -627,7 +641,7 @@ const en: OnlineFulfilmentText = {
     feeHint: 'An internal cost the customer never sees. Enter 0 if there is none.',
     required: 'Required.',
     badTracking: 'Letters, digits and . _ - / only, up to 80 characters.',
-    badFee: 'Enter a whole amount from 0 to 100,000,000 ₫.',
+    badFee: 'Enter a whole amount from 0 to 100,000,000 ₫.',
     badCarrier: 'Choose an active carrier.',
     submit: 'Ship',
     submitting: 'Saving…',
@@ -736,7 +750,7 @@ const en: OnlineFulfilmentText = {
     back: 'Cost back (paid by the shop)',
     backHint: 'An internal cost. Enter 0 if there is none.',
     refund: 'Refund to the customer',
-    formula: 'Refund = goods − cost there − cost back, never below 0 ₫.',
+    formula: 'Refund = goods − cost there − cost back, never below 0 ₫.',
     noRefund:
       'No refund: the shipping cost is equal to or more than the goods. The order is closed.',
     noPreview:
@@ -756,11 +770,11 @@ const en: OnlineFulfilmentText = {
     reason: 'Reason',
     reasonHint: 'Say what happened. This is kept on record.',
     required: 'Required.',
-    badBack: 'Enter a whole amount from 0 to 100,000,000 ₫.',
+    badBack: 'Enter a whole amount from 0 to 100,000,000 ₫.',
     warning:
       'The result cannot be changed after it is saved. When money is refunded you are asked for your password again.',
     owner: 'The Owner is told about this refund.',
-    submit: 'Confirm',
+    submit: 'Settle the order',
     submitting: 'Saving…',
     done: 'Failed delivery settled and refunded.',
     doneNoMoney: 'The order is closed with no refund.',
@@ -769,9 +783,9 @@ const en: OnlineFulfilmentText = {
     title: 'Record the cost to send back',
     description:
       'What the shop paid to have the goods come back. It is an internal cost and is not taken from the customer’s refund. Each entry is added to the total of this return.',
-    cost: 'Amount',
+    costFor: 'Amount for return {code}',
     note: 'Note',
-    badCost: 'Enter a whole amount from 0 to 100,000,000 ₫.',
+    badCost: 'Enter a whole amount from 0 to 100,000,000 ₫.',
     submit: 'Save cost',
     submitting: 'Saving…',
     done: 'Cost recorded.',
@@ -782,14 +796,14 @@ const en: OnlineFulfilmentText = {
       'The carriers the shop ships online orders with. The shop books the carrier itself; the system only keeps the tracking code.',
     breadcrumbs: 'Breadcrumb',
     noAccess: 'You may not manage carriers.',
-    add: 'Add a carrier',
+    add: 'Add a carrier…',
     empty: 'There is no carrier yet. Add the first one so orders can be shipped.',
     columns: { name: 'Name', template: 'Tracking link', status: 'Status' },
     noTemplate: 'None',
     active: 'In use',
     inactive: 'Not in use',
     actionsFor: 'Actions for {name}',
-    edit: 'Edit',
+    edit: 'Edit…',
     deactivate: 'Stop using',
     activate: 'Use again',
     createTitle: 'Add a carrier',
@@ -825,19 +839,21 @@ const en: OnlineFulfilmentText = {
       'The order has changed. The page was reloaded; check it and try again.',
     ONLINE_ORDER_NOT_READY: 'It cannot be shipped yet because some lines are not ready: {names}.',
     ORDER_LINE_STATE_INVALID: 'The line has changed. The page was reloaded; try again.',
-    ORDER_CANCEL_CAUSE_INVALID: 'This reason cannot be used for the line in its current state.',
+    ORDER_CANCEL_CAUSE_INVALID:
+      'This reason cannot be used for the line in its current state. Choose another reason from the list.',
     CONFLICT: 'Someone else just updated the order. The page was reloaded; check it and try again.',
     REFUND_STOCK_PENDING:
-      'The stock has not recorded this sale yet. Try again in a moment, or choose "Cannot be sold again".',
+      'The stock has not recorded this sale yet. Try again in a moment, or choose “Cannot be sold again”.',
     REFUND_NOTHING_PAID:
       'The customer paid nothing for these goods, so there is nothing to refund.',
-    INVOICE_STATE_INVALID: 'The invoice is no longer paid.',
+    INVOICE_STATE_INVALID:
+      'The invoice is no longer paid. Open the invoice to see its current state.',
     EXCHANGE_IN_PROGRESS:
       'This line has an exchange that is not finished. Complete or cancel it first.',
     CARRIER_NAME_TAKEN: 'This name already exists. Choose another one.',
     REAUTHENTICATION_REQUIRED: 'Please confirm your password again.',
-    FORBIDDEN: 'You may not do this at the branch of the order.',
-    NOT_FOUND: 'This order was not found.',
+    FORBIDDEN: 'You may not do this at the branch of the order. Ask the person in charge of it.',
+    NOT_FOUND: 'This order was not found. Open it again from the online orders list.',
   },
   customer: {
     title: 'Delivery',

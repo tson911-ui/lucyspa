@@ -9,14 +9,13 @@ import type {
   WalkInOptionsResponse,
   WalkInVisitResponse,
 } from '@lucy-spa/contracts';
-import { ListToolbar, SearchInput, Select } from '@lucy-spa/ui';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ListToolbar, SearchInput, Select, useUrlState } from '@lucy-spa/ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import {
   BOARD_REFRESH_MS,
   boardBranches,
   boardErrorMessage,
-  branchTime,
   matchesSearch,
 } from '../../../lib/workforce/booking-board';
 import { formatDate } from '../../../lib/workforce/format';
@@ -36,10 +35,16 @@ import {
   BookingsSection,
   PoolSection,
   QueueSection,
+  type Time,
 } from './booking-board-sections';
 import { useBranches } from '../data';
 import { useAccount, useWorkforce } from '../session';
 import { Empty, Loading, Notice, PageHeader, useSuccessToast } from '../ui';
+import { clockRange, clockTime } from './pos-format';
+import { canAt } from '../../../lib/workforce/permissions';
+
+// The board's view in the address (module constant, as useUrlState asks).
+const BOARD_VIEW_DEFAULTS: { branch: string; q: string } = { branch: '', q: '' };
 
 type Overlay =
   | { kind: 'command'; command: BoardCommand }
@@ -60,48 +65,61 @@ export function BookingBoardScreen() {
   const notify = useSuccessToast();
   const branches = useBranches(api);
   const allowed = useMemo(() => boardBranches(account, branches.data), [account, branches.data]);
-  const [branchId, setBranchId] = useState('');
-  const [board, setBoard] = useState<OperationalTodayResponse | null>(null);
-  const [loadError, setLoadError] = useState<unknown>(null);
-  const [search, setSearch] = useState('');
+  // Branch and search live in the address (wig :66): a shared link or Back/Forward restores the same board.
+  const [view, setView] = useUrlState(BOARD_VIEW_DEFAULTS);
+  // The first allowed branch is derived, not copied into state by an effect (rbp :74-76).
+  const branchId = allowed.some((branch) => branch.id === view.branch)
+    ? view.branch
+    : (allowed[0]?.id ?? '');
+  const search = view.q;
+  // The board of the branch on screen; an answer for another branch is never shown (derived, no reset effect).
+  const [loaded, setLoaded] = useState<{ branch: string; board: OperationalTodayResponse } | null>(
+    null,
+  );
+  const [failure, setFailure] = useState<{ branch: string; error: unknown } | null>(null);
+  const board = loaded?.branch === branchId ? loaded.board : null;
+  const loadError = failure?.branch === branchId ? failure.error : null;
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [working, setWorking] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [options, setOptions] = useState<WalkInOptionsResponse | null>(null);
+  const [optionsFailed, setOptionsFailed] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    if (!branchId && allowed[0]) setBranchId(allowed[0].id);
-  }, [allowed, branchId]);
 
   const load = useCallback(
     async (passive: boolean) => {
       if (!branchId) return;
+      // The passive refresh waits while the tab is hidden or a menu or dialog is open, so it never pulls a row (and the focus
+      // on its action) away from the person using it (wig :99).
+      if (
+        passive &&
+        (document.hidden || document.querySelector('[role="menu"], [aria-modal="true"]'))
+      )
+        return;
       try {
-        setBoard(
-          await api.get<OperationalTodayResponse>(
-            `/api/v1/operations/branches/${branchId}/today`,
-            {},
-            { passive },
-          ),
+        const next = await api.get<OperationalTodayResponse>(
+          `/api/v1/operations/branches/${branchId}/today`,
+          {},
+          { passive },
         );
-        setLoadError(null);
+        setLoaded({ branch: branchId, board: next });
+        setFailure(null);
       } catch (error) {
-        setLoadError(error);
+        setFailure({ branch: branchId, error });
       }
     },
     [api, branchId],
   );
   useEffect(() => {
-    setBoard(null);
     void load(false);
     const timer = window.setInterval(() => void load(true), BOARD_REFRESH_MS);
     return () => window.clearInterval(timer);
   }, [load]);
 
-  // The staff a waiting walk-in can ask for (needed only to change that request).
-  const canChange = board?.permissions.arrive ?? false;
+  // The staff a waiting walk-in can ask for (needed only to change that request). Asked at the same time as the board, from the
+  // person's own permission, not after the board's answer (rbp :103-119); a failure is said, not swallowed (wig :115).
+  const canChange = account ? canAt(account, 'MANAGE_BOOKINGS', branchId) : false;
   useEffect(() => {
     if (!canChange || !branchId) return;
     let active = true;
@@ -111,8 +129,12 @@ export function BookingBoardScreen() {
         {},
         { passive: true },
       )
-      .then((data) => active && setOptions(data))
-      .catch(() => undefined);
+      .then((data) => {
+        if (!active) return;
+        setOptions(data);
+        setOptionsFailed(false);
+      })
+      .catch(() => active && setOptionsFailed(true));
     return () => {
       active = false;
     };
@@ -121,6 +143,49 @@ export function BookingBoardScreen() {
   /** Success is a toast (a notice where no toast provider is mounted); errors stay with their dialog. */
   const succeed = (text: string) => notify(text, () => setMessage({ tone: 'success', text }));
   const closeOverlay = () => (setOverlay(null), setDialogError(null));
+  // Stable handlers and clock for the memoised sections (rbp :248, :303-345): a poll or a busy flag does not rebuild them all.
+  const zone = board?.branch.timezone ?? 'UTC';
+  const time = useMemo<Time>(
+    () =>
+      Object.assign((iso: string) => clockTime(locale, zone, iso), {
+        range: (startIso: string, endIso: string) => clockRange(locale, zone, startIso, endIso),
+      }),
+    [locale, zone],
+  );
+  const openCommand = useCallback(
+    (command: BoardCommand) => (setMessage(null), setOverlay({ kind: 'command', command })),
+    [],
+  );
+  const openResolve = useCallback(
+    (visit: OperationalActiveVisit, line: OperationalActiveVisitLine) => (
+      setMessage(null),
+      setDialogError(null),
+      setOverlay({ kind: 'resolveEnd', visit, line })
+    ),
+    [],
+  );
+  const openCancelLine = useCallback(
+    (visit: OperationalActiveVisit, line: OperationalActiveVisitLine) => (
+      setMessage(null),
+      setOverlay({ kind: 'command', command: { kind: 'cancelLine', visit, line } })
+    ),
+    [],
+  );
+  const openAddService = useCallback(
+    (visit: OperationalActiveVisit) => (
+      setMessage(null),
+      setOverlay({ kind: 'addService', visit })
+    ),
+    [],
+  );
+  const openIntent = useCallback(
+    (entry: OperationalWaitingEntry) => (
+      setMessage(null),
+      setDialogError(null),
+      setOverlay({ kind: 'intent', entry })
+    ),
+    [],
+  );
 
   /** Runs a confirmed command exactly as the inline form did; a refusal throws so its dialog shows it. */
   async function run(command: BoardCommand, reason: string) {
@@ -235,6 +300,18 @@ export function BookingBoardScreen() {
     }
   }
 
+  // The latest assign (it reads the busy row) behind a stable handler for the memoised pool section.
+  const assignRef = useRef(assign);
+  assignRef.current = assign;
+  const onAssign = useCallback(
+    (entry: OperationalWaitingEntry) => void assignRef.current(entry),
+    [],
+  );
+  const visible = useMemo(
+    () => board?.bookings.filter((booking) => matchesSearch(booking, search)) ?? [],
+    [board, search],
+  );
+
   if (branches.loading && !branches.data) return <Loading t={t} page />;
   if (allowed.length === 0) {
     return (
@@ -244,45 +321,46 @@ export function BookingBoardScreen() {
       </>
     );
   }
-  const zone = board?.branch.timezone ?? 'UTC';
-  const time = (iso: string) => branchTime(iso, zone, locale);
   const onlyBranch = allowed.length === 1 ? allowed[0] : null;
-  const visible = board?.bookings.filter((booking) => matchesSearch(booking, search)) ?? [];
   const loading = !board && !loadError;
   const serviceName = (line: OperationalActiveVisitLine) =>
     locale === 'vi' ? line.serviceNameVi : line.serviceNameEn;
 
   return (
     <>
+      {/* The day and the last refresh sit in the subtitle, outside any live region: the 30 s refresh is not read out every
+          time (wig :272). The toolbar's status slot is left for search results. */}
       <PageHeader
         title={t.bookingBoard.title}
-        intro={
+        intro={[
           onlyBranch
             ? fill(t.bookingBoard.introBranch, { branch: onlyBranch.name })
-            : t.bookingBoard.intro
-        }
-      />
-      <ListToolbar
-        labels={toolbarLabels(t)}
-        activeFilters={search ? 1 : 0}
-        resultCount={
+            : t.bookingBoard.intro,
           board
             ? fill(t.bookingBoard.date, {
                 date: formatDate(board.date, locale),
                 time: time(board.now),
               })
-            : undefined
-        }
-        onReset={() => setSearch('')}
+            : '',
+          // A failed background refresh is said here, once and quietly, with the last board kept on screen: no alert every 30 s
+          // and nothing pushed down above the lists (wig :301).
+          board && loadError ? t.bookingBoard.stale : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      />
+      <ListToolbar
+        labels={toolbarLabels(t)}
+        activeFilters={search ? 1 : 0}
+        onReset={() => setView({ q: '' })}
         reload={{ label: t.bookingBoard.refresh, onClick: () => void load(false) }}
         search={
           <SearchInput
             id="board-search"
             value={search}
             label={t.bookingBoard.search}
-            placeholder={t.bookingBoard.search}
             clearLabel={t.common.list.clearSearch}
-            onSearch={setSearch}
+            onSearch={(value) => setView({ q: value }, { replace: true })}
           />
         }
         filters={
@@ -292,13 +370,16 @@ export function BookingBoardScreen() {
               aria-label={t.bookingBoard.branch}
               value={branchId}
               options={allowed.map((branch) => ({ value: branch.id, label: branch.name }))}
-              onChange={(event) => setBranchId(event.target.value)}
+              onChange={(event) => setView({ branch: event.target.value })}
             />
           )
         }
       />
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      {loadError ? <Notice tone="error">{boardErrorMessage(loadError, t)}</Notice> : null}
+      {loadError && !board ? <Notice tone="error">{boardErrorMessage(loadError, t)}</Notice> : null}
+      {canChange && optionsFailed ? (
+        <Notice tone="warning">{t.bookingBoard.optionsFailed}</Notice>
+      ) : null}
 
       <BookingsSection
         bookings={visible}
@@ -311,35 +392,24 @@ export function BookingBoardScreen() {
               : null
         }
         time={time}
-        onCommand={(command) => (setMessage(null), setOverlay({ kind: 'command', command }))}
+        onCommand={openCommand}
       />
       <ActiveSection
         board={board}
         loading={loading}
         time={time}
-        onResolve={(visit, line) => (
-          setMessage(null),
-          setDialogError(null),
-          setOverlay({ kind: 'resolveEnd', visit, line })
-        )}
-        onCancelLine={(visit, line) => (
-          setMessage(null),
-          setOverlay({ kind: 'command', command: { kind: 'cancelLine', visit, line } })
-        )}
-        onAddService={(visit) => (setMessage(null), setOverlay({ kind: 'addService', visit }))}
+        onResolve={openResolve}
+        onCancelLine={openCancelLine}
+        onAddService={openAddService}
       />
       <PoolSection
         board={board}
         loading={loading}
         busy={busy}
         canChangeIntent={options !== null}
-        onAssign={(entry) => void assign(entry)}
-        onChangeIntent={(entry) => (
-          setMessage(null),
-          setDialogError(null),
-          setOverlay({ kind: 'intent', entry })
-        )}
-        onCommand={(command) => (setMessage(null), setOverlay({ kind: 'command', command }))}
+        onAssign={onAssign}
+        onChangeIntent={openIntent}
+        onCommand={openCommand}
         time={time}
       />
       <QueueSection board={board} time={time} />

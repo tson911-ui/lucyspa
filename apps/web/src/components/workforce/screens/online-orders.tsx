@@ -23,8 +23,10 @@ import {
   useUrlState,
   type DataTableColumn,
   type DescriptionItem,
+  Badge as StatusBadge,
+  PageHeader as KitPageHeader,
 } from '@lucy-spa/ui';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { onlineFulfilmentDictionary } from '../../../i18n/online-fulfilment';
 import { productOrdersDictionary } from '../../../i18n/product-orders';
 import { fill } from '../../../i18n/workforce';
@@ -45,8 +47,7 @@ import {
 } from '../../../lib/workforce/online-orders';
 import { expectedText, orderStatusTone } from '../../../lib/workforce/product-orders';
 import { productTitle } from '../../../lib/workforce/product-sale';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import { useWorkforce } from '../session';
 import {
   Badge,
@@ -58,8 +59,12 @@ import {
   Section,
   useResource,
   useSuccessToast,
+  VisuallyHidden,
   type Resource,
 } from '../ui';
+import { RouterMenuLink } from './pos-links';
+import { listFormat, metaLine } from './pos-format';
+import { backParam, useBackQuery, useUrlPage } from './pos-url';
 import {
   AddressDialog,
   CorrectShipmentDialog,
@@ -156,7 +161,6 @@ export function OnlineOrdersList({
             id="online-q"
             value={list.q}
             label={q.search}
-            placeholder={q.search}
             clearLabel={t.common.list.clearSearch}
             onSearch={(value) => updateList({ q: value }, { replace: true })}
           />
@@ -212,10 +216,12 @@ function OrdersTable({
   list: OnlineListState;
   updateList: (patch: Partial<OnlineListState>) => void;
 }) {
-  const { t, locale, base, navigate } = useWorkforce();
+  const { t, locale, base } = useWorkforce();
   const text = onlineFulfilmentDictionary(locale);
   const q = text.queue;
-  const open = (row: OnlineQueueRow) => `${base}/online-orders/${row.orderId}`;
+  // The list view travels with the record link so its breadcrumb returns here (wig :721).
+  const open = (row: OnlineQueueRow) =>
+    `${base}/online-orders/${row.orderId}${backParam(list, ONLINE_LIST_DEFAULTS)}`;
   const shipped = tab === 'SHIPPED' || tab === 'DELIVERY_FAILED' || tab === 'DONE';
   const when = (row: OnlineQueueRow) => {
     const instant =
@@ -234,7 +240,7 @@ function OrdersTable({
       header: q.columns.code,
       mobileTitle: true,
       cell: (row) => (
-        <Link className="ls-link" href={open(row)}>
+        <Link className="ls-link" href={open(row)} translate="no">
           {row.code}
         </Link>
       ),
@@ -243,7 +249,7 @@ function OrdersTable({
       key: 'recipient',
       header: q.columns.recipient,
       phoneEmphasis: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => (
         <span className="ls-cell-stack">
@@ -255,7 +261,7 @@ function OrdersTable({
     {
       key: 'province',
       header: q.columns.province,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       hideBelow: 'xl',
       hidePhone: true,
@@ -282,12 +288,16 @@ function OrdersTable({
     {
       key: 'status',
       header: q.columns.status,
-      cell: (row) => (
+      cell: (row) =>
         // One badge a row keeps every row one height: a missed deadline is the more useful word than the state.
-        <Badge tone={row.late || row.overdueDelivery ? 'warning' : onlineStateTone(row.state)}>
-          {row.late ? q.late : row.overdueDelivery ? q.overdue : text.states[row.state]}
-        </Badge>
-      ),
+        // A missed deadline carries a clock with the word (status = icon + word, C5).
+        row.late || row.overdueDelivery ? (
+          <StatusBadge tone="warning" icon="clock">
+            {row.late ? q.late : q.overdue}
+          </StatusBadge>
+        ) : (
+          <Badge tone={onlineStateTone(row.state)}>{text.states[row.state]}</Badge>
+        ),
     },
     {
       key: 'when',
@@ -308,15 +318,23 @@ function OrdersTable({
           {
             key: 'carrier',
             header: q.columns.carrier,
-            truncate: true,
+            wrap: true,
             width: 'sm' as const,
             hideBelow: '2xl' as const,
+            // The carrier, and the tracking code under it as a code (never translated), like the SKU under a product name.
             cell: (row: OnlineQueueRow) =>
-              row.carrierName
-                ? row.trackingCode
-                  ? `${row.carrierName}, ${row.trackingCode}`
-                  : row.carrierName
-                : '—',
+              row.carrierName ? (
+                <span className="ls-cell-stack">
+                  <span>{row.carrierName}</span>
+                  {row.trackingCode ? (
+                    <span className="ls-cell-sub" translate="no">
+                      {row.trackingCode}
+                    </span>
+                  ) : null}
+                </span>
+              ) : (
+                '—'
+              ),
           },
         ]
       : []),
@@ -326,10 +344,9 @@ function OrdersTable({
       actions: true,
       cell: (row) => (
         <RowActions
+          LinkComponent={RouterMenuLink}
           menuLabel={fill(t.common.list.actionsFor, { name: row.code })}
-          items={[
-            { id: 'open', label: q.open, icon: 'eye', onSelect: () => navigate?.(open(row)) },
-          ]}
+          items={[{ id: 'open', label: q.open, icon: 'eye', href: open(row) }]}
         />
       ),
     },
@@ -340,6 +357,7 @@ function OrdersTable({
   }
   return (
     <DataTable
+      drillDown
       mode="server"
       phoneRows="compact"
       caption={fill(t.common.list.table, { list: q.tabs[tab] })}
@@ -372,15 +390,21 @@ export function OnlineOrderDetailScreen({ id }: { id: string }) {
     () => api.get<Order>(`/api/v1/online-orders/${encodeURIComponent(id)}`),
     [api, id],
   );
-  // A command answers with the whole order: it is shown at once; a reload (a conflict) replaces it again.
-  const [current, setCurrent] = useState<Order | null>(null);
-  useEffect(() => setCurrent(null), [found.data]);
-  const order = current ?? found.data;
+  // A command answers with the whole order: it is shown at once; a reload (a conflict) replaces it again. The answer is kept
+  // with the load it followed, so a newer load wins in render, without an effect (rbp rerender-derived-state-no-effect).
+  const [current, setCurrent] = useState<{ after: Order | null; order: Order } | null>(null);
+  const order = current && current.after === found.data ? current.order : found.data;
   if (found.error && !order) {
     return <ErrorState error={found.error} t={t} onRetry={() => void found.reload()} />;
   }
   if (!order) return <Loading t={t} page />;
-  return <OnlineOrderDetailView order={order} reload={found.reload} onChange={setCurrent} />;
+  return (
+    <OnlineOrderDetailView
+      order={order}
+      reload={found.reload}
+      onChange={(next) => setCurrent({ after: found.data, order: next })}
+    />
+  );
 }
 
 type Overlay =
@@ -422,13 +446,17 @@ export function OnlineOrderDetailView({
   const orders = productOrdersDictionary(locale);
   const notify = useSuccessToast();
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const backQuery = useBackQuery();
   const money = (value: string) => formatVnd(value, locale);
+  // Money in a description list keeps tabular figures and stays on one line (wig :775, :680, :885-890).
+  const figure = (value: string) => <span className="ls-pos-figure">{money(value)}</span>;
   const when = (instant: string) => formatDateTime(instant, ZONE, locale);
   const step = nextStep(order);
   const kinds = logKindsFor(order);
-  const linesPaging = useClientPaging(t, d.lines);
-  const logPaging = useClientPaging(t, d.log);
-  const returnsPaging = useClientPaging(t, d.returns);
+  // The page of each list of the order lives in the address (wig :429): Back/Forward and a shared link keep it.
+  const linesPaging = { ...useUrlPage('linesPage'), labels: paginationLabels(t, d.lines) };
+  const logPaging = { ...useUrlPage('logPage'), labels: paginationLabels(t, d.log) };
+  const returnsPaging = { ...useUrlPage('returnsPage'), labels: paginationLabels(t, d.returns) };
 
   const done = (message: string) => async (next: Order) => {
     setOverlay(null);
@@ -446,7 +474,7 @@ export function OnlineOrderDetailView({
     order.state === 'AWAITING_PAYMENT' ? d.notices.awaitingPayment : null,
     order.state === 'WAITING_GOODS' && waiting.length > 0
       ? fill(d.notices.waitingGoods, {
-          names: waiting.map((line) => productTitle(line, locale)).join(', '),
+          names: listFormat(locale).format(waiting.map((line) => productTitle(line, locale))),
         })
       : null,
     order.state === 'CANCELLED' && order.settlement === null ? d.notices.cancelled : null,
@@ -458,9 +486,7 @@ export function OnlineOrderDetailView({
   ].filter((entry): entry is string => entry !== null);
 
   const recipient = order.recipient;
-  const address = [recipient.street, recipient.ward, recipient.provinceName]
-    .filter((part) => part !== '')
-    .join(', ');
+  const address = metaLine(locale, [recipient.street, recipient.ward, recipient.provinceName]);
 
   // A column that is empty on every row only adds noise: expected dates belong to pre-orders, refunds to cancelled lines.
   const showExpected = order.lines.some(
@@ -477,8 +503,11 @@ export function OnlineOrderDetailView({
       width: 'lg',
       cell: (line) => (
         <span className="ls-cell-stack">
-          <span className="ls-cell-title">{`${line.sequence}. ${productTitle(line, locale)}`}</span>
-          <span className="ls-cell-sub">{line.sku}</span>
+          {/* The name wraps by word and is never cut (Owner answer 7); no "1." prefix (the order is the row order). */}
+          <span className="ls-pos-name">{productTitle(line, locale)}</span>
+          <span className="ls-cell-sub" translate="no">
+            {line.sku}
+          </span>
           {line.cancelCause ? (
             <span className="ls-cell-sub">{orders.card.cancelCause[line.cancelCause]}</span>
           ) : null}
@@ -593,7 +622,7 @@ export function OnlineOrderDetailView({
       key: 'by',
       header: d.logColumns.by,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (log) =>
         log.actorKind === 'STAFF' ? (log.actorName ?? '—') : d.logActors[log.actorKind],
@@ -601,7 +630,12 @@ export function OnlineOrderDetailView({
   ];
 
   const returnColumns: DataTableColumn<OnlineStaffReturnCase>[] = [
-    { key: 'code', header: d.returnsColumns.code, mobileTitle: true, cell: (item) => item.code },
+    {
+      key: 'code',
+      header: d.returnsColumns.code,
+      mobileTitle: true,
+      cell: (item) => <span translate="no">{item.code}</span>,
+    },
     {
       key: 'status',
       header: d.returnsColumns.status,
@@ -667,40 +701,51 @@ export function OnlineOrderDetailView({
               target="_blank"
               rel="noopener noreferrer"
             >
-              {shipment.trackingCode}
-              <span className="ls-hint">{` (${d.shipmentFields.track})`}</span>
+              {/* The cue's words and brackets come from the dictionary (wig :687), not a format built here. */}
+              <span translate="no">{shipment.trackingCode}</span>{' '}
+              <span className="ls-hint">{d.shipmentFields.track}</span>
+              <VisuallyHidden> {t.pos.newTab}</VisuallyHidden>
             </a>
           ) : (
-            shipment.trackingCode
+            <span translate="no">{shipment.trackingCode}</span>
           ),
         },
         { label: d.shipmentFields.shippedAt, value: when(shipment.shippedAt) },
         { label: d.shipmentFields.shippedBy, value: shipment.shippedByName },
         ...(shipment.carrierFeeOutVnd !== null
-          ? [{ label: d.shipmentFields.fee, value: money(shipment.carrierFeeOutVnd) }]
+          ? [{ label: d.shipmentFields.fee, value: figure(shipment.carrierFeeOutVnd) }]
           : []),
         ...(order.deliveredAt
           ? [
               {
                 label: d.shipmentFields.deliveredAt,
                 value: order.deliveredBy
-                  ? `${when(order.deliveredAt)} (${d.shipmentFields.deliveredBy[order.deliveredBy]})`
+                  ? fill(d.shipmentFields.deliveredAtBy, {
+                      time: when(order.deliveredAt),
+                      by: d.shipmentFields.deliveredBy[order.deliveredBy],
+                    })
                   : when(order.deliveredAt),
               },
             ]
           : []),
         ...shipment.corrections.map((fix, index) => ({
           label: fill(d.shipmentFields.correction, { number: shipment.corrections.length - index }),
-          value: `${fill(d.shipmentFields.correctionText, {
-            time: when(fix.occurredAt),
-            actor: fix.actorName,
-            code: fix.trackingCode,
-            reason: fix.reason,
-          })}${
+          // One dictionary text per case (wig :694, :687), not a sentence glued to another.
+          value:
             fix.carrierFeeOutVnd === null
-              ? ''
-              : ` ${fill(d.shipmentFields.correctionFee, { fee: money(fix.carrierFeeOutVnd) })}`
-          }`,
+              ? fill(d.shipmentFields.correctionText, {
+                  time: when(fix.occurredAt),
+                  actor: fix.actorName,
+                  code: fix.trackingCode,
+                  reason: fix.reason,
+                })
+              : fill(d.shipmentFields.correctionTextFee, {
+                  time: when(fix.occurredAt),
+                  actor: fix.actorName,
+                  code: fix.trackingCode,
+                  reason: fix.reason,
+                  fee: money(fix.carrierFeeOutVnd),
+                }),
         })),
       ]
     : [];
@@ -709,47 +754,52 @@ export function OnlineOrderDetailView({
 
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={fill(d.title, { code: order.code })}
+        // The order's state under the title (kit status slot), not buried as the first fact of the card (plan).
+        status={<Badge tone={onlineStateTone(order.state)}>{text.states[order.state]}</Badge>}
         breadcrumbs={
           <Breadcrumbs
             label={text.queue.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               {
                 label: text.queue.title,
-                href: `${base}/online-orders?branch=${encodeURIComponent(order.branchId)}`,
+                href: `${base}/online-orders?${backQuery || `branch=${encodeURIComponent(order.branchId)}`}`,
               },
               { label: order.code },
             ]}
           />
         }
-      >
-        {order.can.markDelivered && step !== 'delivered' ? (
-          <Button
-            variant="secondary"
-            icon="check"
-            onClick={() => setOverlay({ kind: 'delivered' })}
-          >
-            {d.actions.markDelivered}
-          </Button>
-        ) : null}
-        {step ? (
-          <Button
-            variant="primary"
-            icon={step === 'ship' ? 'truck' : 'check'}
-            onClick={() => setOverlay({ kind: step })}
-          >
-            {step === 'ship'
-              ? d.actions.ship
-              : step === 'settle'
-                ? d.actions.settle
-                : step === 'returned'
-                  ? d.actions.markReturned
-                  : d.actions.markDelivered}
-          </Button>
-        ) : null}
-      </PageHeader>
+        actions={
+          <>
+            {order.can.markDelivered && step !== 'delivered' ? (
+              <Button
+                variant="secondary"
+                icon="check"
+                onClick={() => setOverlay({ kind: 'delivered' })}
+              >
+                {d.actions.markDelivered}
+              </Button>
+            ) : null}
+            {step ? (
+              <Button
+                variant="primary"
+                icon={step === 'ship' ? 'truck' : 'check'}
+                onClick={() => setOverlay({ kind: step })}
+              >
+                {step === 'ship'
+                  ? d.actions.ship
+                  : step === 'settle'
+                    ? d.actions.settle
+                    : step === 'returned'
+                      ? d.actions.markReturned
+                      : d.actions.markDelivered}
+              </Button>
+            ) : null}
+          </>
+        }
+      />
       <Stack gap="page">
         {notices.map((notice) => (
           <Notice key={notice} tone="warning">
@@ -761,22 +811,23 @@ export function OnlineOrderDetailView({
             columns={2}
             items={[
               {
-                label: d.fields.status,
+                label: d.fields.invoice,
                 value: (
-                  <Badge tone={onlineStateTone(order.state)}>{text.states[order.state]}</Badge>
+                  <Link className="ls-link" href={`${base}/pos/${order.invoiceId}`} translate="no">
+                    {order.invoiceCode}
+                  </Link>
                 ),
               },
-              { label: d.fields.invoice, value: order.invoiceCode },
               ...(order.customer
                 ? [{ label: d.fields.customer, value: order.customer.displayName }]
                 : []),
               { label: d.fields.placedAt, value: when(order.placedAt) },
               ...(order.paidAt ? [{ label: d.fields.paidAt, value: when(order.paidAt) }] : []),
-              { label: d.fields.total, value: money(order.totalVnd) },
+              { label: d.fields.total, value: figure(order.totalVnd) },
               {
                 label: d.fields.shippingFee,
                 value:
-                  bigOf(order.shippingFeeVnd) > 0n ? money(order.shippingFeeVnd) : d.fields.free,
+                  bigOf(order.shippingFeeVnd) > 0n ? figure(order.shippingFeeVnd) : d.fields.free,
               },
             ]}
           />
@@ -882,13 +933,13 @@ export function OnlineOrderDetailView({
             <DescriptionList
               columns={2}
               items={[
-                { label: d.settlementFields.goods, value: money(settlement.goodsPaidVnd) },
-                { label: d.settlementFields.out, value: money(settlement.carrierFeeOutVnd) },
-                { label: d.settlementFields.back, value: money(settlement.carrierFeeBackVnd) },
+                { label: d.settlementFields.goods, value: figure(settlement.goodsPaidVnd) },
+                { label: d.settlementFields.out, value: figure(settlement.carrierFeeOutVnd) },
+                { label: d.settlementFields.back, value: figure(settlement.carrierFeeBackVnd) },
                 {
                   label: d.settlementFields.refund,
-                  value: money(settlement.refundVnd),
-                  strong: true,
+                  // Emphasis that shows in a two-column list (`strong` styles only a totals list, wig :891).
+                  value: <strong>{figure(settlement.refundVnd)}</strong>,
                 },
                 {
                   label: d.settlementFields.restock,

@@ -13,10 +13,11 @@ import {
   Field,
   FormDialog,
   FormGrid,
+  RadioGroup,
   Select,
   TextInput,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { comboDictionary } from '../../../i18n/combo';
 import { fill } from '../../../i18n/workforce';
 import {
@@ -30,6 +31,8 @@ import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { posErrorMessage } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
 import { Badge, Notice } from '../ui';
+import { sentence } from './pos-format';
+import { focusFirstInvalid } from './pos-dom';
 
 /**
  * Pay one service line of a DRAFT with a session of a combo (Phase 5 P5-8; PRD 17.4, 52). The staff member types the combo OWNER's
@@ -79,6 +82,7 @@ export function ComboUseDialog({
       const body = comboUseBody({ purchaseId, usedBy, note }, version);
       if (!body) {
         setProblem('combo');
+        focusFirstInvalid();
         return;
       }
       setProblem(null);
@@ -87,6 +91,7 @@ export function ComboUseDialog({
     }
     if (!phone.trim()) {
       setProblem('phone');
+      focusFirstInvalid();
       return;
     }
     setProblem(null);
@@ -116,7 +121,7 @@ export function ComboUseDialog({
   return (
     <FormDialog
       title={u.title}
-      description={`${locale === 'vi' ? line.nameVi : line.nameEn} · ${u.freeNote}`}
+      description={`${sentence(locale === 'vi' ? line.nameVi : line.nameEn)} ${u.freeNote}`}
       labels={{
         ...formOverlayLabels(t, label),
         submitting: found ? u.submitting : u.searching,
@@ -161,14 +166,16 @@ export function ComboUseDialog({
                   : '',
               ]
                 .filter(Boolean)
-                .join(' · ')}
+                .map(sentence)
+                .join(' ')}
               {...(problem === 'combo' && !chosen ? { error: u.needCombo } : {})}
             >
               {(control) => (
                 <Select
                   {...control}
                   value={purchaseId}
-                  placeholder={u.combo}
+                  // The empty choice says what to do, not the field's own label again.
+                  placeholder={c.sale.comboPlaceholder}
                   options={combos.map((combo) => ({
                     value: combo.purchaseId,
                     label: comboLookupLabel(combo, locale),
@@ -177,19 +184,18 @@ export function ComboUseDialog({
                 />
               )}
             </Field>
-            <Field label={u.usedBy}>
-              {(control) => (
-                <Select
-                  {...control}
-                  value={usedBy}
-                  options={[
-                    { value: 'OWNER', label: u.usedByOwner },
-                    { value: 'RELATIVE', label: u.usedByRelative },
-                  ]}
-                  onChange={(event) => setUsedBy(event.target.value as ComboUsedBy)}
-                />
-              )}
-            </Field>
+            {/* Two choices are a toggle, not a pop-up menu (C47). */}
+            <RadioGroup
+              legend={u.usedBy}
+              name="combo-used-by"
+              layout="inline"
+              value={usedBy}
+              options={[
+                { value: 'OWNER', label: u.usedByOwner },
+                { value: 'RELATIVE', label: u.usedByRelative },
+              ]}
+              onValueChange={(next) => setUsedBy(next as ComboUsedBy)}
+            />
             {usedBy === 'RELATIVE' ? (
               <Field label={u.relationship} hint={u.relationshipHint}>
                 {(control) => (
@@ -215,7 +221,12 @@ export function ComboUseDialog({
  * relative, and where the use stands. Nothing is shown when no line uses a combo. The table above keeps its own columns, so a
  * long combo name never widens it.
  */
-export function ComboUseCard({ lines }: { lines: InvoiceLineResponse[] }) {
+// Memoised: it only shows the server's answer, so a busy flag, a feedback line or a dialog does not re-render it (rbp pos-invoice.tsx:100-776).
+export const ComboUseCard = memo(function ComboUseCard({
+  lines,
+}: {
+  lines: InvoiceLineResponse[];
+}) {
   const { locale } = useWorkforce();
   const c = comboDictionary(locale);
   const used = lines.filter((line) => line.comboUse !== null);
@@ -242,4 +253,4 @@ export function ComboUseCard({ lines }: { lines: InvoiceLineResponse[] }) {
       />
     </Card>
   );
-}
+});

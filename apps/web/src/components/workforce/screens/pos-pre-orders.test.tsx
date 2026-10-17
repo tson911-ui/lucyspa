@@ -75,7 +75,7 @@ test('the order card shows the code, the contact, each line with its status and 
   assert.match(html, /DT000012/);
   assert.match(html, /\+84901234567/);
   assert.match(html, /Chị Lan/);
-  assert.match(html, /Kem dưỡng · 50 ml/);
+  assert.match(html, /Kem dưỡng \(50 ml\)/);
   assert.match(html, />Đã thanh toán</);
   assert.match(html, /11\/10\/2026 – 13\/10\/2026/);
   assert.match(html, /Dự kiến, không phải cam kết|không phải cam kết/);

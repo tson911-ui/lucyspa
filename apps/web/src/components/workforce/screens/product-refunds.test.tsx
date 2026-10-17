@@ -223,7 +223,11 @@ test('a transfer refund shows its reference and the corrections; the correction 
   );
   assert.ok(markup.includes(text.methods.BANK_TRANSFER_MANUAL));
   assert.ok(markup.includes('FT0002'));
-  assert.ok(markup.includes(`${text.refund.referenceFirst}: FT0001`));
+  assert.ok(
+    markup.includes(
+      text.refund.referenceFirstWas.replace('{reference}', '<span translate="no">FT0001</span>'),
+    ),
+  );
   assert.ok(markup.includes(text.restocks.NOT_SELLABLE));
   assert.ok(markup.includes(text.refund.noStock));
   assert.ok(markup.includes('thiếu 150 điểm'));

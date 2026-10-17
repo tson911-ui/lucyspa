@@ -32,6 +32,9 @@ import {
   TextInput,
   useUrlState,
   type DataTableColumn,
+  type SortState,
+  Badge as StatusBadge,
+  PageHeader as KitPageHeader,
 } from '@lucy-spa/ui';
 import { useRef, useState } from 'react';
 import { productOrdersDictionary } from '../../../i18n/product-orders';
@@ -66,9 +69,8 @@ import {
 } from '../../../lib/workforce/product-orders';
 import { productTitle } from '../../../lib/workforce/product-sale';
 import { withReauthentication } from '../../../lib/workforce/reauth';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
 import { errorMessage } from '../../../lib/workforce/workflows';
-import { PrefetchLink as Link } from '../link';
+import { ListCrumbLink, PrefetchLink as Link } from '../link';
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import {
@@ -83,6 +85,12 @@ import {
   useSuccessToast,
   type Resource,
 } from '../ui';
+import { RouterMenuLink } from './pos-links';
+import { focusFirstInvalid } from './pos-dom';
+import { backParam, useBackQuery, useUrlPage } from './pos-url';
+
+// The "Cần đặt" tab's page and sort in the address (module constant, as useUrlState asks).
+const TO_ORDER_DEFAULTS: { toPage: number; toSort: string } = { toPage: 1, toSort: 'supplier:asc' };
 
 const ZONE = 'Asia/Ho_Chi_Minh';
 const PAGE_SIZE = 20;
@@ -258,7 +266,6 @@ export function ProductOrdersList({
             id="order-q"
             value={list.q}
             label={q.search}
-            placeholder={q.search}
             clearLabel={t.common.list.clearSearch}
             onSearch={(value) => updateList({ q: value }, { replace: true })}
           />
@@ -288,7 +295,7 @@ export function ProductOrdersList({
   return (
     <>
       <PageHeader title={q.title} intro={q.intro}>
-        <Button icon="refresh" loading={allocating} onClick={() => void allocate()}>
+        <Button loading={allocating} onClick={() => void allocate()}>
           {allocating ? q.allocating : q.allocate}
         </Button>
       </PageHeader>
@@ -350,12 +357,15 @@ function ToOrderTable({
   const { t, locale } = useWorkforce();
   const text = productOrdersDictionary(locale);
   const q = text.queue;
-  const paging = useClientPaging(t, q.title);
+  // The page and the sort of this tab live in the address like the other tabs' page (wig :353).
+  const [view, setView] = useUrlState(TO_ORDER_DEFAULTS);
+  const [sortKey = 'supplier', sortDirection] = view.toSort.split(':');
+  const sort: SortState = { key: sortKey, direction: sortDirection === 'desc' ? 'desc' : 'asc' };
   const columns: DataTableColumn<ProductOrderToOrderGroup>[] = [
     {
       key: 'supplier',
       header: q.columns.supplier,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       sortable: true,
       sortValue: (group) => group.supplier?.name ?? '￿',
@@ -365,7 +375,7 @@ function ToOrderTable({
       key: 'product',
       header: q.columns.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (group) => productTitle(group, locale),
     },
@@ -413,13 +423,19 @@ function ToOrderTable({
       rowKey={(group) => group.variantId}
       loading={resource.loading && !resource.data}
       loadingLabel={t.common.loading}
-      defaultSort={{ key: 'supplier', direction: 'asc' }}
+      sort={sort}
+      onSortChange={(next) => setView({ toSort: `${next.key}:${next.direction}`, toPage: 1 })}
       error={
         resource.error ? (
           <ErrorState error={resource.error} t={t} onRetry={() => void resource.reload()} />
         ) : undefined
       }
-      paging={paging}
+      paging={{
+        page: view.toPage,
+        pageSize: PAGE_SIZE,
+        onPageChange: (page) => setView({ toPage: page }),
+        labels: paginationLabels(t, q.title),
+      }}
     />
   );
 }
@@ -439,17 +455,19 @@ function LinesTable({
   updateList: (patch: Partial<QueueListState>) => void;
   onHandOver: (row: ProductOrderQueueRow) => void;
 }) {
-  const { t, locale, base, navigate } = useWorkforce();
+  const { t, locale, base } = useWorkforce();
   const text = productOrdersDictionary(locale);
   const q = text.queue;
-  const open = (row: ProductOrderQueueRow) => `${base}/product-orders/${row.orderId}`;
+  // The list view travels with the record link so its breadcrumb returns here (wig :931).
+  const open = (row: ProductOrderQueueRow) =>
+    `${base}/product-orders/${row.orderId}${backParam(list, QUEUE_LIST_DEFAULTS)}`;
   const columns: DataTableColumn<ProductOrderQueueRow>[] = [
     {
       key: 'code',
       header: q.columns.code,
       mobileTitle: true,
       cell: (row) => (
-        <Link className="ls-link" href={open(row)}>
+        <Link className="ls-link" href={open(row)} translate="no">
           {row.orderCode}
         </Link>
       ),
@@ -458,7 +476,7 @@ function LinesTable({
       key: 'product',
       header: q.columns.product,
       phoneEmphasis: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => productTitle(row, locale),
     },
@@ -472,7 +490,7 @@ function LinesTable({
     {
       key: 'customer',
       header: q.columns.customer,
-      truncate: true,
+      wrap: true,
       width: 'md',
       hideBelow: 'lg',
       hidePhone: true,
@@ -492,7 +510,11 @@ function LinesTable({
       cell: (row) => (
         <Cluster gap="tight">
           <Badge tone={orderStatusTone(row.status)}>{text.status[row.status]}</Badge>
-          {row.late ? <Badge tone="warning">{q.late}</Badge> : null}
+          {row.late ? (
+            <StatusBadge tone="warning" icon="clock">
+              {q.late}
+            </StatusBadge>
+          ) : null}
           {row.heldTooLong ? <Badge tone="warning">{q.held}</Badge> : null}
         </Cluster>
       ),
@@ -522,9 +544,10 @@ function LinesTable({
       actions: true,
       cell: (row) => (
         <RowActions
+          LinkComponent={RouterMenuLink}
           menuLabel={fill(t.common.list.actionsFor, { name: row.orderCode })}
           items={[
-            { id: 'open', label: q.open, icon: 'eye', onSelect: () => navigate?.(open(row)) },
+            { id: 'open', label: q.open, icon: 'eye', href: open(row) },
             ...(row.status === 'ARRIVED'
               ? [
                   {
@@ -546,6 +569,7 @@ function LinesTable({
   }
   return (
     <DataTable
+      drillDown
       phoneRows="compact"
       mode="server"
       caption={fill(t.common.list.table, { list: q.tabs[tab] })}
@@ -648,7 +672,7 @@ export function HandOverDialog({
     setChecked(true);
     setError(null);
     const body = handOverRequest(draft, line.rowVersion);
-    if (!body) return;
+    if (!body) return focusFirstInvalid();
     setPending(true);
     try {
       await api.post(`/api/v1/product-orders/lines/${line.id}/hand-over`, body);
@@ -672,7 +696,12 @@ export function HandOverDialog({
       onSubmit={submit}
     >
       <Stack gap="page">
-        <Notice tone="info">{`${line.quantity} × ${line.name}`}</Notice>
+        <Notice tone="info">
+          {fill(productOrdersDictionary(locale).queue.quantityOf, {
+            quantity: line.quantity,
+            name: line.name,
+          })}
+        </Notice>
         <RadioGroup
           legend={h.to}
           name="handover-to"
@@ -712,6 +741,7 @@ export function HandOverDialog({
                 {...control}
                 autoComplete="off"
                 maxLength={40}
+                spellCheck={false}
                 value={draft.orderCode}
                 onChange={(event) => set({ orderCode: event.target.value })}
               />
@@ -789,7 +819,9 @@ export function ProductOrderDetailView({
   const d = text.detail;
   const notify = useSuccessToast();
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const paging = useClientPaging(t, d.lines);
+  const backQuery = useBackQuery();
+  // The page of the lines in the address (wig :353, detail lines table).
+  const paging = { ...useUrlPage('linesPage'), labels: paginationLabels(t, d.lines) };
   const money = (value: string) => formatVnd(value, locale);
 
   /** What was given back and how (shown to those who may see the money): the amount, the way, the code, the reference. */
@@ -811,7 +843,7 @@ export function ProductOrderDetailView({
       key: 'product',
       header: d.columns.product,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (line) => productTitle(line, locale),
     },
@@ -823,7 +855,11 @@ export function ProductOrderDetailView({
         <span className="ls-cell-stack">
           <Cluster gap="tight">
             <Badge tone={orderStatusTone(line.status)}>{text.status[line.status]}</Badge>
-            {line.late ? <Badge tone="warning">{text.queue.late}</Badge> : null}
+            {line.late ? (
+              <StatusBadge tone="warning" icon="clock">
+                {text.queue.late}
+              </StatusBadge>
+            ) : null}
             {line.heldTooLong ? <Badge tone="warning">{text.queue.held}</Badge> : null}
           </Cluster>
           {line.cancelCause ? (
@@ -864,16 +900,6 @@ export function ProductOrderDetailView({
                 },
               ]
             : []),
-          ...(line.actions.cancelCauses.length > 0
-            ? [
-                {
-                  id: 'cancel',
-                  label: d.cancel,
-                  tone: 'danger' as const,
-                  onSelect: () => setOverlay({ kind: 'cancel', line }),
-                },
-              ]
-            : []),
           ...(line.actions.cancelCauses.includes('CUSTOMER_CHANGED_MIND')
             ? [
                 {
@@ -893,6 +919,17 @@ export function ProductOrderDetailView({
                 },
               ]
             : []),
+          // C47: the destructive item is last.
+          ...(line.actions.cancelCauses.length > 0
+            ? [
+                {
+                  id: 'cancel',
+                  label: d.cancel,
+                  tone: 'danger' as const,
+                  onSelect: () => setOverlay({ kind: 'cancel', line }),
+                },
+              ]
+            : []),
         ];
         return items.length > 0 ? (
           <RowActions
@@ -904,9 +941,10 @@ export function ProductOrderDetailView({
     },
   ];
 
+  // "Trễ hẹn" is already the badge on the late line: no second banner says it again (one status, one place). The "held" notice
+  // stays because it carries the next step (call the customer).
   const notices = [
     order.lines.some((line) => line.heldTooLong) ? d.held : null,
-    order.lines.some((line) => line.late) ? d.late : null,
     order.invoiceStatus === 'CANCELLED' ? d.invoiceCancelled : null,
     order.invoiceStatus === 'PENDING_PAYMENT' ? d.notPaid : null,
   ].filter((entry): entry is string => entry !== null);
@@ -919,16 +957,18 @@ export function ProductOrderDetailView({
 
   return (
     <>
-      <PageHeader
+      <KitPageHeader
         title={fill(d.title, { code: order.code })}
+        // The order's status under the title (kit status slot), not buried as the first fact of the card (plan).
+        status={<Badge tone={orderStatusTone(order.status)}>{text.status[order.status]}</Badge>}
         breadcrumbs={
           <Breadcrumbs
             label={text.queue.breadcrumbs}
-            LinkComponent={Link}
+            LinkComponent={ListCrumbLink}
             items={[
               {
                 label: text.queue.title,
-                href: `${base}/product-orders?branch=${encodeURIComponent(order.branchId)}`,
+                href: `${base}/product-orders?${backQuery || `branch=${encodeURIComponent(order.branchId)}`}`,
               },
               { label: order.code },
             ]}
@@ -946,12 +986,14 @@ export function ProductOrderDetailView({
             columns={2}
             items={[
               {
-                label: d.fields.status,
+                label: d.fields.invoice,
+                // The invoice is a record of its own: its code links to it (plan: invoice link).
                 value: (
-                  <Badge tone={orderStatusTone(order.status)}>{text.status[order.status]}</Badge>
+                  <Link className="ls-link" href={`${base}/pos/${order.invoiceId}`} translate="no">
+                    {order.invoiceCode}
+                  </Link>
                 ),
               },
-              { label: d.fields.invoice, value: order.invoiceCode },
               {
                 label: order.contactMasked ? d.fields.phoneMasked : d.fields.phone,
                 value: order.contactPhone,
@@ -966,7 +1008,7 @@ export function ProductOrderDetailView({
                 line.refund
                   ? [
                       {
-                        label: `${d.columns.refund}: ${productTitle(line, locale)}`,
+                        label: fill(d.refundFor, { name: productTitle(line, locale) }),
                         value: refundText(line.refund),
                       },
                     ]
@@ -1075,7 +1117,7 @@ export function CancelDialog({
   const { api, t, locale } = useWorkforce();
   const text = productOrdersDictionary(locale);
   const c = text.cancel;
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const [draft, setDraft] = useState<CancelDraft>(() => ({
     ...emptyCancelDraft(),
     cause: line.actions.cancelCauses.length === 1 ? (line.actions.cancelCauses[0] as never) : '',
@@ -1085,7 +1127,9 @@ export function CancelDialog({
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // The first id is made once, not on every render (rbp rerender-lazy-state-init).
+  const [firstRequestId] = useState(() => globalThis.crypto.randomUUID());
+  const requestId = useRef(firstRequestId);
   const share = line.actions.refundVnd;
   const problems = validateCancel(draft, share);
   const set = (patch: Partial<CancelDraft>) => setDraft((state) => ({ ...state, ...patch }));
@@ -1103,7 +1147,7 @@ export function CancelDialog({
     setChecked(true);
     setError(null);
     const body = cancelRequest(draft, line.rowVersion, requestId.current, share);
-    if (!body) return;
+    if (!body) return focusFirstInvalid();
     setPending(true);
     try {
       await withReauthentication(
@@ -1124,6 +1168,7 @@ export function CancelDialog({
   return (
     <>
       <FormDialog
+        suspended={asking}
         title={c.title}
         description={c.description}
         labels={{ ...formOverlayLabels(t, c.submit), submitting: c.submitting }}
@@ -1134,7 +1179,12 @@ export function CancelDialog({
         onSubmit={submit}
       >
         <Stack gap="page">
-          <Notice tone="info">{`${line.quantity} × ${productTitle(line, locale)}`}</Notice>
+          <Notice tone="info">
+            {fill(text.queue.quantityOf, {
+              quantity: line.quantity,
+              name: productTitle(line, locale),
+            })}
+          </Notice>
           {causes.length === 0 ? <Notice tone="warning">{c.noCause}</Notice> : null}
           <FormGrid>
             <Field
@@ -1176,6 +1226,7 @@ export function CancelDialog({
                   <MoneyInput
                     {...control}
                     unit="₫"
+                    locale={locale}
                     value={draft.amount === '' ? null : Number(draft.amount)}
                     onValueChange={(value) => set({ amount: value === null ? '' : String(value) })}
                   />
@@ -1214,6 +1265,7 @@ export function CancelDialog({
                     {...control}
                     autoComplete="off"
                     maxLength={64}
+                    spellCheck={false}
                     value={draft.bankReference}
                     onChange={(event) => set({ bankReference: event.target.value })}
                   />
@@ -1240,15 +1292,18 @@ export function CancelDialog({
               )}
             </Field>
           </FormGrid>
+          {/* The amount the cashier checks is in tabular figures (wig :1247). */}
           <Notice tone="info">
-            {!money
-              ? c.noAmount
-              : partial
-                ? fill(c.partial, {
-                    amount: formatVnd(draft.amount.trim(), locale),
-                    share: formatVnd(share, locale),
-                  })
-                : fill(c.amount, { amount: formatVnd(share, locale) })}
+            <span className="ls-pos-figure-text">
+              {!money
+                ? c.noAmount
+                : partial
+                  ? fill(c.partial, {
+                      amount: formatVnd(draft.amount.trim(), locale),
+                      share: formatVnd(share, locale),
+                    })
+                  : fill(c.amount, { amount: formatVnd(share, locale) })}
+            </span>
           </Notice>
           {arrived ? <p className="ls-hint">{c.goods}</p> : null}
           {money ? <Notice tone="warning">{c.warning}</Notice> : null}
@@ -1286,7 +1341,7 @@ function DeclineDialog({
     if (pending) return;
     setChecked(true);
     setError(null);
-    if (bad) return;
+    if (bad) return focusFirstInvalid();
     setPending(true);
     try {
       await api.post(`/api/v1/product-orders/lines/${line.id}/decline`, {
@@ -1313,7 +1368,12 @@ function DeclineDialog({
       onSubmit={submit}
     >
       <Stack gap="page">
-        <Notice tone="info">{`${line.quantity} × ${productTitle(line, locale)}`}</Notice>
+        <Notice tone="info">
+          {fill(text.queue.quantityOf, {
+            quantity: line.quantity,
+            name: productTitle(line, locale),
+          })}
+        </Notice>
         <FormGrid cols={1}>
           <Field
             label={f.reason}
@@ -1366,7 +1426,7 @@ function CorrectDialog({
     if (pending) return;
     setChecked(true);
     setError(null);
-    if (badReference || badReason) return;
+    if (badReference || badReason) return focusFirstInvalid();
     setPending(true);
     try {
       await api.post(`/api/v1/product-orders/lines/${line.id}/reference-correction`, {
@@ -1405,6 +1465,7 @@ function CorrectDialog({
                 {...control}
                 autoComplete="off"
                 maxLength={64}
+                spellCheck={false}
                 value={reference}
                 onChange={(event) => setReference(event.target.value)}
               />

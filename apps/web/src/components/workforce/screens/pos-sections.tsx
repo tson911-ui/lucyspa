@@ -11,21 +11,19 @@ import {
   type DataTableColumn,
   type MenuItem,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { memo } from 'react';
 import { birthdayDictionary } from '../../../i18n/birthday';
 import { comboDictionary } from '../../../i18n/combo';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { fill } from '../../../i18n/workforce';
-import {
-  bpToPercent,
-  candidateBenefitLabel,
-  ineligibleText,
-} from '../../../lib/workforce/discounts';
+import { candidateBenefitLabel, ineligibleText } from '../../../lib/workforce/discounts';
 import { giftText } from '../../../lib/workforce/birthday';
 import { formatDate, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { useWorkforce } from '../session';
 import { Badge, Notice } from '../ui';
+import { percentNumber, percentText, sentence } from './pos-format';
+import { useUrlPage } from './pos-url';
 
 type Candidate = InvoiceResponse['discount']['candidates'][number];
 
@@ -41,29 +39,25 @@ interface DiscountRow {
 }
 type AppliedVoucher = InvoiceResponse['discount']['vouchers'][number];
 
-/** Client paging for the short lists of one invoice (20 per page, like every list). */
-function usePaging() {
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
-  return {
-    ...paging,
-    onPageChange: (page: number) => setPaging((current) => ({ ...current, page })),
-    onPageSizeChange: (pageSize: number) => setPaging({ page: 1, pageSize }),
-  };
-}
-
 /** The server's benefit evaluation: the winner and every program considered. Nothing here is chosen by the cashier. */
-export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; title?: string }) {
+// Memoised: it only shows the server's answer, so a busy flag, a feedback line or a dialog does not re-render it (rbp pos-invoice.tsx:100-776).
+export const DiscountCard = memo(function DiscountCard({
+  invoice,
+  title,
+}: {
+  invoice: InvoiceResponse;
+  title?: string;
+}) {
   const { t, locale } = useWorkforce();
-  const paging = usePaging();
+  // The page of the offers list lives in the address like the payments' lists (wig Navigation & State); 20 rows, no size choice.
+  const paging = useUrlPage('offerPage');
   const l = loyaltyDictionary(locale);
   const { winner, member, winnerSource, birthday } = invoice.discount;
   const bd = birthdayDictionary(locale).invoice;
   const programName = (candidate: Pick<Candidate, 'nameVi' | 'nameEn'>) =>
     locale === 'vi' ? candidate.nameVi : candidate.nameEn;
-  const percentOf = (bp: number) => {
-    const percent = bpToPercent(bp);
-    return locale === 'vi' ? percent.replace('.', ',') : percent;
-  };
+  // Intl decimal separator per locale (wig :65), not a hand-made replace.
+  const percentOf = (bp: number) => percentNumber(locale, bp);
   const memberTier = member ? l.tiers[member.tier] : '';
   const giftReason = (reason: keyof typeof bd.notApplied) =>
     fill(bd.notApplied[reason], {
@@ -78,7 +72,7 @@ export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; tit
               member.tier === 'NONE'
                 ? l.member.nameNoTier
                 : fill(l.member.name, { tier: memberTier }),
-            benefit: `${percentOf(member.discountBp)}%`,
+            benefit: percentText(locale, member.discountBp),
             source: l.member.source,
             winner: member.winner,
             eligible: member.eligible,
@@ -123,7 +117,7 @@ export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; tit
       key: 'program',
       header: t.pos.colProgram,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.name,
     },
@@ -159,23 +153,30 @@ export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; tit
   return (
     <Card as="section">
       <CardHeader title={title ?? t.pos.discountTitle} description={t.pos.discountNote} />
+      {/* Each notice reads as short sentences (no " · " / " — " fragments); the amount keeps tabular figures. */}
       {winnerSource === 'MEMBER_TIER' && member ? (
         <Notice tone="success">
           <strong>
-            {fill(l.member.applied, { tier: memberTier, percent: percentOf(member.discountBp) })}
+            {sentence(
+              fill(l.member.applied, { tier: memberTier, percent: percentOf(member.discountBp) }),
+            )}
           </strong>{' '}
-          · {fill(t.pos.candidateAmount, { amount: formatVnd(member.amountVnd, locale) })}
+          <span className="ls-pos-figure">
+            {sentence(fill(t.pos.candidateAmount, { amount: formatVnd(member.amountVnd, locale) }))}
+          </span>
           {invoice.discount.selectionReason
-            ? ` — ${reasonText(invoice.discount.selectionReason)}`
+            ? ` ${sentence(reasonText(invoice.discount.selectionReason))}`
             : ''}
         </Notice>
       ) : winnerSource === 'BIRTHDAY' ? null : winner ? (
         <Notice tone="success">
-          <strong>{fill(t.pos.discountApplied, { name: programName(winner) })}</strong> ·{' '}
-          {candidateBenefitLabel(winner, locale)} ·{' '}
-          {fill(t.pos.candidateAmount, { amount: formatVnd(winner.amountVnd, locale) })}
+          <strong>{sentence(fill(t.pos.discountApplied, { name: programName(winner) }))}</strong>{' '}
+          {sentence(candidateBenefitLabel(winner, locale))}{' '}
+          <span className="ls-pos-figure">
+            {sentence(fill(t.pos.candidateAmount, { amount: formatVnd(winner.amountVnd, locale) }))}
+          </span>
           {invoice.discount.selectionReason
-            ? ` — ${reasonText(invoice.discount.selectionReason)}`
+            ? ` ${sentence(reasonText(invoice.discount.selectionReason))}`
             : ''}
         </Notice>
       ) : (
@@ -186,23 +187,31 @@ export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; tit
           {birthday.applied ? (
             <>
               <strong>
-                {birthday.mode === 'STACKED'
-                  ? bd.stacked
-                  : birthday.mode === 'REPLACES_OFFER'
-                    ? bd.replaces
-                    : bd.alone}
+                {sentence(
+                  birthday.mode === 'STACKED'
+                    ? bd.stacked
+                    : birthday.mode === 'REPLACES_OFFER'
+                      ? bd.replaces
+                      : bd.alone,
+                )}
               </strong>{' '}
-              · {fill(t.pos.candidateAmount, { amount: formatVnd(birthday.amountVnd, locale) })}
+              <span className="ls-pos-figure">
+                {sentence(
+                  fill(t.pos.candidateAmount, { amount: formatVnd(birthday.amountVnd, locale) }),
+                )}
+              </span>
               {winnerSource === 'BIRTHDAY' && invoice.discount.selectionReason
-                ? ` — ${reasonText(invoice.discount.selectionReason)}`
+                ? ` ${sentence(reasonText(invoice.discount.selectionReason))}`
                 : ''}
             </>
           ) : (
             <>
-              <strong>{bd.rowName}</strong> · {birthday.reason ? giftReason(birthday.reason) : ''}
+              <strong>{sentence(bd.rowName)}</strong>
+              {/* A gift with no reason leaves no empty slot between two separators (wig :202). */}
+              {birthday.reason ? ` ${sentence(giftReason(birthday.reason))}` : ''}
             </>
           )}{' '}
-          · {fill(bd.birthdayOn, { date: formatDate(birthday.birthdayOn, locale) })}
+          {sentence(fill(bd.birthdayOn, { date: formatDate(birthday.birthdayOn, locale) }))}
         </Notice>
       ) : null}
       {birthday && invoice.discount.preview ? <p className="ls-hint">{bd.previewNote}</p> : null}
@@ -221,7 +230,7 @@ export function DiscountCard({ invoice, title }: { invoice: InvoiceResponse; tit
       ) : null}
     </Card>
   );
-}
+});
 
 /** Promo codes the cashier supplied; they only make a program eligible, the server still picks the winner. */
 export function VouchersCard({
@@ -236,7 +245,7 @@ export function VouchersCard({
   onRemove: (voucher: AppliedVoucher) => void;
 }) {
   const { t, locale } = useWorkforce();
-  const paging = usePaging();
+  const paging = useUrlPage('voucherPage');
   const editable = invoice.status === 'DRAFT' && invoice.actions.applyVouchers;
 
   const columns: DataTableColumn<AppliedVoucher>[] = [
@@ -244,12 +253,12 @@ export function VouchersCard({
       key: 'code',
       header: t.pos.voucherCode,
       mobileTitle: true,
-      cell: (voucher) => <code>{voucher.code}</code>,
+      cell: (voucher) => <code translate="no">{voucher.code}</code>,
     },
     {
       key: 'program',
       header: t.pos.colProgram,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (voucher) => (locale === 'vi' ? voucher.nameVi : voucher.nameEn),
     },
@@ -284,7 +293,7 @@ export function VouchersCard({
         actions={
           editable ? (
             <Button variant="secondary" icon="plus" disabled={working} onClick={onEnter}>
-              {t.pos.voucherEnter}
+              {t.pos.voucherEnterOpen}
             </Button>
           ) : undefined
         }
@@ -327,7 +336,7 @@ export function PayerCard({
       ? [
           {
             id: 'find',
-            label: t.pos.payerFind,
+            label: t.pos.payerFindOpen,
             icon: 'search',
             disabled: working,
             onSelect: onFind,
@@ -336,7 +345,7 @@ export function PayerCard({
             ? [
                 {
                   id: 'default',
-                  label: `${t.pos.useDefaultPayer}: ${defaultPayer.displayName}`,
+                  label: fill(t.pos.useDefaultPayer, { name: defaultPayer.displayName }),
                   disabled: working,
                   onSelect: () => onSetPayer(defaultPayer.id),
                 },

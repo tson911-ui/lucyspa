@@ -1,13 +1,15 @@
 'use client';
 
 import type { WalkInMemberLookupResponse } from '@lucy-spa/contracts';
-import { Field, FormDialog, FormGrid, Select, TextInput } from '@lucy-spa/ui';
+import { Field, FormDialog, FormGrid, RadioGroup, TextInput } from '@lucy-spa/ui';
 import { useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { boardErrorMessage } from '../../../lib/workforce/booking-board';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { useWorkforce } from '../session';
 import { Notice } from '../ui';
+import { focusFirstInvalid } from './pos-dom';
+import { metaLine } from './pos-format';
 
 type Member = WalkInMemberLookupResponse['members'][number];
 
@@ -27,21 +29,33 @@ export function MemberLookupDialog({
   onAdd: (member: Member) => void;
   onClose: () => void;
 }) {
-  const { api, t } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
   const [lookupBy, setLookupBy] = useState<'phone' | 'email'>('phone');
   const [value, setValue] = useState('');
+  // An empty search is said on the field itself, which takes focus (wig Forms: errors inline, baseline :44).
+  const [needValue, setNeedValue] = useState(false);
   const [lookup, setLookup] = useState<WalkInMemberLookupResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const member = lookup?.members[0] ?? null;
 
+  // The button stays enabled until a request starts; what blocks it is said in the dialog (wig :72, :44).
   async function submit() {
     if (member) {
+      if (taken.has(member.id)) {
+        setError(t.walkIn.alreadyAdded);
+        return;
+      }
       onAdd(member);
       onClose();
       return;
     }
-    if (searching || !value.trim()) return;
+    if (searching) return;
+    if (!value.trim()) {
+      setNeedValue(true);
+      focusFirstInvalid();
+      return;
+    }
     setSearching(true);
     setError(null);
     try {
@@ -69,46 +83,53 @@ export function MemberLookupDialog({
       }}
       busy={searching}
       dirty={value !== ''}
-      submitDisabled={member !== null && taken.has(member.id)}
       error={error ? <Notice tone="error">{error}</Notice> : undefined}
       onClose={onClose}
       onSubmit={submit}
     >
       <FormGrid>
-        <Field label={t.walkIn.lookupBy}>
-          {(control) => (
-            <Select
-              {...control}
-              value={lookupBy}
-              options={[
-                { value: 'phone', label: t.walkIn.phone },
-                { value: 'email', label: t.walkIn.email },
-              ]}
-              onChange={(event) => (
-                setLookupBy(event.target.value as 'phone' | 'email'),
-                setLookup(null)
-              )}
-            />
-          )}
-        </Field>
-        <Field label={lookupBy === 'phone' ? t.walkIn.phone : t.walkIn.email}>
+        {/* Two choices are a toggle, not a pop-up menu (C47). */}
+        <RadioGroup
+          legend={t.walkIn.lookupBy}
+          name="walk-in-lookup-by"
+          layout="inline"
+          value={lookupBy}
+          options={[
+            { value: 'phone', label: t.walkIn.phone },
+            { value: 'email', label: t.walkIn.email },
+          ]}
+          onValueChange={(next) => (setLookupBy(next as 'phone' | 'email'), setLookup(null))}
+        />
+        <Field
+          label={lookupBy === 'phone' ? t.walkIn.phone : t.walkIn.email}
+          error={needValue ? t.pos.lookupNeedValue : undefined}
+        >
           {(control) => (
             <TextInput
               {...control}
               type={lookupBy === 'phone' ? 'tel' : 'email'}
               inputMode={lookupBy === 'phone' ? 'tel' : 'email'}
               autoComplete="off"
+              // An email or a phone number is not prose (wig Forms, baseline :96).
+              spellCheck={false}
               maxLength={lookupBy === 'phone' ? 32 : 320}
               value={value}
-              onChange={(event) => (setValue(event.target.value), setLookup(null))}
+              onChange={(event) => (
+                setValue(event.target.value),
+                setLookup(null),
+                setNeedValue(false)
+              )}
             />
           )}
         </Field>
         {member ? (
           <Notice tone="success">
-            {fill(t.walkIn.found, { name: member.displayName })}
-            {member.phoneMasked ? ` · ${member.phoneMasked}` : ''}
-            {member.emailMasked ? ` · ${member.emailMasked}` : ''}
+            {/* One Intl list ("Lan, 09xx…12, l…@gmail.com"), not commas glued in code. */}
+            {metaLine(locale, [
+              fill(t.walkIn.found, { name: member.displayName }),
+              member.phoneMasked,
+              member.emailMasked,
+            ])}
           </Notice>
         ) : null}
         {lookup && lookup.members.length === 0 ? (

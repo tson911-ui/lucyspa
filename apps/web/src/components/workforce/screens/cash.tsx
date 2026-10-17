@@ -30,6 +30,7 @@ import {
 import { formatDate, formatDateTime } from '../../../lib/workforce/format';
 import { formOverlayLabels } from '../../../lib/workforce/form-labels';
 import { useWorkforce } from '../session';
+import { useBranches } from '../data';
 import {
   Badge,
   Button,
@@ -44,8 +45,7 @@ import {
 import { CashBook, EntryDialog, TransferDialog, useCommand } from './cash-book';
 import { CashClosing } from './cash-closing';
 import { CashReconcile } from './cash-reconcile';
-
-const ZONE = 'Asia/Ho_Chi_Minh';
+import { focusFirstInvalid } from './pos-dom';
 
 /**
  * "Sổ quỹ" (Phase 7 P7-6): each branch's cash and the shop's bank account. Before the Owner starts the book the page explains it and
@@ -149,7 +149,8 @@ function GoLiveDrawer({
   async function submit() {
     setChecked(true);
     const body = goLiveBody(draft, ids);
-    if (!body) return;
+    // A refused start moves focus to the first opening balance still missing (wig Forms: focus the first error on submit).
+    if (!body) return focusFirstInvalid();
     await command.run<CashOverviewResponse>(
       '/api/v1/cash/go-live',
       body satisfies CashGoLiveRequest,
@@ -175,7 +176,11 @@ function GoLiveDrawer({
               key={entry.branch.id}
               label={fill(g.branch, { name: entry.branch.name })}
               hint={g.hint}
-              error={missing(draft.branches[entry.branch.id]) ? t.errors.validation : undefined}
+              error={
+                missing(draft.branches[entry.branch.id])
+                  ? cashDictionary(locale).problems.opening
+                  : undefined
+              }
               required
               full
             >
@@ -183,13 +188,13 @@ function GoLiveDrawer({
                 <MoneyInput
                   {...control}
                   unit="₫"
-                  separator={locale === 'vi' ? '.' : ','}
+                  locale={locale}
                   value={draft.branches[entry.branch.id] ?? null}
                   onValueChange={(value) =>
-                    setDraft({
-                      ...draft,
-                      branches: { ...draft.branches, [entry.branch.id]: value },
-                    })
+                    setDraft((current) => ({
+                      ...current,
+                      branches: { ...current.branches, [entry.branch.id]: value },
+                    }))
                   }
                 />
               )}
@@ -198,7 +203,7 @@ function GoLiveDrawer({
           <Field
             label={g.bank}
             hint={g.hint}
-            error={missing(draft.bank) ? t.errors.validation : undefined}
+            error={missing(draft.bank) ? cashDictionary(locale).problems.opening : undefined}
             required
             full
           >
@@ -206,9 +211,9 @@ function GoLiveDrawer({
               <MoneyInput
                 {...control}
                 unit="₫"
-                separator={locale === 'vi' ? '.' : ','}
+                locale={locale}
                 value={draft.bank}
-                onValueChange={(bank) => setDraft({ ...draft, bank })}
+                onValueChange={(bank) => setDraft((current) => ({ ...current, bank }))}
               />
             )}
           </Field>
@@ -226,8 +231,11 @@ function LiveCash({
   overview: CashOverviewResponse;
   reload: () => Promise<void>;
 }) {
-  const { locale } = useWorkforce();
+  const { api, locale } = useWorkforce();
   const c = cashDictionary(locale);
+  // Times and business days in the fund's branch time zone, from the branch list (wig :48); the shared bank fund uses the first
+  // branch the person works with. Until the list answers, the device's zone (the counter stands in the branch).
+  const branchList = useBranches(api);
   const [state, update] = useUrlState(CASH_PAGE_DEFAULTS, {
     normalize: normalizeCashPage,
     resetOnChange: CASH_RESET_KEYS,
@@ -245,6 +253,9 @@ function LiveCash({
       </>
     );
   }
+  const zoneBranch = fund.branch?.id ?? overview.branches[0]?.branch.id ?? '';
+  const zone =
+    branchList.data?.get(zoneBranch)?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const can = fundCan(fund, overview.branches);
   const changed = () => {
     setBump((value) => value + 1);
@@ -257,6 +268,7 @@ function LiveCash({
       panel: (
         <CashBook
           fund={fund}
+          zone={zone}
           branches={overview.branches}
           state={state}
           update={(patch: Partial<CashPageState>) => update(patch)}
@@ -273,6 +285,7 @@ function LiveCash({
             label: c.tabs.closing,
             panel: (
               <CashClosing
+                zone={zone}
                 fund={fund}
                 page={state.page}
                 onPage={(page) => update({ page })}
@@ -286,7 +299,7 @@ function LiveCash({
           {
             id: 'reconcile',
             label: c.tabs.reconcile,
-            panel: <CashReconcile branches={overview.branches} reloadToken={bump} />,
+            panel: <CashReconcile branches={overview.branches} reloadToken={bump} zone={zone} />,
           },
         ]
       : []),
@@ -328,8 +341,20 @@ function LiveCash({
         <DescriptionList
           columns={2}
           items={[
-            { label: c.fund.balance, value: signedVnd(fund.balanceVnd, locale), strong: true },
-            { label: c.fund.opening, value: signedVnd(fund.openingBalanceVnd, locale) },
+            // Balances keep tabular figures (wig cash.tsx:331). The balance is emphasised by its own markup: the kit's `strong`
+            // flag styles only a totals list, so it was a no-op here (wig anti-pattern, kit misuse).
+            {
+              label: c.fund.balance,
+              value: (
+                <strong className="ls-pos-figure">{signedVnd(fund.balanceVnd, locale)}</strong>
+              ),
+            },
+            {
+              label: c.fund.opening,
+              value: (
+                <span className="ls-pos-figure">{signedVnd(fund.openingBalanceVnd, locale)}</span>
+              ),
+            },
             ...(fund.kind === 'CASH'
               ? [
                   {
@@ -344,20 +369,26 @@ function LiveCash({
               ? [
                   {
                     label: c.alertLabel,
+                    // A badge is one short word that never wraps (DESIGN 8.7); the sentence follows as plain text.
                     value: (
-                      <Badge tone="warning">
-                        {fill(c.alert, {
-                          n: overview.differenceAlerts,
-                          amount: signedVnd(overview.alertThresholdVnd, locale),
-                        })}
-                      </Badge>
+                      <span className="ls-cell-stack">
+                        <span>
+                          <Badge tone="warning">{c.alertShort}</Badge>
+                        </span>
+                        <span>
+                          {fill(c.alert, {
+                            n: overview.differenceAlerts,
+                            amount: signedVnd(overview.alertThresholdVnd, locale),
+                          })}
+                        </span>
+                      </span>
                     ),
                   },
                 ]
               : []),
             {
               label: c.fund.since,
-              value: overview.goLive ? formatDateTime(overview.goLive.at, ZONE, locale) : null,
+              value: overview.goLive ? formatDateTime(overview.goLive.at, zone, locale) : null,
             },
           ]}
         />

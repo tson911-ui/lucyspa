@@ -20,12 +20,13 @@ import {
   Field,
   FormDialog,
   FormGrid,
+  RadioGroup,
   RowActions,
   Select,
   TextInput,
   type DataTableColumn,
 } from '@lucy-spa/ui';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { memo, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { loyaltyDictionary } from '../../../i18n/loyalty';
 import { productOrdersDictionary } from '../../../i18n/product-orders';
 import { productSaleDictionary } from '../../../i18n/product-sale';
@@ -46,6 +47,8 @@ import {
 } from '../../../lib/workforce/product-sale';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, Loading, Notice } from '../ui';
+import { listFormat, metaLine, minusMoney } from './pos-format';
+import { focusFirstInvalid } from './pos-dom';
 
 const errorNotice = (error: string | null) =>
   error ? <Notice tone="error">{error}</Notice> : undefined;
@@ -61,30 +64,39 @@ const parseQuantityValue = (text: string): number =>
  * is sent a moment after the cashier stops typing; a late answer to an older search is ignored. The list is advisory: the API checks
  * the stock, the price and the seller again when the line is added.
  */
+// The same search at the same branch within 30 s is answered from memory: opening "Thêm sản phẩm" and then "Sửa" (which only
+// needs the sellers) does not ask the server twice (rbp client-swr-dedup, pos-products.tsx:64-98, :459-463).
+const OPTIONS_TTL_MS = 30_000;
+const optionsCache = new Map<string, { at: number; data: PosProductOptionsResponse }>();
+
 function useProductOptions(branchId: string) {
   const { api } = useWorkforce();
   const [query, setQuery] = useState('');
-  const [data, setData] = useState<PosProductOptionsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
+  const key = `${branchId}|${query.trim()}`;
+  // The last answer (kept on screen while the next search runs); "loading" is derived, not a flag set by hand (rbp :67-89).
+  const [answer, setAnswer] = useState<{
+    key: string;
+    data: PosProductOptionsResponse | null;
+    error: unknown;
+  } | null>(null);
   useEffect(() => {
+    const cached = optionsCache.get(key);
+    if (cached && Date.now() - cached.at < OPTIONS_TTL_MS) {
+      setAnswer({ key, data: cached.data, error: null });
+      return;
+    }
     let current = true;
     const timer = window.setTimeout(
       async () => {
-        setLoading(true);
         try {
           const response = await api.get<PosProductOptionsResponse>(
             `/api/v1/pos/branches/${branchId}/products`,
             query.trim() ? { q: query.trim() } : {},
           );
-          if (current) {
-            setData(response);
-            setError(null);
-          }
+          optionsCache.set(key, { at: Date.now(), data: response });
+          if (current) setAnswer({ key, data: response, error: null });
         } catch (failure) {
-          if (current) setError(failure);
-        } finally {
-          if (current) setLoading(false);
+          if (current) setAnswer((last) => ({ key, data: last?.data ?? null, error: failure }));
         }
       },
       query === '' ? 0 : 250,
@@ -93,8 +105,13 @@ function useProductOptions(branchId: string) {
       current = false;
       window.clearTimeout(timer);
     };
-  }, [api, branchId, query]);
-  return { data, loading, error, setQuery };
+  }, [api, branchId, query, key]);
+  return {
+    data: answer?.data ?? null,
+    loading: answer?.key !== key,
+    error: answer?.key === key ? answer.error : null,
+    setQuery,
+  };
 }
 
 // ------------------------------------------------------------------------------------ the lines card
@@ -106,6 +123,7 @@ export function ProductLinesCard({
   onAdd,
   onEdit,
   onRemove,
+  undo,
   footer,
 }: {
   invoice: InvoiceResponse;
@@ -113,6 +131,8 @@ export function ProductLinesCard({
   onAdd: () => void;
   onEdit: (lineId: string) => void;
   onRemove: (lineId: string) => void;
+  /** C72: the "removed, undo" line shown right above the table after a line was removed (inline first, H11). */
+  undo?: ReactNode;
   footer?: ReactNode;
 }) {
   const { t, locale } = useWorkforce();
@@ -126,7 +146,7 @@ export function ProductLinesCard({
       key: 'product',
       header: l.colProduct,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (line) => (
         <>
@@ -146,13 +166,18 @@ export function ProductLinesCard({
         </>
       ),
     },
-    { key: 'sku', header: l.colSku, hideBelow: 'xl', cell: (line) => line.sku },
+    {
+      key: 'sku',
+      header: l.colSku,
+      hideBelow: 'xl',
+      cell: (line) => <span translate="no">{line.sku}</span>,
+    },
     {
       key: 'seller',
       header: l.colSeller,
       hideBelow: 'lg',
-      truncate: true,
-      cell: (line) => line.seller?.displayName ?? '',
+      wrap: true,
+      cell: (line) => line.seller?.displayName ?? '—',
     },
     {
       key: 'price',
@@ -227,6 +252,7 @@ export function ProductLinesCard({
           ) : undefined
         }
       />
+      {undo}
       <DataTable
         mode="client"
         caption={fill(t.common.list.table, { list: l.title })}
@@ -274,24 +300,31 @@ export function ProductAddDialog({
   // The cashier chooses the mode. A sold-out variant that is sold on order starts as a pre-order; anything else starts in stock.
   const [mode, setMode] = useState<ProductLineModeName>('IN_STOCK');
   const [quantity, setQuantity] = useState('1');
-  const [sellerId, setSellerId] = useState('');
+  const [chosenSeller, setSellerId] = useState('');
   const [problem, setProblem] = useState<AddProblem | null>(null);
+  const modeHintId = useId();
   const loaded = options.data;
-  // The seller starts as the caller once the list is known; a choice already made is kept.
-  useEffect(() => {
-    if (loaded?.defaultSellerId) setSellerId((current) => current || loaded.defaultSellerId!);
-  }, [loaded?.defaultSellerId]);
+  // The seller is the caller until someone else is chosen: derived, not copied in by an effect (rbp :281-283).
+  const sellerId = chosenSeller || loaded?.defaultSellerId || '';
   const results = useMemo(() => {
     const list = loaded?.products ?? [];
     return chosen && !list.some((option) => option.variantId === chosen.variantId)
       ? [chosen, ...list]
       : list;
   }, [loaded, chosen]);
+  const modeHint = !chosen?.sellOnOrder
+    ? undefined
+    : mode === 'PRE_ORDER'
+      ? leadTimeText(o.mode, chosen.leadTimeDaysMin, chosen.leadTimeDaysMax)
+      : chosen.available === 0
+        ? o.mode.soldOutOrder
+        : undefined;
 
   async function save() {
     const result = addBody({ option: chosen, quantity, sellerUserId: sellerId, mode }, version);
     if ('problem' in result) {
       setProblem(result.problem);
+      focusFirstInvalid();
       return;
     }
     setProblem(null);
@@ -305,7 +338,8 @@ export function ProductAddDialog({
       description={a.description}
       labels={{ ...formOverlayLabels(t, a.submit), submitting: a.submitting }}
       busy={working}
-      dirty={chosen !== null || quantity !== '1'}
+      // Any choice counts as a change, the seller too (wig Forms: no silent loss on close).
+      dirty={chosen !== null || quantity !== '1' || chosenSeller !== ''}
       submitDisabled={!loaded}
       error={errorNotice(error ?? failedLoad)}
       onClose={onClose}
@@ -347,33 +381,27 @@ export function ProductAddDialog({
           )}
         </Field>
         {chosen?.sellOnOrder ? (
-          <Field
-            label={o.mode.label}
-            required
-            full
-            hint={
-              mode === 'PRE_ORDER'
-                ? leadTimeText(o.mode, chosen.leadTimeDaysMin, chosen.leadTimeDaysMax)
-                : chosen.available === 0
-                  ? o.mode.soldOutOrder
-                  : undefined
-            }
-          >
-            {(control) => (
-              <Select
-                {...control}
-                value={mode}
-                options={[
-                  { value: 'IN_STOCK', label: o.mode.IN_STOCK },
-                  { value: 'PRE_ORDER', label: o.mode.PRE_ORDER },
-                ]}
-                onChange={(event) => (
-                  setMode(event.target.value as ProductLineModeName),
-                  setProblem(null)
-                )}
-              />
-            )}
-          </Field>
+          // Two choices are a toggle, not a pop-up menu (C47); the hint stays tied to the group.
+          <div className="ls-field ls-field-full">
+            <RadioGroup
+              legend={o.mode.label}
+              name="product-line-mode"
+              layout="inline"
+              required
+              value={mode}
+              options={[
+                { value: 'IN_STOCK', label: o.mode.IN_STOCK },
+                { value: 'PRE_ORDER', label: o.mode.PRE_ORDER },
+              ]}
+              onValueChange={(next) => (setMode(next as ProductLineModeName), setProblem(null))}
+              describedById={modeHint ? modeHintId : undefined}
+            />
+            {modeHint ? (
+              <p className="ls-hint" id={modeHintId}>
+                {modeHint}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         <Field
           label={a.quantity}
@@ -473,6 +501,7 @@ export function ProductEditDialog({
     const result = updateBody(line, { quantity, sellerUserId: sellerId }, version);
     if ('problem' in result) {
       setProblem(result.problem);
+      focusFirstInvalid();
       return;
     }
     setProblem(null);
@@ -610,22 +639,18 @@ export function ProductSaleDialog({
       onSubmit={submit}
     >
       <FormGrid>
-        <Field label={s.lookupBy}>
-          {(control) => (
-            <Select
-              {...control}
-              value={lookupBy}
-              options={[
-                { value: 'phone', label: s.phone },
-                { value: 'email', label: s.email },
-              ]}
-              onChange={(event) => (
-                setLookupBy(event.target.value as 'phone' | 'email'),
-                setLookup(null)
-              )}
-            />
-          )}
-        </Field>
+        {/* Two choices are a toggle, not a pop-up menu (C47). */}
+        <RadioGroup
+          legend={s.lookupBy}
+          name="product-sale-lookup-by"
+          layout="inline"
+          value={lookupBy}
+          options={[
+            { value: 'phone', label: s.phone },
+            { value: 'email', label: s.email },
+          ]}
+          onValueChange={(next) => (setLookupBy(next as 'phone' | 'email'), setLookup(null))}
+        />
         <Field label={lookupBy === 'phone' ? s.phone : s.email} hint={s.guest}>
           {(control) => (
             <TextInput
@@ -633,6 +658,7 @@ export function ProductSaleDialog({
               type={lookupBy === 'phone' ? 'tel' : 'email'}
               inputMode={lookupBy === 'phone' ? 'tel' : 'email'}
               autoComplete="off"
+              spellCheck={false}
               maxLength={lookupBy === 'phone' ? 32 : 320}
               value={value}
               onChange={(event) => (setValue(event.target.value), setLookup(null))}
@@ -641,9 +667,12 @@ export function ProductSaleDialog({
         </Field>
         {member ? (
           <Notice tone="success">
-            {fill(s.found, { name: member.displayName })}
-            {member.phoneMasked ? ` · ${member.phoneMasked}` : ''}
-            {member.emailMasked ? ` · ${member.emailMasked}` : ''}
+            {/* The found member and the masked contacts as one Intl list, not commas glued in JSX. */}
+            {metaLine(locale, [
+              fill(s.found, { name: member.displayName }),
+              member.phoneMasked,
+              member.emailMasked,
+            ])}
           </Notice>
         ) : null}
         {lookup && lookup.members.length === 0 ? <Notice tone="info">{s.notFound}</Notice> : null}
@@ -667,7 +696,8 @@ interface SideRow {
  * The discount of each side of an invoice that has products (Phase 6 P6-9): Spa and Lucy Beauty are priced separately, each with its
  * one best offer. The figures are the server's; this only reads them.
  */
-export function SidesCard({ invoice }: { invoice: InvoiceResponse }) {
+// Memoised: it only shows the server's answer, so a busy flag, a feedback line or a dialog does not re-render it (rbp pos-invoice.tsx:100-776).
+export const SidesCard = memo(function SidesCard({ invoice }: { invoice: InvoiceResponse }) {
   const { t, locale } = useWorkforce();
   const d = productSaleDictionary(locale).sides;
   const l = loyaltyDictionary(locale);
@@ -681,7 +711,8 @@ export function SidesCard({ invoice }: { invoice: InvoiceResponse }) {
       parts.push(locale === 'vi' ? side.winner.nameVi : side.winner.nameEn);
     }
     if (side.birthday?.applied) parts.push(d.birthday);
-    return parts.length > 0 ? parts.join(' + ') : d.none;
+    // The offers of a side as an Intl list ("Hạng Vàng và Quà sinh nhật"), not joined by a hand-typed " + ".
+    return parts.length > 0 ? listFormat(locale).format(parts) : d.none;
   };
   const rows: SideRow[] = sides
     .filter((side) => side.subtotalVnd !== '0')
@@ -690,7 +721,7 @@ export function SidesCard({ invoice }: { invoice: InvoiceResponse }) {
       side: side.side === 'SPA' ? d.spa : d.beauty,
       subtotal: formatVnd(side.subtotalVnd, locale),
       benefit: nameOf(side),
-      discount: side.discountVnd === '0' ? '—' : `− ${formatVnd(side.discountVnd, locale)}`,
+      discount: side.discountVnd === '0' ? '—' : minusMoney(locale, side.discountVnd),
       net: formatVnd(side.netVnd, locale),
     }));
   if (rows.length === 0) return null;
@@ -706,7 +737,7 @@ export function SidesCard({ invoice }: { invoice: InvoiceResponse }) {
     {
       key: 'benefit',
       header: d.colBenefit,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       cell: (row) => row.benefit,
     },
@@ -726,4 +757,4 @@ export function SidesCard({ invoice }: { invoice: InvoiceResponse }) {
       />
     </Card>
   );
-}
+});

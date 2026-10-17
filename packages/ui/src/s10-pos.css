@@ -1,0 +1,115 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): pos pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages. */
+
+/* C72: "Đã xóa ... khỏi hóa đơn." + "Hoàn tác" right above the product lines (inline first, H11). Flat: no border, no box inside
+   the card (FR1), only the sunken step; the button keeps 8 px from the text at every width (E2 gap rule). */
+.ls-pos-undo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2) var(--ls-space-4);
+  margin: 0;
+  padding: var(--ls-space-2) var(--ls-space-4);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+  color: var(--ls-text);
+  font-size: var(--ls-text-sm);
+  overflow-wrap: break-word;
+}
+
+/* Owner answer 7: a name or title in a POS table cell wraps by word and is never cut (replaces the kit's nowrap ellipsis
+   `.ls-cell-title` where these screens used it for a long name). */
+.ls-pos-name {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* PayOS: the QR box is reserved before the image is drawn (no layout shift); the countdown keeps its width. */
+.ls-pos-qr {
+  inline-size: calc(var(--ls-space-10) * 3.75);
+  max-inline-size: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-sunken);
+}
+
+.ls-pos-qr img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+.ls-pos-countdown {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stock count: the difference is a signed figure with an arrow and the status colour (shortfall warning, surplus info); never a
+   circled pill. 16 px icon inside a dense cell (DESIGN 6.6). */
+.ls-pos-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+}
+
+.ls-pos-diff-under {
+  color: var(--ls-warning);
+}
+
+.ls-pos-diff-over {
+  color: var(--ls-info);
+}
+
+/* Walk-in: the refusal notice takes focus on a refused submit; the empty holder takes no room in the form's stack. */
+.ls-pos-focus-target:empty {
+  display: none;
+}
+
+.ls-pos-focus-target:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Booking board: a long queue of staff cards is laid out only when it scrolls into view (rbp rendering-content-visibility). */
+.ls-pos-queue-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--ls-space-10) * 4);
+}
+
+/* Customer brief drawer: its three section headings in the compact heading role (17/600), not the browser's h3 default. */
+.ls-pos-brief-heading {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* A sentence that carries a money figure (refund notices): tabular figures, the sentence still wraps. */
+.ls-pos-figure-text {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Money and counts the cashier compares outside a table or a totals list (countdown, held amount, refund figure, difference). */
+.ls-pos-figure {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Cash book: the filter's money in and out sit in the kit toolbar line; tabular figures there. The wrapper adds no box. */
+.ls-pos-cash-book {
+  display: contents;
+}
+
+.ls-pos-cash-book .ls-toolbar-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reassignment: the "conflicts only | all services" filter (C47/C48, a segmented control in the toolbar line) takes a field width so its
+   two segments are equal and wide enough; it never grows past the line, and a long label wraps inside its segment. */
+.ls-toolbar-filters > .ls-pos-reassign-show {
+  width: var(--ls-field-md);
+  max-width: 100%;
+}

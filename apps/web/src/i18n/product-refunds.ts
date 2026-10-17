@@ -7,7 +7,7 @@ import type { Locale } from './locales';
  */
 const vi = {
   required: 'Nhập mục này.',
-  action: 'Hoàn tiền',
+  action: 'Hoàn tiền…',
   title: 'Các lần hoàn tiền',
   empty: 'Chưa hoàn tiền lần nào.',
   loading: 'Đang tải các lần hoàn tiền…',
@@ -38,7 +38,7 @@ const vi = {
   },
   refund: {
     code: 'Mã hoàn tiền',
-    when: '{name} · {time}',
+    when: '{name}, {time}',
     quantity: 'Số lượng',
     method: 'Cách hoàn',
     reference: 'Mã giao dịch',
@@ -52,7 +52,10 @@ const vi = {
     pointsNone: 'Chưa có điểm nào bị thu hồi',
     reason: 'Lý do',
     corrections: 'Sửa mã giao dịch',
-    correctionLine: '{reference} · {name} · {time}',
+    correctionsList: 'Sửa mã giao dịch: {list}',
+    referenceFirstWas: '(mã đã nhập lúc đầu: {reference})',
+    correctionLine: '{reference}, {name}, {time}',
+    fact: '{label}: {value}',
   },
   form: {
     title: 'Hoàn tiền sản phẩm',
@@ -80,12 +83,12 @@ const vi = {
     submitting: 'Đang ghi nhận…',
     done: 'Đã ghi nhận hoàn tiền {code}: {amount}.',
     warning:
-      'Chỉ ghi nhận sau khi bạn đã đưa tiền hoặc chuyển khoản cho khách. Lần hoàn không sửa được; mã chuyển khoản gõ sai thì sửa ở mục "Sửa mã giao dịch". Mỗi lần hoàn cần nhập lại mật khẩu, và Chủ nhận thông báo về lần hoàn này.',
+      'Chỉ ghi nhận sau khi bạn đã đưa tiền hoặc chuyển khoản cho khách. Lần hoàn không sửa được; mã chuyển khoản gõ sai thì sửa ở mục “Sửa mã giao dịch”. Mỗi lần hoàn cần nhập lại mật khẩu, và Chủ nhận thông báo về lần hoàn này.',
     pointsNote:
       'Điểm Beauty đã tích từ hóa đơn sẽ được thu hồi theo phần đã hoàn. Điểm giới thiệu và ví điểm Spa không bị trừ. Voucher hoặc quà đã dùng trên hóa đơn không tự trả lại.',
   },
   correct: {
-    action: 'Sửa mã giao dịch',
+    action: 'Sửa mã giao dịch…',
     title: 'Sửa mã giao dịch chuyển khoản',
     description:
       'Lần hoàn tiền không bị sửa. Hệ thống ghi thêm một dòng sửa và mã mới được dùng từ bây giờ.',
@@ -101,16 +104,17 @@ const vi = {
     REFUND_QUANTITY_EXCEEDED: 'Số lượng hoàn nhiều hơn số còn lại của hồ sơ này.',
     REFUND_NOTHING_PAID: 'Khách không phải trả tiền cho phần hàng này nên không có gì để hoàn.',
     REFUND_STOCK_PENDING:
-      'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn "Không bán lại được".',
+      'Kho chưa ghi nhận việc bán hàng này. Thử lại sau ít phút, hoặc chọn “Không bán lại được”.',
     INVOICE_HAS_REFUND:
       'Hóa đơn đã có hoàn tiền nên giữ nguyên các lần thanh toán và không đảo hay hủy được.',
     EXCHANGE_IN_PROGRESS:
       'Dòng hàng này đang có một lần đổi chưa xong. Hoàn tất hoặc hủy lần đổi đó trước khi hoàn tiền.',
-    INVOICE_STATE_INVALID: 'Hóa đơn không còn ở trạng thái đã thanh toán.',
+    INVOICE_STATE_INVALID:
+      'Hóa đơn không còn ở trạng thái đã thanh toán. Tải lại trang để xem tình trạng mới.',
     conflict:
       'Dữ liệu vừa được người khác thay đổi. Đã tải lại dữ liệu mới, hãy kiểm tra rồi thử lại.',
     fields: {
-      quantity: 'Số lượng không hợp lệ.',
+      quantity: 'Nhập một số nguyên từ 1 đến số còn lại của hồ sơ.',
       method: 'Chọn cách hoàn.',
       bankReference:
         'Mã giao dịch chỉ gồm chữ, số và dấu . _ / - (4 đến 64 ký tự), không có khoảng trắng.',
@@ -124,7 +128,7 @@ type Dictionary = typeof vi;
 
 const en: Dictionary = {
   required: 'Fill in this field.',
-  action: 'Refund',
+  action: 'Refund…',
   title: 'Refunds made',
   empty: 'Nothing has been refunded yet.',
   loading: 'Loading the refunds…',
@@ -154,7 +158,7 @@ const en: Dictionary = {
   },
   refund: {
     code: 'Refund code',
-    when: '{name} · {time}',
+    when: '{name}, {time}',
     quantity: 'Quantity',
     method: 'Method',
     reference: 'Transfer reference',
@@ -168,7 +172,10 @@ const en: Dictionary = {
     pointsNone: 'No points taken back',
     reason: 'Reason',
     corrections: 'Reference corrections',
-    correctionLine: '{reference} · {name} · {time}',
+    correctionsList: 'Reference corrections: {list}',
+    referenceFirstWas: '(reference first typed: {reference})',
+    correctionLine: '{reference}, {name}, {time}',
+    fact: '{label}: {value}',
   },
   form: {
     title: 'Refund a product',
@@ -202,7 +209,7 @@ const en: Dictionary = {
       'The Beauty points earned on the invoice are taken back in proportion to what is refunded. Referral points and the Spa wallet are not touched. A voucher or gift used on the invoice is not given back.',
   },
   correct: {
-    action: 'Correct reference',
+    action: 'Correct reference…',
     title: 'Correct the transfer reference',
     description:
       'The refund itself is not edited. A correction line is added and the new reference is used from now on.',
@@ -224,11 +231,11 @@ const en: Dictionary = {
       'An invoice with a refund keeps its payments; they cannot be reversed or cancelled.',
     EXCHANGE_IN_PROGRESS:
       'This line has an exchange that is not finished. Complete or cancel it before refunding.',
-    INVOICE_STATE_INVALID: 'The invoice is no longer paid.',
+    INVOICE_STATE_INVALID: 'The invoice is no longer paid. Reload the page to see where it stands.',
     conflict:
       'The data was just changed by someone else. The latest data was loaded; check it and try again.',
     fields: {
-      quantity: 'The quantity is not valid.',
+      quantity: 'Enter a whole number from 1 up to what is left in this case.',
       method: 'Choose the method.',
       bankReference:
         'The reference has only letters, digits and . _ / - (4 to 64 characters), with no spaces.',

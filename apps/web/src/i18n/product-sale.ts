@@ -6,7 +6,7 @@ import type { Locale } from './locales';
  */
 const vi = {
   board: {
-    action: 'Bán sản phẩm',
+    action: 'Bán sản phẩm…',
     typeProduct: 'Bán sản phẩm',
     typeProductUnits: 'Bán sản phẩm ({count})',
     typeWithProducts: '{type} + {count} sản phẩm',
@@ -29,10 +29,10 @@ const vi = {
     guest: 'Không nhập gì thì bán cho khách vãng lai (không tích điểm, không có ưu đãi hạng).',
   },
   lines: {
-    intro: 'Bán sản phẩm tại quầy · {branch}',
+    intro: 'Bán sản phẩm tại quầy, {branch}',
     title: 'Sản phẩm',
     description: 'Giá do hệ thống lấy theo bảng giá; hàng được giữ khi chốt hóa đơn.',
-    add: 'Thêm sản phẩm',
+    add: 'Thêm sản phẩm…',
     empty: 'Chưa có sản phẩm nào. Chọn “Thêm sản phẩm” để bắt đầu.',
     colProduct: 'Sản phẩm',
     colSku: 'Mã SKU',
@@ -42,9 +42,13 @@ const vi = {
     colAmount: 'Thành tiền',
     colStock: 'Kho',
     onPromotion: 'Khuyến mại',
-    edit: 'Sửa số lượng, người bán',
+    edit: 'Sửa số lượng, người bán…',
     remove: 'Xóa khỏi hóa đơn',
     removed: 'Đã xóa sản phẩm khỏi hóa đơn.',
+    removedLine: 'Đã xóa {name} khỏi hóa đơn.',
+    undo: 'Hoàn tác',
+    restoring: 'Đang hoàn tác…',
+    restored: 'Đã thêm lại {name}.',
     added: 'Đã thêm sản phẩm.',
     saved: 'Đã lưu dòng sản phẩm.',
     stock: {
@@ -59,7 +63,7 @@ const vi = {
     title: 'Thêm sản phẩm',
     description: 'Tìm theo tên, nhãn hiệu, loại hoặc mã SKU; không cần gõ dấu.',
     search: 'Tìm sản phẩm',
-    searchPlaceholder: 'Gõ tên hoặc mã SKU',
+    searchPlaceholder: 'Gõ tên hoặc mã SKU…',
     product: 'Sản phẩm',
     productPlaceholder: 'Chọn sản phẩm',
     quantity: 'Số lượng',
@@ -123,7 +127,7 @@ type Dictionary = typeof vi;
 
 const en: Dictionary = {
   board: {
-    action: 'Sell products',
+    action: 'Sell products…',
     typeProduct: 'Product sale',
     typeProductUnits: 'Product sale ({count})',
     typeWithProducts: '{type} + {count} products',
@@ -146,11 +150,11 @@ const en: Dictionary = {
     guest: 'Leave empty to sell to a guest (no points, no tier discount).',
   },
   lines: {
-    intro: 'Products sold at the counter · {branch}',
+    intro: 'Products sold at the counter, {branch}',
     title: 'Products',
     description:
       'The system takes the price from the price list; stock is held when the invoice is finalized.',
-    add: 'Add product',
+    add: 'Add product…',
     empty: 'No products yet. Choose “Add product” to start.',
     colProduct: 'Product',
     colSku: 'SKU',
@@ -160,9 +164,13 @@ const en: Dictionary = {
     colAmount: 'Amount',
     colStock: 'Stock',
     onPromotion: 'Promotion',
-    edit: 'Edit quantity, seller',
+    edit: 'Edit quantity, seller…',
     remove: 'Remove from invoice',
     removed: 'Product removed from the invoice.',
+    removedLine: '{name} was removed from the invoice.',
+    undo: 'Undo',
+    restoring: 'Undoing…',
+    restored: '{name} is back on the invoice.',
     added: 'Product added.',
     saved: 'Product line saved.',
     stock: {
@@ -177,7 +185,7 @@ const en: Dictionary = {
     title: 'Add product',
     description: 'Search by name, brand, type or SKU; accents are optional.',
     search: 'Search products',
-    searchPlaceholder: 'Type a name or SKU',
+    searchPlaceholder: 'Type a name or SKU…',
     product: 'Product',
     productPlaceholder: 'Choose a product',
     quantity: 'Quantity',

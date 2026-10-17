@@ -18,7 +18,7 @@ import {
   Textarea,
   TextInput,
 } from '@lucy-spa/ui';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { ApiError } from '../../../lib/workforce/api';
 import { boardErrorMessage } from '../../../lib/workforce/booking-board';
@@ -31,6 +31,8 @@ import {
 } from '../../../lib/workforce/visit-completion';
 import { useWorkforce } from '../session';
 import { Notice } from '../ui';
+import { focusFirstInvalid } from './pos-dom';
+import { metaLine, minutes } from './pos-format';
 
 /** The commands that a `ConfirmDialog` carries: a reason where one is recorded, never free-form facts. */
 export type BoardCommand =
@@ -170,7 +172,8 @@ export function ResolveEndDialog({
 
   async function save() {
     if (!execution) return;
-    if (!reasonBody(reason)) return setProblem('reason');
+    // A refused save marks the field to fix and moves focus to it (wig Forms: focus the first error on submit).
+    if (!reasonBody(reason)) return (setProblem('reason'), focusFirstInvalid());
     const body = resolveEndBody({
       reason,
       mode,
@@ -179,7 +182,7 @@ export function ResolveEndDialog({
       expectedEndAt: execution.expectedEndAt,
       now,
     });
-    if (!body) return setProblem('minutes');
+    if (!body) return (setProblem('minutes'), focusFirstInvalid());
     setProblem(null);
     if (await onResolve(line.id, body)) onClose();
   }
@@ -189,9 +192,11 @@ export function ResolveEndDialog({
       title={b.resolveEnd}
       description={fill(b.resolveEndIntro, {
         service: serviceName,
-        staff: line.employee?.displayName ?? '',
+        // A line without staff says so instead of leaving a gap in the sentence (wig :192).
+        staff: line.employee?.displayName ?? b.activeUnassigned,
       })}
-      labels={formOverlayLabels(t, b.confirm)}
+      // The button names the action (wig i18n workforce.ts:1907), like the dialog title.
+      labels={formOverlayLabels(t, b.resolveEnd)}
       busy={working}
       dirty={reason !== '' || mode !== 'NOW'}
       error={error ? <Notice tone="error">{error}</Notice> : undefined}
@@ -281,6 +286,12 @@ export function IntentDialog({
   const current = (line: OperationalWaitingEntry['lines'][number]) =>
     line.requestedEmployee?.id ?? 'ANY';
   const [choice, setChoice] = useState<Record<string, string>>({});
+  const [unchanged, setUnchanged] = useState(false);
+  // One lookup map instead of a find per line (rbp js-index-maps, :304-305).
+  const staffByService = useMemo(
+    () => new Map(options.services.map((service) => [service.id, service.employees])),
+    [options],
+  );
   const changes = entry.lines
     .filter((line) => (choice[line.id] ?? current(line)) !== current(line))
     .map((line) => ({ lineId: line.id, requested: choice[line.id] as string }));
@@ -288,25 +299,37 @@ export function IntentDialog({
   return (
     <FormDialog
       title={t.bookingBoard.changeStaff}
-      description={`${entry.participantName} · ${entry.visitCode}`}
+      description={metaLine(locale, [entry.participantName, entry.visitCode])}
       labels={{ ...formOverlayLabels(t, t.bookingBoard.save), submitting: t.common.saving }}
       busy={working}
       dirty={changes.length > 0}
-      submitDisabled={changes.length === 0}
-      error={error ? <Notice tone="error">{error}</Notice> : undefined}
+      // Enabled until the request starts (wig :295); saving with nothing changed says so instead.
+      error={
+        error ? (
+          <Notice tone="error">{error}</Notice>
+        ) : unchanged && changes.length === 0 ? (
+          <Notice tone="info">{t.bookingBoard.intentUnchanged}</Notice>
+        ) : undefined
+      }
       onClose={onClose}
       onSubmit={async () => {
+        if (changes.length === 0) {
+          setUnchanged(true);
+          return;
+        }
         if (await onSave(changes)) onClose();
       }}
     >
       <FormGrid>
         {entry.lines.map((line) => {
-          const staff =
-            options.services.find((service) => service.id === line.serviceId)?.employees ?? [];
+          const staff = staffByService.get(line.serviceId) ?? [];
           return (
             <Field
               key={line.id}
-              label={`${locale === 'vi' ? line.serviceNameVi : line.serviceNameEn} · ${line.durationMinutes}′`}
+              label={metaLine(locale, [
+                locale === 'vi' ? line.serviceNameVi : line.serviceNameEn,
+                minutes(locale, line.durationMinutes),
+              ])}
             >
               {(control) => (
                 <Select
@@ -316,7 +339,9 @@ export function IntentDialog({
                     { value: 'ANY', label: t.walkIn.anyStaff },
                     ...staff.map((employee) => ({
                       value: employee.id,
-                      label: `${employee.displayName}${employee.checkedIn ? '' : ` ${t.walkIn.notCheckedIn}`}`,
+                      label: employee.checkedIn
+                        ? employee.displayName
+                        : fill(t.walkIn.staffNotCheckedIn, { name: employee.displayName }),
                     })),
                   ]}
                   onChange={(event) =>

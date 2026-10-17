@@ -51,8 +51,8 @@ import { ReauthenticationCancelled, withReauthentication } from '../../../lib/wo
 import { useReauthentication } from '../reauth-dialog';
 import { useWorkforce } from '../session';
 import { Badge, Button, Empty, ErrorState, Notice, useResource, useSuccessToast } from '../ui';
-
-const ZONE = 'Asia/Ho_Chi_Minh';
+import { focusFirstInvalid } from './pos-dom';
+import { clockTime, metaLine, signedMoney } from './pos-format';
 
 /**
  * The book of one fund (Phase 7 P7-6): its entries, 20 a page, newest day first, with the filters and the totals of the filter. Money
@@ -65,10 +65,13 @@ export function CashBook({
   state,
   update,
   reloadToken,
+  zone,
   onTransfer,
   onChanged,
 }: {
   fund: CashFundItem;
+  /** The fund's branch time zone (from the branch list), not a fixed one (wig cash.tsx:48). */
+  zone: string;
   branches: readonly CashBranchAccess[];
   state: CashPageState;
   update: (patch: Partial<CashPageState>) => void;
@@ -101,91 +104,94 @@ export function CashBook({
     (state.to ? 1 : 0);
   return (
     <>
-      <ListSection title={c.book.title}>
-        <ListToolbar
-          labels={toolbarLabels(t)}
-          activeFilters={filtered}
-          onReset={() => update({ category: '', direction: '', from: '', to: '' })}
-          reload={{ label: t.common.reload, onClick: () => void list.reload() }}
-          resultCount={
-            list.data
-              ? fill(c.book.totals, {
-                  in: signedVnd(list.data.inVnd, locale),
-                  out: signedVnd(list.data.outVnd, locale),
-                })
-              : undefined
-          }
-          filters={
-            <>
-              <FacetedFilter
-                label={c.book.filterCategory}
-                clearLabel={t.common.list.clearChoice}
-                options={FUND_ENTRY_CATEGORIES.map((value) => ({
-                  value,
-                  label: c.categories[value],
-                }))}
-                selected={state.category ? [state.category] : []}
-                onChange={([value]) => update({ category: value ?? '' })}
-              />
-              <FacetedFilter
-                label={c.book.filterDirection}
-                clearLabel={t.common.list.clearChoice}
-                options={(['IN', 'OUT'] as const).map((value) => ({
-                  value,
-                  label: c.directions[value],
-                }))}
-                selected={state.direction ? [state.direction] : []}
-                onChange={([value]) => update({ direction: value ?? '' })}
-              />
-              <DateTextInput
-                aria-label={c.book.filterFrom}
-                value={state.from}
-                {...(state.to ? { max: state.to } : {})}
-                onChange={(event) => update({ from: event.target.value })}
-              />
-              <DateTextInput
-                aria-label={c.book.filterTo}
-                value={state.to}
-                {...(state.from ? { min: state.from } : {})}
-                onChange={(event) => update({ to: event.target.value })}
-              />
-            </>
-          }
-          actions={
-            can.transfer ? (
-              <Button variant="secondary" onClick={onTransfer}>
-                {c.actions.transfer}
-              </Button>
-            ) : undefined
-          }
-        />
-        <DataTable
-          mode="server"
-          caption={fill(t.common.list.table, { list: c.book.title })}
-          columns={bookColumns({ c, t, locale, can: can.record, onReverse: setReversing })}
-          rows={rows}
-          rowKey={(row) => row.id}
-          loading={list.loading && !list.data}
-          loadingLabel={t.common.loading}
-          error={
-            list.error ? (
-              <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
-            ) : undefined
-          }
-          empty={
-            list.data ? (
-              <Empty>{filtered > 0 ? c.book.noneFiltered : c.book.none}</Empty>
-            ) : undefined
-          }
-          paging={{
-            page: state.page,
-            pageSize: list.data?.pageSize ?? 20,
-            total: list.data?.total ?? rows.length,
-            onPageChange: (page) => update({ page }),
-            labels: paginationLabels(t, c.book.title),
-          }}
-        />
-      </ListSection>
+      {/* The money in and out of the filter sit in the toolbar line: tabular figures there (wig cash-book.tsx:112). */}
+      <div className="ls-pos-cash-book">
+        <ListSection title={c.book.title}>
+          <ListToolbar
+            labels={toolbarLabels(t)}
+            activeFilters={filtered}
+            onReset={() => update({ category: '', direction: '', from: '', to: '' })}
+            reload={{ label: t.common.reload, onClick: () => void list.reload() }}
+            resultCount={
+              list.data
+                ? fill(c.book.totals, {
+                    in: signedVnd(list.data.inVnd, locale),
+                    out: signedVnd(list.data.outVnd, locale),
+                  })
+                : undefined
+            }
+            filters={
+              <>
+                <FacetedFilter
+                  label={c.book.filterCategory}
+                  clearLabel={t.common.list.clearChoice}
+                  options={FUND_ENTRY_CATEGORIES.map((value) => ({
+                    value,
+                    label: c.categories[value],
+                  }))}
+                  selected={state.category ? [state.category] : []}
+                  onChange={([value]) => update({ category: value ?? '' })}
+                />
+                <FacetedFilter
+                  label={c.book.filterDirection}
+                  clearLabel={t.common.list.clearChoice}
+                  options={(['IN', 'OUT'] as const).map((value) => ({
+                    value,
+                    label: c.directions[value],
+                  }))}
+                  selected={state.direction ? [state.direction] : []}
+                  onChange={([value]) => update({ direction: value ?? '' })}
+                />
+                <DateTextInput
+                  aria-label={c.book.filterFrom}
+                  value={state.from}
+                  {...(state.to ? { max: state.to } : {})}
+                  onChange={(event) => update({ from: event.target.value })}
+                />
+                <DateTextInput
+                  aria-label={c.book.filterTo}
+                  value={state.to}
+                  {...(state.from ? { min: state.from } : {})}
+                  onChange={(event) => update({ to: event.target.value })}
+                />
+              </>
+            }
+            actions={
+              can.transfer ? (
+                <Button variant="secondary" onClick={onTransfer}>
+                  {c.actions.transfer}
+                </Button>
+              ) : undefined
+            }
+          />
+          <DataTable
+            mode="server"
+            caption={fill(t.common.list.table, { list: c.book.title })}
+            columns={bookColumns({ c, t, locale, zone, can: can.record, onReverse: setReversing })}
+            rows={rows}
+            rowKey={(row) => row.id}
+            loading={list.loading && !list.data}
+            loadingLabel={t.common.loading}
+            error={
+              list.error ? (
+                <ErrorState error={list.error} t={t} onRetry={() => void list.reload()} />
+              ) : undefined
+            }
+            empty={
+              list.data ? (
+                <Empty>{filtered > 0 ? c.book.noneFiltered : c.book.none}</Empty>
+              ) : undefined
+            }
+            paging={{
+              page: state.page,
+              pageSize: list.data?.pageSize ?? 20,
+              total: list.data?.total ?? rows.length,
+              onPageChange: (page) => update({ page }),
+              labels: paginationLabels(t, c.book.title),
+            }}
+          />
+        </ListSection>
+      </div>
       {reversing ? (
         <ReverseDialog
           entry={reversing}
@@ -205,12 +211,14 @@ function bookColumns({
   c,
   t,
   locale,
+  zone,
   can,
   onReverse,
 }: {
   c: ReturnType<typeof cashDictionary>;
   t: ReturnType<typeof useWorkforce>['t'];
   locale: ReturnType<typeof useWorkforce>['locale'];
+  zone: string;
   can: boolean;
   onReverse: (entry: CashEntryItem) => void;
 }): DataTableColumn<CashEntryItem>[] {
@@ -218,26 +226,33 @@ function bookColumns({
     {
       key: 'date',
       header: c.book.columns.date,
-      cell: (row) => formatDate(row.businessDate, locale),
+      // The business day with the time it was written under it, visible to everyone (not only in a tooltip, wig :265).
+      cell: (row) => (
+        <span className="ls-cell-stack">
+          <span>{formatDate(row.businessDate, locale)}</span>
+          <span className="ls-cell-sub">{clockTime(locale, zone, row.occurredAt)}</span>
+        </span>
+      ),
     },
     {
       key: 'kind',
       header: c.book.columns.kind,
       mobileTitle: true,
-      truncate: true,
+      wrap: true,
       width: 'md',
       cell: (row) => c.categories[row.category],
     },
     {
       key: 'detail',
       header: c.book.columns.detail,
-      truncate: true,
+      wrap: true,
       width: 'lg',
       hideBelow: 'md',
       hidePhone: true,
       cell: (row) => (
         <>
-          {row.reference ?? row.reason ?? '—'}
+          {/* A posted entry's reference is a code: never machine-translated (wig Locale & i18n). */}
+          {row.reference ? <span translate="no">{row.reference}</span> : (row.reason ?? '—')}
           {row.reversedByEntryId ? (
             <>
               {' '}
@@ -252,21 +267,17 @@ function bookColumns({
       header: c.book.columns.by,
       hideBelow: 'xl',
       hidePhone: true,
-      truncate: true,
+      wrap: true,
       width: 'sm',
       cell: (row) => row.actor?.name ?? c.book.auto,
-      // The instant is the cell's title: when it was written, in the shop's clock.
     },
     {
       key: 'amount',
       header: c.book.columns.amount,
       numeric: true,
-      cell: (row) => (
-        <span title={formatDateTime(row.occurredAt, ZONE, locale)}>
-          {row.direction === 'IN' ? '+' : '−'}
-          {signedVnd(vndNumber(row.amountVnd), locale)}
-        </span>
-      ),
+      // The sign comes from Intl (wig :266): money in is "+", money out "−".
+      cell: (row) =>
+        signedMoney(locale, (row.direction === 'IN' ? 1 : -1) * Math.abs(vndNumber(row.amountVnd))),
     },
     {
       key: 'actions',
@@ -275,7 +286,14 @@ function bookColumns({
       cell: (row) =>
         can && row.canReverse ? (
           <RowActions
-            menuLabel={fill(t.common.list.actionsFor, { name: c.categories[row.category] })}
+            // The category repeats across rows: its time and amount make each menu's name unique (wig :278).
+            menuLabel={fill(t.common.list.actionsFor, {
+              name: metaLine(locale, [
+                c.categories[row.category],
+                formatDateTime(row.occurredAt, zone, locale),
+                signedVnd(vndNumber(row.amountVnd), locale),
+              ]),
+            })}
             items={[
               {
                 id: 'reverse',
@@ -294,10 +312,12 @@ function bookColumns({
 /** A reason is always asked in the person's words; the request id is made once per dialog so a retry never writes twice. */
 function useCommand() {
   const { api, t, locale } = useWorkforce();
-  const { confirm, dialog } = useReauthentication();
+  const { confirm, dialog, asking } = useReauthentication();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const requestId = useRef(globalThis.crypto.randomUUID());
+  // The first id is made once, not on every render (rbp rerender-lazy-state-init).
+  const [firstRequestId] = useState(() => globalThis.crypto.randomUUID());
+  const requestId = useRef(firstRequestId);
   async function run<T>(path: string, body: object, done: (result: T) => void) {
     if (pending) return;
     setPending(true);
@@ -312,7 +332,7 @@ function useCommand() {
       setPending(false);
     }
   }
-  return { run, pending, error, requestId: requestId.current, dialog };
+  return { run, pending, error, requestId: requestId.current, dialog, asking };
 }
 
 export function EntryDialog({
@@ -343,21 +363,23 @@ export function EntryDialog({
   const command = useCommand();
   const problems = entryProblems(draft, bank);
   const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+    checked && problems.includes(name) ? c.problems[name as keyof typeof c.problems] : undefined;
   const dirty = draft.amount !== null || draft.reason !== '';
 
   async function submit() {
     setChecked(true);
     const body = entryBody(fund.id, draft, bank, command.requestId);
-    if (!body) return;
+    // A refused save moves focus to the first field to fix (wig Forms: focus the first error on submit).
+    if (!body) return focusFirstInvalid();
     await command.run<CashEntryResponse>('/api/v1/cash/entries', body, onDone);
   }
 
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={e.title}
-        description={`${fund.name}. ${e.description}`}
+        description={fill(e.descriptionFor, { fund: fund.name })}
         labels={{ ...formOverlayLabels(t, e.submit), submitting: e.submitting }}
         busy={command.pending}
         dirty={dirty}
@@ -373,7 +395,10 @@ export function EntryDialog({
                 value={draft.kind}
                 options={kinds.map((kind) => ({ value: kind, label: e.kinds[kind] }))}
                 onChange={(event) =>
-                  setDraft({ ...draft, kind: event.target.value as CashManualKind })
+                  setDraft((current) => ({
+                    ...current,
+                    kind: event.target.value as CashManualKind,
+                  }))
                 }
               />
             )}
@@ -388,7 +413,9 @@ export function EntryDialog({
                     value: entry.branch.id,
                     label: entry.branch.name,
                   }))}
-                  onChange={(event) => setDraft({ ...draft, branchId: event.target.value })}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, branchId: event.target.value }))
+                  }
                 />
               )}
             </Field>
@@ -398,9 +425,9 @@ export function EntryDialog({
               <MoneyInput
                 {...control}
                 unit="₫"
-                separator={locale === 'vi' ? '.' : ','}
+                locale={locale}
                 value={draft.amount}
-                onValueChange={(amount) => setDraft({ ...draft, amount })}
+                onValueChange={(amount) => setDraft((current) => ({ ...current, amount }))}
               />
             )}
           </Field>
@@ -411,7 +438,9 @@ export function EntryDialog({
                 rows={3}
                 maxLength={500}
                 value={draft.reason}
-                onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, reason: event.target.value }))
+                }
               />
             )}
           </Field>
@@ -449,19 +478,20 @@ export function TransferDialog({
   const command = useCommand();
   const problems = transferProblems(draft);
   const invalid = (name: string) =>
-    checked && problems.includes(name) ? t.errors.validation : undefined;
+    checked && problems.includes(name) ? c.problems[name as keyof typeof c.problems] : undefined;
   const targets = transferTargets(mine, draft.fromFundId);
 
   async function submit() {
     setChecked(true);
     const body = transferBody(draft, command.requestId);
-    if (!body) return;
+    if (!body) return focusFirstInvalid();
     await command.run<CashTransferResponse>('/api/v1/cash/transfers', body, onDone);
   }
 
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={x.title}
         description={x.description}
         labels={{ ...formOverlayLabels(t, x.submit), submitting: x.submitting }}
@@ -480,11 +510,12 @@ export function TransferDialog({
                 options={mine.map((item) => ({ value: item.id, label: item.name }))}
                 onChange={(event) => {
                   const fromFundId = event.target.value;
-                  setDraft({
-                    ...draft,
+                  // Functional update, not a spread of this render's draft (rbp rerender-functional-setstate).
+                  setDraft((current) => ({
+                    ...current,
                     fromFundId,
                     toFundId: transferTargets(mine, fromFundId)[0]?.id ?? '',
-                  });
+                  }));
                 }}
               />
             )}
@@ -495,7 +526,9 @@ export function TransferDialog({
                 {...control}
                 value={draft.toFundId}
                 options={targets.map((item) => ({ value: item.id, label: item.name }))}
-                onChange={(event) => setDraft({ ...draft, toFundId: event.target.value })}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, toFundId: event.target.value }))
+                }
               />
             )}
           </Field>
@@ -504,9 +537,9 @@ export function TransferDialog({
               <MoneyInput
                 {...control}
                 unit="₫"
-                separator={locale === 'vi' ? '.' : ','}
+                locale={locale}
                 value={draft.amount}
-                onValueChange={(amount) => setDraft({ ...draft, amount })}
+                onValueChange={(amount) => setDraft((current) => ({ ...current, amount }))}
               />
             )}
           </Field>
@@ -517,7 +550,9 @@ export function TransferDialog({
                 rows={3}
                 maxLength={500}
                 value={draft.reason}
-                onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, reason: event.target.value }))
+                }
               />
             )}
           </Field>
@@ -547,7 +582,7 @@ function ReverseDialog({
 
   async function submit() {
     setChecked(true);
-    if (reason.trim().length === 0 || reason.trim().length > 500) return;
+    if (reason.trim().length === 0 || reason.trim().length > 500) return focusFirstInvalid();
     await command.run<CashEntryResponse>(
       `/api/v1/cash/entries/${entry.id}/reverse`,
       { reason: reason.trim(), clientRequestId: command.requestId },
@@ -558,8 +593,12 @@ function ReverseDialog({
   return (
     <>
       <FormDialog
+        suspended={command.asking}
         title={r.title}
-        description={`${c.categories[entry.category]}: ${signedVnd(vndNumber(entry.amountVnd), locale)}. ${r.description}`}
+        description={fill(r.descriptionFor, {
+          category: c.categories[entry.category],
+          amount: signedVnd(vndNumber(entry.amountVnd), locale),
+        })}
         labels={{ ...formOverlayLabels(t, r.submit), submitting: r.submitting }}
         busy={command.pending}
         dirty={reason !== ''}
@@ -568,7 +607,7 @@ function ReverseDialog({
         onSubmit={submit}
       >
         <FormGrid>
-          <Field label={r.reason} error={missing ? t.errors.validation : undefined} required full>
+          <Field label={r.reason} error={missing ? c.problems.reason : undefined} required full>
             {(control) => (
               <Textarea
                 {...control}

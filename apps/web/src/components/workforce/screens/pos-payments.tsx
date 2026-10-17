@@ -14,6 +14,7 @@ import {
   DescriptionList,
   RowActions,
   Stack,
+  useUrlState,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import { useEffect, useState } from 'react';
@@ -24,7 +25,9 @@ import { formatDateTime, formatVnd } from '../../../lib/workforce/format';
 import { paginationLabels } from '../../../lib/workforce/list-view';
 import { formatCountdown, remainingMs } from '../../../lib/workforce/pos';
 import { useWorkforce } from '../session';
-import { Badge, Notice, type Tone } from '../ui';
+import { Badge, Notice, VisuallyHidden, type Tone } from '../ui';
+import { PayosCancelConfirm, prefetchTipOffer } from './pos-dialogs';
+import { sentence } from './pos-format';
 
 type Note = InvoiceResponse['managementNotes'][number];
 
@@ -36,12 +39,22 @@ export function cashBalanceOf(invoice: InvoiceResponse): bigint {
   return BigInt(invoice.balanceVnd) - BigInt(invoice.pendingProviderVnd);
 }
 
-function usePaging() {
-  const [paging, setPaging] = useState({ page: 1, pageSize: 20 });
+// The page of each list of the invoice lives in the address (wig :40): Back/Forward and a shared link keep it. Module constants,
+// as useUrlState asks; 20 rows a page, no page-size choice (DESIGN 8.8).
+const PAGE_KEYS: Record<'payments' | 'anomalies' | 'notes', Record<string, number>> = {
+  payments: { payPage: 1 },
+  anomalies: { anomalyPage: 1 },
+  notes: { notePage: 1 },
+};
+
+function usePaging(list: keyof typeof PAGE_KEYS) {
+  const defaults = PAGE_KEYS[list];
+  const [state, update] = useUrlState(defaults);
+  const key = Object.keys(defaults)[0] ?? 'page';
   return {
-    ...paging,
-    onPageChange: (page: number) => setPaging((current) => ({ ...current, page })),
-    onPageSizeChange: (pageSize: number) => setPaging({ page: 1, pageSize }),
+    page: state[key] ?? 1,
+    pageSize: 20,
+    onPageChange: (page: number) => update({ [key]: page }),
   };
 }
 
@@ -70,13 +83,13 @@ export function PosPaymentsSection({
   onCreatePayos: () => void;
   onReverse: (paymentId: string) => void;
   onRefreshPayos: (paymentId: string) => void;
-  onCancelPayos: (paymentId: string) => void;
+  onCancelPayos: (paymentId: string) => Promise<unknown> | void;
   onReviewAnomaly: (anomalyId: string) => void;
   onAddNote: () => void;
 }) {
-  const { t, locale } = useWorkforce();
+  const { api, t, locale } = useWorkforce();
   const zone = invoice.branch.timezone;
-  const paging = usePaging();
+  const paging = usePaging('payments');
   const pendingPayment = invoice.payments.find((payment) => payment.status === 'PENDING') ?? null;
   const balance = BigInt(invoice.balanceVnd);
   const held = BigInt(invoice.pendingProviderVnd);
@@ -95,7 +108,7 @@ export function PosPaymentsSection({
       key: 'collector',
       header: t.pos.colCollector,
       hideBelow: 'lg',
-      truncate: true,
+      wrap: true,
       cell: (payment) => payment.collectedBy.displayName,
     },
     { key: 'method', header: t.pos.colMethod, cell: (payment) => t.pos.methods[payment.method] },
@@ -143,7 +156,7 @@ export function PosPaymentsSection({
               ? [
                   {
                     id: 'reverse',
-                    label: t.pos.reverse,
+                    label: t.pos.reverseOpen,
                     tone: 'danger' as const,
                     disabled: !idle,
                     onSelect: () => onReverse(payment.id),
@@ -166,13 +179,19 @@ export function PosPaymentsSection({
             canCreatePayos || canCollect ? (
               <>
                 {canCreatePayos ? (
-                  <Button variant="secondary" disabled={!idle} onClick={onCreatePayos}>
-                    {t.pos.payosCreate}
+                  <Button
+                    variant="secondary"
+                    disabled={!idle}
+                    onClick={onCreatePayos}
+                    onPointerEnter={() => prefetchTipOffer(api, invoice.id)}
+                    onFocus={() => prefetchTipOffer(api, invoice.id)}
+                  >
+                    {t.pos.payosCreateOpen}
                   </Button>
                 ) : null}
                 {canCollect ? (
                   <Button variant="primary" icon="plus" disabled={!idle} onClick={onCollect}>
-                    {t.pos.collectTitle}
+                    {t.pos.collectOpen}
                   </Button>
                 ) : null}
               </>
@@ -192,7 +211,10 @@ export function PosPaymentsSection({
         />
         {held > 0n ? (
           <Notice tone="info">
-            {fill(t.pos.payosHeld, { amount: formatVnd(invoice.pendingProviderVnd, locale) })}
+            {/* The held amount in tabular figures (wig :195): the sentence around it comes from the dictionary unchanged. */}
+            {t.pos.payosHeld.split('{amount}')[0]}
+            <span className="ls-pos-figure">{formatVnd(invoice.pendingProviderVnd, locale)}</span>
+            {t.pos.payosHeld.split('{amount}')[1] ?? ''}
           </Notice>
         ) : null}
         {invoice.payments.length === 0 ? (
@@ -280,15 +302,13 @@ function paymentDetails(
     );
   }
   if (payment.method === 'PAYOS' && payment.status === 'SUCCEEDED' && payment.provider) {
-    parts.push(
-      `${
-        payment.provider.reference
-          ? fill(t.pos.paymentReference, { reference: payment.provider.reference })
-          : ''
-      }${payment.provider.late ? ` ${t.pos.paymentLate}` : ''} ${t.pos.paymentProviderFinal}`.trim(),
-    );
+    // Each fact is a whole dictionary sentence of its own (wig :284): no fragment is glued into another sentence.
+    if (payment.provider.reference)
+      parts.push(fill(t.pos.paymentReference, { reference: payment.provider.reference }));
+    if (payment.provider.late) parts.push(t.pos.paymentLate);
+    parts.push(t.pos.paymentProviderFinal);
   }
-  return parts.join(' ') || '—';
+  return parts.map(sentence).join(' ') || '—';
 }
 
 /** The waiting request: the QR, the countdown, a re-check and a cancel. Nothing here marks it received. */
@@ -301,18 +321,13 @@ function PayosPending({
   payment: InvoicePaymentResponse;
   working: string | null;
   onRefresh: (paymentId: string) => void;
-  onCancel: (paymentId: string) => void;
+  onCancel: (paymentId: string) => Promise<unknown> | void;
 }) {
   const { t, locale } = useWorkforce();
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const provider = payment.provider;
   const image = useQrImage(provider?.qrCode ?? null);
   if (!provider) return null;
-  const left = remainingMs(provider.expiresAt, now);
   return (
     <Card as="section">
       <CardHeader
@@ -327,6 +342,7 @@ function PayosPending({
                 rel="noopener noreferrer"
               >
                 {t.pos.payosOpenLink}
+                <VisuallyHidden> {t.pos.newTab}</VisuallyHidden>
               </ButtonLink>
             ) : null}
             {payment.cancellable ? (
@@ -342,10 +358,11 @@ function PayosPending({
                     : t.pos.payosRefresh}
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="danger-outline"
+                  icon="x-circle"
                   disabled={working !== null}
                   loading={working === `payos-cancel-${payment.id}`}
-                  onClick={() => onCancel(payment.id)}
+                  onClick={() => setConfirmingCancel(true)}
                 >
                   {working === `payos-cancel-${payment.id}`
                     ? t.pos.payosCancelling
@@ -378,24 +395,63 @@ function PayosPending({
             : []),
         ]}
       />
-      <Notice tone={left > 0 ? 'info' : 'warning'}>
-        {left > 0
-          ? fill(t.pos.payosExpiresIn, { time: formatCountdown(left) })
-          : t.pos.payosExpired}
-      </Notice>
+      <PayosCountdown expiresAt={provider.expiresAt} />
       {provider.qrCode ? (
         <Stack>
-          {image ? (
-            // A data URL generated here from the QR content; not a remote image.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="PayOS QR" width={240} height={240} />
-          ) : null}
+          {/* The 240 px box is there before the image is drawn, so nothing below it moves when the QR appears. */}
+          <div className="ls-pos-qr">
+            {image ? (
+              // A data URL generated here from the QR content; not a remote image.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={fill(t.pos.payosQrAlt, {
+                  amount: formatVnd(
+                    (BigInt(payment.amountVnd) + BigInt(provider.tipVnd)).toString(),
+                    locale,
+                  ),
+                })}
+                width={240}
+                height={240}
+              />
+            ) : null}
+          </div>
           <p className="ls-hint">{t.pos.payosScan}</p>
         </Stack>
       ) : (
         <Notice tone="warning">{t.pos.payosNoQr}</Notice>
       )}
+      {confirmingCancel ? (
+        <PayosCancelConfirm
+          amountVnd={payment.amountVnd}
+          onConfirm={async () => {
+            await onCancel(payment.id);
+          }}
+          onClose={() => setConfirmingCancel(false)}
+        />
+      ) : null}
     </Card>
+  );
+}
+
+/**
+ * The 1 s countdown lives in its own small leaf (rerender-memo: the QR card does not re-render every second) and outside any live
+ * region: screen readers are not told every tick (wig :381); only the expiry, a warning notice that mounts once, is announced.
+ * Tabular figures keep the width still while the seconds change (wig :383).
+ */
+function PayosCountdown({ expiresAt }: { expiresAt: string }) {
+  const { t } = useWorkforce();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const left = remainingMs(expiresAt, now);
+  if (left <= 0) return <Notice tone="warning">{t.pos.payosExpired}</Notice>;
+  return (
+    <p className="ls-hint ls-pos-countdown">
+      {fill(t.pos.payosExpiresIn, { time: formatCountdown(left) })}
+    </p>
   );
 }
 
@@ -412,7 +468,7 @@ function AnomaliesCard({
   onReview: (anomalyId: string) => void;
 }) {
   const { t, locale } = useWorkforce();
-  const paging = usePaging();
+  const paging = usePaging('anomalies');
   const columns: DataTableColumn<InvoicePaymentAnomaly>[] = [
     {
       key: 'kind',
@@ -443,8 +499,9 @@ function AnomaliesCard({
       key: 'reference',
       header: t.pos.colReference,
       hideBelow: 'lg',
-      truncate: true,
-      cell: (anomaly) => anomaly.providerReference,
+      wrap: true,
+      // A provider reference is an identifier: never machine-translated (wig Locale & i18n).
+      cell: (anomaly) => <span translate="no">{anomaly.providerReference}</span>,
     },
     {
       key: 'status',
@@ -484,7 +541,7 @@ function AnomaliesCard({
               : [
                   {
                     id: 'review',
-                    label: t.pos.anomalyReview,
+                    label: t.pos.anomalyReviewOpen,
                     disabled: working,
                     onSelect: () => onReview(anomaly.id),
                   },
@@ -524,7 +581,7 @@ function NotesCard({
   onAdd: () => void;
 }) {
   const { t, locale } = useWorkforce();
-  const paging = usePaging();
+  const paging = usePaging('notes');
   const columns: DataTableColumn<Note>[] = [
     {
       key: 'note',
@@ -538,7 +595,7 @@ function NotesCard({
       key: 'author',
       header: t.pos.colAuthor,
       hideBelow: 'md',
-      truncate: true,
+      wrap: true,
       cell: (note) => note.author.displayName,
     },
     {
@@ -555,7 +612,7 @@ function NotesCard({
         actions={
           canAdd ? (
             <Button variant="secondary" icon="plus" disabled={working} onClick={onAdd}>
-              {t.pos.noteAdd}
+              {t.pos.noteAddOpen}
             </Button>
           ) : undefined
         }
