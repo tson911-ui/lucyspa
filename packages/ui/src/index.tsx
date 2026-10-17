@@ -11,6 +11,8 @@ export function BrandWordmark({
   return (
     <span
       className="ls-wordmark"
+      // The brand name is never machine-translated (WIG locale).
+      translate="no"
       style={{
         fontFamily: 'var(--ls-font-sans)',
         fontSize:
@@ -71,10 +73,17 @@ export { useMotion } from './motion';
 export type { MotionControls, MotionKit } from './motion';
 export { STAFF_MOTION_CAP_MS } from './motion-core';
 export type { MotionState, MotionToken } from './motion-core';
-export { findScroller, onPageScroll, scrollPosition, SCROLLER_SELECTOR } from './scroller';
+export {
+  currentScroller,
+  findScroller,
+  onPageScroll,
+  scrollPosition,
+  SCROLLER_SELECTOR,
+} from './scroller';
 export {
   LOW_MEMORY_GB,
   MAX_STAGGER_INDEX,
+  MOTION_PREPAINT_SCRIPT,
   motionAllowed,
   prefetchAllowed,
   readMotionEnvironment,
@@ -84,13 +93,15 @@ export {
 export type { MotionEnvironment } from './reveal-core';
 
 // Core components (Step 3). Text always comes from props; styles are in `components.css`.
-export { Button, ButtonLink, IconButton, VisuallyHidden } from './button';
+export { Button, IconButton } from './button';
+export { ButtonLink, VisuallyHidden } from './button-link';
 export { buttonClass } from './button-class';
-export type { ButtonLinkProps, ButtonProps, IconButtonProps } from './button';
+export type { ButtonProps, IconButtonProps } from './button';
+export type { ButtonLinkComponent, ButtonLinkProps } from './button-link';
 export type { ButtonSize, ButtonVariant } from './button-class';
 export { ActionBar, RowActions } from './actions';
 export { Menu, arrangeMenu } from './menu';
-export type { MenuDivider, MenuEntry, MenuItem } from './menu';
+export type { MenuDivider, MenuEntry, MenuItem, MenuLinkComponent } from './menu';
 export { Popover, placePanel } from './popover';
 export { nextEnabledIndex, orderActions, trapTarget, typeaheadIndex } from './menu-core';
 export {
@@ -107,13 +118,20 @@ export {
 export type { BadgeTone, Tone } from './feedback';
 export { ToastProvider, useOptionalToast, useToast } from './toast';
 export type { ToastInput } from './toast';
-export { MAX_TOASTS, TOAST_DURATION_MS, addToast, removeToast } from './toast-core';
+export {
+  ACTION_TOAST_DURATION_MS,
+  MAX_TOASTS,
+  TOAST_DURATION_MS,
+  addToast,
+  removeToast,
+} from './toast-core';
 export type { ToastData, ToastTone } from './toast-core';
 export {
   Checkbox,
   Combobox,
   DateInput,
   DateTextInput,
+  DateTimeInput,
   Field,
   FormActions,
   FormSection,
@@ -277,19 +295,23 @@ export {
 export type { PageItem, SortDirection, SortState, SortValue } from './paging-core';
 
 // App shell and auth layout (Step 5): shell, sidebar, user menu, breadcrumbs, split auth page (the appearance follows the device: no theme toggle).
-export { AppShell, Breadcrumbs, SidebarNav, UserMenu } from './app-shell';
+export { AppShell, Breadcrumbs, ShellPreferencesProvider, SidebarNav, UserMenu } from './app-shell';
 export type { AppShellLabels, Crumb, ShellLink, ShellLinkProps } from './app-shell';
 export { AuthLayout, BotanicalPattern } from './auth-layout';
 export { SegmentedControl, segmentedTarget } from './segmented';
 export type { SegmentedOption } from './segmented';
 export {
+  NAV_GROUPS_COOKIE,
   SIDEBAR_COLLAPSED_KEY,
+  SIDEBAR_COOKIE,
   SIDEBAR_GROUPS_KEY,
   TABLET_QUERY,
   arrangeNav,
   currentGroupId,
   initials,
   isPathActive,
+  parseNavGroupCookie,
+  parseSidebarCookie,
   readNavGroupState,
   readSidebarCollapsed,
   writeNavGroupState,
@@ -308,7 +330,7 @@ export { DeltaLine, Stat } from './stat';
 export type { StatLabels } from './stat';
 
 // Sortable primitives and chart kit (Step 6): drag-and-drop lists/grids, charts, KPI card, date range.
-export { SortableGrid, SortableList } from './sortable';
+export { SortableGrid, SortableList, preloadSortable } from './sortable';
 export type { SortableItemState, SortableLabels, SortableProps } from './sortable';
 export { SORT_EASING, SORT_TRANSITION_MS, moveBy, reorder } from './sortable-core';
 export { BarChart, DonutChart, LineChart, Sparkline } from './charts';

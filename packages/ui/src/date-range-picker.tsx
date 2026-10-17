@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { Button, IconButton } from './button';
 import { cx } from './cx';
 import {
@@ -144,6 +152,7 @@ export function DateRangePicker({
           align="start"
           id={panelId}
           role="dialog"
+          label={labels.title}
           className="ls-daterange-popover"
         >
           {panel}
@@ -227,6 +236,27 @@ function RangePanel({
     });
   }
 
+  // One stable set of day handlers for the memoised cells: hovering a day re-renders the cells whose range state changes, not
+  // both months and their 60 labels (rbp rerender-memo). The latest pick/move are read through a ref.
+  const latest = useRef({ pick, move, weekStart });
+  useEffect(() => {
+    latest.current = { pick, move, weekStart };
+  });
+  const dayActions = useMemo<DayActions>(
+    () => ({
+      pick: (date) => latest.current.pick(date),
+      hover: (date) => setHover(date),
+      focus: (date) => setFocused(date),
+      key: (event, date) => {
+        const target = calendarKeyTarget(event.key, date, latest.current.weekStart);
+        if (target === null) return;
+        event.preventDefault();
+        latest.current.move(target);
+      },
+    }),
+    [],
+  );
+
   const preview = useMemo(() => {
     if (!draft) return null;
     if (draft.to) return { from: draft.from, to: draft.to };
@@ -302,45 +332,22 @@ function RangePanel({
                         preview !== null &&
                         compareDates(day.date, preview.from) >= 0 &&
                         compareDates(day.date, preview.to) <= 0;
-                      const isEdge =
-                        preview !== null && (day.date === preview.from || day.date === preview.to);
-                      const disabled = disabledDay(day.date);
                       return (
-                        <td
+                        <CalendarDay
                           key={day.date}
-                          role="gridcell"
-                          aria-selected={inRange && day.inMonth ? true : undefined}
-                          className={cx(
-                            'ls-calendar-cell',
-                            day.inMonth && inRange && 'ls-calendar-in-range',
-                            day.inMonth && isEdge && 'ls-calendar-edge',
-                          )}
-                        >
-                          {day.inMonth ? (
-                            <button
-                              type="button"
-                              className="ls-calendar-day"
-                              data-date={day.date}
-                              data-today={day.date === today ? 'true' : undefined}
-                              tabIndex={day.date === focused ? 0 : -1}
-                              aria-label={formatDay(day.date, locale, 'long')}
-                              aria-current={day.date === today ? 'date' : undefined}
-                              aria-disabled={disabled || undefined}
-                              onClick={() => pick(day.date)}
-                              onPointerEnter={() => setHover(day.date)}
-                              onPointerLeave={() => setHover(null)}
-                              onFocus={() => setFocused(day.date)}
-                              onKeyDown={(event) => {
-                                const target = calendarKeyTarget(event.key, day.date, weekStart);
-                                if (target === null) return;
-                                event.preventDefault();
-                                move(target);
-                              }}
-                            >
-                              {Number(day.date.slice(8, 10))}
-                            </button>
-                          ) : null}
-                        </td>
+                          date={day.date}
+                          inMonth={day.inMonth}
+                          locale={locale}
+                          inRange={inRange}
+                          isEdge={
+                            preview !== null &&
+                            (day.date === preview.from || day.date === preview.to)
+                          }
+                          disabled={disabledDay(day.date)}
+                          today={day.date === today}
+                          focusable={day.date === focused}
+                          actions={dayActions}
+                        />
                       );
                     })}
                   </tr>
@@ -376,3 +383,65 @@ function RangePanel({
     </div>
   );
 }
+
+interface DayActions {
+  pick: (date: string) => void;
+  hover: (date: string | null) => void;
+  focus: (date: string) => void;
+  key: (event: ReactKeyboardEvent<HTMLButtonElement>, date: string) => void;
+}
+
+/** One calendar cell, memoised on its primitive state, so a hover or focus re-renders only the cells that change. */
+const CalendarDay = memo(function CalendarDay({
+  date,
+  inMonth,
+  locale,
+  inRange,
+  isEdge,
+  disabled,
+  today,
+  focusable,
+  actions,
+}: {
+  date: string;
+  inMonth: boolean;
+  locale: 'vi' | 'en';
+  inRange: boolean;
+  isEdge: boolean;
+  disabled: boolean;
+  today: boolean;
+  focusable: boolean;
+  actions: DayActions;
+}) {
+  return (
+    <td
+      role="gridcell"
+      aria-selected={inRange && inMonth ? true : undefined}
+      className={cx(
+        'ls-calendar-cell',
+        inMonth && inRange && 'ls-calendar-in-range',
+        inMonth && isEdge && 'ls-calendar-edge',
+      )}
+    >
+      {inMonth ? (
+        <button
+          type="button"
+          className="ls-calendar-day"
+          data-date={date}
+          data-today={today ? 'true' : undefined}
+          tabIndex={focusable ? 0 : -1}
+          aria-label={formatDay(date, locale, 'long')}
+          aria-current={today ? 'date' : undefined}
+          aria-disabled={disabled || undefined}
+          onClick={() => actions.pick(date)}
+          onPointerEnter={() => actions.hover(date)}
+          onPointerLeave={() => actions.hover(null)}
+          onFocus={() => actions.focus(date)}
+          onKeyDown={(event) => actions.key(event, date)}
+        >
+          {Number(date.slice(8, 10))}
+        </button>
+      ) : null}
+    </td>
+  );
+});

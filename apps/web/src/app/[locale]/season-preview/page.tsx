@@ -1,6 +1,11 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+// Session 10 page work: this page draws the customer home outside the (site) layout, so it loads the customer sheets itself,
+// after the foundation (the root layout's sheets load first).
+import '@lucy-spa/ui/s10-public.css';
+import '@lucy-spa/ui/s10-member.css';
+import '@lucy-spa/ui/s10-account.css';
 import { SeasonPreviewStage } from '../../../components/season/season-preview-stage';
 import { isLocale } from '../../../i18n/locales';
 import { canPreviewSeasons } from '../../../lib/season-preview-server';

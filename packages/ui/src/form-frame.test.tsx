@@ -115,6 +115,15 @@ test('FormDialog: first field is focused, footer is Cancel then Save, the title 
   view.unmount();
 });
 
+test('FormDialog on a touch screen focuses the panel, not the field, so the keyboard does not jump up over the sheet', () => {
+  dom.setPhone(true);
+  const view = mount(<Harness onSubmit={() => undefined} onClose={() => undefined} />);
+  const dialog = $('[role="dialog"]')!;
+  assert.equal(window.document.activeElement, dialog);
+  view.unmount();
+  dom.setPhone(false);
+});
+
 test('FormDialog: Save submits the form once; Escape on a clean form closes without asking', () => {
   let submitted = 0;
   let closed = 0;
@@ -187,7 +196,8 @@ test('FormDialog: while busy nothing dismisses it and Save shows the busy label'
   const [cancel, save] = $$('.ls-dialog-footer button');
   assert.equal(cancel!.hasAttribute('disabled'), true);
   assert.equal(save!.getAttribute('aria-busy'), 'true');
-  assert.equal(text(save!), 'Đang lưu');
+  // C38: a pending label ends with "…" (the kit adds it while loading).
+  assert.equal(text(save!), 'Đang lưu…');
   assert.equal(
     $('[aria-label="Đóng"]')!.hasAttribute('disabled'),
     true,

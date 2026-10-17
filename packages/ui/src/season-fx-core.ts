@@ -8,9 +8,12 @@ export const FX_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 export const PARTICLES_DESKTOP = 24;
 export const PARTICLES_PHONE = 12;
 
+// Built once (rbp js-hoist-regexp): the parser runs in a store snapshot on every render of the gate, the particles and the switches.
+const FX_OFF = new RegExp(`(?:^|;\\s*)${FX_COOKIE}=off(?:;|$)`);
+
 /** Effects are on unless the cookie says `off`. Anything unknown means on. */
 export function parseFxCookie(cookie: string): boolean {
-  return !new RegExp(`(?:^|;\\s*)${FX_COOKIE}=off(?:;|$)`).test(cookie);
+  return !FX_OFF.test(cookie);
 }
 
 /** Cookie for the switch: 1 year, SameSite=Lax, readable by script, no personal data. "On" clears it. */

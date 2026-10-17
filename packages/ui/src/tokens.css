@@ -135,6 +135,7 @@
   --ls-gutter: 1rem;
   /* Optical alignment of a 20 px icon with the first line of text, and the device safe area (not layout spacing). */
   --ls-icon-nudge: 0.125rem;
+  --ls-safe-top: env(safe-area-inset-top, 0px);
   --ls-safe-bottom: env(safe-area-inset-bottom, 0px);
   --ls-safe-left: env(safe-area-inset-left, 0px);
   --ls-safe-right: env(safe-area-inset-right, 0px);
@@ -1304,6 +1305,11 @@
    is zeroed here as well (HIG: no tweens at all). The hero duration is new and zeroed on the root too. */
 :root {
   --ls-dur-hero: 800ms;
+  /* The customer route change (DESIGN.md 11/17.3): the page fade and the card-to-page photo morph. The view-transition
+     pseudo-elements hang off <html>, outside the v2 frame, so they read these root tokens, which carry the v2 customer values
+     (the v2 base and slow steps, 240 / 320 ms), not the older root base/slow (200 / 250 ms). */
+  --ls-dur-vt-fade: 240ms;
+  --ls-dur-vt-morph: 320ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1316,5 +1322,7 @@
     --ls-dur-reveal: 0ms;
     --ls-dur-hero: 0ms;
     --ls-dur-route: 0ms;
+    --ls-dur-vt-fade: 0ms;
+    --ls-dur-vt-morph: 0ms;
   }
 }

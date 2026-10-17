@@ -12,6 +12,13 @@ html {
   text-size-adjust: 100%;
 }
 
+/* No rubber-band bounce of the whole page with a mouse or trackpad; touch keeps its default (pull to refresh, swipe back). */
+@media (pointer: fine) {
+  html {
+    overscroll-behavior: none;
+  }
+}
+
 body {
   margin: 0;
   /* A phone in landscape with a notch: nothing is drawn under it (the viewport covers the whole screen, see the root layout). */

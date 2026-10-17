@@ -168,6 +168,28 @@ test('Slider: previous, next and dots move between slides; off-screen slides are
   unmount();
 });
 
+test('Slider: at most 10 dots (HIG C65); a longer set shows its position as text', () => {
+  const ten = mount(
+    <ui.Slider
+      slides={Array.from({ length: 10 }, (_, n) => slide(n + 1))}
+      labels={labels}
+      autoplayMs={60_000}
+    />,
+  );
+  assert.equal(ten.container.querySelectorAll('.ls-slider-dot').length, 10);
+  ten.unmount();
+  const twelve = mount(
+    <ui.Slider
+      slides={Array.from({ length: 12 }, (_, n) => slide(n + 1))}
+      labels={labels}
+      autoplayMs={60_000}
+    />,
+  );
+  assert.equal(twelve.container.querySelectorAll('.ls-slider-dot').length, 0, 'no dots past 10');
+  assert.equal(twelve.container.querySelector('.ls-slider-position')?.textContent, 'Slide 1 / 12');
+  twelve.unmount();
+});
+
 test('Slider: the phone image becomes a picture source; any phone image selects the portrait frame', () => {
   const phone = slide(1).image;
   const withPhone = slide(1, {

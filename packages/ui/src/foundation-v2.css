@@ -15,7 +15,7 @@ html {
 
 /* A sticky bar never covers the element that takes keyboard focus or a heading reached by an anchor. */
 html:has([data-ui='v2'] .ls-topbar) {
-  scroll-padding-top: calc(var(--ls-topbar-h) + var(--ls-space-4));
+  scroll-padding-top: calc(var(--ls-topbar-h) + var(--ls-safe-top) + var(--ls-space-4));
 }
 
 /* ---- Text links (R2, R10, R24, A3) ------------------------------------------------------------------------------------------------- */
@@ -140,7 +140,7 @@ html:has([data-ui='v2'] .ls-topbar) {
   [data-ui='v2']
     :is(.ls-segment, .ls-tab):not(.ls-segment-active):not(.ls-tab-active):not(
       [aria-selected='true']
-    ):hover,
+    ):not(:disabled):hover,
   [data-ui='v2'] .ls-page-btn:not([aria-current='page']):not(:disabled):hover,
   [data-ui='v2'] .ls-menu-item:not(.ls-menu-item-disabled):not(.ls-menu-item-danger):hover {
     color: var(--ls-text);
@@ -151,7 +151,7 @@ html:has([data-ui='v2'] .ls-topbar) {
 [data-ui='v2']
   :is(.ls-segment, .ls-tab):not(.ls-segment-active):not(.ls-tab-active):not(
     [aria-selected='true']
-  ):active,
+  ):not(:disabled):active,
 [data-ui='v2'] .ls-page-btn:not([aria-current='page']):not(:disabled):active,
 [data-ui='v2'] .ls-menu-item:not(.ls-menu-item-disabled):not(.ls-menu-item-danger):active {
   background: var(--ls-pressed-bg);
@@ -234,8 +234,11 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 /* B20, C16: at 200 % zoom (or any viewport under 560 css px tall) the header is not sticky: it scrolls away with the page, so it never
-   covers content; the phone tab bar stays (navigation). */
-@media (max-height: 560px) {
+   covers content; the phone tab bar stays (navigation). The second query is the same height in `em`: a media-query em follows the
+   browser's text size, so at 200 % text (35em = 1120 px) the bar is static from the first paint instead of painting sticky and then
+   jumping when HeaderFit measures it (rbp rendering-hydration-no-flicker). HeaderFit still handles a nav that wraps on a tall screen.
+   The member area's sticky aside follows the same rule (s10-member.css). */
+@media (max-height: 560px), (max-height: 35em) {
   [data-ui='v2'] :is(.ls-site-header, .ls-topbar) {
     position: relative;
     top: auto;
@@ -392,4 +395,1019 @@ html:has([data-ui='v2'] .ls-topbar) {
 [data-ui='v2'] :is(.ls-card, .ls-kpi, .ls-table-wrap, .ls-table-state, .ls-notice) {
   border-radius: var(--ls-radius-lg);
   box-shadow: none;
+}
+
+/* ==== Step 4 kit pass (session 10): the shared causes the every-route sweep found ================================================== */
+
+/* ---- C29 / DESIGN 12: at least 8 px between two neighbouring targets (sidebar, menu, tabs, segments, dots, tab bar, accordion) ------ */
+[data-ui='v2'] .ls-nav-list {
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-nav-heading {
+  margin-block-end: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-nav-heading-button + .ls-nav-collapse > .ls-nav-list {
+  padding-block-start: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-sidebar-toggle {
+  margin-block-start: var(--ls-space-2);
+}
+
+[data-ui='v2'] :is(.ls-site-nav, .ls-tablist) {
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-tab-bar {
+  column-gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-slider-dots {
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-accordion-item {
+  padding-block: var(--ls-space-1);
+}
+
+/* The segments keep 8 px between them; the selected thumb follows the same track maths (width and step include the gap). */
+[data-ui='v2'] .ls-segmented {
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-segmented-thumb {
+  width: calc(
+    (100% - 2 * var(--ls-space-1) - (var(--seg-count, 2) - 1) * var(--ls-space-2)) /
+      var(--seg-count, 2)
+  );
+  transform: translateX(calc(var(--seg-index, 0) * (100% + var(--ls-space-2))));
+}
+
+/* A record link in a table cell is a full target; it reaches only 2 px into the cell padding, so the links of two neighbouring rows keep
+   at least 8 px between them (the sweep measured 3-7 px with a 6 px reach). */
+[data-ui='v2'] .ls-table td .ls-link {
+  margin-block: 0;
+  min-width: var(--ls-control-h);
+}
+
+/* ---- Skip link (C30): visually hidden until it takes focus (it was drawn above the viewport and counted as a target there) ---------- */
+[data-ui='v2'] .skip-link:not(:focus) {
+  clip-path: inset(50%);
+}
+
+/* ---- B23: hover and pressed on every control of the shared chrome ------------------------------------------------------------------ */
+/* The wordmark link: a grey step on hover, the next on press (never a vivid colour; the same in both modes). A wordmark that is not a
+   link (staff sign-in) is ink, not brand colour: brand colour is for clickable text only (A3). */
+[data-ui='v2'] .ls-wordmark:not(a *, a) {
+  color: var(--ls-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] :is(.ls-site-brand a, .ls-topbar-brand a):hover {
+    color: var(--ls-text-muted);
+  }
+}
+
+[data-ui='v2'] :is(.ls-site-brand a, .ls-topbar-brand a):active {
+  color: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] :is(.ls-usermenu-trigger, .ls-sidebar-toggle, .ls-multi-more, .ls-th-sort):active {
+  background: var(--ls-pressed-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] :is(.ls-multi-more, .ls-th-sort):hover {
+    background: var(--ls-hover-bg);
+  }
+}
+
+[data-ui='v2'] .ls-th-sort {
+  padding-inline: var(--ls-space-1);
+  margin-inline: calc(var(--ls-space-1) * -1);
+  border-radius: var(--ls-radius-sm);
+}
+
+/* Icon buttons (ghost and neutral: the header bell and account, the gallery arrows) press one grey step past their hover. */
+[data-ui='v2']
+  :is(.ls-btn-ghost, .ls-btn-neutral):active:not(:disabled):not([aria-disabled='true']) {
+  background: var(--ls-pressed-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-btn-neutral:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--ls-hover-bg);
+  }
+}
+
+/* The selected tab and the selected segment still answer the pointer (B23): the tab a grey step under its raised pill, the segment its
+   fill one step darker (the thumb sits behind it; the segment paints the hover colour over it in the same shape). */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-tab-active:hover:not(:disabled) {
+    border-color: var(--ls-border-control);
+  }
+
+  [data-ui='v2'] .ls-segment-active:hover:not(:disabled) {
+    background: var(--ls-brand-fill-hover);
+  }
+}
+
+[data-ui='v2'] .ls-tab-active:active:not(:disabled) {
+  background: var(--ls-bg-pressed);
+}
+
+[data-ui='v2'] .ls-segment-active:active:not(:disabled) {
+  background: var(--ls-brand-fill-pressed);
+}
+
+/* A segment that cannot be chosen (C47) takes no hover or pressed state (the rules above skip `:disabled`) and reads as unavailable,
+   the chosen one included (its thumb stays). */
+[data-ui='v2'] .ls-segment:disabled {
+  color: var(--ls-text-subtle);
+  cursor: not-allowed;
+}
+
+/* Switch: the track takes the control-border step on hover and the pressed grey when pressed (on: the fill's hover and pressed steps). */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-switch:hover:not(:disabled) .ls-switch-track {
+    border-color: var(--ls-text-muted);
+  }
+
+  [data-ui='v2'] .ls-switch[aria-checked='true']:hover:not(:disabled) .ls-switch-track {
+    border-color: var(--ls-brand-fill-hover);
+    background: var(--ls-brand-fill-hover);
+  }
+}
+
+[data-ui='v2'] .ls-switch:active:not(:disabled) .ls-switch-track {
+  background: var(--ls-pressed-bg);
+}
+
+[data-ui='v2'] .ls-switch[aria-checked='true']:active:not(:disabled) .ls-switch-track {
+  background: var(--ls-brand-fill-pressed);
+}
+
+/* Slider dots: pressed fills the ring grey. */
+[data-ui='v2'] .ls-slider-dot:active::before {
+  background: var(--ls-pressed-bg);
+}
+
+/* Native checkboxes and radios outside the kit's field: a grey ring on hover, a darker one when pressed. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] :is(input[type='checkbox'], input[type='radio']):hover:not(:disabled) {
+    outline: var(--ls-space-1) solid var(--ls-hover-bg);
+    outline-offset: 0;
+  }
+}
+
+[data-ui='v2'] :is(input[type='checkbox'], input[type='radio']):active:not(:disabled) {
+  outline: var(--ls-space-1) solid var(--ls-pressed-bg);
+  outline-offset: 0;
+}
+
+/* Media tile title (C15, B23): the name wraps instead of ending in an ellipsis, and underlines on hover. */
+[data-ui='v2'] .ls-media-title {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-media-title:hover {
+    text-decoration-line: underline;
+  }
+}
+
+[data-ui='v2'] .ls-media-title:active {
+  color: var(--ls-text-muted);
+}
+
+/* ---- C74 / C15: the staff name in the top bar is never cut ------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-usermenu-name {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+[data-ui='v2'] .ls-usermenu-short {
+  white-space: nowrap;
+}
+
+/* ---- Staff bar (SHELL plan, DESIGN 8.5): the page context after the wordmark; the unread count is a neutral badge (A3) ------------ */
+[data-ui='v2'] .ls-topbar-context {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-1);
+  min-width: 0;
+  margin: 0 0 0 var(--ls-space-4);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-topbar-context-item {
+  color: var(--ls-text);
+  font-weight: var(--ls-weight-label);
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-topbar-context {
+    display: flex;
+  }
+}
+
+/* The sidebar grows with the text size (264 px at 100 %, up to 30 % of the window at 200 % text), so labels break by word, never by
+   syllable; the rail's icons are sized in em (they follow the text). */
+[data-ui='v2'] .ls-shell {
+  --ls-sidebar-w: min(16.5rem, 30vw);
+}
+
+[data-ui='v2'] :is(.ls-nav-link, .ls-sidebar-toggle) svg {
+  width: 1.25em;
+  height: 1.25em;
+}
+
+[data-ui='v2'] .ls-nav-label {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+[data-ui='v2'] .ls-bell-count {
+  color: var(--ls-bg-page);
+  background: var(--ls-text);
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-usermenu-short {
+    display: none;
+  }
+}
+
+/* ---- C15, Owner answer 7: names, titles and free text in table cells and card titles wrap by word; nothing is clamped or cut --------- */
+[data-ui='v2'] :is(.ls-cell-wrap, .ls-cell-clamp, .ls-card-title-clamp) {
+  display: block;
+}
+
+[data-ui='v2'] :is(.ls-cell-wrap, .ls-cell-clamp, .ls-card-title-clamp, .ls-cell-title),
+[data-ui='v2'] .ls-table td.ls-cell-title > *,
+[data-ui='v2'] .ls-table td.ls-cell-title a,
+[data-ui='v2'] .ls-cards-one-line .ls-table :is(.ls-cell-truncate, .ls-cell-wrap) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+}
+
+/* Tables from 640 px (a phone shows cards). */
+@media (min-width: 640px) {
+  /* The record's name (the title column) keeps the most room: 12 rem, at most 30 % of the screen (E4 review: products, stock and
+     supplier imports at 1024 px had names two words a line); the other text columns wrap around it. */
+  [data-ui='v2'] .ls-table :is(td.ls-cell-title, td.ls-col-lg:has(> .ls-cell-wrap)) {
+    min-width: min(12rem, 30vw);
+  }
+
+  /* Every other wrapping text cell keeps 10 rem, at most 25 % of the screen (measured at 1024 px: returns' tallest row 264 -> 118 px,
+     products 155 -> 100 px; both tables already scrolled inside their own window). */
+  [data-ui='v2'] .ls-table td:has(> .ls-cell-wrap) {
+    min-width: min(10rem, 25vw);
+  }
+}
+
+/* ---- C16 / B20: a sticky bar that would cover too much of the screen (200 % text, a short window) stops being sticky ------------------ */
+[data-ui='v2'] .ls-headerbar[data-fit='static'] {
+  position: relative;
+  top: auto;
+}
+
+html[data-text-large]
+  [data-ui='v2']
+  :is(.ls-site-subnav, .ls-pills-sticky, .ls-sticky-band, .ls-mem-aside) {
+  position: relative;
+  top: auto;
+}
+
+/* ---- Kit requests from the area workers (Step 4-6) ----------------------------------------------------------------------------------- */
+/* Toast action (C72 undo): the one button sits at the trailing edge before the close button. */
+[data-ui='v2'] .ls-toast-action {
+  flex: none;
+  align-self: center;
+}
+
+/* PageHeader status: the record's badge under the title, never inside the heading. */
+[data-ui='v2'] .ls-page-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+  margin-block-start: var(--ls-space-2);
+}
+
+/* The public booking ticket is a document of its own: no footer and no contact button (plan customer/ticket). */
+[data-ui='v2']:has(.ls-ticket-page) :is(.ls-site-footer, .ls-contact) {
+  display: none;
+}
+
+/* Counts and money in a list toolbar line up digit by digit. */
+[data-ui='v2'] .ls-toolbar-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A centred public page (404, ticket not found) holds most of the first screen, so the footer does not fill it (plan customer/not-found). */
+[data-ui='v2'] .ls-public-centered {
+  display: grid;
+  align-content: center;
+  min-block-size: 60svh;
+}
+
+/* Two-line table cells: a name in the main line or the detail line wraps by word (Owner answer 7; admin-a request). */
+[data-ui='v2'] .ls-cell-main {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+[data-ui='v2'] .ls-cell-sub {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Staff sign-in and password reset: the title is the compact title step (DESIGN 6.3), not the 18 px of the old card. */
+[data-ui='v2'] .ls-auth-card h1 {
+  font-size: var(--ls-type-title);
+  line-height: var(--ls-lh-title);
+}
+
+/* One count per list (FR rule: counts live in the table's "Hiển thị x–y trong n" line): where that line is on the page, the toolbar's
+   result count stays only for screen readers (it is the live status that announces a search result). */
+[data-ui='v2'] main:has(.ls-pagination-summary) .ls-toolbar-count {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* DateTimeInput: the date box and the 24 h time box side by side, 8 px apart; they stack at 200 % text. */
+[data-ui='v2'] .ls-datetime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-datetime > .ls-input:last-child {
+  flex: 0 1 7rem;
+}
+
+/* Chart key (admin-b request): the svg shape replaces the colour square; no background, the shape carries the colour. */
+[data-ui='v2'] svg.ls-chart-swatch {
+  width: var(--ls-space-3);
+  height: var(--ls-space-3);
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+[data-ui='v2'] svg.ls-chart-swatch-previous {
+  width: var(--ls-space-4);
+  color: var(--ls-text-subtle);
+}
+
+/* Media tiles (admin-b request): the whole picture shows (a logo is never cropped) on a white backdrop in both modes, so a dark logo
+   with a transparent background never vanishes on the dark tile. */
+[data-ui='v2'] :is(.ls-media-thumb, .ls-media-row-thumb) img {
+  object-fit: contain;
+  background: var(--ls-on-brand);
+}
+
+/* List and media row titles wrap by word, never an ellipsis (Owner answer 7). */
+[data-ui='v2'] :is(.ls-list-row-title, .ls-media-row-title) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-media-row-title:hover {
+    text-decoration-line: underline;
+  }
+}
+
+[data-ui='v2'] .ls-media-row-title:active {
+  color: var(--ls-text-muted);
+}
+
+/* ==== Step 4 sweep fixes (s10s4) ======================================================================================================== */
+/* Header tools (bell, account, language): pressed one grey step past hover and the press dip; it must out-rank the tools' own hover rule. */
+[data-ui='v2']
+  :is(.ls-site-tool, .ls-site-tools .ls-btn-icon:not(.ls-popover .ls-btn-icon)):active {
+  background: var(--ls-bg-pressed);
+  transform: scale(var(--ls-press-scale));
+}
+
+/* The wordmark link: hover is the grey text step; pressed dips like a button (muted and subtle text are one step in v2). */
+[data-ui='v2'] :is(.ls-site-brand a, .ls-topbar-brand a):active {
+  transform: scale(var(--ls-press-scale));
+}
+
+/* A plain link with no state of its own (a card's stretched name link, a list link): it underlines on hover and dims slightly when
+   pressed, so every link answers the pointer (B23). Links with their own states (buttons, nav, tabs, chips) keep theirs. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] a:not([class]):hover {
+    text-decoration-line: underline;
+  }
+}
+
+[data-ui='v2'] a:not([class]):active {
+  opacity: 0.72;
+}
+
+/* The contact button floats over every page: it is a neutral ink button, not the primary fill, so the page's own primary is the only
+   filled burgundy button in view (Owner answer 2, once per view). */
+[data-ui='v2'] .ls-contact-toggle {
+  color: var(--ls-bg-page);
+  background: var(--ls-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-contact-toggle:hover {
+    background: var(--ls-text-muted);
+  }
+}
+
+[data-ui='v2'] .ls-contact-toggle:active {
+  transform: scale(var(--ls-press-scale));
+}
+
+/* The contact layer is a positioning box for the floating button: it spans only the trailing half of the screen, so it never acts as a
+   full-width bottom bar that covers the page (C16: at 200 % text it was a 176 px band across the whole width). */
+[data-ui='v2'] .ls-contact {
+  inset-inline: auto 0;
+  width: 50vw;
+}
+
+/* Password field: one framed box, as wide as every other field (E4 review: the button beside it left the form's edges uneven). The frame
+   draws the field (border, sunken fill, radius, hover, focus ring); inside it the text box and the show/hide button sit side by side, so
+   the button never lies on top of the text box (E2 overlap; WIG: a control is never drawn over another) and there is no box in a box. */
+[data-ui='v2'] .ls-password {
+  display: flex;
+  align-items: stretch;
+  min-height: var(--ls-control-h);
+  border: 1px solid var(--ls-border-control);
+  border-radius: var(--ls-radius-sm);
+  background: var(--ls-bg-field);
+}
+
+[data-ui='v2'] .ls-password .ls-password-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding-inline-end: var(--ls-space-2);
+  border: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-password .ls-password-input:focus-visible {
+  outline: none;
+}
+
+[data-ui='v2'] .ls-password:has(> .ls-password-input:focus-visible) {
+  border-color: var(--ls-focus);
+  outline: 2px solid var(--ls-focus);
+  outline-offset: 2px;
+}
+
+[data-ui='v2'] .ls-password:has(> .ls-password-input[aria-invalid='true']) {
+  border-color: var(--ls-danger);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2']
+    .ls-password:not(
+      :has(> .ls-password-input:focus-visible, > .ls-password-input[aria-invalid='true'])
+    ):hover {
+    border-color: var(--ls-text-muted);
+  }
+}
+
+[data-ui='v2'] .ls-password .ls-password-toggle {
+  position: static;
+  flex: none;
+  align-self: stretch;
+  width: var(--ls-control-h);
+  height: auto;
+  min-height: 0;
+}
+
+[data-ui='v2'] .ls-password-toggle:active:not(:disabled) {
+  background: var(--ls-bg-pressed);
+}
+
+/* Quantity stepper: 8 px between the minus, the number and the plus (C29), and the number box keeps a visible 3:1 edge (C9).
+   Home price rows: 8 px between two row links (C29). */
+[data-ui='v2'] .ls-qty {
+  gap: var(--ls-space-2);
+  padding-inline: var(--ls-space-1);
+}
+
+[data-ui='v2'] .ls-qty .ls-qty-input {
+  border-color: var(--ls-border-control);
+}
+
+[data-ui='v2'] .ls-home-top-list {
+  row-gap: var(--ls-space-2);
+}
+
+/* Sub-navigation (member tabs, policy links): 8 px between two links (C29). */
+[data-ui='v2'] .ls-subnav {
+  gap: var(--ls-space-2);
+}
+
+/* Promo close: an icon button on the promo, not a bordered box inside the bordered promo (no double border). */
+[data-ui='v2'] .ls-promo-close {
+  border: 0;
+}
+
+/* Slider dots: the 44 px button itself answers the pointer (a grey disc behind the dot), not only the dot's ring. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-slider-dot:hover {
+    border-radius: var(--ls-radius-full);
+    background: var(--ls-hover-bg);
+  }
+}
+
+[data-ui='v2'] .ls-slider-dot:active {
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-bg-pressed);
+}
+
+/* Pressed states that a same-specificity hover rule (later in the cascade) overrode: hover + active together out-rank it. */
+[data-ui='v2']
+  :is(.ls-multi-more, .ls-th-sort, .ls-usermenu-trigger, .ls-sidebar-toggle):hover:active {
+  background: var(--ls-bg-pressed);
+}
+
+[data-ui='v2'] .ls-tab-active:hover:active:not(:disabled) {
+  background: var(--ls-bg-pressed);
+}
+
+/* Compact tables on a phone cut names to one line (.ls-table-compact): names wrap there too (Owner answer 7). */
+[data-ui='v2'] .ls-table.ls-table-compact :is(.ls-cell-wrap, .ls-cell-truncate),
+[data-ui='v2'] .ls-table :is(.ls-cell-wrap, .ls-cell-truncate) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* A campaign line under a product name wraps, never an ellipsis. */
+[data-ui='v2'] .ls-prod-campaign {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* Policy contents: 8 px between two entries (C29). */
+[data-ui='v2'] :is(.ls-info-toc ol, .ls-info-toc-list) {
+  display: grid;
+  row-gap: var(--ls-space-2);
+}
+
+/* A phone number or an email that stands alone (not inside a sentence) is a full 44 / 40 px target. */
+[data-ui='v2'] a.ls-link:is([href^='tel:'], [href^='mailto:']) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+/* An email or phone link inside a policy sentence is an inline link (it needs no 44 px box); its block padding overlapped the next line. */
+[data-ui='v2'] .ls-info-article .ls-info-contact {
+  display: inline;
+  min-height: 0;
+  padding-block: 0;
+}
+
+/* Whole-row and line links answer the pointer themselves (the measure and keyboard users hover the link, not the row). */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] :is(.ls-mem-row-link, .ls-shop-line-name):hover {
+    text-decoration-line: underline;
+  }
+
+  [data-ui='v2'] .ls-shop-line-thumb:hover {
+    opacity: 0.86;
+  }
+}
+
+[data-ui='v2'] :is(.ls-mem-row-link, .ls-shop-line-name, .ls-shop-line-thumb):active {
+  opacity: 0.72;
+}
+
+[data-ui='v2'] .ls-mem-rows .ls-mem-row-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+[data-ui='v2'] .ls-accordion-trigger:active {
+  background: var(--ls-bg-pressed);
+}
+
+/* Two panels side by side (a record and its summary, the cart and its total) are one height (equal card heights).
+   Two columns with actions keep their last action on one line: each column is a flex column with its actions pinned to the end. */
+[data-ui='v2'] :is(.ls-mem-split, .ls-shop-layout) {
+  align-items: stretch;
+}
+
+[data-ui='v2'] :is(.ls-info-split, .ls-pd-about-grid) > * {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-ui='v2']
+  :is(.ls-info-split, .ls-pd-about-grid)
+  > *
+  > :is(
+    .ls-btn,
+    a,
+    .ls-site-actions,
+    .ls-actions,
+    .ls-btn-row,
+    nav,
+    p:has(> a:only-child)
+  ):last-child {
+  margin-block-start: auto;
+}
+
+html[data-text-large] [data-ui='v2'] .ls-svc-chips {
+  position: relative;
+  top: auto;
+}
+
+/* Staff sign-in pages: the back-to-sign-in link keeps 8 px from the form's button above it (C29). */
+[data-ui='v2'] .ls-self-auth-link {
+  margin-block-start: var(--ls-space-2);
+}
+
+/* A link that is a value of its own in a description list (an invoice code) is a full target. */
+[data-ui='v2'] .ls-dl-value > a.ls-link,
+[data-ui='v2'] .ls-dl-value > * > a.ls-link:only-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+/* The season preview page renders the home page without the phone shell's own scroller, so under 1024 px (200 % zoom) the frame must
+   not be the fixed-height, clipped phone column: it grows with the page (nothing cut). */
+@media (max-width: 1023.98px) {
+  [data-ui='v2'].ls-season-preview-root.ls-site {
+    height: auto;
+    overflow: visible;
+  }
+}
+
+/* KPI rows and dashboard widgets: every card of a row is one height and its last action sits on one line (grid-misaligned). */
+[data-ui='v2'] .ls-adminb-kpis > * {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-ui='v2'] .ls-adminb-kpis > * > :is(a, .ls-btn, .ls-link, p:has(> a:only-child)):last-child {
+  margin-block-start: auto;
+}
+
+[data-ui='v2'] .ls-sortable-grid {
+  align-items: stretch;
+}
+
+/* Customer header at 200 % text: 8 px between the menu and the tools (C29). */
+[data-ui='v2'] :is(.ls-site-header .ls-headerbar-row, .ls-site-lead) {
+  column-gap: var(--ls-space-2);
+}
+
+/* DOM audit (session 10 run s5): a record's status sits in the title stack on the same 8 px rhythm as the description. */
+[data-ui='v2'] .ls-page-titles:has(> .ls-page-status) {
+  display: grid;
+  row-gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-page-titles:has(> .ls-page-status) > * {
+  margin-block: 0;
+}
+
+/* The first value of a multi-value cell (an employee's branches) wraps, never an ellipsis (Owner answer 7). */
+[data-ui='v2'] .ls-multi-first {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Column headers stay on one line (FR8: labels never wrap); a wide table scrolls inside its surface. */
+[data-ui='v2'] .ls-table th {
+  white-space: nowrap;
+}
+
+/* Empty state: icon, heading, sentence and action on one 12 px rhythm. */
+[data-ui='v2'] .ls-empty {
+  display: grid;
+  justify-items: center;
+  row-gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-empty > * {
+  margin-block: 0;
+}
+
+/* Staff sign-in form: fields and the submit button on one 16 px rhythm. */
+[data-ui='v2'] .ls-auth-card form {
+  display: grid;
+  row-gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-auth-card form > * {
+  margin-block: 0;
+}
+
+/* Footer legal line: the links stand apart by 16 px of space, no middle-dot separator (session 10 tells). */
+[data-ui='v2'] .ls-site-footer-legal ul {
+  column-gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-site-footer-legal li + li::before {
+  content: none;
+}
+
+/* Home price columns (from 1024 px): the title and the rows of the three columns share one row grid (subgrid), so a name that wraps in
+   one column moves the same row in the others and the rows line up across the band (grid alignment). */
+@media (min-width: 1024px) {
+  @supports (grid-template-rows: subgrid) {
+    [data-ui='v2'] .ls-home-top {
+      row-gap: var(--ls-space-2);
+    }
+
+    [data-ui='v2'] .ls-home-top > .ls-home-top-col {
+      grid-row: span 4;
+      grid-template-rows: subgrid;
+      row-gap: var(--ls-space-2);
+    }
+
+    [data-ui='v2'] .ls-home-top-col > .ls-home-top-list {
+      grid-row: span 3;
+      grid-template-rows: subgrid;
+      margin: 0;
+    }
+  }
+}
+
+/* Contact: the words column fills its row and its actions sit at its end, on the line of the map's own action. */
+[data-ui='v2'] .ls-info-place > .ls-contact-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+[data-ui='v2'] .ls-contact-text > .ls-contact-actions {
+  margin-block-start: auto;
+}
+
+/* Product page: the in-store column ends on the same line as the description column (its contact lines sit at its end). */
+[data-ui='v2'] .ls-pd-about-grid > .ls-prod-store {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-ui='v2'] .ls-prod-store > .ls-prod-store-lines {
+  margin-block-start: auto;
+}
+
+/* Cart and checkout: the floating contact button steps out of the way of the line controls and the pay bar (the shop's contact stays in
+   the footer and the header): no floating control sits next to a line's quantity or remove button (C29). */
+[data-ui='v2']:has(.ls-shop-layout, .ls-pay-bar) .ls-contact {
+  display: none;
+}
+
+/* A field's label action ("Quên mật khẩu?") is a full target beside the label. */
+[data-ui='v2'] .ls-label-action :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+/* An email or a phone number never breaks over two lines (a link broken across lines overlaps the next link). */
+[data-ui='v2'] .ls-info-contact {
+  white-space: nowrap;
+}
+
+/* Account hub (phone quick links): 8 px between two rows (C29). */
+[data-ui='v2'] .ls-hub {
+  row-gap: var(--ls-space-2);
+}
+
+/* A plain link already underlined at rest thickens its underline on hover. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] a:not([class]):hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* Product cards: the photo frame keeps its square at every width (a tall picture never stretches one card's frame). */
+[data-ui='v2'] .ls-pcard-media {
+  min-height: 0;
+}
+
+[data-ui='v2'] .ls-pcard-media > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Product page: the description's sections sit at the end of their column, on the line of the in-store column's end. */
+[data-ui='v2'] .ls-pd-about-text {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-ui='v2'] .ls-pd-about-text > .ls-prod-sections {
+  margin-block-start: auto;
+}
+
+/* A radio or checkbox group: 8 px between two choices (C29). */
+[data-ui='v2'] :is(.ls-radios, .ls-checks) {
+  row-gap: var(--ls-space-2);
+}
+
+/* KPI card: the help button stays at the top of the head row when the title wraps (200 % text), so the buttons of a row line up. */
+[data-ui='v2'] .ls-kpi-head {
+  align-items: flex-start;
+}
+
+/* ---- Notification inbox (components/notifications/inbox.tsx, staff and member pages) ----------------------------------------------
+   Here, not in an area sheet: the area sheets load per area layout (Step 7), and the inbox is drawn in both areas.
+   No status column: an unread message has a dot and the 600 weight, the word is for screen readers (C5, A3). The message is an ink
+   link that wraps in full (Owner answer 7); hover underlines it, pressed adds the grey tint (kit link rule). */
+.ls-inbox-message {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.ls-inbox-dot {
+  flex: none;
+  inline-size: var(--ls-space-2);
+  block-size: var(--ls-space-2);
+  border-radius: var(--ls-radius-full);
+  background: var(--ls-brand);
+}
+
+[data-ui='v2'] .ls-table .ls-inbox-message .ls-link {
+  color: var(--ls-text);
+  text-decoration-line: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-table .ls-inbox-message .ls-link:hover {
+    text-decoration-line: underline;
+  }
+}
+
+.ls-inbox-message[data-unread] {
+  font-weight: 600;
+}
+
+/* ---- C6: a higher-contrast variant (prefers-contrast: more): secondary text takes the body text colour and every hairline the 3:1
+   control-border step, in both modes. ------------------------------------------------------------------------------------------------ */
+@media (prefers-contrast: more) {
+  [data-ui='v2'] {
+    --ls-text-muted: var(--ls-text);
+    --ls-text-subtle: var(--ls-text);
+    --ls-border: var(--ls-border-control);
+  }
+}
+
+/* ---- C11: in dark mode a photo on a white background is dimmed one step, so it does not glare on the dark page (logos excluded). --- */
+@media (prefers-color-scheme: dark) {
+  [data-ui='v2']
+    :is(
+      .ls-pcard-media,
+      .ls-svc-media,
+      .ls-gallery,
+      .ls-prod-gallery,
+      .ls-media-thumb,
+      .ls-thumb,
+      .ls-media-preview
+    )
+    img {
+    filter: brightness(0.88);
+  }
+}
+
+/* Staff record pages: the breadcrumb is the one way back (SHELL plan); the Back chevron shows only where a page has no breadcrumb. */
+[data-ui='v2'] .ls-content:has(.ls-page-crumbs) .ls-back-row {
+  display: none;
+}
+
+/* Fields answer the pointer too (B23): the border goes one step stronger on hover (Radix: 7 at rest, 8 hovered), never the accent;
+   focus, an error and a disabled field keep their own border. Text fields have no pressed state (typing is the action). */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-input:not(:disabled):not(:focus-visible):not([aria-invalid='true']):hover {
+    border-color: var(--ls-text-muted);
+  }
+}
+
+/* Customer header at a large text size (html[data-text-large], set by HeaderFit): a member's five menu links, the tools and the call to
+   action no longer fit one 1440 px row, so the row and the menu wrap onto further lines instead of overlapping. The taller bar then
+   stops being sticky (HeaderFit, C16), so it never covers the page. */
+html[data-text-large] [data-ui='v2'] .ls-site-header {
+  height: auto;
+}
+
+html[data-text-large] [data-ui='v2'] .ls-site-header-row {
+  flex-wrap: wrap;
+  height: auto;
+  row-gap: var(--ls-space-2);
+  padding-block: var(--ls-space-2);
+}
+
+html[data-text-large] [data-ui='v2'] :is(.ls-site-lead, .ls-site-nav) {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+html[data-text-large] [data-ui='v2'] .ls-site-nav {
+  margin-inline-start: 0;
+}
+
+/* At a large text size the count badge grows with the text while the tool and its icon stay 44 / 20 px: the badge then sits beside the
+   tool instead of on it, so the cart and bell icons stay visible. */
+html[data-text-large] [data-ui='v2'] :is(.ls-site-cart, .ls-site-bell) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+}
+
+html[data-text-large] [data-ui='v2'] :is(.ls-site-cart, .ls-site-bell) > .ls-bell-count {
+  position: static;
+}
+
+/* At a large text size a side column sized in rem (the cart and checkout summary 24 rem, the booking and order summaries 22 rem, a member
+   page's aside, an info page's contents) would leave the main column narrow: the two stack, the main column first. */
+html[data-text-large]
+  [data-ui='v2']
+  :is(
+    .ls-shop-layout,
+    .ls-booking-layout,
+    .ls-order-layout,
+    .ls-mem-split,
+    .ls-info-layout[data-toc='true']
+  ) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A disabled primary drops its colour (HIG): neutral fill and quiet text instead of the burgundy at 55 % opacity, which read pink over
+   black (B22, E4 review of the dark checkout). */
+[data-ui='v2'] .ls-btn-primary:is(:disabled, [aria-disabled='true']) {
+  border-color: transparent;
+  background: var(--ls-bg-pressed);
+  color: var(--ls-text-subtle);
+  opacity: 1;
+}
+
+/* Staff dashboard at a large text size: a small widget spans 3 of 12 columns, which at 200 % text left a few letters per line. The
+   widgets stack in one column (the same switch as the customer layouts above). */
+html[data-text-large] [data-ui='v2'] .ls-widget-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-text-large] [data-ui='v2'] .ls-widget-grid > * {
+  grid-column: 1 / -1;
+}
+
+/* A two-column detail list at a large text size: each column keeps at least 16 rem, otherwise the pairs stack (an email no longer
+   breaks inside the word, E4 review of the staff invoice at 200 % text). */
+[data-ui='v2'] .ls-dl-2 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+/* Staff top bar at a large text size: the page context (a repeat of the sidebar's current entry and the page title) gives way, so it
+   never runs into the bell; the signed-in name stays (C74). */
+html[data-text-large] [data-ui='v2'] .ls-topbar-context {
+  display: none;
+}
+
+/* Tables at a large text size: a text cell keeps 8 rem (it scrolls sideways inside the table's own window, which WCAG reflow allows
+   for data tables) instead of breaking one word a line (E4 review: cash book type column at 200 % text). */
+html[data-text-large]
+  [data-ui='v2']
+  .ls-table
+  td:not(.ls-cell-numeric, .ls-cell-actions, .ls-cell-leading, .ls-cell-drill, .ls-cell-select) {
+  min-width: 8rem;
 }

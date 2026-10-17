@@ -1,9 +1,12 @@
 'use client';
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type ComponentType,
@@ -18,6 +21,7 @@ import { Popover } from './popover';
 import {
   TABLET_QUERY,
   arrangeNav,
+  currentContext,
   currentGroupId,
   initials,
   readNavGroupState,
@@ -45,6 +49,51 @@ export interface ShellLinkProps {
 export type ShellLink = ComponentType<ShellLinkProps>;
 
 const PlainLink: ShellLink = (props) => <a {...props} />;
+
+interface ShellPreferenceState {
+  collapsed: boolean;
+  groups: NavGroupState;
+}
+
+interface ShellPreferencesValue {
+  state: ShellPreferenceState;
+  /** Whether the server found each cookie (a device that chose before the cookies existed is carried over once). */
+  known: { collapsed: boolean; groups: boolean };
+  update: (patch: Partial<ShellPreferenceState>) => void;
+}
+
+const ShellPreferencesContext = createContext<ShellPreferencesValue | null>(null);
+
+/**
+ * The sidebar's remembered state (collapsed rail, open groups) as the server read it from the person's cookies
+ * (`parseSidebarCookie`, `parseNavGroupCookie`), placed once around the app by the root layout. The shell then renders on the
+ * server exactly as it will on the client, so nothing collapses or opens after the first paint (rbp
+ * rendering-hydration-no-flicker), and it keeps the live state across client navigations between areas.
+ */
+export function ShellPreferencesProvider({
+  collapsed,
+  groups,
+  children,
+}: {
+  collapsed: boolean | undefined;
+  groups: NavGroupState | undefined;
+  children: ReactNode;
+}) {
+  const [state, setState] = useState<ShellPreferenceState>(() => ({
+    collapsed: collapsed ?? false,
+    groups: groups ?? {},
+  }));
+  const update = useCallback(
+    (patch: Partial<ShellPreferenceState>) => setState((previous) => ({ ...previous, ...patch })),
+    [],
+  );
+  const known = useMemo(
+    () => ({ collapsed: collapsed !== undefined, groups: groups !== undefined }),
+    [collapsed, groups],
+  );
+  const value = useMemo(() => ({ state, known, update }), [state, known, update]);
+  return <ShellPreferencesContext value={value}>{children}</ShellPreferencesContext>;
+}
 
 export interface AppShellLabels {
   /** Accessible name of the navigation, also the drawer title on phones. */
@@ -91,17 +140,38 @@ export function AppShell({
 }) {
   const phone = useMediaQuery(PHONE_QUERY);
   const tablet = useMediaQuery(TABLET_QUERY);
-  const [collapsed, setCollapsed] = useState(false);
+  const preferences = useContext(ShellPreferencesContext);
+  const [localCollapsed, setLocalCollapsed] = useState(false);
+  // With the provider the server already rendered the person's choice (a cookie), so the first paint is right; without it
+  // (a bare kit use) the stored choice is read after hydration so the server and first client render agree.
+  const collapsed = preferences ? preferences.state.collapsed : localCollapsed;
   const [open, setOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement | null>(null);
-  const groups = arrangeNav(nav);
+  const groups = useMemo(() => arrangeNav(nav), [nav]);
+  const context = useMemo(() => currentContext(groups), [groups]);
 
-  // Stored state is read after hydration so the server and first client render agree.
-  useEffect(() => setCollapsed(readSidebarCollapsed()), []);
+  useEffect(() => {
+    if (!preferences) {
+      setLocalCollapsed(readSidebarCollapsed());
+      return;
+    }
+    // A device that chose before the cookie existed: carry its stored choice over once (the next load paints it at once).
+    if (!preferences.known.collapsed && readSidebarCollapsed()) {
+      writeSidebarCollapsed(true);
+      preferences.update({ collapsed: true });
+    }
+    // Only on mount.
+  }, []);
 
   const close = useCallback(() => setOpen(false), []);
-  // A resize to another layout must not leave an overlay or drawer open.
-  useEffect(() => setOpen(false), [phone, tablet]);
+  // A resize to another layout must not leave an overlay or drawer open: adjusted while rendering when the layout changes,
+  // not in an effect (rbp rerender-derived-state-no-effect).
+  const layout = phone ? 'phone' : tablet ? 'tablet' : 'desktop';
+  const [seenLayout, setSeenLayout] = useState(layout);
+  if (layout !== seenLayout) {
+    setSeenLayout(layout);
+    setOpen(false);
+  }
 
   useEffect(() => {
     if (!open || phone) return undefined;
@@ -115,21 +185,25 @@ export function AppShell({
   }, [open, phone]);
 
   function toggleCollapsed() {
-    setCollapsed((value) => {
-      writeSidebarCollapsed(!value);
-      return !value;
-    });
+    const next = !collapsed;
+    writeSidebarCollapsed(next);
+    if (preferences) preferences.update({ collapsed: next });
+    else setLocalCollapsed(next);
   }
 
   const rail = tablet ? !open : collapsed;
-  const navigation = (
-    <SidebarNav
-      groups={groups}
-      label={labels.nav}
-      rail={phone ? false : rail}
-      LinkComponent={LinkComponent}
-      onNavigate={close}
-    />
+  // Memoised: a menu toggle or media change re-renders the shell, not the whole navigation (rbp rerender-memo).
+  const navigation = useMemo(
+    () => (
+      <SidebarNav
+        groups={groups}
+        label={labels.nav}
+        rail={phone ? false : rail}
+        LinkComponent={LinkComponent}
+        onNavigate={close}
+      />
+    ),
+    [groups, labels.nav, phone, rail, LinkComponent, close],
   );
 
   return (
@@ -151,6 +225,19 @@ export function AppShell({
         }
         brandClassName="ls-topbar-brand"
         brand={brand}
+        nav={
+          context ? (
+            <p className="ls-topbar-context">
+              {context.group ? (
+                <>
+                  <span>{context.group}</span>
+                  <Icon name="chevron-right" size={16} />
+                </>
+              ) : null}
+              <span className="ls-topbar-context-item">{context.item}</span>
+            </p>
+          ) : undefined
+        }
         endClassName="ls-topbar-end"
         end={
           <>
@@ -229,35 +316,60 @@ export function SidebarNav({
 }) {
   const prefix = useId();
   const currentId = currentGroupId(groups);
-  // Stored state is read after hydration so the server and first client render agree: until then only
-  // the group with the current page is open.
-  const [stored, setStored] = useState<NavGroupState>({});
-  const loaded = useRef(false);
+  const preferences = useContext(ShellPreferencesContext);
+  // With the provider the open groups come from a cookie the server read, so the first paint already shows them. Without it
+  // the stored state is read after hydration (until then only the group with the current page is open).
+  const [localStored, setLocalStored] = useState<NavGroupState>({});
+  const stored = preferences ? preferences.state.groups : localStored;
+  // The group holding the current page opens itself, on load and whenever the page moves into another group, and stays open
+  // after the page leaves it until the person closes it. Adjusted while rendering when the current group changes (no effect).
+  const [closedCurrent, setClosedCurrent] = useState<string | null>(null);
+  const [opened, setOpened] = useState<NavGroupState>(() =>
+    currentId ? { [currentId]: true } : {},
+  );
+  const [seenCurrent, setSeenCurrent] = useState(currentId);
+  if (currentId !== seenCurrent) {
+    setSeenCurrent(currentId);
+    setClosedCurrent(null);
+    if (currentId) setOpened((previous) => ({ ...previous, [currentId]: true }));
+  }
 
   useEffect(() => {
-    setStored((previous) => ({
-      ...readNavGroupState(),
-      ...previous,
-      ...(currentId ? { [currentId]: true } : {}),
-    }));
-    loaded.current = true;
-    // Only on mount; later page changes are handled by the next effect.
+    if (!preferences) {
+      setLocalStored(readNavGroupState());
+      return;
+    }
+    // A device that chose before the cookie existed: carry its stored groups over once.
+    if (!preferences.known.groups) {
+      const saved = readNavGroupState();
+      if (Object.keys(saved).length > 0) {
+        writeNavGroupState(saved);
+        preferences.update({ groups: saved });
+      }
+    }
+    // Only on mount.
   }, []);
 
-  // The group holding the current page opens itself when the page changes.
-  useEffect(() => {
-    if (!currentId) return;
-    setStored((previous) =>
-      previous[currentId] === true ? previous : { ...previous, [currentId]: true },
-    );
-  }, [currentId]);
+  const isOpen = (id: string) =>
+    id === currentId && closedCurrent !== currentId ? true : (opened[id] ?? stored[id] ?? false);
 
-  useEffect(() => {
-    if (loaded.current) writeNavGroupState(stored);
-  }, [stored]);
-
-  const toggle = (id: string, open: boolean) =>
-    setStored((previous) => ({ ...previous, [id]: !open }));
+  // The choice is saved where it is made (rbp rerender-move-effect-to-event), with the current group's state as shown.
+  const toggle = (id: string, open: boolean) => {
+    const next: NavGroupState = {
+      ...stored,
+      ...(currentId ? { [currentId]: isOpen(currentId) } : {}),
+      [id]: !open,
+    };
+    if (id === currentId) setClosedCurrent(open ? id : null);
+    setOpened((previous) => {
+      const rest: Record<string, boolean> = { ...previous };
+      delete rest[id];
+      return rest;
+    });
+    writeNavGroupState(next);
+    if (preferences) preferences.update({ groups: next });
+    else setLocalStored(next);
+  };
 
   // The current page's highlight is one element that slides to the next page (pattern M8). A collapsed group clips its
   // items, so the pill hides with it (the rail shows every group open).
@@ -277,7 +389,7 @@ export function SidebarNav({
       {groups.map((group) => {
         const headingId = `${prefix}-${group.id}`;
         const panelId = `${prefix}-${group.id}-items`;
-        const open = group.flat || (stored[group.id] ?? group.id === currentId);
+        const open = group.flat || isOpen(group.id);
         return (
           <div className="ls-nav-group" key={group.id}>
             {group.flat ? null : rail ? (
@@ -366,6 +478,11 @@ export function UserMenu({
         </span>
         <span className="ls-usermenu-name" aria-hidden>
           {name}
+        </span>
+        {/* C74: the signed-in name is never hidden. Where the full name has no room (under 1024 css px, 200 % zoom), the given name stays:
+            the last word of a Vietnamese name. */}
+        <span className="ls-usermenu-short" aria-hidden>
+          {name.trim().split(/\s+/).pop()}
         </span>
         <Icon name="chevron-down" size={16} />
       </button>

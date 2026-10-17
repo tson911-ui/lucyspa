@@ -913,6 +913,27 @@
   border-end-end-radius: var(--ls-radius-lg);
 }
 
+/* Safe areas (WIG): a side drawer is as tall as the screen, so its ends clear the notch and the home indicator and its outer edge
+   the side inset; a bottom sheet clears the home indicator. The insets are 0 where the device has none. */
+[data-ui='v2'] :is(.ls-drawer-start, .ls-drawer-end) {
+  padding-block: calc(var(--ls-space-6) + var(--ls-safe-top))
+    calc(var(--ls-space-6) + var(--ls-safe-bottom));
+}
+
+[data-ui='v2'] .ls-drawer-start {
+  padding-inline-start: calc(var(--ls-space-6) + var(--ls-safe-left));
+}
+
+[data-ui='v2'] .ls-drawer-end {
+  padding-inline-end: calc(var(--ls-space-6) + var(--ls-safe-right));
+}
+
+[data-ui='v2'] .ls-drawer-bottom {
+  padding-inline: calc(var(--ls-space-6) + var(--ls-safe-left))
+    calc(var(--ls-space-6) + var(--ls-safe-right));
+  padding-bottom: calc(var(--ls-space-6) + var(--ls-safe-bottom));
+}
+
 [data-ui='v2'] .ls-drawer-bottom {
   width: 100%;
   border-start-start-radius: var(--ls-radius-lg);
@@ -935,6 +956,18 @@
   border-color: var(--ls-border);
   border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-raised);
+}
+
+/* The phone bottom sheet (HIG C62, components.css) keeps square bottom corners and rises from the edge on every area. */
+[data-ui='v2'] .ls-popover.ls-popover-sheet:not([data-state='closed']) {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+  animation: ls-sheet-in var(--ls-dur-slow) var(--ls-ease-out) backwards;
+}
+
+[data-ui='v2'] .ls-popover.ls-popover-sheet {
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
 }
 
 [data-ui='v2'] .ls-menu-item {
@@ -1290,4 +1323,16 @@
   [data-ui='v2'] .ls-table td[data-label] > * {
     margin-inline-start: auto;
   }
+}
+
+/* ---- HIG C65: the slider's page control is uncoloured (the current dot is ink, never the brand fill) ---------------------- */
+[data-ui='v2'] .ls-slider-dot[aria-current='true']::before {
+  border-color: var(--ls-text);
+  background: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-slider-position {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-variant-numeric: tabular-nums;
 }

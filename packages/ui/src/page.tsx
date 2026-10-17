@@ -33,16 +33,19 @@ export function ListSection({
   title,
   headingId,
   actions,
+  className,
   children,
 }: {
   title: string;
   /** Optional id of the heading, used as the section's accessible name. */
   headingId?: string | undefined;
   actions?: ReactNode | undefined;
+  /** An area class on the section itself (no wrapper div needed). */
+  className?: string | undefined;
   children: ReactNode;
 }) {
   return (
-    <section className="ls-list-section" aria-labelledby={headingId}>
+    <section className={cx('ls-list-section', className)} aria-labelledby={headingId}>
       <div className="ls-list-section-head">
         <h2 className="ls-list-section-title" id={headingId}>
           {title}
@@ -63,11 +66,14 @@ export function PageHeader({
   description,
   actions,
   breadcrumbs,
+  status,
 }: {
   title: string;
   description?: string | undefined;
   actions?: ReactNode | undefined;
   breadcrumbs?: ReactNode | undefined;
+  /** A record's status (a Badge), shown under the title, never inside the heading (Owner rule: headings are text only). */
+  status?: ReactNode | undefined;
 }) {
   return (
     <header className="ls-page-header">
@@ -75,6 +81,7 @@ export function PageHeader({
       <div className="ls-page-header-row">
         <div className="ls-page-titles">
           <h1 className="ls-page-title">{title}</h1>
+          {status ? <div className="ls-page-status">{status}</div> : null}
           {description ? <p className="ls-page-description">{description}</p> : null}
         </div>
         {actions ? <div className="ls-page-actions">{actions}</div> : null}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from './button';
 import {
   createConfirmController,
@@ -15,7 +15,9 @@ import { Dialog } from './overlay';
 
 export interface ConfirmFact {
   label: string;
-  value: string;
+  value: ReactNode;
+  /** The value is a code or identifier (a booking code, a record code): never machine-translated (`translate="no"`, WIG). */
+  code?: boolean | undefined;
 }
 
 export interface ConfirmError {
@@ -45,9 +47,15 @@ export function ConfirmDialog({
   describeError,
   onConfirm,
   onCancel,
+  suspended = false,
 }: {
   /** Defaults to `true` so the dialog can simply be mounted while needed. */
   open?: boolean | undefined;
+  /**
+   * Another modal is asking something for this confirmation (the password check of a sensitive command): this dialog steps out of
+   * sight until it is answered, its reason and pending state kept, so only one modal is on screen (HIG C60, `Dialog.suspended`).
+   */
+  suspended?: boolean | undefined;
   title: string;
   description: string;
   /** Name/code of the affected record. */
@@ -114,6 +122,7 @@ export function ConfirmDialog({
       title={title}
       description={description}
       busy={state.pending}
+      suspended={suspended}
       onClose={() => controller.cancel()}
       initialFocus={cancelRef}
       footer={
@@ -142,7 +151,7 @@ export function ConfirmDialog({
           {facts.map((fact) => (
             <div key={fact.label} className="ls-facts-row">
               <dt>{fact.label}</dt>
-              <dd>{fact.value}</dd>
+              <dd translate={fact.code ? 'no' : undefined}>{fact.value}</dd>
             </div>
           ))}
         </dl>
@@ -174,6 +183,10 @@ export function ConfirmDialog({
               {...control}
               value={typed}
               autoComplete="off"
+              // A record code: no spelling marks, no automatic capital (WIG forms).
+              spellCheck={false}
+              autoCapitalize="off"
+              translate="no"
               disabled={state.pending}
               onChange={(event) => setTyped(event.target.value)}
             />

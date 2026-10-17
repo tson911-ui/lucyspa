@@ -216,6 +216,47 @@ test('desktop: the sidebar collapses to an icon rail, keeps labels for assistive
   window.localStorage.clear();
 });
 
+test('with the cookie preferences the server renders the rail and the open groups, so the first paint never jumps', () => {
+  const markup = renderToStaticMarkup(
+    <ui.ShellPreferencesProvider collapsed groups={{ operations: true }}>
+      {shell()}
+    </ui.ShellPreferencesProvider>,
+  );
+  assert.match(markup, /<aside class="ls-sidebar" data-rail="true"/);
+  const expanded = renderToStaticMarkup(
+    <ui.ShellPreferencesProvider collapsed={false} groups={{ people: false, operations: true }}>
+      <ui.SidebarNav groups={ui.arrangeNav(accordionNav)} label="Điều hướng nhân sự" />
+    </ui.ShellPreferencesProvider>,
+  );
+  assert.deepEqual(
+    [...expanded.matchAll(/aria-expanded="(true|false)"/g)].map((match) => match[1]),
+    ['true', 'true'],
+    'the remembered group and the current page group are open in the server markup',
+  );
+  assert.equal(ui.parseSidebarCookie('1'), true);
+  assert.equal(ui.parseSidebarCookie(undefined), undefined);
+  assert.deepEqual(
+    ui.parseNavGroupCookie(encodeURIComponent('{"a":true,"b":"x"}')),
+    { a: true },
+    'an encoded cookie is read and only boolean entries are kept',
+  );
+  assert.equal(ui.parseNavGroupCookie('not json'), undefined);
+  // Toggling writes the cookie the server reads next time.
+  window.localStorage.clear();
+  const view = mount(
+    <ui.ShellPreferencesProvider collapsed={undefined} groups={undefined}>
+      {shell()}
+    </ui.ShellPreferencesProvider>,
+  );
+  click($(view.container, '.ls-sidebar-toggle')!);
+  assert.match(window.document.cookie, new RegExp(`${ui.SIDEBAR_COOKIE}=1`));
+  assert.equal($(view.container, 'aside.ls-sidebar')!.getAttribute('data-rail'), 'true');
+  click($(view.container, '.ls-sidebar-toggle')!);
+  assert.doesNotMatch(window.document.cookie, new RegExp(`${ui.SIDEBAR_COOKIE}=1`));
+  view.unmount();
+  window.localStorage.clear();
+});
+
 test('phone: no sidebar; the menu button opens a drawer with the same navigation, links close it', () => {
   dom.setPhone(true);
   const view = mount(shell());
@@ -363,6 +404,89 @@ test('segmentedTarget: arrows wrap, Home/End jump, other keys are ignored', () =
   assert.equal(ui.segmentedTarget('End', 0, 3), 2);
   assert.equal(ui.segmentedTarget('a', 0, 2), null);
   assert.equal(ui.segmentedTarget('ArrowRight', 0, 0), null);
+  // Disabled options are skipped by the arrows and by Home/End; with none left there is no target.
+  const second = (index: number) => index === 1;
+  assert.equal(ui.segmentedTarget('ArrowRight', 0, 3, second), 2);
+  assert.equal(ui.segmentedTarget('ArrowLeft', 2, 3, second), 0);
+  assert.equal(
+    ui.segmentedTarget('Home', 2, 3, (index) => index === 0),
+    1,
+  );
+  assert.equal(
+    ui.segmentedTarget('End', 0, 3, (index) => index === 2),
+    1,
+  );
+  assert.equal(
+    ui.segmentedTarget('ArrowRight', 0, 2, () => true),
+    null,
+  );
+});
+
+test('SegmentedControl: a disabled option is skipped, takes no click and is described by its reason', () => {
+  const seen: string[] = [];
+  function Harness() {
+    const [value, setValue] = useState<'A' | 'B' | 'C'>('A');
+    return (
+      <ui.SegmentedControl
+        label="Hiển thị"
+        value={value}
+        onChange={(next) => {
+          seen.push(next);
+          setValue(next);
+        }}
+        options={[
+          { value: 'A', label: 'Một' },
+          { value: 'B', label: 'Hai', disabled: true, disabledReason: 'Chưa có dữ liệu.' },
+          { value: 'C', label: 'Ba' },
+        ]}
+      />
+    );
+  }
+  const view = mount(<Harness />);
+  const radios = $$(view.container, '[role="radio"]') as HTMLButtonElement[];
+  assert.equal(radios[1]!.disabled, true, 'native disabled: no hover, no pressed, no focus');
+  assert.equal(radios[1]!.getAttribute('tabindex'), '-1');
+  const describedBy = radios[1]!.getAttribute('aria-describedby');
+  assert.ok(describedBy, 'the reason describes the option');
+  assert.equal(window.document.getElementById(describedBy)?.textContent, 'Chưa có dữ liệu.');
+  assert.equal(radios[1]!.textContent, 'Hai', 'the reason is not part of the name');
+  assert.equal(radios[0]!.getAttribute('aria-describedby'), null);
+  radios[0]!.focus();
+  press(radios[0]!, 'ArrowRight');
+  assert.equal(window.document.activeElement, radios[2], 'the arrow skips the disabled option');
+  assert.equal(radios[2]!.getAttribute('aria-checked'), 'true');
+  click(radios[1]!);
+  assert.deepEqual(seen, ['C'], 'a click on the disabled option changes nothing');
+  view.unmount();
+});
+
+test('SegmentedControl: a disabled group blocks every option and keeps the chosen one shown', () => {
+  const markup = renderToStaticMarkup(
+    <ui.SegmentedControl
+      label="Hiển thị"
+      value="all"
+      disabled
+      onChange={() => undefined}
+      options={[
+        { value: 'conflicts', label: 'Chỉ dòng bị trùng' },
+        { value: 'all', label: 'Tất cả' },
+      ]}
+    />,
+  );
+  assert.match(markup, /role="radiogroup"[^>]*aria-disabled="true"/);
+  assert.equal(markup.match(/disabled=""/g)?.length, 2, 'both options');
+  assert.equal(markup.match(/tabindex="0"/g), null, 'no tab stop while blocked');
+  assert.match(markup, /--seg-index:1/, 'the thumb still sits under the chosen option');
+  const foundation = readFileSync(new URL('foundation-v2.css', import.meta.url), 'utf8');
+  assert.match(foundation, /\):not\(:disabled\):hover,/, 'the grey hover skips a disabled segment');
+  assert.match(
+    foundation,
+    /\):not\(:disabled\):active,/,
+    'the grey pressed skips a disabled segment',
+  );
+  assert.match(foundation, /\.ls-segment-active:hover:not\(:disabled\)/);
+  assert.match(foundation, /\.ls-segment-active:active:not\(:disabled\)/);
+  assert.match(foundation, /\.ls-segment:disabled \{\s*color: var\(--ls-text-subtle\);/);
 });
 
 test('SegmentedControl: two-option radio group, one tab stop, arrows and clicks select', () => {
@@ -594,10 +718,6 @@ test('motion (D13): every shared component animates from the tokens; loops are l
     [components, /\.ls-backdrop\s*\{[^}]*animation: ls-fade-in/],
     [components, /\.ls-drawer\s*\{[^}]*animation: ls-drawer-in var\(--ls-dur-slow\)/],
     [components, /\.ls-toast\s*\{[^}]*animation: ls-toast-in/],
-    [
-      shellCss,
-      /\.ls-sidebar-slot\s*\{[^}]*transition: width var\(--ls-dur-base\) var\(--ls-ease-out\)/,
-    ],
     [shellCss, /\.ls-route-fade\s*\{[^}]*animation: ls-fade-in var\(--ls-dur-base\)/],
     // The staff route wrapper (Owner G5): a navigation fades over the compact route token, the first load does not animate.
     [
@@ -607,6 +727,8 @@ test('motion (D13): every shared component animates from the tokens; loops are l
     [shellCss, /\.ls-route-enter\s*\{\s*animation-name: none;/],
   ];
   for (const [text, pattern] of wants) assert.match(text, pattern, String(pattern));
+  // The rail switch is one step: a width tween would re-lay out the content column every frame.
+  assert.doesNotMatch(block(shellCss, '.ls-sidebar-slot'), /transition:/);
   // The route fade is opacity only: no keyframe that moves content is used by it.
   assert.match(components, /@keyframes ls-fade-in \{\s*from \{\s*opacity: 0;\s*\}\s*\}/);
   const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
@@ -855,12 +977,10 @@ test('sidebar styles: solid red hover and current page, accordion header, rail s
     /rotate\(-90deg\)/,
   );
   assert.match(block(shellCss, '.ls-nav-chevron'), /transition:[^;]*var\(--ls-dur-fast\)/);
-  // A group eases open and closed (grid rows 0fr to 1fr) and turns invisible once closed, so it is not focusable.
+  // A group opens and closes in one step (grid rows 0fr / 1fr; never a tweened layout property) and is invisible once
+  // closed, so it is not focusable.
   assert.match(block(shellCss, '.ls-nav-collapse'), /grid-template-rows:\s*1fr/);
-  assert.match(
-    block(shellCss, '.ls-nav-collapse'),
-    /transition:[^;]*grid-template-rows var\(--ls-dur-base\)/,
-  );
+  assert.doesNotMatch(block(shellCss, '.ls-nav-collapse'), /transition:/);
   const closed = block(shellCss, ".ls-nav-collapse[data-open='false']");
   assert.match(closed, /grid-template-rows:\s*0fr/);
   assert.match(closed, /visibility:\s*hidden/);

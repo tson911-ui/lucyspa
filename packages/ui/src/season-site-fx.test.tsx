@@ -12,7 +12,22 @@ after(() => window.close());
 const { act } = await import('react');
 const { createRoot } = await import('react-dom/client');
 const ui = await import('./index');
-const { collectKeepouts } = await import('./season-site-fx');
+const { collectKeepouts, loadParticleArt } = await import('./season-site-fx');
+// The art is loaded on demand (rbp bundle-conditional); warm the module cache once so each `settle` below covers the load.
+await Promise.all(
+  (['tet', 'christmas', 'celebration'] as const).map((kit) => loadParticleArt(kit)),
+);
+
+test('the particle drawing is loaded on demand, once per kit, never imported up front', async () => {
+  const source = (await import('node:fs')).readFileSync(
+    new URL('season-site-fx.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(source, /^import [^;]*from '\.\/season-(?:art-[a-z]+|kits)';/m);
+  assert.match(source, /import\('\.\/season-kits'\)/);
+  assert.equal(loadParticleArt('tet'), loadParticleArt('tet'), 'one load per kit');
+  assert.equal(typeof (await loadParticleArt('valentine')).Particle, 'function');
+});
 
 function mount(node: ReactNode) {
   const container = window.document.createElement('div');

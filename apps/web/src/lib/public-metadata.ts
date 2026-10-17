@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import type { Locale } from '../i18n/locales';
 import { getSiteText } from '../i18n/site';
+import { BRAND_NAME, pageTitle } from './page-title';
 import { isPlainList, type ProductsState } from './public-products-core';
 import {
   fetchPublicPage,
@@ -28,7 +29,7 @@ import {
 // Titles, descriptions, canonical and language links, Open Graph and Twitter data of the three indexable pages
 // (home, service list, a service). The text comes from the shop profile and the live catalogue, never from here.
 
-const SITE_NAME = 'Lucy Spa';
+const SITE_NAME = BRAND_NAME;
 
 /** The address the visitor (or crawler) used to reach the site; null when the request names no usable host. */
 export async function requestOrigin(): Promise<string | null> {
@@ -107,7 +108,7 @@ export async function servicesMetadata(locale: Locale): Promise<Metadata> {
       catalogue?.groups.some((group) => group.services.some((entry) => entry.englishApproved)) ??
       false,
     path: '/services',
-    title: `${text.services.title} · ${SITE_NAME}`,
+    title: pageTitle(text.services.title),
     description: clip(
       site ? `${text.services.lead} ${SITE_NAME}, ${site.address}` : text.services.lead,
     ),
@@ -120,13 +121,13 @@ export async function serviceMetadata(locale: Locale, code: string): Promise<Met
   const text = getSiteText(locale);
   // An unknown or paused service is a 404 page and says so; a failed read keeps the page out of the index.
   if (detail === 'missing' || detail === null) {
-    return { title: `${text.services.notFoundTitle} · ${SITE_NAME}`, robots: { index: false } };
+    return { title: pageTitle(text.services.notFoundTitle), robots: { index: false } };
   }
   return indexable({
     locale,
     origin,
     path: `/services/${encodeURIComponent(detail.service.code)}`,
-    title: `${detail.service.name} · ${SITE_NAME}`,
+    title: pageTitle(detail.service.name),
     description: serviceDescription(detail, locale, SITE_NAME),
     image: null,
     english: detail.service.englishApproved,
@@ -146,13 +147,13 @@ export async function pageMetadata(locale: Locale, slug: string): Promise<Metada
   ]);
   const text = getSiteText(locale);
   if (page === 'missing' || page === null) {
-    return { title: `${text.infoPage.notFoundTitle} · ${SITE_NAME}`, robots: { index: false } };
+    return { title: pageTitle(text.infoPage.notFoundTitle), robots: { index: false } };
   }
   return indexable({
     locale,
     origin,
     path: `/${slug}`,
-    title: page.seoTitle ?? `${page.title} · ${SITE_NAME}`,
+    title: page.seoTitle ?? pageTitle(page.title),
     description: page.seoDescription ?? clip(pageLead(page.body) ?? page.title),
     image: null,
     english: english !== 'missing' && english !== null && english.language === 'en',
@@ -167,7 +168,7 @@ export async function contactMetadata(locale: Locale): Promise<Metadata> {
     locale,
     origin,
     path: '/contact',
-    title: `${text.contactPage.title} · ${SITE_NAME}`,
+    title: pageTitle(text.contactPage.title),
     description: clip(site ? `${text.contactPage.lead} ${site.address}` : text.contactPage.lead),
     image: null,
     english: site?.englishApproved ?? false,
@@ -222,7 +223,7 @@ export async function productsMetadata(locale: Locale, state: ProductsState): Pr
     locale,
     origin,
     path: '/products',
-    title: `${title} · ${SITE_NAME}`,
+    title: pageTitle(title),
     description: clip(site ? `${lead} ${SITE_NAME}, ${site.address}` : lead),
     image: origin ? absoluteImage(origin, widest?.url) : null,
     english: (await fetchPublicProductCodes()).english.length > 0,
@@ -243,7 +244,7 @@ export async function productMetadata(locale: Locale, code: string): Promise<Met
   const text = getSiteText(locale);
   // An unknown, unpublished or discontinued product is a 404 page and says so; a failed read keeps the page out of the index.
   if (detail === 'missing' || detail === null) {
-    return { title: `${text.products.notFoundTitle} · ${SITE_NAME}`, robots: { index: false } };
+    return { title: pageTitle(text.products.notFoundTitle), robots: { index: false } };
   }
   const widest = detail.product.images[0]?.sources.at(-1);
   return indexable({
@@ -251,7 +252,7 @@ export async function productMetadata(locale: Locale, code: string): Promise<Met
     origin,
     path: `/products/${encodeURIComponent(detail.product.code)}`,
     // The title and description the shop approved (already with the brand and "Lucy Spa"); the page builds its own until then.
-    title: detail.product.seoTitle ?? `${detail.product.name} · ${SITE_NAME}`,
+    title: detail.product.seoTitle ?? pageTitle(detail.product.name),
     description:
       detail.product.seoDescription ??
       productDescription(detail.product, locale, SITE_NAME, site?.address ?? null),

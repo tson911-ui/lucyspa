@@ -337,6 +337,19 @@
   cursor: pointer;
 }
 
+/* Hover and press (WIG: every control answers the pointer): the underline thickens, then the text dims a step; the colour stays
+   the season's (the strip draws its own background). */
+@media (hover: hover) and (pointer: fine) {
+  .ls-art-fx-switch:hover {
+    text-decoration-thickness: calc(var(--ls-art-u) / 2);
+  }
+}
+
+.ls-art-fx-switch:active {
+  text-decoration-thickness: calc(var(--ls-art-u) / 2);
+  opacity: 0.8;
+}
+
 .ls-art-fx-switch:focus-visible {
   outline: calc(var(--ls-art-u) / 2) solid currentcolor;
   outline-offset: calc(var(--ls-art-u) / 2);

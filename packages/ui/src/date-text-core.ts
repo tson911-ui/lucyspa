@@ -53,3 +53,16 @@ export function readTypedDate(raw: string): string | null {
 export function isWithinRange(iso: string, min?: string, max?: string): boolean {
   return (!min || iso >= min) && (!max || iso <= max);
 }
+
+/** Masks typed digits as a 24 h time `HH:mm` ("1430" -> "14:30"); never AM/PM (Vietnamese and the shop use 24 h). */
+export function maskTime(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
+}
+
+/** A complete, valid 24 h time `HH:mm`, or null. */
+export function readTypedTime(text: string): string | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(text);
+  if (!match) return null;
+  return Number(match[1]) <= 23 && Number(match[2]) <= 59 ? text : null;
+}

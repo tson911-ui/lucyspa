@@ -43,10 +43,9 @@ export function parentPath(
   if (clean === root) return publicHome;
   if (!clean.startsWith(`${root}/`)) return null;
   const rest = clean.slice(root.length + 1).split('/');
+  const path = rest.join('/');
   for (const [prefix, target] of Object.entries(TAB_PARENTS)) {
-    if (rest.join('/').startsWith(`${prefix}/`) || rest.join('/') === prefix) {
-      return `${root}/${target}`;
-    }
+    if (path.startsWith(`${prefix}/`) || path === prefix) return `${root}/${target}`;
   }
   // A version form has no list of its own: it returns to the program it belongs to.
   const versions = rest.indexOf('versions');
@@ -60,12 +59,15 @@ export function parentPath(
  * sidebar, the member tabs), every page that menu opens are top-level destinations and show no Back. A record, a form or a version page
  * below them does.
  */
+/** The tab prefixes, computed once (rbp js-cache-function-results): hasParent runs on every render of the back control. */
+const TAB_PREFIXES = Object.keys(TAB_PARENTS).map((prefix) => `${prefix}/`);
+
 export function hasParent(pathname: string, root: string, menuRoot: boolean): boolean {
   const clean = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
   if (clean === root || !clean.startsWith(`${root}/`)) return false;
   const rest = clean.slice(root.length + 1).split('/');
   if (!menuRoot) return true;
-  if (Object.keys(TAB_PARENTS).some((prefix) => rest.join('/').startsWith(`${prefix}/`)))
-    return true;
+  const path = rest.join('/');
+  if (TAB_PREFIXES.some((prefix) => path.startsWith(prefix))) return true;
   return rest.length > 1;
 }

@@ -76,6 +76,17 @@
   outline: 2px solid var(--ls-brand);
 }
 
+/* Hover and press on a card that can still be chosen (WIG: interactive states): one grey step, then the next. */
+@media (hover: hover) and (pointer: fine) {
+  .ls-season-card:hover:not(:has(.ls-season-card-input:checked, .ls-season-card-input:disabled)) {
+    background: var(--ls-hover-bg);
+  }
+}
+
+.ls-season-card:active:not(:has(.ls-season-card-input:checked, .ls-season-card-input:disabled)) {
+  background: var(--ls-pressed-bg);
+}
+
 .ls-season-card:has(.ls-season-card-input:focus-visible) {
   outline: 2px solid var(--ls-focus);
   outline-offset: 2px;

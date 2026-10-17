@@ -49,7 +49,9 @@ test('workforce inbox and operational warnings render VI/EN without exposing eve
     }
     const readItem = { ...item, readAt: item.createdAt };
     const read = table([readItem], locale);
-    assert.ok(read.includes(t.read));
+    // A read row carries no unread marker (no dot, no "unread" word); there is no status pill column (session 10).
+    assert.ok(!read.includes(t.unread) && !read.includes('ls-inbox-dot'));
+    assert.ok(table([item], locale).includes('ls-inbox-dot'));
     assert.deepEqual(
       notificationMenu(readItem, t, { pendingId: null, onRead: () => undefined }),
       [],

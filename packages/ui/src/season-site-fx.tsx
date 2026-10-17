@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import {
   keepoutMaskImage,
   normalizeKeepouts,
@@ -9,13 +17,49 @@ import {
   type KeepoutRect,
   type ParticleDensity,
 } from './season-fx-core';
-import { useSeasonFx } from './season-particles';
-import { CelebrationConfettiPiece } from './season-art-celebration';
-import { ChristmasFlake } from './season-art-christmas';
-import { TetPetal } from './season-art-tet';
-import { KIT_ART } from './season-kits';
-import { safeImageUrl, type SeasonArtKit } from './season-scene';
+import { usePageHidden, useSeasonFx } from './season-particles';
+import type { SeasonArtKit } from './season-scene';
+import { safeImageUrl } from './season-url';
 import { PHONE_QUERY, useMediaQuery } from './use-media-query';
+
+/** The one drawing a kit drifts and the way it moves. */
+interface ParticleArt {
+  Particle: (props: { index: number }) => ReactNode;
+  motion?: 'fall' | 'rise' | undefined;
+}
+
+// The season art is loaded only once a layer is about to draw (rbp bundle-conditional): no season, reduced motion or `ls-fx=off`
+// never download it, and the page's own chunk carries none of the drawings. One promise per kit.
+const artLoads = new Map<SeasonArtKit, Promise<ParticleArt>>();
+
+export function loadParticleArt(kit: SeasonArtKit): Promise<ParticleArt> {
+  let load = artLoads.get(kit);
+  if (!load) {
+    load = (async (): Promise<ParticleArt> => {
+      const { KIT_ART } = await import('./season-kits');
+      const art = KIT_ART[kit];
+      if (art) return { Particle: art.Particle, motion: art.motion };
+      if (kit === 'tet') return { Particle: (await import('./season-art-tet')).TetPetal };
+      if (kit === 'christmas') {
+        const { ChristmasFlake } = await import('./season-art-christmas');
+        return { Particle: () => <ChristmasFlake /> };
+      }
+      return { Particle: (await import('./season-art-celebration')).CelebrationConfettiPiece };
+    })();
+    artLoads.set(kit, load);
+  }
+  return load;
+}
+
+/** Runs `work` when the browser is idle (the keep-out walk reads every line of the page), or soon where there is no idle callback. */
+function whenIdle(work: () => void): () => void {
+  if (typeof window.requestIdleCallback === 'function') {
+    const handle = window.requestIdleCallback(work, { timeout: 500 });
+    return () => window.cancelIdleCallback(handle);
+  }
+  const handle = window.setTimeout(work, 0);
+  return () => window.clearTimeout(handle);
+}
 
 // Site-wide particles (docs/UXUI_REDESIGN_S6_PLAN.md section 3, rules 1 and 7). One layer behind the page content
 // (the page wrapper is `position: relative`, the content sits above the layer). The layer is as tall as the page and
@@ -110,16 +154,17 @@ export function SeasonSiteParticles({
   sprite?: string | undefined;
 }) {
   const spriteUrl = safeImageUrl(sprite);
-  const { Particle, motion } = KIT_ART[kit] ?? {};
   const phone = useMediaQuery(PHONE_QUERY);
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
   const { enabled } = useSeasonFx();
   const [ready, setReady] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const paused = usePageHidden();
+  const [loaded, setLoaded] = useState<{ kit: SeasonArtKit; art: ParticleArt } | null>(null);
   const [geometry, setGeometry] = useState<Geometry>(EMPTY);
   const [viewport, setViewport] = useState(0);
   const layerRef = useRef<HTMLDivElement>(null);
   const active = ready && enabled && !reducedMotion;
+  const art = loaded?.kit === kit ? loaded.art : null;
 
   useEffect(() => {
     // After the first paint, so the effect never delays the content.
@@ -128,11 +173,15 @@ export function SeasonSiteParticles({
   }, []);
 
   useEffect(() => {
-    const sync = () => setPaused(document.visibilityState === 'hidden');
-    sync();
-    document.addEventListener('visibilitychange', sync);
-    return () => document.removeEventListener('visibilitychange', sync);
-  }, []);
+    if (!active) return undefined;
+    let live = true;
+    void loadParticleArt(kit).then((next) => {
+      if (live) setLoaded({ kit, art: next });
+    });
+    return () => {
+      live = false;
+    };
+  }, [active, kit]);
 
   const measure = useCallback(() => {
     const layer = layerRef.current;
@@ -158,12 +207,17 @@ export function SeasonSiteParticles({
     const page = layer?.parentElement;
     if (!layer || !page) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelIdle: () => void = () => undefined;
+    // The keep-out walk reads every text line and control of the page: it waits for an idle moment (rbp js-request-idle-callback).
     const later = () => {
       clearTimeout(timer);
-      timer = setTimeout(measure, MEASURE_DELAY_MS);
+      cancelIdle();
+      timer = setTimeout(() => {
+        cancelIdle = whenIdle(measure);
+      }, MEASURE_DELAY_MS);
     };
-    // Already after the first paint (`ready` came from a frame), so measure at once.
-    measure();
+    // Already after the first paint (`ready` came from a frame): the first measure at the next idle moment.
+    cancelIdle = whenIdle(measure);
     window.addEventListener('resize', later);
     void document.fonts?.ready.then(later);
     const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(later);
@@ -175,6 +229,7 @@ export function SeasonSiteParticles({
     mutations.observe(page, { childList: true, subtree: true, characterData: true });
     return () => {
       clearTimeout(timer);
+      cancelIdle();
       window.removeEventListener('resize', later);
       resize?.disconnect();
       mutations.disconnect();
@@ -183,28 +238,12 @@ export function SeasonSiteParticles({
 
   const count = siteParticleCount(density, phone, geometry.height, viewport);
   const specs = useMemo(() => siteParticleLayout(count), [count]);
-  if (reducedMotion || !enabled) return null;
-
-  const span = viewport > 0 && geometry.height > 0 ? Math.max(geometry.height / viewport, 1) : 1;
-  const style = {
-    '--ls-fx-span': span,
-    '--ls-fx-dist': `${Math.round(geometry.height + 48)}px`,
-    ...(geometry.mask === 'none'
-      ? {}
-      : { maskImage: geometry.mask, WebkitMaskImage: geometry.mask }),
-  } as CSSProperties;
-  return (
-    <div
-      ref={layerRef}
-      className="ls-fx-site"
-      data-kit={kit}
-      data-motion={motion}
-      data-paused={paused ? 'true' : undefined}
-      data-clear-top={clearHeaderRow && kit === 'christmas' ? 'true' : undefined}
-      aria-hidden="true"
-      style={style}
-    >
-      {active
+  // The particles depend only on the pool, the drawing and the sprite: a new mask or page height re-renders the layer's
+  // style, not up to 120 particles (rbp rerender-memo).
+  const Particle = art?.Particle;
+  const particles = useMemo(
+    () =>
+      Particle
         ? specs.map((spec) => (
             <span
               key={spec.index}
@@ -225,21 +264,42 @@ export function SeasonSiteParticles({
                   className="ls-fx-site-glyph"
                   src={spriteUrl}
                   alt=""
+                  // A square hint (WIG images); the particle box sets the width and the layer is out of the flow.
+                  width={24}
+                  height={24}
                   loading="lazy"
                   decoding="async"
                 />
-              ) : Particle ? (
-                <Particle index={spec.index} />
-              ) : kit === 'tet' ? (
-                <TetPetal index={spec.index} />
-              ) : kit === 'christmas' ? (
-                <ChristmasFlake />
               ) : (
-                <CelebrationConfettiPiece index={spec.index} />
+                <Particle index={spec.index} />
               )}
             </span>
           ))
-        : null}
+        : null,
+    [Particle, specs, spriteUrl],
+  );
+  if (reducedMotion || !enabled) return null;
+
+  const span = viewport > 0 && geometry.height > 0 ? Math.max(geometry.height / viewport, 1) : 1;
+  const style = {
+    '--ls-fx-span': span,
+    '--ls-fx-dist': `${Math.round(geometry.height + 48)}px`,
+    ...(geometry.mask === 'none'
+      ? {}
+      : { maskImage: geometry.mask, WebkitMaskImage: geometry.mask }),
+  } as CSSProperties;
+  return (
+    <div
+      ref={layerRef}
+      className="ls-fx-site"
+      data-kit={kit}
+      data-motion={art?.motion}
+      data-paused={paused ? 'true' : undefined}
+      data-clear-top={clearHeaderRow && kit === 'christmas' ? 'true' : undefined}
+      aria-hidden="true"
+      style={style}
+    >
+      {active ? particles : null}
     </div>
   );
 }

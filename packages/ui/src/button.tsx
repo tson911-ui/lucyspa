@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useId,
-  type AnchorHTMLAttributes,
-  type ButtonHTMLAttributes,
-  type MouseEvent,
-  type ReactNode,
-  type Ref,
-} from 'react';
+import { useId, type ButtonHTMLAttributes, type MouseEvent, type Ref } from 'react';
 import { buttonClass, type ButtonSize, type ButtonVariant } from './button-class';
 import { cx } from './cx';
 import { Icon, type IconName } from './icons';
@@ -29,10 +22,18 @@ interface CommonProps {
 
 export type ButtonProps = CommonProps &
   Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> & {
-    /** Disables the button, shows a spinner and sets `aria-busy`. The label stays. */
+    /**
+     * Disables the button, shows a spinner and sets `aria-busy`. A plain-text label gains "…" while pending (HIG C38), unless the
+     * caller already swapped it for a busy label ending in "…" ("Đang lưu…").
+     */
     loading?: boolean | undefined;
     /** Why the button is unavailable. Shown as visible text and linked with `aria-describedby`. */
     disabledReason?: string | undefined;
+    /**
+     * `false` when the screen already shows the reason (a notice beside a header action): it then stays only the button's
+     * accessible description (visually hidden), never a second visible copy. Default `true`.
+     */
+    reasonVisible?: boolean | undefined;
     fullWidth?: boolean | undefined;
     ref?: Ref<HTMLButtonElement> | undefined;
   };
@@ -44,6 +45,7 @@ export function Button({
   loading = false,
   disabled,
   disabledReason,
+  reasonVisible = true,
   fullWidth,
   compact,
   className,
@@ -56,6 +58,7 @@ export function Button({
   const reasonId = useId();
   // A state-blocked action stays focusable (aria-disabled) so keyboard users can read the reason.
   const blocked = Boolean(disabled && disabledReason);
+  const label = loading ? pendingLabel(children) : children;
   const button = (
     <button
       {...rest}
@@ -75,18 +78,25 @@ export function Button({
       }}
     >
       {loading ? <Spinner /> : icon ? <Icon name={icon} /> : null}
-      {children ? <span className="ls-btn-label">{children}</span> : null}
+      {label ? <span className="ls-btn-label">{label}</span> : null}
     </button>
   );
   if (!blocked) return button;
   return (
     <span className="ls-btn-with-reason">
       {button}
-      <span className="ls-btn-reason" id={reasonId}>
+      <span className={reasonVisible ? 'ls-btn-reason' : 'ls-visually-hidden'} id={reasonId}>
         {disabledReason}
       </span>
     </span>
   );
+}
+
+/** HIG C38: a pending text label ends with "…" ("Lưu" -> "Lưu…"); a label that already ends with one is kept. */
+function pendingLabel(children: ButtonProps['children']): ButtonProps['children'] {
+  if (typeof children !== 'string') return children;
+  const text = children.trimEnd();
+  return text === '' || text.endsWith('…') || text.endsWith('...') ? children : `${text}…`;
 }
 
 export type IconButtonProps = Omit<ButtonProps, 'children' | 'icon' | 'fullWidth'> & {
@@ -113,38 +123,11 @@ export function IconButton({
         className={cx('ls-btn-icon', className)}
         aria-label={label}
       >
-        <Icon name={icon} />
+        {/* While pending the spinner takes the icon's place (C38), never both side by side. */}
+        {rest.loading ? null : <Icon name={icon} />}
       </Button>
     </Tooltip>
   );
 }
 
-export type ButtonLinkProps = CommonProps &
-  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'> & {
-    href: string;
-    ref?: Ref<HTMLAnchorElement> | undefined;
-  };
-
-/** An anchor styled as a button, for navigation actions. */
-export function ButtonLink({
-  variant = 'secondary',
-  size = 'md',
-  icon,
-  compact,
-  className,
-  children,
-  ref,
-  ...rest
-}: ButtonLinkProps) {
-  return (
-    <a {...rest} ref={ref} className={buttonClass(variant, size, className, compact)}>
-      {icon ? <Icon name={icon} /> : null}
-      <span className="ls-btn-label">{children}</span>
-    </a>
-  );
-}
-
-/** Visually hidden text that stays available to assistive technology. */
-export function VisuallyHidden({ children }: { children: ReactNode }) {
-  return <span className="ls-visually-hidden">{children}</span>;
-}
+// ButtonLink and VisuallyHidden are stateless and live in `button-link.tsx` (no 'use client').

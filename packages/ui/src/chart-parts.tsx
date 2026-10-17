@@ -1,6 +1,12 @@
 'use client';
 
-import { useLayoutEffect, useState, type ReactNode, type RefCallback } from 'react';
+import {
+  useLayoutEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefCallback,
+} from 'react';
 import { Button } from './button';
 import { slotColor, type SlotIndex } from './chart-core';
 import { cx } from './cx';
@@ -29,6 +35,58 @@ export function useElementWidth(fallback = 640): [RefCallback<HTMLDivElement>, n
     return () => observer.disconnect();
   }, [element, fallback]);
   return [setElement, width];
+}
+
+// One text-scale store for every chart on the page (rbp client-event-listeners): a dashboard of many charts shares one resize
+// listener and one observer on <html>, and the value is read once per change, not once per chart.
+let textScale = 1;
+const scaleListeners = new Set<() => void>();
+let stopScale: (() => void) | null = null;
+
+function readTextScale(): number {
+  return Math.max(1, (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16);
+}
+
+function subscribeTextScale(listener: () => void): () => void {
+  if (scaleListeners.size === 0) {
+    textScale = readTextScale();
+    const update = () => {
+      const next = readTextScale();
+      if (next === textScale) return;
+      textScale = next;
+      scaleListeners.forEach((notify) => notify());
+    };
+    window.addEventListener('resize', update, { passive: true });
+    const observer = typeof MutationObserver === 'undefined' ? null : new MutationObserver(update);
+    observer?.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style', 'class', 'data-text-large'],
+    });
+    stopScale = () => {
+      window.removeEventListener('resize', update);
+      observer?.disconnect();
+    };
+  }
+  scaleListeners.add(listener);
+  return () => {
+    scaleListeners.delete(listener);
+    if (scaleListeners.size > 0) return;
+    stopScale?.();
+    stopScale = null;
+  };
+}
+
+/**
+ * How large the page's text is against the 16 px default (1 normally, 2 at 200 % text). Axis labels use it to keep their spacing
+ * when the text grows (C16: labels never collide at 200 % text). Follows a change of the root font size or the window.
+ */
+export function useTextScale(): number {
+  return useSyncExternalStore(
+    subscribeTextScale,
+    // Before the first chart subscribes, read the page once so the first render already has the right spacing.
+    () => (scaleListeners.size > 0 ? textScale : (textScale = readTextScale())),
+    () => 1,
+  );
 }
 
 export interface ChartFrameLabels {
@@ -119,7 +177,45 @@ export interface LegendItem {
   detail?: string | undefined;
 }
 
-/** Legend for two or more series: a swatch plus the name in the text color (color is never the only cue). */
+/**
+ * The legend and tooltip key of a series (C5, DESIGN 10: never colour alone): a small svg with one shape per slot (square, circle,
+ * triangle, diamond, ring, bar) in the series colour; the previous period is the dashed line it is drawn with. Being an svg inside the
+ * chart, it carries the chart palette like the series themselves.
+ */
+function ChartKey({ slot }: { slot: SlotIndex | 'other' | 'previous' }) {
+  if (slot === 'previous')
+    return (
+      <svg
+        className="ls-chart-swatch ls-chart-swatch-previous"
+        viewBox="0 0 16 12"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="M1 6h14" stroke="currentColor" strokeWidth="2" strokeDasharray="4 3" fill="none" />
+      </svg>
+    );
+  const color = slotColor(slot);
+  const shape =
+    slot === 2 ? (
+      <circle cx="6" cy="6" r="5" fill={color} />
+    ) : slot === 3 ? (
+      <path d="M6 1l5 10H1z" fill={color} />
+    ) : slot === 4 ? (
+      <path d="M6 0.5l5.5 5.5L6 11.5 0.5 6z" fill={color} />
+    ) : slot === 5 ? (
+      <circle cx="6" cy="6" r="4" fill="none" stroke={color} strokeWidth="2.5" />
+    ) : slot === 6 || slot === 'other' ? (
+      <rect x="0.5" y="4" width="11" height="4" rx="1" fill={color} />
+    ) : (
+      <rect x="1" y="1" width="10" height="10" rx="2" fill={color} />
+    );
+  return (
+    <svg className="ls-chart-swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+      {shape}
+    </svg>
+  );
+}
+
 export function ChartLegend({
   items,
   className,
@@ -131,14 +227,7 @@ export function ChartLegend({
     <ul className={cx('ls-chart-legend', className)}>
       {items.map((item) => (
         <li key={item.id} className="ls-chart-legend-item">
-          <span
-            className={cx(
-              'ls-chart-swatch',
-              item.slot === 'previous' && 'ls-chart-swatch-previous',
-            )}
-            style={item.slot === 'previous' ? undefined : { background: slotColor(item.slot) }}
-            aria-hidden="true"
-          />
+          <ChartKey slot={item.slot} />
           <span className="ls-chart-legend-label">{item.label}</span>
           {item.detail ? <span className="ls-chart-legend-detail">{item.detail}</span> : null}
         </li>
@@ -184,13 +273,7 @@ export function ChartTooltip({
       <ul className="ls-chart-tooltip-rows">
         {rows.map((row, index) => (
           <li key={`${row.label}-${index}`} className="ls-chart-tooltip-row">
-            <span
-              className={cx(
-                'ls-chart-swatch',
-                row.slot === 'previous' && 'ls-chart-swatch-previous',
-              )}
-              style={row.slot === 'previous' ? undefined : { background: slotColor(row.slot) }}
-            />
+            <ChartKey slot={row.slot} />
             <span className="ls-chart-tooltip-label">{row.label}</span>
             <span className="ls-chart-tooltip-value">{row.value}</span>
             {row.delta ? <span className="ls-chart-tooltip-delta">{row.delta}</span> : null}

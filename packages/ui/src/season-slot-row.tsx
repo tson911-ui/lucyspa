@@ -31,7 +31,16 @@ export function SeasonSlotRow({
 /** The chosen image of a slot as a small square (the library's thumbnail), decorative: the name is on the buttons. */
 export function SeasonSlotThumb({ src }: { src: string }) {
   return (
+    // Size attributes in the slot box's 3:2 ratio (WIG images); the CSS sets the size.
     // eslint-disable-next-line @next/next/no-img-element -- admin library thumbnail, sized by CSS
-    <img className="ls-season-slot-thumb" src={src} alt="" loading="lazy" decoding="async" />
+    <img
+      className="ls-season-slot-thumb"
+      src={src}
+      alt=""
+      width={48}
+      height={32}
+      loading="lazy"
+      decoding="async"
+    />
   );
 }

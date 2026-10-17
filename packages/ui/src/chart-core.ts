@@ -122,12 +122,21 @@ export function xKey(x: Date | string): string {
 export function formatX(x: Date | string, locale: ChartLocale, style: 'short' | 'long' = 'short') {
   const key = xKey(x);
   if (!ISO_DATE.test(key)) return key;
-  const options: Intl.DateTimeFormatOptions =
-    style === 'short'
-      ? { day: 'numeric', month: locale === 'vi' ? 'numeric' : 'short', timeZone: 'UTC' }
-      : { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' };
-  return new Intl.DateTimeFormat(intlLocale(locale), options).format(new Date(`${key}T00:00:00Z`));
+  const cacheKey = `${locale}|${style}`;
+  let formatter = dateFormatCache.get(cacheKey);
+  if (!formatter) {
+    const options: Intl.DateTimeFormatOptions =
+      style === 'short'
+        ? { day: 'numeric', month: locale === 'vi' ? 'numeric' : 'short', timeZone: 'UTC' }
+        : { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' };
+    formatter = new Intl.DateTimeFormat(intlLocale(locale), options);
+    dateFormatCache.set(cacheKey, formatter);
+  }
+  return formatter.format(new Date(`${key}T00:00:00Z`));
 }
+
+/** One date formatter per language and style, like `numberFormat` (rbp js-cache-function-results): axis labels format per render. */
+const dateFormatCache = new Map<string, Intl.DateTimeFormat>();
 
 export function slotColor(slot: SlotIndex | 'other'): string {
   return slot === 'other' ? 'var(--ls-chart-other)' : `var(--ls-chart-${slot})`;

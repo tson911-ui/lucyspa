@@ -30,6 +30,18 @@ test('the layout self-hosts a display font with the Vietnamese subset in normal 
   assert.match(layout, /playfairDisplay\.variable/);
 });
 
+test('each area loads only its own session 10 sheets, from its area layout (Step 7)', () => {
+  const read = (path: string) => readFileSync(new URL(path, here), 'utf8');
+  const customer = ['s10-public', 's10-member', 's10-account'];
+  const staff = ['s10-pos', 's10-admin-a', 's10-admin-b', 's10-admin-c'];
+  const imports = (source: string) =>
+    [...source.matchAll(/^import '@lucy-spa\/ui\/(s10-[\w-]+)\.css';$/gm)].map((match) => match[1]);
+  assert.deepEqual(imports(read('[locale]/layout.tsx')), []);
+  assert.deepEqual(imports(read('[locale]/(site)/layout.tsx')), customer);
+  assert.deepEqual(imports(read('[locale]/season-preview/page.tsx')), customer);
+  assert.deepEqual(imports(read('[locale]/workforce/layout.tsx')), staff);
+});
+
 test('no gold or ivory token or value remains in apps/web/src or packages/ui/src', () => {
   const pattern = /gold|ivory|#b69456|#e9d6aa|#faf7f1/i;
   for (const file of [

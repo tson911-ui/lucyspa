@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cx } from './cx';
+import { HeaderFit } from './header-fit';
 
 /**
  * The one header bar of every area (Owner R7, DESIGN.md D2, session 10): the customer site, the counter and the admin all render it. Wordmark
@@ -36,6 +37,7 @@ export function HeaderBar({
 }) {
   const content = (
     <>
+      <HeaderFit />
       {start}
       <div className={cx('ls-headerbar-brand', brandClassName)}>{brand}</div>
       {nav}

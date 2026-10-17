@@ -6,7 +6,9 @@ import {
   useId,
   useRef,
   useState,
+  type ComponentType,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from 'react';
 import { IconButton } from './button';
 import { cx } from './cx';
@@ -41,12 +43,25 @@ export function arrangeMenu(items: readonly MenuItem[]): MenuEntry[] {
   return [...safe, { type: 'divider', id: '__divider' }, ...danger];
 }
 
+/** The router link the app passes so a menu item with an href navigates client-side (no full reload of the shell). */
+export type MenuLinkComponent = ComponentType<{
+  href: string;
+  className?: string | undefined;
+  role: 'menuitem';
+  tabIndex: number;
+  onClick?: () => void;
+  children?: ReactNode;
+}>;
+
+const PlainMenuLink: MenuLinkComponent = (props) => <a {...props} />;
+
 export function Menu({
   label,
   items,
   align = 'end',
   icon = 'more-horizontal',
   className,
+  LinkComponent = PlainMenuLink,
 }: {
   /** Accessible name of the trigger button, e.g. "More actions". */
   label: string;
@@ -54,6 +69,8 @@ export function Menu({
   align?: 'start' | 'end' | undefined;
   icon?: IconName | undefined;
   className?: string | undefined;
+  /** Next's Link (or another router link) for items with an href; a plain anchor by default. */
+  LinkComponent?: MenuLinkComponent | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -164,7 +181,7 @@ export function Menu({
           );
           if (entry.href && !entry.disabled) {
             return (
-              <a
+              <LinkComponent
                 key={entry.id}
                 role="menuitem"
                 tabIndex={-1}
@@ -173,7 +190,7 @@ export function Menu({
                 onClick={close}
               >
                 {content}
-              </a>
+              </LinkComponent>
             );
           }
           return (

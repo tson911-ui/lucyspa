@@ -1,5 +1,6 @@
 import type { SeasonSlot } from '@lucy-spa/contracts';
 import type { CSSProperties, ReactNode } from 'react';
+import { safeImageUrl } from './season-url';
 import {
   CelebrationBunch,
   CelebrationBunting,
@@ -76,18 +77,8 @@ export function hasZodiacArt(animal: string | null | undefined): boolean {
 /** The images that replace slots: slot name -> public URL (a path the API serves, never a free address). */
 export type SeasonSlotImages = Partial<Record<SeasonSlot, string>>;
 
-/**
- * An image address that is safe to put in `src` or a CSS `url()`: a same-origin absolute path made of plain URL
- * characters. Anything else (a scheme, a host, a quote, a parenthesis, a backslash) is dropped, so a bad value draws
- * the kit's own art instead of a request.
- */
-export function safeImageUrl(value: string | null | undefined): string | undefined {
-  return typeof value === 'string' &&
-    /^\/[A-Za-z0-9/_\-.%]+$/.test(value) &&
-    !value.startsWith('//')
-    ? value
-    : undefined;
-}
+// `safeImageUrl` lives in a tiny pure module (the particle layer reads it without the art); re-exported for the callers.
+export { safeImageUrl };
 
 const backgroundOf = (url: string): CSSProperties => ({ backgroundImage: `url("${url}")` });
 
@@ -210,6 +201,9 @@ function CornerImages({ url, edge }: { url: string; edge: 'top' | 'bottom' }) {
           className={`ls-art-corner-image ls-art-corner-image-${edge}-${side}`}
           src={url}
           alt=""
+          // The corner box's 5:3 ratio (40 x 24 art units), a hint before the picture loads (WIG images).
+          width={40}
+          height={24}
           loading="lazy"
           decoding="async"
         />
@@ -242,7 +236,16 @@ export function SeasonLogoAccent({
       <span className="ls-art-logo-art" aria-hidden="true">
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element -- decoration from the API, sized by CSS
-          <img className="ls-art-logo-image" src={url} alt="" loading="lazy" decoding="async" />
+          <img
+            className="ls-art-logo-image"
+            src={url}
+            alt=""
+            // A square hint (WIG images); the accent's box is set by CSS and the picture is contained in it.
+            width={32}
+            height={32}
+            loading="lazy"
+            decoding="async"
+          />
         ) : Logo ? (
           <Logo />
         ) : kit === 'tet' ? (
@@ -464,6 +467,9 @@ export function SeasonFooterScene({
               className="ls-art-footer-image"
               src={footerImage}
               alt=""
+              // A wide hint (WIG images); the picture is absolutely placed and contained, so nothing below it moves.
+              width={1200}
+              height={240}
               loading="lazy"
               decoding="async"
             />

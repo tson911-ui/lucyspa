@@ -33,6 +33,21 @@ export function arrangeNav(groups: readonly ShellNavGroup[]): ArrangedNavGroup[]
     .map((group) => ({ ...group, flat: group.items.length === 1 }));
 }
 
+/**
+ * The page context shown at the leading edge of the staff bar (session 10 SHELL plan, DESIGN.md 8.5): the current item's group and
+ * label ("Thanh toán › Hóa đơn"); a flat group shows the item alone. Null when no item is current (a record below a menu page keeps
+ * its menu page current, so it still has a context).
+ */
+export function currentContext(
+  groups: readonly ArrangedNavGroup[],
+): { group: string | null; item: string } | null {
+  for (const group of groups) {
+    const item = group.items.find((entry) => entry.current);
+    if (item) return { group: group.flat ? null : group.label, item: item.label };
+  }
+  return null;
+}
+
 function trimSlash(path: string): string {
   return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 }
@@ -72,11 +87,69 @@ export function writeSidebarCollapsed(
   collapsed: boolean,
   storage: Pick<Storage, 'setItem' | 'removeItem'> | undefined = safeStorage(),
 ): void {
+  writeCookie(SIDEBAR_COOKIE, collapsed ? '1' : null);
   try {
     if (collapsed) storage?.setItem(SIDEBAR_COLLAPSED_KEY, '1');
     else storage?.removeItem(SIDEBAR_COLLAPSED_KEY);
   } catch {
     // Private mode or blocked storage: the sidebar simply starts expanded next time.
+  }
+}
+
+/**
+ * The same two sidebar preferences as cookies, so the server renders the sidebar as the person left it and the first paint
+ * never jumps from expanded to collapsed (rbp rendering-hydration-no-flicker). Still a per-viewer convenience only.
+ */
+export const SIDEBAR_COOKIE = 'ls_rail';
+export const NAV_GROUPS_COOKIE = 'ls_nav';
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function writeCookie(name: string, value: string | null): void {
+  try {
+    if (typeof document === 'undefined') return;
+    document.cookie =
+      value === null
+        ? `${name}=; path=/; max-age=0; samesite=lax`
+        : `${name}=${encodeURIComponent(value)}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
+  } catch {
+    // Cookies blocked: the preference lasts for this page only.
+  }
+}
+
+/** The sidebar cookie as the server reads it: `true`/`false`, or `undefined` when this device never chose. */
+export function parseSidebarCookie(raw: string | undefined): boolean | undefined {
+  return raw === undefined ? undefined : raw === '1';
+}
+
+/** The open-groups cookie (JSON, possibly still URI-encoded) as a clean state, or `undefined` when absent or broken. */
+export function parseNavGroupCookie(raw: string | undefined): NavGroupState | undefined {
+  if (raw === undefined || raw === '') return undefined;
+  for (const text of [raw, safeDecode(raw)]) {
+    const state = cleanGroupState(text);
+    if (state) return state;
+  }
+  return undefined;
+}
+
+function safeDecode(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+function cleanGroupState(json: string): NavGroupState | undefined {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
+      ),
+    );
+  } catch {
+    return undefined;
   }
 }
 
@@ -94,13 +167,7 @@ export function readNavGroupState(
   storage: Pick<Storage, 'getItem'> | undefined = safeStorage(),
 ): NavGroupState {
   try {
-    const parsed: unknown = JSON.parse(storage?.getItem(SIDEBAR_GROUPS_KEY) ?? '{}');
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
-    return Object.fromEntries(
-      Object.entries(parsed).filter(
-        (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
-      ),
-    );
+    return cleanGroupState(storage?.getItem(SIDEBAR_GROUPS_KEY) ?? '{}') ?? {};
   } catch {
     return {};
   }
@@ -110,6 +177,7 @@ export function writeNavGroupState(
   state: NavGroupState,
   storage: Pick<Storage, 'setItem'> | undefined = safeStorage(),
 ): void {
+  writeCookie(NAV_GROUPS_COOKIE, JSON.stringify(state));
   try {
     storage?.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify(state));
   } catch {

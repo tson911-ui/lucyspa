@@ -51,6 +51,31 @@ export function useSeasonFx(): { enabled: boolean; setEnabled: (next: boolean) =
   return { enabled, setEnabled };
 }
 
+// One `visibilitychange` listener for every particle layer on the page (rbp client-event-listeners): the layers pause while the tab
+// is hidden.
+const hiddenListeners = new Set<() => void>();
+const notifyHidden = () => hiddenListeners.forEach((listener) => listener());
+const subscribeHidden = (listener: () => void) => {
+  if (hiddenListeners.size === 0) document.addEventListener('visibilitychange', notifyHidden);
+  hiddenListeners.add(listener);
+  return () => {
+    hiddenListeners.delete(listener);
+    if (hiddenListeners.size === 0) document.removeEventListener('visibilitychange', notifyHidden);
+  };
+};
+
+/** Whether the tab is hidden (false on the server), from the shared store. */
+export function usePageHidden(): boolean {
+  return useSyncExternalStore(
+    subscribeHidden,
+    () => document.visibilityState === 'hidden',
+    () => false,
+  );
+}
+
+/** The lantern's star, computed once (rbp rendering-hoist-jsx): the glyph is the same for every particle. */
+const LANTERN_STAR = starPoints(8, 7, 7.4, 3.1);
+
 function Glyph({ kind }: { kind: Exclude<SeasonParticleKind, 'none'> }) {
   return (
     <svg className={`ls-fx-glyph ls-fx-${kind}`} viewBox="0 0 16 16" focusable="false">
@@ -59,7 +84,7 @@ function Glyph({ kind }: { kind: Exclude<SeasonParticleKind, 'none'> }) {
       {kind === 'lantern' ? (
         <>
           {/* A five-point star lantern (đèn ông sao) with a tassel. */}
-          <polygon points={starPoints(8, 7, 7.4, 3.1)} />
+          <polygon points={LANTERN_STAR} />
           <rect x="7.4" y="12.6" width="1.2" height="3.4" />
         </>
       ) : null}
@@ -91,19 +116,12 @@ export function SeasonParticles({
   const reducedMotion = useMediaQuery(REDUCED_MOTION_QUERY);
   const { enabled } = useSeasonFx();
   const [ready, setReady] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const paused = usePageHidden();
 
   useEffect(() => {
     // After the first paint, so the effect never delays the content.
     const frame = requestAnimationFrame(() => setReady(true));
     return () => cancelAnimationFrame(frame);
-  }, []);
-
-  useEffect(() => {
-    const sync = () => setPaused(document.visibilityState === 'hidden');
-    sync();
-    document.addEventListener('visibilitychange', sync);
-    return () => document.removeEventListener('visibilitychange', sync);
   }, []);
 
   const specs = useMemo(() => particleLayout(particleCount(phone)), [phone]);

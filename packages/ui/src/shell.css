@@ -11,7 +11,8 @@
 
 .ls-topbar {
   position: sticky;
-  top: 0;
+  /* Below a top inset (a standalone window with a notch); 0 in a browser tab, where the browser bar is above the page. */
+  top: var(--ls-safe-top);
   z-index: var(--ls-z-chrome);
   display: flex;
   align-items: center;
@@ -141,12 +142,13 @@
 /* ---- Sidebar -------------------------------------------------------------------------------- */
 .ls-sidebar-slot {
   position: sticky;
-  top: var(--ls-topbar-h);
+  top: calc(var(--ls-topbar-h) + var(--ls-safe-top));
   z-index: var(--ls-z-chrome);
   flex: none;
   width: var(--ls-sidebar-w);
   height: calc(100svh - var(--ls-topbar-h));
-  transition: width var(--ls-dur-base) var(--ls-ease-out);
+  /* The width is never tweened (the content column would re-lay out every frame; WIG animate transform/opacity only). The rail
+     switches in one step; the remembered state is rendered on the server, so a load never shows the switch. */
 }
 
 .ls-sidebar-slot[data-rail='true'] {
@@ -173,6 +175,8 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Scrolling the menu to its end never scrolls the page behind it (WIG). */
+  overscroll-behavior: contain;
   padding: var(--ls-space-3);
 }
 
@@ -198,10 +202,10 @@
   opacity: 1;
 }
 
+/* The pill glides by `translate` only; its size (the next link's box) is set in one step, never tweened (WIG compositor-only). */
 .ls-nav[data-pill='slide'] > .ls-sidebar-pill {
   transition:
     translate var(--ls-dur-slide) var(--ls-ease-premium),
-    width var(--ls-dur-slide) var(--ls-ease-premium),
     opacity var(--ls-dur-fast) var(--ls-ease-out);
 }
 
@@ -270,15 +274,12 @@
   transform: rotate(-90deg);
 }
 
-/* A group opens and closes by easing its rows between 0fr and 1fr (pattern M10); the list inside clips. A closed group
-   turns invisible once it has finished closing, so it is neither focusable nor read out. */
+/* A group opens and closes in one step (rows 1fr / 0fr; the list inside clips): tweening the rows would re-lay out the whole
+   sidebar every frame (WIG animate transform/opacity only). The chevron's turn is the feedback. A closed group is
+   invisible, so it is neither focusable nor read out. */
 .ls-nav-collapse {
   display: grid;
   grid-template-rows: 1fr;
-  /* Visibility flips at the end of a closing and at the start of an opening, so the group stays visible while it moves. */
-  transition:
-    grid-template-rows var(--ls-dur-base) var(--ls-ease-out),
-    visibility var(--ls-dur-base) var(--ls-ease-out);
 }
 
 .ls-nav-collapse[data-open='false'] {
@@ -951,8 +952,7 @@ html[data-ls-motion='reduced'] .ls-shell {
   outline-offset: 0;
   transition:
     border-color var(--ls-dur-fast) var(--ls-ease-out),
-    outline-color var(--ls-dur-fast) var(--ls-ease-out),
-    outline-offset var(--ls-dur-fast) var(--ls-ease-out);
+    outline-color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
 .ls-auth-card input:not([type='radio']):not([type='checkbox']):focus-visible {

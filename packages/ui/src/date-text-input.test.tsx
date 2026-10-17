@@ -75,7 +75,7 @@ test('shows the ISO value as dd/mm/yyyy and reports an ISO date once the date is
   const log: string[] = [];
   const view = mount(<Harness start="2026-10-09" log={log} />);
   assert.equal(input().value, '09/10/2026');
-  assert.equal(input().getAttribute('placeholder'), 'dd/mm/yyyy');
+  assert.equal(input().getAttribute('placeholder'), 'dd/mm/yyyy…');
   focus(input());
   type(input(), '1');
   type(input(), '15/03');
@@ -118,5 +118,63 @@ test('an ISO date pasted or set by a native-style change is accepted', () => {
   type(input(), '2026-10-09');
   assert.deepEqual(log, ['2026-10-09']);
   assert.equal(input().value, '09/10/2026');
+  view.unmount();
+});
+
+function DateTimeHarness({ start, log }: { start: string; log: string[] }) {
+  const [value, setValue] = useState(start);
+  return (
+    <ui.DateTimeInput
+      id="valid-from"
+      timeLabel="Giờ"
+      timeError="Nhập giờ dạng 14:30."
+      value={value}
+      onValueChange={(next) => {
+        log.push(next);
+        setValue(next);
+      }}
+    />
+  );
+}
+
+const boxes = () => [...window.document.querySelectorAll<HTMLInputElement>('input')];
+
+test('DateTimeInput: clearing or half typing either part reports empty, never the stale value', () => {
+  const log: string[] = [];
+  const view = mount(<DateTimeHarness start="2026-10-09T09:30" log={log} />);
+  const [date, time] = boxes();
+  assert.equal(date!.value, '09/10/2026');
+  assert.equal(time!.value, '09:30');
+  assert.equal(time!.getAttribute('placeholder'), 'HH:mm…');
+  focus(time!);
+  type(time!, '');
+  assert.deepEqual(log, [''], 'a cleared time with a date present reports empty');
+  assert.equal(date!.value, '09/10/2026', 'the date stays on screen');
+  type(time!, '1430');
+  assert.deepEqual(log, ['', '2026-10-09T14:30']);
+  type(time!, '14:3');
+  assert.deepEqual(log, ['', '2026-10-09T14:30', ''], 'a half typed time is not a value');
+  type(time!, '14:35');
+  focus(date!);
+  type(date!, '');
+  assert.equal(log.at(-1), '', 'a cleared date with a time present reports empty');
+  assert.equal(time!.value, '14:35');
+  view.unmount();
+});
+
+test('DateTimeInput: a time left incomplete is invalid and says what to fix, described by the time box', () => {
+  const log: string[] = [];
+  const view = mount(<DateTimeHarness start="2026-10-09T09:30" log={log} />);
+  const [, time] = boxes();
+  focus(time!);
+  type(time!, '9');
+  assert.equal(window.document.querySelector('.ls-error'), null, 'no error while typing');
+  blur(time!);
+  assert.equal(time!.value, '9', 'the typed text stays for the person to fix');
+  assert.equal(time!.getAttribute('aria-invalid'), 'true');
+  const error = window.document.querySelector('.ls-error')!;
+  assert.match(error.textContent ?? '', /14:30/);
+  assert.equal(time!.getAttribute('aria-describedby'), error.id);
+  assert.equal(error.parentElement!.getAttribute('aria-live'), 'polite');
   view.unmount();
 });

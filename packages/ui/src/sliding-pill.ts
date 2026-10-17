@@ -75,11 +75,13 @@ export function useSlidingPill(signature: string, options: SlidingPillOptions = 
     // The entry the pill sits under: what the pointer or the keys are on, else the current page's entry.
     const wanted = hovered.current ?? focused.current;
     const current = wanted?.isConnected && element.contains(wanted) ? wanted : route;
+    // Read the box first, then write (rbp js-batch-dom-css): marking the links before measuring forced a style and layout pass
+    // per placement, which also runs on pointer moves in `follow` menus. No stylesheet keys a size on `data-under`.
+    const box = [current.offsetLeft, current.offsetTop, current.offsetWidth, current.offsetHeight];
     element.querySelectorAll('a').forEach((link) => {
       if (link === current) link.setAttribute('data-under', '');
       else link.removeAttribute('data-under');
     });
-    const box = [current.offsetLeft, current.offsetTop, current.offsetWidth, current.offsetHeight];
     if (!animate && placed.current && box.join() === lastBox.current) return;
     lastBox.current = box.join();
     element.style.setProperty('--ls-pill-x', `${box[0]}px`);

@@ -1,9 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Button, ButtonLink } from './button';
+import { Button } from './button';
+import { ButtonLink } from './button-link';
 import { cx } from './cx';
-import { arrangeMenu, Menu, type MenuItem } from './menu';
+import { arrangeMenu, Menu, type MenuItem, type MenuLinkComponent } from './menu';
 import { orderActions } from './menu-core';
 
 // Where record actions live (docs/UXUI_REDESIGN_DESIGN.md 10.3 and 10.4). The order is fixed by the
@@ -78,15 +79,23 @@ export function ActionBar({
 export function RowActions({
   menuLabel,
   items,
+  LinkComponent,
 }: {
   /** Accessible name of the `⋮` button, e.g. "Actions for Nail Gel". */
   menuLabel: string;
   items: readonly MenuItem[];
+  /** The app's router link, so an item with an href navigates client-side (see Menu). */
+  LinkComponent?: MenuLinkComponent | undefined;
 }) {
   if (items.length === 0) return null;
   return (
     <div className="ls-row-actions">
-      <Menu label={menuLabel} items={arrangeMenu(items)} icon="more-vertical" />
+      <Menu
+        label={menuLabel}
+        items={arrangeMenu(items)}
+        icon="more-vertical"
+        LinkComponent={LinkComponent}
+      />
     </div>
   );
 }

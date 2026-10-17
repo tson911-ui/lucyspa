@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { cx } from './cx';
 import { Icon } from './icons';
 
@@ -32,10 +32,25 @@ export function ChoiceCard({
   meta?: ReactNode | undefined;
   /** The trailing value (already formatted). */
   price?: ReactNode | undefined;
-  /** Content shown below the row while selected or always (a note); not part of the label text of the control. */
+  /**
+   * A note shown in the card (text only, never a link or button: it sits inside the label). It is the control's description, not
+   * part of its name: the name is the title, meta and price (`aria-labelledby`), so a screen reader reads the note after them.
+   */
   extra?: ReactNode | undefined;
   describedBy?: string | undefined;
 }) {
+  const id = useId();
+  const ids = {
+    title: `${id}-title`,
+    meta: `${id}-meta`,
+    price: `${id}-price`,
+    extra: `${id}-extra`,
+  };
+  const labelledBy = [ids.title, meta ? ids.meta : null, price ? ids.price : null]
+    .filter(Boolean)
+    .join(' ');
+  const description =
+    [describedBy, extra ? ids.extra : null].filter(Boolean).join(' ') || undefined;
   return (
     <label
       className={cx('ls-choice', disabled && 'ls-choice-disabled')}
@@ -48,7 +63,8 @@ export function ChoiceCard({
         value={value}
         checked={checked}
         disabled={disabled}
-        aria-describedby={describedBy}
+        aria-labelledby={labelledBy}
+        aria-describedby={description}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span
@@ -58,11 +74,25 @@ export function ChoiceCard({
         <Icon name="check" size={16} />
       </span>
       <span className="ls-choice-body">
-        <span className="ls-choice-title">{title}</span>
-        {meta ? <span className="ls-choice-meta">{meta}</span> : null}
+        <span className="ls-choice-title" id={ids.title}>
+          {title}
+        </span>
+        {meta ? (
+          <span className="ls-choice-meta" id={ids.meta}>
+            {meta}
+          </span>
+        ) : null}
       </span>
-      {price ? <span className="ls-choice-price">{price}</span> : null}
-      {extra ? <span className="ls-choice-extra">{extra}</span> : null}
+      {price ? (
+        <span className="ls-choice-price" id={ids.price}>
+          {price}
+        </span>
+      ) : null}
+      {extra ? (
+        <span className="ls-choice-extra" id={ids.extra}>
+          {extra}
+        </span>
+      ) : null}
     </label>
   );
 }

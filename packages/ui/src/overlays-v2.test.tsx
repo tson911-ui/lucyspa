@@ -16,7 +16,7 @@ Object.defineProperty(window.HTMLElement.prototype, 'offsetParent', {
     return (this as HTMLElement).parentNode;
   },
 });
-const { act, useState } = await import('react');
+const { act, useRef, useState } = await import('react');
 const { createRoot } = await import('react-dom/client');
 const ui = await import('./index');
 
@@ -175,6 +175,149 @@ test('FormDialog: the discard prompt suspends the form, so one modal is on the s
   assert.equal(($('input') as HTMLInputElement).value, 'Massage', 'the typed text was kept');
   view.unmount();
 });
+
+// C60: a confirmation whose command needs a second question (the staff password check) is suspended while that question is open,
+// then comes back with its reason; the requests run in the same order as before (command, check, command again).
+function CheckedConfirm({ calls }: { calls: string[] }) {
+  const [checking, setChecking] = useState(false);
+  const answer = useRef<((ok: boolean) => void) | null>(null);
+  const check = () =>
+    new Promise<boolean>((resolve) => {
+      answer.current = resolve;
+      setChecking(true);
+    });
+  const finish = (ok: boolean) => {
+    setChecking(false);
+    answer.current?.(ok);
+  };
+  return (
+    <>
+      <ui.ConfirmDialog
+        title="Hủy hóa đơn?"
+        description="Hóa đơn sẽ bị hủy."
+        confirmLabel="Hủy hóa đơn"
+        cancelLabel="Giữ hóa đơn"
+        reasonField={{ label: 'Lý do', required: true }}
+        suspended={checking}
+        describeError={(error) => ({ message: (error as Error).message })}
+        onConfirm={async (reason) => {
+          calls.push(`send ${reason}`);
+          if (!(await check())) throw new Error('Đã hủy xác nhận mật khẩu.');
+          calls.push(`send again ${reason}`);
+        }}
+        onCancel={() => undefined}
+      />
+      {checking ? (
+        <ui.Dialog title="Xác nhận mật khẩu" onClose={() => finish(false)}>
+          <ui.Button onClick={() => finish(false)}>Thôi</ui.Button>
+          <ui.Button onClick={() => finish(true)}>Xác nhận</ui.Button>
+        </ui.Dialog>
+      ) : null}
+    </>
+  );
+}
+
+const settle = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+test('ConfirmDialog: the password check opens alone (the confirm is suspended), a cancel brings the confirm back as it was', async () => {
+  const calls: string[] = [];
+  const view = mount(<CheckedConfirm calls={calls} />);
+  const reason = $('textarea') as HTMLTextAreaElement;
+  act(() => {
+    const set = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      'value',
+    )!.set!;
+    set.call(reason, 'Khách đổi ý');
+    reason.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  click($('.ls-dialog-footer .ls-btn-danger')!);
+  await settle();
+  const backdrops = $$('.ls-backdrop');
+  assert.equal(
+    backdrops.length,
+    2,
+    'the confirm stays mounted with its reason and pending request',
+  );
+  assert.equal(
+    backdrops.filter((item) => !item.hasAttribute('data-suspended')).length,
+    1,
+    'one modal on screen',
+  );
+  assert.ok(backdrops[0]!.hasAttribute('data-suspended'), 'the confirm is the suspended one');
+  click($$('button').find((button) => button.textContent === 'Thôi')!);
+  await settle();
+  assert.deepEqual(calls, ['send Khách đổi ý'], 'a cancelled check sends nothing again');
+  assert.equal($$('.ls-backdrop').length, 1);
+  assert.equal($('.ls-backdrop')!.hasAttribute('data-suspended'), false, 'the confirm is back');
+  assert.equal(($('textarea') as HTMLTextAreaElement).value, 'Khách đổi ý', 'with the reason');
+  // Confirmed: the command runs again after the check, and the confirm's own flow continues.
+  click($('.ls-dialog-footer .ls-btn-danger')!);
+  await settle();
+  assert.ok($$('.ls-backdrop')[0]!.hasAttribute('data-suspended'));
+  click($$('button').find((button) => button.textContent === 'Xác nhận')!);
+  await settle();
+  assert.deepEqual(calls, ['send Khách đổi ý', 'send Khách đổi ý', 'send again Khách đổi ý']);
+  assert.equal($('.ls-backdrop')!.hasAttribute('data-suspended'), false);
+  view.unmount();
+});
+
+function SuspendedForm({ drawer }: { drawer: boolean }) {
+  const [name, setName] = useState('');
+  const [checking, setChecking] = useState(false);
+  const Surface = drawer ? ui.FormDrawer : ui.FormDialog;
+  return (
+    <>
+      <Surface
+        open
+        title="Hoàn tiền"
+        labels={labels}
+        dirty={name !== ''}
+        suspended={checking}
+        onClose={() => undefined}
+        onSubmit={() => setChecking(true)}
+      >
+        <ui.Field label="Lý do">
+          {(control) => (
+            <ui.TextInput {...control} value={name} onChange={(e) => setName(e.target.value)} />
+          )}
+        </ui.Field>
+      </Surface>
+      {checking ? (
+        <ui.Dialog title="Xác nhận mật khẩu" onClose={() => setChecking(false)}>
+          <ui.Button onClick={() => setChecking(false)}>Thôi</ui.Button>
+        </ui.Dialog>
+      ) : null}
+    </>
+  );
+}
+
+for (const drawer of [false, true]) {
+  test(`${drawer ? 'FormDrawer' : 'FormDialog'}: suspended while the password check is open, the input kept, back on cancel (C60)`, () => {
+    const view = mount(<SuspendedForm drawer={drawer} />);
+    const input = $('input')!;
+    act(() => {
+      const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+      set.call(input, 'Hàng lỗi');
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    act(() => {
+      $('form')!.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    });
+    const backdrops = $$('.ls-backdrop');
+    assert.equal(backdrops.length, 2);
+    assert.equal(backdrops.filter((item) => !item.hasAttribute('data-suspended')).length, 1);
+    assert.ok(backdrops[0]!.hasAttribute('data-suspended'), 'the form is the suspended one');
+    click($$('button').find((button) => button.textContent === 'Thôi')!);
+    assert.equal($$('.ls-backdrop').length, 1);
+    assert.equal($('.ls-backdrop')!.hasAttribute('data-suspended'), false, 'the form is back');
+    assert.equal(($('input') as HTMLInputElement).value, 'Hàng lỗi', 'with the typed input');
+    view.unmount();
+  });
+}
 
 test('Accordion: buttons with aria-expanded, a hidden panel, arrows move between rows, one open at a time', () => {
   const view = mount(

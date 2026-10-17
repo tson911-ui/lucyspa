@@ -177,16 +177,92 @@ function describe(target: unknown): string {
 }
 
 /**
- * The GSAP handed to a component: in the compact scope every duration (and delay) is clamped to 200 ms, so the staff cap is enforced here,
- * not left to each component; with the test probe on, every tween is recorded (target, duration, ease).
+ * What a tween may change (G5, DESIGN.md 17.3: transform and opacity only) and the tween's own settings. Anything else (a width, a
+ * colour, a `stagger`: no stagger, G2) is dropped from the vars, with a warning outside production, so no caller can animate layout.
+ */
+const ANIMATABLE = new Set([
+  'x',
+  'y',
+  'z',
+  'xPercent',
+  'yPercent',
+  'scale',
+  'scaleX',
+  'scaleY',
+  'rotate',
+  'rotation',
+  'rotateX',
+  'rotateY',
+  'rotationX',
+  'rotationY',
+  'skewX',
+  'skewY',
+  'opacity',
+  'autoAlpha',
+  'transformOrigin',
+  'transformPerspective',
+  'force3D',
+  'clearProps',
+]);
+const SETTINGS = new Set([
+  'duration',
+  'delay',
+  'ease',
+  'repeat',
+  'repeatDelay',
+  'yoyo',
+  'paused',
+  'reversed',
+  'overwrite',
+  'immediateRender',
+  'lazy',
+  'id',
+  'data',
+  'callbackScope',
+  'inherit',
+  'defaults',
+  'scrollTrigger',
+  'onStart',
+  'onStartParams',
+  'onUpdate',
+  'onUpdateParams',
+  'onComplete',
+  'onCompleteParams',
+  'onRepeat',
+  'onRepeatParams',
+  'onReverseComplete',
+  'onReverseCompleteParams',
+  'onInterrupt',
+]);
+
+/** The rejected keys of a vars object (it is cleaned in place), for the probe and the warning. */
+export function cleanTweenVars(vars: unknown, compact: boolean): string[] {
+  if (!vars || typeof vars !== 'object') return [];
+  const v = vars as Record<string, unknown>;
+  const rejected: string[] = [];
+  for (const key of Object.keys(v)) {
+    if (ANIMATABLE.has(key) || SETTINGS.has(key)) continue;
+    rejected.push(key);
+    delete v[key];
+  }
+  if (compact) {
+    if (typeof v['duration'] === 'number') v['duration'] = Math.min(v['duration'], COMPACT_MAX_S);
+    if (typeof v['delay'] === 'number') v['delay'] = Math.min(v['delay'], COMPACT_MAX_S);
+  }
+  if (v['defaults']) cleanTweenVars(v['defaults'], compact);
+  return rejected;
+}
+
+/**
+ * The GSAP handed to a component: every tween, `set`, timeline (its defaults and every child tween) and `quickTo` goes through the
+ * same guard: transform and opacity only, and in the compact scope every duration and delay is clamped to 200 ms, so the staff cap is
+ * enforced here, not left to each component. With the test probe on, every tween is recorded (target, duration, ease).
  */
 function guarded(core: GsapCore, compact: boolean): GsapCore {
   const fix = (vars: unknown): void => {
-    if (!vars || typeof vars !== 'object') return;
-    const v = vars as { duration?: number; delay?: number; ease?: unknown };
-    if (compact) {
-      if (typeof v.duration === 'number') v.duration = Math.min(v.duration, COMPACT_MAX_S);
-      if (typeof v.delay === 'number') v.delay = Math.min(v.delay, COMPACT_MAX_S);
+    const rejected = cleanTweenVars(vars, compact);
+    if (rejected.length > 0 && process.env.NODE_ENV !== 'production') {
+      console.warn(`useMotion: only transform and opacity animate; dropped ${rejected.join(', ')}`);
     }
   };
   const record = (target: unknown, vars: unknown): void => {
@@ -199,31 +275,51 @@ function guarded(core: GsapCore, compact: boolean): GsapCore {
       compact,
     });
   };
-  return new Proxy(core, {
-    get(object, key, receiver) {
-      const value = Reflect.get(object, key, receiver) as unknown;
-      if (key === 'to' || key === 'from') {
-        return (target: unknown, vars: unknown) => {
-          fix(vars);
-          record(target, vars);
-          return (value as (t: unknown, v: unknown) => unknown).call(object, target, vars);
-        };
-      }
-      if (key === 'fromTo') {
-        return (target: unknown, from: unknown, vars: unknown) => {
-          fix(vars);
-          record(target, vars);
-          return (value as (t: unknown, f: unknown, v: unknown) => unknown).call(
-            object,
-            target,
-            from,
-            vars,
-          );
-        };
-      }
-      return value;
-    },
-  });
+  type Call = (...args: unknown[]) => unknown;
+  // `to`, `from` and `set` take (target, vars, position?); `fromTo` takes (target, from, vars, position?): the `from` side is
+  // checked for its properties too, and the timing lives in `vars`.
+  const tweens = <T extends object>(object: T): T =>
+    new Proxy(object, {
+      get(host, key, receiver) {
+        const value = Reflect.get(host, key, receiver) as unknown;
+        if (typeof value !== 'function') return value;
+        const call = value as Call;
+        // A timeline's methods return the timeline for chaining (`tl.to(...).to(...)`): hand back the guarded one.
+        const chain = (result: unknown) => (result === host ? receiver : result);
+        if (key === 'to' || key === 'from' || key === 'set') {
+          return (target: unknown, vars: unknown, ...rest: unknown[]) => {
+            fix(vars);
+            if (key !== 'set') record(target, vars);
+            return chain(call.call(host, target, vars, ...rest));
+          };
+        }
+        if (key === 'fromTo') {
+          return (target: unknown, from: unknown, vars: unknown, ...rest: unknown[]) => {
+            fix(from);
+            fix(vars);
+            record(target, vars);
+            return chain(call.call(host, target, from, vars, ...rest));
+          };
+        }
+        if (key === 'timeline') {
+          // A timeline's defaults are clamped and every child tween added to it goes through the same guard.
+          return (vars?: unknown) => tweens(call.call(host, (fix(vars), vars)) as object);
+        }
+        if (key === 'quickTo') {
+          return (target: unknown, property: unknown, vars?: unknown) => {
+            if (typeof property === 'string' && !ANIMATABLE.has(property)) {
+              throw new Error(
+                `useMotion: quickTo may only drive transform or opacity, not ${property}`,
+              );
+            }
+            fix(vars);
+            return call.call(host, target, property, vars);
+          };
+        }
+        return value;
+      },
+    });
+  return tweens(core);
 }
 
 /** Every live context, so a route change can stop all of them at once (G4). */

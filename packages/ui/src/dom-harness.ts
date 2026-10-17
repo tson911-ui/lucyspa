@@ -7,7 +7,7 @@ export interface TestDom {
   window: JSDOM['window'];
   /** Makes `matchMedia(query).matches` return `value` for queries containing `max-width: 639px`. */
   setPhone(value: boolean): void;
-  /** Same for queries containing `max-width: 1023px` (the tablet query). */
+  /** Same for queries containing `max-width: 1023px` (the tablet query). `(pointer: fine)` matches only while neither is set. */
   setTablet(value: boolean): void;
 }
 
@@ -26,7 +26,9 @@ export function installDom(url = 'http://localhost/employees'): TestDom {
       get matches() {
         return (
           (phone && query.includes('max-width: 639px')) ||
-          (tablet && query.includes('max-width: 1023px'))
+          (tablet && query.includes('max-width: 1023px')) ||
+          // A desktop (neither phone nor tablet) has a fine pointer; a phone or tablet is touch.
+          (!phone && !tablet && query.includes('pointer: fine'))
         );
       },
       media: query,

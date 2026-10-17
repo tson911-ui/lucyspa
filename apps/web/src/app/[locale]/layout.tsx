@@ -2,7 +2,15 @@ import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Playfair_Display } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { FX_COOKIE } from '@lucy-spa/ui';
+import {
+  FX_COOKIE,
+  MOTION_PREPAINT_SCRIPT,
+  NAV_GROUPS_COOKIE,
+  parseNavGroupCookie,
+  parseSidebarCookie,
+  ShellPreferencesProvider,
+  SIDEBAR_COOKIE,
+} from '@lucy-spa/ui';
 import '@lucy-spa/ui/tokens.css';
 // Seasonal presets (docs/UXUI_REDESIGN_DESIGN.md 20): inert until an element carries data-season (set below, S5).
 import '@lucy-spa/ui/season.css';
@@ -21,8 +29,12 @@ import '@lucy-spa/ui/chrome-v2.css';
 import '@lucy-spa/ui/pages-v2.css';
 // Session 10: the interaction states of every area, loaded last.
 import '@lucy-spa/ui/foundation-v2.css';
+// Session 10 page work (Steps 4-6): one sheet per area, imported by the area layouts ((site)/layout.tsx for the customer
+// sheets, workforce/layout.tsx for the staff sheets, season-preview/page.tsx for the customer home), so they load after the
+// foundation and only in their own area.
 import { getDictionary } from '../../i18n/dictionaries';
-import { RouteHistoryTracker } from '../../components/navigation/page-back';
+import { Suspense } from 'react';
+import { ListUrlRecorder, RouteHistoryTracker } from '../../components/navigation/page-back';
 import { isLocale, locales } from '../../i18n/locales';
 import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
 import { fetchActiveSeason } from '../../lib/season-server';
@@ -99,29 +111,43 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   if (!isLocale(locale)) notFound();
 
   const dictionary = getDictionary(locale);
-  // The active season (cached 60 s, fail closed) and this device's choice to hide the admin touch.
-  const season = await fetchActiveSeason(locale);
-  const jar = await cookies();
+  // The active season (cached 60 s, fail closed) and this device's cookies, read in parallel (rbp async-parallel).
+  const [season, jar] = await Promise.all([fetchActiveSeason(locale), cookies()]);
   const adminHidden = jar.get(ADMIN_HIDE_COOKIE)?.value === 'off';
   // The visitor's effects switch is known on the server, so the CSS-only hero sequence is off from the first paint (data-ls-fx).
   const effectsOff = jar.get(FX_COOKIE)?.value === 'off';
 
   return (
-    // MotionGate marks <html> (data-ls-motion) after hydration.
+    // MotionGate marks <html> (data-ls-motion) after hydration; for data saver and low-memory devices the inline script below
+    // sets the same mark before the first paint. That attribute is not in the server markup, so this element alone may differ
+    // from it at hydration (rbp rendering-hydration-suppress-warning; one level deep, children are still checked).
     <html
       lang={locale}
       className={`${beVietnamPro.variable} ${playfairDisplay.variable}`}
-      suppressHydrationWarning
       {...seasonRootAttributes(season, adminHidden)}
       {...(effectsOff ? { 'data-ls-fx': 'off' } : {})}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MOTION_PREPAINT_SCRIPT }} />
+      </head>
       {/* One token source for every area (DESIGN.md D1, session 10): the v2 tokens on the whole document. */}
       <body data-ui="v2">
         <a className="skip-link" href="#main-content">
           {dictionary.skipToContent}
         </a>
         <RouteHistoryTracker />
-        {children}
+        {/* Reads the query, so it renders on the client only, inside its own boundary (C70: lists reopen as they were left). */}
+        <Suspense fallback={null}>
+          <ListUrlRecorder />
+        </Suspense>
+        {/* The staff sidebar's remembered state (cookies), so it renders collapsed or with its groups open from the first paint. */}
+        <ShellPreferencesProvider
+          collapsed={parseSidebarCookie(jar.get(SIDEBAR_COOKIE)?.value)}
+          groups={parseNavGroupCookie(jar.get(NAV_GROUPS_COOKIE)?.value)}
+        >
+          {children}
+        </ShellPreferencesProvider>
       </body>
     </html>
   );

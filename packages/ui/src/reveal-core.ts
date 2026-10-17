@@ -19,6 +19,14 @@ export function motionAllowed(environment: MotionEnvironment): boolean {
 }
 
 /**
+ * A tiny inline script for the document head (rbp rendering-hydration-no-flicker): data saver and low-memory devices are known
+ * only in the browser, so it marks `<html data-ls-motion="reduced">` before the first paint, exactly as MotionGate later does,
+ * and no CSS keyed on the mark plays for a frame first. Reduced motion and `ls-fx=off` need no script (a media query and a
+ * server-set attribute). It never throws and touches nothing else.
+ */
+export const MOTION_PREPAINT_SCRIPT = `(function(){try{var n=navigator,c=n.connection,m=n.deviceMemory;if((c&&c.saveData)||(typeof m==='number'&&m<=${LOW_MEMORY_GB}))document.documentElement.setAttribute('data-ls-motion','reduced')}catch(e){}})();`;
+
+/**
  * Whether links may be fetched ahead of a click. Data saver and low memory devices keep their bandwidth and memory for
  * the page they are on; reduced motion says nothing about the network, so it does not matter here.
  */

@@ -34,6 +34,23 @@ export interface PaginationLabels {
   pageSize: string;
   /** With `{size}`, e.g. "{size} per page". */
   pageSizeOption: string;
+  /**
+   * The language of the numbers in the summary (`vi` groups 1.234, `en` 1,234; WIG locale: Intl.NumberFormat, never raw digits).
+   * Without it the counts are plain digits.
+   */
+  locale?: 'vi' | 'en' | undefined;
+}
+
+const counters = new Map<string, Intl.NumberFormat>();
+/** The summary's numbers in the list's language, one cached formatter per language. */
+function count(value: number, locale: 'vi' | 'en' | undefined): string {
+  if (!locale) return String(value);
+  let format = counters.get(locale);
+  if (!format) {
+    format = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-GB');
+    counters.set(locale, format);
+  }
+  return format.format(value);
 }
 
 /**
@@ -70,7 +87,13 @@ export function Pagination({
   const showSize = onPageSizeChange !== undefined && total > Math.min(...choices);
   return (
     <div className={cx('ls-pagination', className)}>
-      <p className="ls-pagination-summary">{fillTemplate(labels.summary, { from, to, total })}</p>
+      <p className="ls-pagination-summary">
+        {fillTemplate(labels.summary, {
+          from: count(from, labels.locale),
+          to: count(to, labels.locale),
+          total: count(total, labels.locale),
+        })}
+      </p>
       {showSize ? (
         <Select
           className="ls-pagination-size"

@@ -1,5 +1,5 @@
-'use client';
-
+// No 'use client' (rbp 'use client' placement): the frame is stateless; only `FallbackImage` needs the client, and it carries
+// its own boundary, so a server page ships no client code for the frame itself.
 import type { ImgHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 import { Icon } from './icons';

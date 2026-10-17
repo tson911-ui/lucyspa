@@ -6,6 +6,8 @@ import {
   isRealIsoDate,
   isWithinRange,
   maskDayMonthYear,
+  maskTime,
+  readTypedTime,
   readTypedDate,
 } from './date-text-core';
 
@@ -53,4 +55,15 @@ test('min and max are inclusive and optional', () => {
   assert.equal(isWithinRange('2026-10-10', undefined, '2026-10-09'), false);
   assert.equal(isWithinRange('2026-10-08', '2026-10-09'), false);
   assert.equal(isWithinRange('2030-01-01'), true);
+});
+
+test('time helpers: 24 h only, masked as HH:mm, out-of-range times are not a value (session 10 DateTimeInput)', () => {
+  assert.equal(maskTime('1430'), '14:30');
+  assert.equal(maskTime('9'), '9');
+  assert.equal(maskTime('14:3a0'), '14:30');
+  assert.equal(readTypedTime('14:30'), '14:30');
+  assert.equal(readTypedTime('00:00'), '00:00');
+  assert.equal(readTypedTime('24:00'), null);
+  assert.equal(readTypedTime('12:60'), null);
+  assert.equal(readTypedTime('2:30'), null);
 });

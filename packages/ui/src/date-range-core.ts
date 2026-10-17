@@ -161,6 +161,19 @@ export function monthGrid(month: string, weekStart: 0 | 1 = 1): CalendarDay[][] 
   return weeks;
 }
 
+// One Intl.DateTimeFormat per language and style, built once (rbp js-cache-function-results): a calendar renders about 60 day
+// names, 14 weekday names and 2 month names per render.
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function formatter(locale: 'vi' | 'en', kind: string, options: Intl.DateTimeFormatOptions) {
+  const key = `${locale}:${kind}`;
+  let found = formatters.get(key);
+  if (!found) {
+    found = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', options);
+    formatters.set(key, found);
+  }
+  return found;
+}
+
 /** A business date as text: `long` has the weekday ("Monday, 30 September 2026"), `medium` is short ("30 Sep 2026"). */
 export function formatDay(
   value: string,
@@ -171,7 +184,7 @@ export function formatDay(
     style === 'long'
       ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }
       : { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' };
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', options).format(parse(value));
+  return formatter(locale, `day-${style}`, options).format(parse(value));
 }
 
 /** "30 Sep 2026" or "24 Sep 2026 – 30 Sep 2026"; one date when the range is a single day. */
@@ -183,20 +196,17 @@ export function formatRange(range: DateRange, locale: 'vi' | 'en'): string {
 
 /** Month heading ("September 2026"). */
 export function formatMonth(value: string, locale: 'vi' | 'en'): string {
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(parse(value));
+  return formatter(locale, 'month', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    parse(value),
+  );
 }
 
 /** Short weekday name (Mon, T2) for column headings. */
 export function formatWeekday(weekday: number, locale: 'vi' | 'en'): string {
   // 2024-01-07 is a Sunday.
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    weekday: 'short',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(2024, 0, 7 + weekday)));
+  return formatter(locale, 'weekday', { weekday: 'short', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(2024, 0, 7 + weekday)),
+  );
 }
 
 /** Day of week (0 = Sunday) of a business date. */

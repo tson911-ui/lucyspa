@@ -249,6 +249,67 @@ test('session 10 (G4, G5): the kit GSAP clamps tweens to 0.2 s in a compact scop
   motion.configureMotion();
 });
 
+test('the guard covers timelines, set and quickTo: compact clamps their timing, and only transform and opacity animate', async () => {
+  const calls = { contexts: 0, reverted: 0, built: [] as MotionKit[] };
+  const seen: Array<Record<string, unknown>> = [];
+  const timeline: Record<string, unknown> = {};
+  timeline['to'] = (_target: unknown, vars: Record<string, unknown>) => {
+    seen.push(vars);
+    return timeline;
+  };
+  const modules = fakeModules(calls) as unknown as { gsap: Record<string, unknown> };
+  modules.gsap['timeline'] = (vars: Record<string, unknown>) => {
+    seen.push(vars);
+    return timeline;
+  };
+  modules.gsap['set'] = (_target: unknown, vars: Record<string, unknown>) => seen.push(vars);
+  modules.gsap['quickTo'] = (
+    _target: unknown,
+    _property: string,
+    vars: Record<string, unknown>,
+  ) => {
+    seen.push(vars);
+    return () => undefined;
+  };
+  motion.configureMotion({
+    load: async () => modules as never,
+    afterFirstPaint: (callback) => callback(),
+  });
+  const root = window.document.documentElement;
+  root.dataset['lsMotion'] = 'full';
+  const shell = window.document.createElement('div');
+  shell.setAttribute('data-density', 'compact');
+  shell.innerHTML = '<section></section>';
+  window.document.body.append(shell);
+  const scope = shell.querySelector('section') as HTMLElement;
+  let kit: MotionKit | undefined;
+  const warn = console.warn;
+  const warnings: unknown[] = [];
+  console.warn = (message: unknown) => warnings.push(message);
+  const stop = motion.runMotion(scope, (made) => (kit = made));
+  await settle();
+  await settle();
+  assert.ok(kit);
+  const line = kit.gsap.timeline({ defaults: { duration: 0.6 } });
+  line.to(scope, { x: 10, duration: 0.5 }).to(scope, { width: 200, opacity: 1, duration: 0.4 });
+  kit.gsap.set(scope, { opacity: 0, height: 10 });
+  kit.gsap.quickTo(scope, 'x', { duration: 0.9 });
+  assert.throws(() => kit!.gsap.quickTo(scope, 'width'), /transform or opacity/);
+  console.warn = warn;
+  assert.deepEqual(seen, [
+    { defaults: { duration: 0.2 } },
+    { x: 10, duration: 0.2 },
+    { opacity: 1, duration: 0.2 },
+    { opacity: 0 },
+    { duration: 0.2 },
+  ]);
+  assert.equal(warnings.length, 2, 'the dropped width and height are reported');
+  stop();
+  shell.remove();
+  delete root.dataset['lsMotion'];
+  motion.configureMotion();
+});
+
 test('MotionGate: the ls-fx switch and the staff setting turn the gate to reduced, live, and the document is cleaned up', async () => {
   class Observer {
     observe() {}

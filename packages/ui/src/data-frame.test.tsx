@@ -81,7 +81,8 @@ function withErrors<T>(run: () => T): { result: T; errors: string[] } {
   }
 }
 
-test('DataTable column policy: truncate and wrap clip at a width and repeat the text as title', () => {
+// Owner answer 7 (2026-10-16): names wrap and are never cut, so no cell repeats its text as a tooltip any more.
+test('DataTable column policy: truncate and wrap keep a width class and carry the whole text without a title copy', () => {
   const columns: DataTableColumn<Row>[] = [
     { key: 'name', header: 'Chi nhánh', truncate: true, cell: (row) => row.name },
     { key: 'wrapped', header: 'Ghi chú', wrap: true, width: 'lg', cell: (row) => row.name },
@@ -99,8 +100,9 @@ test('DataTable column policy: truncate and wrap clip at a width and repeat the 
   );
   assert.match(
     markup,
-    /<td[^>]*class="ls-col-md"[^>]*><span class="ls-cell-value ls-cell-truncate" title="Lucy Spa/,
+    /<td[^>]*class="ls-col-md"[^>]*><span class="ls-cell-value ls-cell-truncate">Lucy Spa/,
   );
+  assert.doesNotMatch(markup, / title="Lucy Spa/, 'no tooltip copy of a cell');
   assert.match(markup, /<td[^>]*class="ls-col-lg"[^>]*><span class="ls-cell-value ls-cell-wrap"/);
   assert.match(markup, /<th[^>]*class="ls-col-md"/, 'header shares the width class');
   assert.match(

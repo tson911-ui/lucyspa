@@ -29,10 +29,23 @@ test('C17 counter: only a Stat that asks for it counts (staff screens never do)'
 
 test('C17 page change: the shared photo has its own class over the page duration, and reduced motion removes every tween', () => {
   const css = readFileSync(new URL('site.css', import.meta.url), 'utf8');
+  // The pseudo-elements hang off <html>, so they read root tokens that carry the customer values (fade 240, morph 320 ms).
   assert.match(
     css,
-    /::view-transition-group\(\.ls-morph\) \{\s*animation-duration: var\(--ls-dur-slow\);/,
+    /::view-transition-group\(\.ls-morph\) \{\s*animation-duration: var\(--ls-dur-vt-morph\);/,
   );
+  assert.match(
+    css,
+    /::view-transition-group\(ls-page\) \{[^}]*animation-duration: var\(--ls-dur-vt-fade\);/,
+  );
+  const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
+  assert.match(tokens, /:root \{[^}]*--ls-dur-vt-fade: 240ms;\s*--ls-dur-vt-morph: 320ms;/);
+  // Reduced motion and the off switch end every view transition even before the gate marks the page.
+  assert.match(
+    css,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*::view-transition-group\(\*\),\s*::view-transition-old\(\*\),\s*::view-transition-new\(\*\) \{\s*animation: none !important;/,
+  );
+  assert.ok(css.includes("html[data-ls-fx='off']::view-transition-group(*)"));
   for (const part of ['group', 'old', 'new']) {
     for (const name of ['ls-page', '.ls-morph']) {
       assert.ok(

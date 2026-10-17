@@ -55,7 +55,8 @@ test('MediaGrid lists tiles; each tile is a labelled button with a decorative la
     2,
     'the badge row is always there',
   );
-  assert.equal(buttons[0]?.getAttribute('title'), 'a.png');
+  // Session 10 (Owner answer 7): the name wraps in full, so no tooltip repeats it.
+  assert.equal(buttons[0]?.getAttribute('title'), null);
   assert.equal(buttons[0]?.textContent, 'a.png', 'the visible name is inside the accessible name');
   act(() => {
     buttons[1]!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));

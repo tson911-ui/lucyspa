@@ -36,7 +36,14 @@ export function MediaThumb({ src }: { src: string | null }) {
   return (
     <span className="ls-thumb">
       {src ? (
-        <FallbackImage src={src} loading="lazy" decoding="async" fallback={<Icon name="image" />} />
+        <FallbackImage
+          src={src}
+          width={44}
+          height={44}
+          loading="lazy"
+          decoding="async"
+          fallback={<Icon name="image" />}
+        />
       ) : (
         <Icon name="image" />
       )}
@@ -44,12 +51,25 @@ export function MediaThumb({ src }: { src: string | null }) {
   );
 }
 
-/** A large preview of one image (detail drawer): contained, never cropped, on a sunken surface. */
-export function MediaPreview({ src, alt }: { src: string; alt: string }) {
+/**
+ * A large preview of one image (detail drawer): contained, never cropped, on a sunken surface. Pass the picture's own `width` and
+ * `height` when known (the media library has them): the drawer then keeps the picture's room while it loads instead of jumping.
+ */
+export function MediaPreview({
+  src,
+  alt,
+  width,
+  height,
+}: {
+  src: string;
+  alt: string;
+  width?: number | undefined;
+  height?: number | undefined;
+}) {
   return (
     <div className="ls-media-preview">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} decoding="async" />
+      <img src={src} alt={alt} width={width} height={height} decoding="async" />
     </div>
   );
 }
@@ -94,13 +114,20 @@ export function MediaRow({
   return (
     <div className="ls-media-row">
       <span className="ls-media-row-thumb">
-        <FallbackImage src={src} loading="lazy" decoding="async" fallback={<ImageGone />} />
+        {/* Size attributes in the box's 12:5 ratio (WIG images); the CSS sets the size. */}
+        <FallbackImage
+          src={src}
+          width={120}
+          height={50}
+          loading="lazy"
+          decoding="async"
+          fallback={<ImageGone />}
+        />
       </span>
       <div className="ls-media-row-text">
         <button
           type="button"
           className="ls-media-row-title"
-          title={title}
           aria-label={actionLabel}
           onClick={onSelect}
         >
@@ -145,14 +172,21 @@ export function MediaTile({
     <li className="ls-media-item">
       <div className="ls-media-tile">
         <span className="ls-media-thumb">
-          <FallbackImage src={src} loading="lazy" decoding="async" fallback={<ImageGone />} />
+          {/* Size attributes in the box's 4:3 ratio (WIG images); the CSS sets the size. */}
+          <FallbackImage
+            src={src}
+            width={160}
+            height={120}
+            loading="lazy"
+            decoding="async"
+            fallback={<ImageGone />}
+          />
         </span>
         {/* The name is the button (as a table's name cell is the link); its pseudo-element stretches the
             click area over the whole tile. */}
         <button
           type="button"
           className="ls-media-title"
-          title={title}
           aria-label={actionLabel}
           onClick={onSelect}
         >
@@ -195,9 +229,7 @@ export function ListRow({
       ) : null}
       <div className="ls-media-row-text">
         <span className="ls-list-row-head">
-          <span className="ls-list-row-title" title={title}>
-            {title}
-          </span>
+          <span className="ls-list-row-title">{title}</span>
           {badge}
         </span>
         <span className="ls-media-meta" title={meta}>
@@ -233,9 +265,12 @@ export function PictureReview({
   return (
     <article className="ls-picture-review">
       <span className="ls-picture-review-image">
+        {/* Size attributes in the box's 3:4 ratio (WIG images); the CSS sets the size. */}
         <FallbackImage
           src={src}
           alt={alt}
+          width={300}
+          height={400}
           loading="lazy"
           decoding="async"
           fallback={<ImageGone />}

@@ -41,6 +41,11 @@ interface FormOverlayProps {
   /** Error summary, drawn above the fields; focus moves to the first invalid field when it appears. */
   error?: ReactNode | undefined;
   submitDisabled?: boolean | undefined;
+  /**
+   * Another modal is asking something for this form (the password check of a sensitive command): the form steps out of sight until it
+   * is answered, its input and pending state kept, so only one modal is on screen (HIG C60, `Dialog.suspended`).
+   */
+  suspended?: boolean | undefined;
   labels: FormOverlayLabels;
   children: ReactNode;
 }
@@ -65,10 +70,17 @@ function useFormOverlay({
   const formRef = useRef<HTMLFormElement | null>(null);
   const [asking, setAsking] = useState(false);
 
-  // Dialog reads `.current` once when it opens, after the form is mounted: the first field gets focus.
+  // Dialog reads `.current` once when it opens, after the form is mounted: with a mouse or trackpad the first field gets focus;
+  // on a touch screen the panel does, so the on-screen keyboard does not jump up over a sheet the person has not read yet (WIG
+  // autoFocus: desktop only).
   const initialFocus = useMemo<RefObject<HTMLElement | null>>(
     () => ({
       get current() {
+        const fine =
+          typeof window.matchMedia !== 'function' || window.matchMedia('(pointer: fine)').matches;
+        if (!fine) {
+          return formRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null;
+        }
         return formRef.current?.querySelector<HTMLElement>(FIELD) ?? null;
       },
       set current(_value) {
@@ -159,6 +171,7 @@ export function FormDialog({
   dirty = false,
   error,
   submitDisabled = false,
+  suspended = false,
   labels,
   children,
 }: FormOverlayProps & { description?: string | undefined; size?: DialogSize | undefined }) {
@@ -178,7 +191,7 @@ export function FormDialog({
         description={description}
         size={size}
         busy={busy}
-        suspended={asking}
+        suspended={suspended || asking}
         closeLabel={labels.close}
         initialFocus={initialFocus}
         onClose={requestClose}
@@ -209,6 +222,7 @@ export function FormDrawer({
   dirty = false,
   error,
   submitDisabled = false,
+  suspended = false,
   labels,
   className,
   children,
@@ -229,7 +243,7 @@ export function FormDrawer({
         title={title}
         side={phone ? 'bottom' : 'end'}
         busy={busy}
-        suspended={asking}
+        suspended={suspended || asking}
         closeLabel={labels.close}
         initialFocus={initialFocus}
         onClose={requestClose}

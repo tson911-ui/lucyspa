@@ -19,6 +19,43 @@ test('exitDuration reads the longest computed animation duration in milliseconds
   assert.equal(exitDuration(''), 0);
 });
 
+test('Popover: a bottom sheet at phone width (HIG C62), an anchored panel above it', () => {
+  const container = window.document.createElement('div');
+  window.document.body.appendChild(container);
+  const root = createRoot(container);
+  const anchor = createRef<HTMLElement>();
+  const draw = (open: boolean) =>
+    act(() =>
+      root.render(
+        <>
+          <button ref={anchor as React.RefObject<HTMLButtonElement>}>t</button>
+          <Popover open={open} onClose={() => undefined} anchorRef={anchor}>
+            <p>panel</p>
+          </Popover>
+        </>,
+      ),
+    );
+  try {
+    dom.setPhone(true);
+    draw(true);
+    const sheet = container.querySelector<HTMLElement>('.ls-popover');
+    assert.equal(sheet?.classList.contains('ls-popover-sheet'), true, 'phone: a sheet');
+    assert.equal(sheet?.style.left, '0px', 'full width from the start edge');
+    draw(false);
+    dom.setPhone(false);
+    draw(true);
+    assert.equal(
+      container.querySelector('.ls-popover')?.classList.contains('ls-popover-sheet'),
+      false,
+      'wider: anchored to its trigger',
+    );
+  } finally {
+    dom.setPhone(false);
+    act(() => root.unmount());
+    container.remove();
+  }
+});
+
 test('Popover: removed at once without an exit animation; kept (inert, data-state closed) until it ends with one', () => {
   const container = window.document.createElement('div');
   window.document.body.appendChild(container);

@@ -2,6 +2,7 @@
 
 import {
   useId,
+  memo,
   useMemo,
   useRef,
   useState,
@@ -46,6 +47,7 @@ import {
   ChartTools,
   ChartTooltip,
   useElementWidth,
+  useTextScale,
   type LegendItem,
 } from './chart-parts';
 import { cx } from './cx';
@@ -136,12 +138,16 @@ function legendFor(prepared: Prepared, previousLabel: string): LegendItem[] | nu
   return items;
 }
 
-/** Six hatch patterns, one per slot, shown only where color is unavailable (forced colors, print). */
-function TextureDefs({ uid }: { uid: string }) {
-  const angles = [45, 135, 0, 90, 45, 135];
+const TEXTURE_ANGLES = [45, 135, 0, 90, 45, 135] as const;
+
+/**
+ * Six hatch patterns, one per slot, shown only where color is unavailable (forced colors, print). They depend on the uid only, so
+ * they are memoised and a pointer move never rebuilds them (rbp rendering-hoist-jsx).
+ */
+const TextureDefs = memo(function TextureDefs({ uid }: { uid: string }) {
   return (
     <defs>
-      {angles.map((angle, index) => (
+      {TEXTURE_ANGLES.map((angle, index) => (
         <pattern
           key={index}
           id={`${uid}-t${index + 1}`}
@@ -162,7 +168,7 @@ function TextureDefs({ uid }: { uid: string }) {
       ))}
     </defs>
   );
-}
+});
 
 function useUid(): string {
   return useId().replace(/:/g, '');
@@ -226,6 +232,7 @@ export function LineChart({
 }: LineChartProps) {
   const prepared = useMemo(() => prepareChart(data), [data]);
   const [plotRef, width] = useElementWidth();
+  const textScale = useTextScale();
   const [table, setTable] = useState(false);
   const box = plotBox(width, height, LINE_MARGIN);
   const geometry = useMemo(
@@ -237,8 +244,75 @@ export function LineChart({
   );
   const uid = useUid();
   const { active } = interaction;
-  const showLabels = labelIndexes(prepared.keys.length, box.innerWidth, MIN_LABEL_GAP);
+  const showLabels = labelIndexes(prepared.keys.length, box.innerWidth, MIN_LABEL_GAP * textScale);
+  const labelKey = [...showLabels].join(',');
   const tooltip = active === null ? null : tooltipModel(prepared, active, format, labels);
+  // The layers a pointer move does not change are built once per data, size and language: a move re-renders only the crosshair,
+  // the markers and the tooltip (rbp rerender-memo); the x labels are formatted once per data and language.
+  const xLabels = useMemo(
+    () => prepared.xs.map((x) => formatX(x, format.locale)),
+    [prepared, format.locale],
+  );
+  const axes = useMemo(
+    () => (
+      <>
+        {geometry.ticks.map((tick) => (
+          <g key={tick.value}>
+            <line className="ls-chart-grid" x1={0} x2={box.innerWidth} y1={tick.at} y2={tick.at} />
+            <text className="ls-chart-tick" x={-8} y={tick.at} dy="0.32em" textAnchor="end">
+              {formatTick(tick.value, format)}
+            </text>
+          </g>
+        ))}
+        {xLabels.map((label, index) =>
+          showLabels.has(index) ? (
+            <text
+              key={index}
+              className="ls-chart-tick"
+              x={geometry.xs[index]}
+              y={box.innerHeight + 10}
+              dy="1em"
+              textAnchor="middle"
+            >
+              {label}
+            </text>
+          ) : null,
+        )}
+      </>
+    ),
+    // showLabels is read through its key; format is the caller's object.
+    [geometry, xLabels, labelKey, box.innerWidth, box.innerHeight, format],
+  );
+  const lines = useMemo(
+    () => (
+      <>
+        {area
+          ? prepared.series.map((item, at) => (
+              <path
+                key={item.id}
+                className={`ls-chart-area ls-chart-s${item.slot}`}
+                d={geometry.series[at]!.areaPath}
+              />
+            ))
+          : null}
+        {geometry.previous.map((item) => (
+          <path
+            key={`previous-${item.seriesId}`}
+            className="ls-chart-line ls-chart-line-previous"
+            d={item.path}
+          />
+        ))}
+        {prepared.series.map((item, at) => (
+          <path
+            key={item.id}
+            className={`ls-chart-line ls-chart-s${item.slot}`}
+            d={geometry.series[at]!.path}
+          />
+        ))}
+      </>
+    ),
+    [area, prepared, geometry],
+  );
 
   return (
     <div className={cx('ls-chart', className)}>
@@ -269,33 +343,7 @@ export function LineChart({
           >
             <TextureDefs uid={uid} />
             <g transform={`translate(${LINE_MARGIN.left},${LINE_MARGIN.top})`}>
-              {geometry.ticks.map((tick) => (
-                <g key={tick.value}>
-                  <line
-                    className="ls-chart-grid"
-                    x1={0}
-                    x2={box.innerWidth}
-                    y1={tick.at}
-                    y2={tick.at}
-                  />
-                  <text className="ls-chart-tick" x={-8} y={tick.at} dy="0.32em" textAnchor="end">
-                    {formatTick(tick.value, format)}
-                  </text>
-                </g>
-              ))}
-              {prepared.xs.map((x, index) =>
-                showLabels.has(index) ? (
-                  <text
-                    key={index}
-                    className="ls-chart-tick"
-                    x={geometry.xs[index]}
-                    y={box.innerHeight + 20}
-                    textAnchor="middle"
-                  >
-                    {formatX(x, format.locale)}
-                  </text>
-                ) : null,
-              )}
+              {axes}
               {active === null ? null : (
                 <line
                   className="ls-chart-crosshair"
@@ -305,29 +353,7 @@ export function LineChart({
                   y2={box.innerHeight}
                 />
               )}
-              {area
-                ? prepared.series.map((item, at) => (
-                    <path
-                      key={item.id}
-                      className={`ls-chart-area ls-chart-s${item.slot}`}
-                      d={geometry.series[at]!.areaPath}
-                    />
-                  ))
-                : null}
-              {geometry.previous.map((item) => (
-                <path
-                  key={`previous-${item.seriesId}`}
-                  className="ls-chart-line ls-chart-line-previous"
-                  d={item.path}
-                />
-              ))}
-              {prepared.series.map((item, at) => (
-                <path
-                  key={item.id}
-                  className={`ls-chart-line ls-chart-s${item.slot}`}
-                  d={geometry.series[at]!.path}
-                />
-              ))}
+              {lines}
               {prepared.series.map((item, at) =>
                 geometry.series[at]!.ys.map((y, index) =>
                   y === null || (prepared.keys.length > MARKER_LIMIT && index !== active) ? null : (
@@ -388,9 +414,13 @@ export function BarChart({
   const effective = mode === 'stacked' ? { ...data, previous: undefined } : data;
   const prepared = useMemo(() => prepareChart(effective), [data, mode]);
   const [plotRef, width] = useElementWidth();
+  const textScale = useTextScale();
   const [table, setTable] = useState(false);
   const horizontal = orientation === 'horizontal';
-  const categoryLabels = prepared.xs.map((x) => formatX(x, format.locale));
+  const categoryLabels = useMemo(
+    () => prepared.xs.map((x) => formatX(x, format.locale)),
+    [prepared, format.locale],
+  );
   const margin: Margin = horizontal
     ? {
         ...BAR_MARGIN,
@@ -429,9 +459,79 @@ export function BarChart({
   const { active } = interaction;
   const showLabels = horizontal
     ? new Set(prepared.keys.map((_, index) => index))
-    : labelIndexes(prepared.keys.length, box.innerWidth, MIN_LABEL_GAP);
+    : labelIndexes(prepared.keys.length, box.innerWidth, MIN_LABEL_GAP * textScale);
   const tooltip = active === null ? null : tooltipModel(prepared, active, format, labels);
   const anchor = active === null ? 0 : (geometry.centers[active] ?? 0);
+  const labelKey = [...showLabels].join(',');
+  // The layers a pointer move does not change (ticks, category labels, bars) are memoised (rbp rerender-memo).
+  const ticks = useMemo(
+    () =>
+      geometry.ticks.map((tick) =>
+        horizontal ? (
+          <g key={tick.value}>
+            <line className="ls-chart-grid" x1={tick.at} x2={tick.at} y1={0} y2={box.innerHeight} />
+            <text
+              className="ls-chart-tick"
+              x={tick.at}
+              y={box.innerHeight + 10}
+              dy="1em"
+              textAnchor="middle"
+            >
+              {formatTick(tick.value, format)}
+            </text>
+          </g>
+        ) : (
+          <g key={tick.value}>
+            <line className="ls-chart-grid" x1={0} x2={box.innerWidth} y1={tick.at} y2={tick.at} />
+            <text className="ls-chart-tick" x={-8} y={tick.at} dy="0.32em" textAnchor="end">
+              {formatTick(tick.value, format)}
+            </text>
+          </g>
+        ),
+      ),
+    [geometry, horizontal, box.innerWidth, box.innerHeight, format],
+  );
+  const categoryText = useMemo(
+    () =>
+      categoryLabels.map((label, index) =>
+        showLabels.has(index) ? (
+          <text
+            key={index}
+            className="ls-chart-tick"
+            x={horizontal ? -8 : geometry.centers[index]}
+            y={horizontal ? geometry.centers[index] : box.innerHeight + 10}
+            dy={horizontal ? '0.32em' : '1em'}
+            textAnchor={horizontal ? 'end' : 'middle'}
+          >
+            {horizontal
+              ? truncate(label, Math.floor((margin.left - 12) / CATEGORY_CHAR_PX))
+              : label}
+            {horizontal ? <title>{label}</title> : null}
+          </text>
+        ) : null,
+      ),
+    // showLabels is read through its key.
+    [categoryLabels, labelKey, horizontal, geometry, box.innerHeight, margin.left],
+  );
+  const bars = useMemo(
+    () =>
+      geometry.bars.map((bar, index) => (
+        <g key={index}>
+          <path
+            className={cx(
+              'ls-chart-bar',
+              bar.previous ? 'ls-chart-bar-previous' : `ls-chart-s${bar.slot}`,
+              mode === 'stacked' && 'ls-chart-bar-stacked',
+            )}
+            d={bar.path}
+          />
+          {bar.previous ? null : (
+            <path className="ls-chart-texture" d={bar.path} fill={`url(#${uid}-t${bar.slot})`} />
+          )}
+        </g>
+      )),
+    [geometry, mode, uid],
+  );
 
   return (
     <div className={cx('ls-chart', className)}>
@@ -462,40 +562,7 @@ export function BarChart({
           >
             <TextureDefs uid={uid} />
             <g transform={`translate(${margin.left},${margin.top})`}>
-              {geometry.ticks.map((tick) =>
-                horizontal ? (
-                  <g key={tick.value}>
-                    <line
-                      className="ls-chart-grid"
-                      x1={tick.at}
-                      x2={tick.at}
-                      y1={0}
-                      y2={box.innerHeight}
-                    />
-                    <text
-                      className="ls-chart-tick"
-                      x={tick.at}
-                      y={box.innerHeight + 20}
-                      textAnchor="middle"
-                    >
-                      {formatTick(tick.value, format)}
-                    </text>
-                  </g>
-                ) : (
-                  <g key={tick.value}>
-                    <line
-                      className="ls-chart-grid"
-                      x1={0}
-                      x2={box.innerWidth}
-                      y1={tick.at}
-                      y2={tick.at}
-                    />
-                    <text className="ls-chart-tick" x={-8} y={tick.at} dy="0.32em" textAnchor="end">
-                      {formatTick(tick.value, format)}
-                    </text>
-                  </g>
-                ),
-              )}
+              {ticks}
               {active === null ? null : horizontal ? (
                 <rect
                   className="ls-chart-band-active"
@@ -513,42 +580,8 @@ export function BarChart({
                   height={box.innerHeight}
                 />
               )}
-              {categoryLabels.map((label, index) =>
-                showLabels.has(index) ? (
-                  <text
-                    key={index}
-                    className="ls-chart-tick"
-                    x={horizontal ? -8 : geometry.centers[index]}
-                    y={horizontal ? geometry.centers[index] : box.innerHeight + 20}
-                    dy={horizontal ? '0.32em' : undefined}
-                    textAnchor={horizontal ? 'end' : 'middle'}
-                  >
-                    {horizontal
-                      ? truncate(label, Math.floor((margin.left - 12) / CATEGORY_CHAR_PX))
-                      : label}
-                    {horizontal ? <title>{label}</title> : null}
-                  </text>
-                ) : null,
-              )}
-              {geometry.bars.map((bar, index) => (
-                <g key={index}>
-                  <path
-                    className={cx(
-                      'ls-chart-bar',
-                      bar.previous ? 'ls-chart-bar-previous' : `ls-chart-s${bar.slot}`,
-                      mode === 'stacked' && 'ls-chart-bar-stacked',
-                    )}
-                    d={bar.path}
-                  />
-                  {bar.previous ? null : (
-                    <path
-                      className="ls-chart-texture"
-                      d={bar.path}
-                      fill={`url(#${uid}-t${bar.slot})`}
-                    />
-                  )}
-                </g>
-              ))}
+              {categoryText}
+              {bars}
             </g>
           </svg>
           {tooltip ? (

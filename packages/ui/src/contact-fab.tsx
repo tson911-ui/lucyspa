@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { BrandIcon } from './brand-icons';
 import { Icon } from './icons';
-import { findScroller, onPageScroll, scrollPosition } from './scroller';
+import { onPageScroll, scrollPosition } from './scroller';
 
 /** The ways to reach the spa the floating button offers; the page decides which exist (an empty link is left out). */
 export interface ContactFabItem {
@@ -96,14 +96,19 @@ export function ContactFab({
   // the page scrolls, so it steps aside while the visitor reads down the page and is there when it is wanted: at the
   // top of the page, for a moment after scrolling up (looking for it), while its menu is open and while a keyboard or
   // screen reader user is on it. After a short idle it steps aside again. Desktop keeps it in place.
+  //
+  // It also stays above a sticky action bar (the booking flow's summary and buttons): that bar's height is not known to the
+  // stylesheet. Both follow the page scroll through ONE subscription to the shared page-scroll store (one passive listener,
+  // one frame per burst, the scroller cached; rbp client-event-listeners, js-batch-dom-css).
   useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return undefined;
-    const phone = window.matchMedia(PHONE_QUERY);
+    const element = root.current;
+    if (!element) return undefined;
+    const phone = typeof window.matchMedia === 'function' ? window.matchMedia(PHONE_QUERY) : null;
     let last = scrollPosition();
     let timer = 0;
-    const apply = (hidden: boolean) => setAway(phone.matches && hidden);
-    const onScroll = () => {
-      const now = scrollPosition(findScroller());
+    const apply = (hidden: boolean) => setAway((phone?.matches ?? false) && hidden);
+    const stepAside = (now: number) => {
+      if (!phone) return;
       const delta = now - last;
       if (now < TOP_ZONE_PX) {
         window.clearTimeout(timer);
@@ -122,22 +127,12 @@ export function ContactFab({
       }
     };
     const onChange = () => setAway(false);
-    const stopScroll = onPageScroll(onScroll);
-    phone.addEventListener('change', onChange);
-    return () => {
-      window.clearTimeout(timer);
-      stopScroll();
-      phone.removeEventListener('change', onChange);
-    };
-  }, []);
+    phone?.addEventListener('change', onChange);
 
-  // Stay above a sticky action bar (the booking flow's summary and buttons): its height is not known to the stylesheet.
-  useEffect(() => {
-    const element = root.current;
-    if (!element) return undefined;
     const scope = element.closest('.ls-site') ?? document.body;
     let frame = 0;
     let watched: Element | null = null;
+    let lastLift = -1;
     const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => sync());
     function sync() {
       const bar = scope.querySelector('.ls-action-bar');
@@ -146,6 +141,7 @@ export function ContactFab({
         if (bar) resize?.observe(bar);
         watched = bar;
       }
+      // No bar on most pages: nothing to measure, and the lift is written only when it changes.
       const shown = bar !== null && getComputedStyle(bar).display !== 'none';
       let lift = 0;
       if (shown && bar) {
@@ -158,20 +154,34 @@ export function ContactFab({
         const box = bar.getBoundingClientRect();
         lift = Math.max(Math.ceil(box.height), Math.ceil(window.innerHeight - box.top - base));
       }
-      element?.style.setProperty('--ls-fab-lift', `${lift}px`);
+      if (lift !== lastLift) {
+        lastLift = lift;
+        element?.style.setProperty('--ls-fab-lift', `${lift}px`);
+      }
     }
     const schedule = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(sync);
     };
+    // The page's content changes (a booking step adds or removes the bar): measure only when a bar came or went.
     const mutations =
-      typeof MutationObserver === 'undefined' ? null : new MutationObserver(schedule);
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver(() => {
+            if (scope.querySelector('.ls-action-bar') !== watched) schedule();
+          });
     mutations?.observe(scope, { childList: true, subtree: true });
-    window.addEventListener('resize', schedule);
-    // The bar's position changes as the page scrolls (it leaves the edge near the end of the page).
-    const stopScroll = onPageScroll(schedule);
+    window.addEventListener('resize', schedule, { passive: true });
+    const stopScroll = onPageScroll((position) => {
+      stepAside(position);
+      // The bar's position changes as the page scrolls (it leaves the edge near the end of the page); the store already
+      // coalesces to one call per frame.
+      if (watched) sync();
+    });
     sync();
     return () => {
+      window.clearTimeout(timer);
+      phone?.removeEventListener('change', onChange);
       cancelAnimationFrame(frame);
       mutations?.disconnect();
       resize?.disconnect();

@@ -146,6 +146,47 @@ test('DataTable: phoneRows="compact" marks the table, and phoneEmphasis the fiel
   assert.doesNotMatch(cards, /ls-table-compact/);
 });
 
+test('DataTable: drillDown ends every row with a hidden decorative chevron after the row menu (C55); off by default', () => {
+  const columns = [
+    { key: 'a', header: 'Mã', mobileTitle: true, cell: () => 'INV-1' },
+    { key: 'm', header: 'Thao tác', actions: true, cell: () => '⋮' },
+  ];
+  const drill = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      drillDown
+      columns={columns}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.match(drill, /<table class="ls-table ls-table-drill"/);
+  assert.match(drill, /<th class="ls-cell-drill" aria-hidden="true"><\/th><\/tr><\/thead>/);
+  assert.match(
+    drill,
+    /ls-cell-actions[^>]*>⋮<\/td><td class="ls-cell-drill" aria-hidden="true"><svg/,
+  );
+  const plain = html(
+    <DataTable
+      paging={{ off: 'test' }}
+      mode="server"
+      columns={columns}
+      rows={[{ id: '1' }]}
+      rowKey={(row) => row.id}
+      caption="t"
+    />,
+  );
+  assert.doesNotMatch(plain, /ls-cell-drill|chevron/);
+  // On a phone the chevron sits at the card's trailing edge, and in a compact list it is the last item of the first line.
+  assert.match(css, /\.ls-table tbody tr td\.ls-cell-drill \{\s*position: absolute;/);
+  assert.match(
+    css,
+    /\.ls-table\.ls-table-compact tbody tr td\.ls-cell-drill \{\s*position: static;/,
+  );
+});
+
 test('DataTable: a leading picture column has a hidden heading, no card label, and MediaThumb keeps its square without a picture', () => {
   const markup = html(
     <DataTable

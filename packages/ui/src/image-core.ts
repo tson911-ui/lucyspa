@@ -31,6 +31,12 @@ export function precheckDimensions(
   return null;
 }
 
+// At most one decimal, none when it is zero, no grouping (WIG locale: Intl rounds, not toFixed); the caller's mark replaces '.'.
+const SIZE_NUMBER = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 1,
+  useGrouping: false,
+});
+
 /** `1536000` -> `1.5 MB` (decimal units, one decimal at most). */
 export function formatBytes(bytes: number, decimalSeparator = '.'): string {
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -40,7 +46,7 @@ export function formatBytes(bytes: number, decimalSeparator = '.'): string {
     value /= 1000;
     unit += 1;
   }
-  const text = unit === 0 ? String(Math.round(value)) : value.toFixed(1).replace(/\.0$/, '');
+  const text = SIZE_NUMBER.format(unit === 0 ? Math.round(value) : value);
   return `${text.replace('.', decimalSeparator)} ${units[unit]}`;
 }
 

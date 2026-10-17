@@ -17,10 +17,13 @@ export function Tooltip({
   content,
   children,
   describes = true,
+  open,
 }: {
   content: string;
   children: ReactElement<{ 'aria-describedby'?: string }>;
   describes?: boolean | undefined;
+  /** Shown regardless of hover or focus (a toggletip opened by a press; the caller owns the state). */
+  open?: boolean | undefined;
 }) {
   const id = useId();
   const [dismissed, setDismissed] = useState(false);
@@ -33,6 +36,7 @@ export function Tooltip({
     <span
       className="ls-tooltip-wrap"
       data-dismissed={dismissed ? 'true' : undefined}
+      data-open={open ? 'true' : undefined}
       onPointerLeave={() => setDismissed(false)}
       onBlur={() => setDismissed(false)}
       onKeyDown={(event: ReactKeyboardEvent) => {

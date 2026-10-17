@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Card, CardHeader, SortableGrid, Stat } from './index';
+import { Card, CardHeader, SortableGrid, Stat, preloadSortable } from './index';
 
 const format = { valueFormat: 'count', locale: 'vi' } as const;
 const labels = { up: 'tăng', down: 'giảm', flat: 'không đổi', comparedTo: 'so với hôm qua' };
@@ -59,7 +59,9 @@ const sortLabels = {
   cancelled: 'c',
 };
 
-test('SortableGrid bare variant and per-item class apply in view and edit mode', () => {
+test('SortableGrid bare variant and per-item class apply in view and edit mode', async () => {
+  // Edit mode's drag code loads on demand (rbp bundle-conditional): once it is there the edit markup has handles.
+  await preloadSortable();
   const items = [
     { id: 'a', size: 's' },
     { id: 'b', size: 'l' },

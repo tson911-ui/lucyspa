@@ -2,9 +2,10 @@
 
 import { Icon, buttonClass } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, type MouseEvent } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useSyncExternalStore, type MouseEvent } from 'react';
 import { hasAppHistory, hasParent, parentPath, trackRoute } from '../../lib/navigation/back';
+import { listUrl, rememberListUrl } from '../../lib/navigation/list-memory';
 import { NAV_TRANSITION } from '../../lib/nav-transition';
 
 /** Mounted once in the locale layout: counts in-app navigations so "Back" knows whether the app has a previous page. */
@@ -18,6 +19,33 @@ export function RouteHistoryTracker() {
     else window.dispatchEvent(new Event('ls:route'));
   }, [pathname]);
   return null;
+}
+
+/**
+ * Mounted once in the locale layout inside a Suspense boundary (it reads the query): remembers the last URL of every path, so a
+ * breadcrumb or Back link to a list brings its filters, search, sort and page back (HIG C70).
+ */
+export function ListUrlRecorder() {
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  useEffect(() => {
+    rememberListUrl(pathname, search);
+  }, [pathname, search]);
+  return null;
+}
+
+const noSubscription = () => () => undefined;
+
+/**
+ * The URL a back link to a list opens: the list as it was left in this tab. The server render and hydration use `href` itself
+ * (sessionStorage exists only in the browser), and the remembered URL replaces it right after, so nothing mismatches.
+ */
+export function useListHref(href: string): string {
+  return useSyncExternalStore(
+    noSubscription,
+    () => listUrl(href),
+    () => href,
+  );
 }
 
 /**
@@ -47,6 +75,8 @@ export function PageBack({
   // area's home, or a page its own menu opens) shows no Back at all (Owner B7, C40).
   const parent =
     pathname && hasParent(pathname, root, menuRoot) ? parentPath(pathname, root, publicHome) : null;
+  // Without history the link opens the parent list as it was left in this tab (C70).
+  const parentHref = useListHref(parent ?? '');
   if (parent === null) return null;
 
   function onClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -55,6 +85,10 @@ export function PageBack({
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (!hasAppHistory(document.referrer, window.location.origin)) return;
     event.preventDefault();
+    // A history step, not a push: the previous page comes back with its filters, search and scroll (Owner, 2026-10-04). A
+    // history traversal carries no transition type (react-view-transitions: router.back() and the browser's Back have none,
+    // which is expected), so the typed `ls-nav` page fade does not run on Back; the shared photo morph is untyped and still
+    // pairs. Without app history the link itself navigates to the parent with the `ls-nav` type (transitionTypes below).
     router.back();
   }
 
@@ -62,7 +96,7 @@ export function PageBack({
     <div className="ls-back-row">
       {/* The standard back chevron, icon only, with its name for assistive technology (C40). */}
       <Link
-        href={parent}
+        href={parentHref}
         className={buttonClass('ghost', 'md', 'ls-back ls-btn-icon')}
         onClick={onClick}
         transitionTypes={NAV_TRANSITION}

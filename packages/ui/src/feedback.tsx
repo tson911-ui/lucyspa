@@ -1,6 +1,6 @@
-'use client';
-
-import type { ReactNode } from 'react';
+// No 'use client': these are stateless (rbp 'use client' placement). A server page renders a Badge, a Notice or an empty state on
+// the server; Button and Card bring their own client boundary.
+import type { CSSProperties, ReactNode } from 'react';
 import { Button } from './button';
 import { Card } from './card';
 import { cx } from './cx';
@@ -51,6 +51,15 @@ export function Badge({
   );
 }
 
+/** A dismissible notice must name its icon-only close button: `dismissLabel` is required with `onDismiss` (WIG). */
+type NoticeDismiss =
+  | { onDismiss?: undefined; dismissLabel?: string | undefined }
+  | {
+      onDismiss: () => void;
+      /** The accessible name of the close button, e.g. "Đóng". */
+      dismissLabel: string;
+    };
+
 export function Notice({
   tone = 'info',
   icon,
@@ -58,13 +67,10 @@ export function Notice({
   dismissLabel,
   children,
   className,
-}: {
+}: NoticeDismiss & {
   tone?: Exclude<Tone, 'neutral'> | undefined;
   /** Overrides the default tone icon; pass `false` to hide it. */
   icon?: IconName | false | undefined;
-  onDismiss?: (() => void) | undefined;
-  /** Required with `onDismiss`: the accessible name of the close button. */
-  dismissLabel?: string | undefined;
   children: ReactNode;
   className?: string | undefined;
 }) {
@@ -251,7 +257,13 @@ export function ProgressBar({
       aria-valuemax={100}
       aria-valuenow={clamped === undefined ? undefined : Math.round(clamped)}
     >
-      <span className="ls-progress-fill" style={known ? { width: `${clamped}%` } : undefined} />
+      {/* The fill scales from the inline start (transform, not width): --ls-progress is 0-1. */}
+      <span
+        className="ls-progress-fill"
+        style={
+          clamped === undefined ? undefined : ({ '--ls-progress': clamped / 100 } as CSSProperties)
+        }
+      />
     </div>
   );
 }

@@ -38,6 +38,9 @@ export interface SliderLabels {
   goTo: string;
 }
 
+/** HIG C65: a page control shows at most this many dots. */
+const SLIDER_MAX_DOTS = 10;
+
 /** The phone breakpoint of the design (section 13); the `<picture>` source switches here. */
 const PHONE_MEDIA = '(max-width: 639px)';
 
@@ -187,18 +190,25 @@ export function Slider({
       {many ? (
         <div className="ls-slider-controls">
           <IconButton icon="chevron-left" label={labels.previous} onClick={() => go(-1)} />
-          <div className="ls-slider-dots">
-            {slides.map((slide, position) => (
-              <button
-                key={slide.id}
-                type="button"
-                className="ls-slider-dot"
-                aria-label={fillTemplate(labels.goTo, { position: position + 1 })}
-                aria-current={position === current ? 'true' : undefined}
-                onClick={() => setIndex(position)}
-              />
-            ))}
-          </div>
+          {/* HIG C65: at most 10 dots, centred, uncoloured; a longer set shows its position as text instead. */}
+          {count > SLIDER_MAX_DOTS ? (
+            <p className="ls-slider-dots ls-slider-position">
+              {fillTemplate(labels.slide, { position: current + 1, count })}
+            </p>
+          ) : (
+            <div className="ls-slider-dots">
+              {slides.map((slide, position) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  className="ls-slider-dot"
+                  aria-label={fillTemplate(labels.goTo, { position: position + 1 })}
+                  aria-current={position === current ? 'true' : undefined}
+                  onClick={() => setIndex(position)}
+                />
+              ))}
+            </div>
+          )}
           <IconButton icon="chevron-right" label={labels.next} onClick={() => go(1)} />
           {reducedMotion ? null : (
             <IconButton

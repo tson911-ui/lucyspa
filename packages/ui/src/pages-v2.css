@@ -479,9 +479,11 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   margin-top: var(--ls-space-9);
 }
 
+/* Three columns from 1024 px, each at least 18 rem: with a larger text size the columns fall back to fewer (one at 200 %), so a name
+   never breaks per letter. */
 @media (min-width: 1024px) {
   [data-ui='v2'] .ls-home-top {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
     gap: var(--ls-space-9);
   }
 }
@@ -2543,8 +2545,10 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   border-top: 1px solid var(--ls-border);
 }
 
+/* A phone stacks a rich-text table into label/value blocks only when it has 4 columns or more; a short table (3 columns, the member tiers)
+   stays a table (public worker request, session 10). */
 @media (max-width: 639px) {
-  [data-ui='v2'] .ls-info-table thead {
+  [data-ui='v2'] .ls-info-table:has(tr > :nth-child(4)) thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2553,23 +2557,23 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
     white-space: nowrap;
   }
 
-  [data-ui='v2'] .ls-info-table :is(tbody, tr, th, td) {
+  [data-ui='v2'] .ls-info-table:has(tr > :nth-child(4)) :is(tbody, tr, th, td) {
     display: block;
   }
 
-  [data-ui='v2'] .ls-info-table tbody tr {
+  [data-ui='v2'] .ls-info-table:has(tr > :nth-child(4)) tbody tr {
     padding: var(--ls-space-4);
   }
 
-  [data-ui='v2'] .ls-info-table :is(th, td) {
+  [data-ui='v2'] .ls-info-table:has(tr > :nth-child(4)) :is(th, td) {
     padding: 0;
   }
 
-  [data-ui='v2'] .ls-info-table td {
+  [data-ui='v2'] .ls-info-table:has(tr > :nth-child(4)) td {
     margin-top: var(--ls-space-2);
   }
 
-  [data-ui='v2'] .ls-info-table td[data-label]::before {
+  [data-ui='v2'] .ls-info-table:has(tr > :nth-child(4)) td[data-label]::before {
     content: attr(data-label);
     display: block;
     color: var(--ls-text-muted);

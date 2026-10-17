@@ -117,7 +117,8 @@
 
 .ls-site-header {
   position: sticky;
-  top: 0;
+  /* Below a top inset (a standalone window with a notch); 0 in a browser tab. */
+  top: var(--ls-safe-top);
   z-index: var(--ls-z-chrome);
   height: var(--ls-site-header-h);
   pointer-events: none;
@@ -476,16 +477,20 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 }
 
 /* The slider on the public site: the slide's title is in the display face like every other title, and its controls sit on
-   one row under the picture, on the frame's own edges (dots at the start, arrows and Pause at the end). */
+   one row under the picture. HIG C65: the dots are centred between the arrows; Pause sits after the next arrow and never
+   pushes the dots off centre (an empty first column of the same width balances it). */
 
 .ls-site .ls-slider-controls {
-  flex-wrap: nowrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, max-content) auto minmax(0, 1fr);
 }
 
-.ls-site .ls-slider-dots {
-  order: -1;
-  margin-inline-end: auto;
+.ls-site .ls-slider-controls > :first-child {
+  grid-column: 2;
+}
+
+.ls-site .ls-slider-controls > :last-child:not(:nth-child(3)) {
+  justify-self: start;
 }
 
 /* On a white band a card takes the page colour so it still reads as a surface; border, radius and shadow stay the same everywhere. */
@@ -1530,10 +1535,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   view-transition-name: ls-contact;
 }
 
-::view-transition {
-  pointer-events: none;
-}
-
 ::view-transition-group(root),
 ::view-transition-group(ls-tab-bar),
 ::view-transition-group(ls-contact) {
@@ -1560,14 +1561,14 @@ a.ls-bell-body:focus-visible .ls-bell-time {
 /* The page keeps its place (no morph between two heights) and cross-fades over the token duration. */
 ::view-transition-group(ls-page) {
   animation-name: none;
-  animation-duration: var(--ls-dur-base);
+  animation-duration: var(--ls-dur-vt-fade);
   animation-timing-function: var(--ls-ease-out);
 }
 
-/* The photo that travels from a list card to its page (SharedPhoto, C17): the group moves over the page token duration and the old and
-   the new picture are cropped the same way, so the morph never squashes the photo. */
+/* The photo that travels from a list card to its page (SharedPhoto, C17): the group moves over the morph token (320 ms) and the old
+   and the new picture are cropped the same way, so the morph never squashes the photo. */
 ::view-transition-group(.ls-morph) {
-  animation-duration: var(--ls-dur-slow);
+  animation-duration: var(--ls-dur-vt-morph);
   animation-timing-function: var(--ls-ease);
 }
 
@@ -1588,40 +1589,26 @@ html[data-ls-motion='reduced']::view-transition-new(.ls-morph) {
   animation: none;
 }
 
-/* ---------- menu pill (M8) ---------- */
-/* One pill under the current entry; it slides to the next entry on a route change. Until it is placed (no scripts, first
-   paint) the current link carries its own highlight, so the menu is never without one. */
-.ls-site-nav,
-.ls-subnav {
-  /* The pill's box, set on the menu by the component from the current link's position. */
-  --ls-pill-x: 0px;
-  --ls-pill-y: 0px;
-  --ls-pill-w: 0px;
-  --ls-pill-h: 0px;
+/* Before MotionGate marks the page (the first navigation can come first): reduced motion and the visitor's off switch
+   (server-set `data-ls-fx`) already end every view transition at once (the css-recipes reduced-motion block; with no animation
+   left the transition finishes immediately and the new page is simply there). */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
-.ls-nav-pill {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  width: var(--ls-pill-w);
-  height: var(--ls-pill-h);
-  translate: var(--ls-pill-x) var(--ls-pill-y);
-  border-radius: var(--ls-radius-full);
-  background: var(--ls-nav-active-bg);
-  opacity: 0;
-  pointer-events: none;
+html[data-ls-fx='off']::view-transition-group(*),
+html[data-ls-fx='off']::view-transition-old(*),
+html[data-ls-fx='off']::view-transition-new(*) {
+  animation: none !important;
 }
 
-/* The pill glides to the current entry on a route change and to the hovered or keyboard-focused entry (mouse and keys
-   only; the hook marks the entry under it with `data-under`). */
-[data-pill='slide'] > .ls-nav-pill {
-  transition:
-    translate var(--ls-dur-glide) var(--ls-ease-premium),
-    width var(--ls-dur-glide) var(--ls-ease-premium);
-}
-
-/* Keyboard focus: the ring sits outside the pill (the ring and the pill are both brand coloured). */
+/* ---------- menu focus ---------- */
+/* (The sliding menu pill of M8 is gone since session 9: the current entry is a plain underline. Its dead rules were removed.) */
+/* Keyboard focus: the ring sits outside the entry. */
 :is(.ls-site-nav, .ls-subnav) a:focus-visible {
   outline-offset: var(--ls-space-1);
 }

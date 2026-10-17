@@ -355,6 +355,28 @@ test('ChoiceCard is a real checkbox or radio inside a label and reports changes'
   assert.equal(container.querySelector('label')?.getAttribute('data-checked'), null);
   act(() => input.click());
   assert.deepEqual(seen, [true]);
+  // The note is the description, never part of the name (WIG: extra content inside the label).
+  act(() =>
+    root.render(
+      <ui.ChoiceCard
+        title="Sơn gel"
+        price="20.000 ₫"
+        extra="Giá tính theo từng móng."
+        checked={false}
+        onChange={() => {}}
+      />,
+    ),
+  );
+  const noted = container.querySelector('input') as HTMLInputElement;
+  const nameIds = noted.getAttribute('aria-labelledby')!.split(' ');
+  assert.deepEqual(
+    nameIds.map((id) => window.document.getElementById(id)?.textContent),
+    ['Sơn gel', '20.000 ₫'],
+  );
+  assert.equal(
+    window.document.getElementById(noted.getAttribute('aria-describedby')!)?.textContent,
+    'Giá tính theo từng móng.',
+  );
   act(() =>
     root.render(
       <ui.ChoiceCard type="radio" name="slot" title="09:00" checked onChange={() => {}} />,
@@ -614,7 +636,7 @@ test('ListRow and IconPicker: a text row with a menu slot, a radio group of icon
     />,
   );
   assert.match(row, /ls-list-row ls-list-row-icon/);
-  assert.match(row, /<span class="ls-list-row-title" title="Dụng cụ sạch">Dụng cụ sạch<\/span>/);
+  assert.match(row, /<span class="ls-list-row-title">Dụng cụ sạch<\/span>/);
   assert.match(row, /ls-media-row-actions/);
   const picker = renderToStaticMarkup(
     <ui.IconPicker
@@ -641,7 +663,11 @@ test('the wordmark has one face everywhere (the `serif` prop is kept for callers
   const serif = renderToStaticMarkup(<ui.BrandWordmark serif />);
   const plain = renderToStaticMarkup(<ui.BrandWordmark />);
   assert.equal(serif, plain);
-  assert.match(plain, /^<span class="ls-wordmark" style="font-family:var\(--ls-font-sans\);/);
+  // The brand is never machine-translated (translate="no").
+  assert.match(
+    plain,
+    /^<span class="ls-wordmark" translate="no" style="font-family:var\(--ls-font-sans\);/,
+  );
   assert.doesNotMatch(plain, /--ls-font-display/);
   assert.match(plain, /font-size:var\(--ls-wordmark-size, var\(--ls-type-heading\)\)/);
   assert.match(

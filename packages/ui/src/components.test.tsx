@@ -61,6 +61,21 @@ test('Button: variants, loading state and blocked state expose the right ARIA', 
   assert.match(submit, /disabled=""/, 'a busy button cannot be pressed twice');
   assert.ok(submit.includes('ls-spinner'), 'spinner shown');
   assert.ok(submit.includes(LONG), 'the text stays while busy');
+  assert.match(
+    html(<Button loading>Lưu</Button>),
+    />Lưu…</,
+    'a pending label ends with "…" (HIG C38)',
+  );
+  assert.match(
+    html(<Button loading>Đang lưu…</Button>),
+    />Đang lưu…</,
+    'a busy label is not doubled',
+  );
+  assert.doesNotMatch(html(<Button>Lưu</Button>), /Lưu…/, 'no "…" at rest');
+  const busyIcon = html(<IconButton icon="check" label="Đánh dấu đã đọc" loading />);
+  assert.ok(busyIcon.includes('ls-spinner'), 'a pending icon button spins');
+  assert.doesNotMatch(busyIcon, /<svg/, 'the spinner replaces the icon');
+  assert.match(html(<IconButton icon="check" label="Đánh dấu đã đọc" />), /<svg/);
 
   const blocked = html(
     <Button disabled disabledReason="Không thể xóa: đang được dùng bởi 12 lịch hẹn.">
@@ -72,6 +87,16 @@ test('Button: variants, loading state and blocked state expose the right ARIA', 
   const describedby = /aria-describedby="([^"]+)"/.exec(blocked)?.[1];
   assert.ok(describedby && blocked.includes(`id="${describedby}"`), 'reason is linked and visible');
   assert.ok(blocked.includes('đang được dùng bởi 12 lịch hẹn'));
+
+  // A screen that already shows the reason keeps it as the description only, never a second visible copy.
+  const quiet = html(
+    <Button disabled disabledReason="Chưa đủ điều kiện đăng." reasonVisible={false}>
+      Đăng
+    </Button>,
+  );
+  const quietId = /aria-describedby="([^"]+)"/.exec(quiet)?.[1];
+  assert.match(quiet, new RegExp(`<span class="ls-visually-hidden" id="${quietId}">`));
+  assert.doesNotMatch(quiet, /ls-btn-reason/);
 });
 
 test('Button: labels wrap instead of using a fixed width', () => {
@@ -145,6 +170,8 @@ test('EmptyState, Skeleton, Spinner, ProgressBar', () => {
   const bar = html(<ProgressBar value={140} label="Đang tải lên" />);
   assert.match(bar, /role="progressbar"/);
   assert.match(bar, /aria-valuenow="100"/, 'clamped');
+  // The fill scales (transform), never a width tween.
+  assert.match(html(<ProgressBar value={40} label="Đang tải lên" />), /style="--ls-progress:0.4"/);
   assert.doesNotMatch(html(<ProgressBar label="Đang tải lên" />), /aria-valuenow/, 'indeterminate');
 });
 
@@ -279,6 +306,23 @@ test('SearchInput has an accessible name and no clear button while empty', () =>
     />,
   );
   assert.match(filled, /aria-label="Xóa tìm kiếm"/);
+  // C53: the placeholder names what the box searches; an example is the description, never the placeholder.
+  assert.match(empty, /placeholder="Tìm nhân viên"/);
+  const hinted = html(
+    <SearchInput
+      label="Tìm theo tên hoặc mã"
+      hint="Ví dụ: NV0012 hoặc Lan…"
+      clearLabel="Xóa tìm kiếm"
+      onSearch={() => undefined}
+    />,
+  );
+  assert.match(hinted, /placeholder="Tìm theo tên hoặc mã"/);
+  const described = /aria-describedby="([^"]+)"/.exec(hinted)?.[1];
+  assert.ok(described, 'the example describes the box');
+  assert.ok(
+    hinted.includes(`id="${described}" class="ls-visually-hidden">Ví dụ: NV0012 hoặc Lan…<`),
+  );
+  assert.doesNotMatch(hinted, /placeholder="Ví dụ/);
 });
 
 test('FormSection is a named region and FormActions put Save (primary) last', () => {
@@ -505,6 +549,9 @@ test('ToastProvider renders a named live region', () => {
     markup,
     /role="region"[^>]*aria-label="Thông báo"|aria-label="Thông báo"[^>]*role="region"/,
   );
+  // One polite region announces the toasts; F8 reaches the newest one from anywhere.
+  assert.match(markup, /aria-live="polite"/);
+  assert.match(markup, /aria-keyshortcuts="F8"/);
 });
 
 const labels = {

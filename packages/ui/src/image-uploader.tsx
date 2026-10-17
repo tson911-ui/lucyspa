@@ -244,9 +244,16 @@ export function ImageUploader({
       {value ? (
         <div className="ls-uploaded" aria-live="polite">
           {/* The name is text next to the thumbnail, so the image itself is decorative. Library
-              images are already resized, and this package cannot use next/image. */}
+              images are already resized, and this package cannot use next/image. The size attributes give the box its
+              ratio before the picture loads (WIG images); the CSS sets the size. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="ls-uploaded-thumb" src={value.url} alt="" />
+          <img
+            className="ls-uploaded-thumb"
+            src={value.url}
+            alt=""
+            width={value.width ?? 160}
+            height={value.height ?? 90}
+          />
           <div className="ls-uploaded-info">
             <p className="ls-uploaded-name">{value.name}</p>
             <p className="ls-hint">

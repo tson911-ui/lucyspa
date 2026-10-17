@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidElement, useId, useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cx } from './cx';
 import { Select } from './form';
 import { Icon } from './icons';
@@ -119,6 +119,7 @@ export function DataTable<Row>({
   selectedKey,
   sortLabels,
   phoneRows = 'cards',
+  drillDown = false,
   className,
 }: {
   columns: readonly DataTableColumn<Row>[];
@@ -152,6 +153,11 @@ export function DataTable<Row>({
    * scans quickly, whose fields explain themselves (a name, a status, an amount).
    */
   phoneRows?: 'cards' | 'compact' | undefined;
+  /**
+   * Each row opens its record (HIG C55): a decorative trailing chevron (hidden from assistive technology) after every other
+   * cell, the drill-down cue. The row's own link (the title) stays the target; on a phone it sits at the trailing edge.
+   */
+  drillDown?: boolean | undefined;
   className?: string | undefined;
 }) {
   const [ownSort, setOwnSort] = useState<SortState | null>(defaultSort);
@@ -168,14 +174,23 @@ export function DataTable<Row>({
     applySort(nextSort(activeSort, key));
   }
 
-  const sortByKey = useMemo(() => {
-    const values = new Map(columns.map((column) => [column.key, column.sortValue]));
-    return (row: Row, key: string): SortValue => values.get(key)?.(row);
-  }, [columns]);
+  // Screens rebuild `columns` on every render, so sorting keys on which columns can sort, not on the array's identity, and reads
+  // the latest getters through a ref: a client list is sorted again only when its rows, the sort or the sortable columns change
+  // (rbp rerender-dependencies).
+  const latestColumns = useRef(columns);
+  latestColumns.current = columns;
+  const sortSignature = columns.map((column) => (column.sortValue ? column.key : '')).join('|');
+  const sortByKey = useMemo(
+    () =>
+      (row: Row, key: string): SortValue =>
+        latestColumns.current.find((column) => column.key === key)?.sortValue?.(row),
+    [sortSignature],
+  );
 
   const client = mode === 'client';
-  const ordered = useMemo(
-    () => (client ? sortRows(rows, activeSort, sortByKey) : [...rows]),
+  // The server pages and orders its rows: they are used as given, never copied (rbp js-cache-function-results).
+  const ordered: readonly Row[] = useMemo(
+    () => (client ? sortRows(rows, activeSort, sortByKey) : rows),
     [client, rows, activeSort, sortByKey],
   );
   const pager = 'off' in paging ? undefined : paging;
@@ -233,6 +248,7 @@ export function DataTable<Row>({
           className={cx(
             'ls-table',
             phoneRows === 'compact' && 'ls-table-compact',
+            drillDown && 'ls-table-drill',
             loading && !showSkeleton && 'ls-table-refreshing',
           )}
         >
@@ -273,6 +289,7 @@ export function DataTable<Row>({
                   )}
                 </th>
               ))}
+              {drillDown ? <th className="ls-cell-drill" aria-hidden="true" /> : null}
             </tr>
           </thead>
           <tbody>
@@ -284,6 +301,7 @@ export function DataTable<Row>({
                         <Skeleton width={column.actions ? '4rem' : '70%'} />
                       </td>
                     ))}
+                    {drillDown ? <td className="ls-cell-drill" /> : null}
                   </tr>
                 ))
               : visible.map((row) => {
@@ -303,12 +321,15 @@ export function DataTable<Row>({
                               ? undefined
                               : column.header
                           }
-                          // The phone card shows the title on one line; the full name stays in the tooltip.
-                          title={column.mobileTitle ? nodeText(column.cell(row)) : undefined}
                         >
                           {renderCell(column, row)}
                         </td>
                       ))}
+                      {drillDown ? (
+                        <td className="ls-cell-drill" aria-hidden="true">
+                          <Icon name="chevron-right" size={20} />
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -340,38 +361,13 @@ function renderCell<Row>(column: DataTableColumn<Row>, row: Row): ReactNode {
   if (column.actions || column.leading || column.select) return content;
   const clip = cx(column.truncate ? 'ls-cell-truncate' : column.wrap && 'ls-cell-wrap');
   if (column.mobileTitle) {
-    return clipped ? (
-      <span className={clip} title={plainText(content)}>
-        {content}
-      </span>
-    ) : (
-      content
-    );
+    return clipped ? <span className={clip}>{content}</span> : content;
   }
   const value = valueOrDash(content);
   return (
-    <span className={cx('ls-cell-value', clip)} title={clipped ? plainText(value) : undefined}>
-      {value}
-    </span>
+    // No tooltip copy of the text: nothing is cut any more (Owner answer 7: names wrap), so a title would only repeat it.
+    <span className={cx('ls-cell-value', clip)}>{value}</span>
   );
-}
-
-/** The text a node renders (strings and numbers through elements and fragments), for a tooltip. */
-function nodeText(node: ReactNode): string | undefined {
-  const parts: string[] = [];
-  const walk = (child: ReactNode): void => {
-    if (typeof child === 'string' || typeof child === 'number') parts.push(String(child));
-    else if (Array.isArray(child)) child.forEach(walk);
-    else if (isValidElement<{ children?: ReactNode }>(child)) walk(child.props.children);
-  };
-  walk(node);
-  const text = parts.join('').trim();
-  return text === '' ? undefined : text;
-}
-
-/** The `title` of a clipped cell: only plain text can be repeated as a tooltip. */
-function plainText(content: ReactNode): string | undefined {
-  return typeof content === 'string' || typeof content === 'number' ? String(content) : undefined;
 }
 
 /** An empty value reads as an em dash, never as a blank cell (UX gate, section 21.1). */

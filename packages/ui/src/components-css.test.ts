@@ -109,9 +109,19 @@ test('classes used by the components exist in the stylesheet', () => {
   const declaredIn = [
     css,
     // foundation-v2.css (session 10) is loaded last: the interaction states and the header, footer and auth rules.
-    ...['tokens.css', 'chrome-v2.css', 'pages-v2.css', 'foundation-v2.css'].map((name) =>
-      readFileSync(new URL(name, here), 'utf8'),
-    ),
+    ...[
+      'tokens.css',
+      'chrome-v2.css',
+      'pages-v2.css',
+      'foundation-v2.css',
+      's10-public.css',
+      's10-member.css',
+      's10-account.css',
+      's10-pos.css',
+      's10-admin-a.css',
+      's10-admin-b.css',
+      's10-admin-c.css',
+    ].map((name) => readFileSync(new URL(name, here), 'utf8')),
   ].join('\n');
   const declared = new Set([...declaredIn.matchAll(/\.(ls-[\w-]+)/g)].map((match) => match[1]));
   const used = new Set<string>();
@@ -193,7 +203,7 @@ test('hover is one theme: every interactive control reads the solid hover tokens
     '.ls-option-active',
     ".ls-option:hover:not([aria-disabled='true'])",
     '.ls-tab:hover:not(:disabled)',
-    '.ls-segment:hover',
+    '.ls-segment:hover:not(:disabled)',
     '.ls-page-btn:hover:not(:disabled)',
     '.ls-check-field:hover',
     '.ls-facet-option:hover',

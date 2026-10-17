@@ -27,24 +27,26 @@ function mount(phone: boolean) {
   const root = createRoot(container);
   act(() => root.render(<ContactFab items={items} {...labels} />));
   const wrap = () => container.querySelector('.ls-contact') as HTMLElement;
+  // The page-scroll store answers once per frame: wait for that frame before reading the result.
   const scrollTo = (y: number) =>
-    act(() => {
+    act(async () => {
       scroll = y;
       window.dispatchEvent(new window.Event('scroll'));
+      await new Promise<void>((done) => window.setTimeout(done, 40));
     });
   return { wrap, scrollTo, root };
 }
 
-test('ContactFab on a phone: steps aside while reading down, is there at the top, on scrolling up and on focus', () => {
+test('ContactFab on a phone: steps aside while reading down, is there at the top, on scrolling up and on focus', async () => {
   const { wrap, scrollTo, root } = mount(true);
   assert.equal(wrap().dataset['away'], undefined, 'at the top it is shown');
-  scrollTo(400);
+  await scrollTo(400);
   assert.equal(wrap().dataset['away'], 'true', 'reading down: away');
-  scrollTo(900);
+  await scrollTo(900);
   assert.equal(wrap().dataset['away'], 'true');
-  scrollTo(700);
+  await scrollTo(700);
   assert.equal(wrap().dataset['away'], undefined, 'scrolling up: back');
-  scrollTo(1200);
+  await scrollTo(1200);
   assert.equal(wrap().dataset['away'], 'true');
   act(() => {
     (wrap().querySelector('a') as HTMLElement).dispatchEvent(
@@ -52,14 +54,14 @@ test('ContactFab on a phone: steps aside while reading down, is there at the top
     );
   });
   assert.equal(wrap().dataset['away'], undefined, 'keyboard focus brings it back');
-  scrollTo(0);
+  await scrollTo(0);
   assert.equal(wrap().dataset['away'], undefined, 'top of the page');
   act(() => root.unmount());
 });
 
-test('ContactFab on a wide screen never steps aside', () => {
+test('ContactFab on a wide screen never steps aside', async () => {
   const { wrap, scrollTo, root } = mount(false);
-  scrollTo(900);
+  await scrollTo(900);
   assert.equal(wrap().dataset['away'], undefined);
   act(() => root.unmount());
 });

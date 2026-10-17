@@ -83,7 +83,8 @@ test('season preview css: tokens only, no hex, no px/rem/em length, no motion', 
   for (const name of new Set([...code.matchAll(/var\((--[\w-]+)/g)].map((match) => match[1]!))) {
     assert.match(
       name,
-      /^--ls-(season-|space-|text|radius-|live-|bg-page$|bg-sunken$|brand$|brand-soft$|focus$|control-h$|leading-sm$)/,
+      // hover-bg / pressed-bg: the card's hover and press steps (WIG interactive states), the shared tokens.
+      /^--ls-(season-|space-|text|radius-|live-|bg-page$|bg-sunken$|brand$|brand-soft$|focus$|control-h$|leading-sm$|hover-bg$|pressed-bg$)/,
       `${name} is not an allowed token`,
     );
   }

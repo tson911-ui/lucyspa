@@ -9,7 +9,9 @@ const { window } = dom;
 after(() => window.close());
 const { act, useState } = await import('react');
 const { createRoot } = await import('react-dom/client');
-const { SortableGrid, SortableList } = await import('./index');
+const { SortableGrid, SortableList, preloadSortable } = await import('./index');
+// The drag code loads on demand (rbp bundle-conditional); load it once so an editable list renders its handles at once.
+await preloadSortable();
 
 const labels = {
   dragHandle: 'Kéo để sắp xếp {name}',
@@ -260,4 +262,10 @@ test('disabled (outside edit mode): no handles, no buttons, nothing to drag by a
     start.map((item) => item.name),
   );
   view.unmount();
+});
+
+test('the drag code is loaded on demand, not with the list (rbp bundle-conditional)', () => {
+  const source = readFileSync(new URL('sortable.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /from '@dnd-kit\//, 'the shown list imports no drag code');
+  assert.match(source, /import\('\.\/sortable-editable'\)/);
 });

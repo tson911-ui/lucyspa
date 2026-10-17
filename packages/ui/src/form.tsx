@@ -2,6 +2,8 @@
 
 import {
   createContext,
+  memo,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -22,7 +24,9 @@ import {
   isoToDayMonthYear,
   isWithinRange,
   maskDayMonthYear,
+  maskTime,
   readTypedDate,
+  readTypedTime,
 } from './date-text-core';
 import {
   createDebouncer,
@@ -43,6 +47,8 @@ import { Spinner } from './spinner';
 /** Props a control needs to be wired to its `Field`. */
 export interface ControlProps {
   id: string;
+  /** The field's `name` (autofill and form tools), when the screen gave one; a generated id is never a name. */
+  name?: string | undefined;
   'aria-describedby'?: string | undefined;
   'aria-invalid'?: true | undefined;
   required?: boolean | undefined;
@@ -50,6 +56,7 @@ export interface ControlProps {
 
 export function Field({
   id,
+  name,
   label,
   required,
   requiredLabel,
@@ -62,6 +69,8 @@ export function Field({
   children,
 }: {
   id?: string | undefined;
+  /** A meaningful name for the control (WIG forms), passed with the control props, so it sits next to the label once. */
+  name?: string | undefined;
   label: string;
   /** Caps the field at `--ls-field-sm/md/lg` (160/280/480 px). Omit to fill its grid cell. */
   width?: 'sm' | 'md' | 'lg' | undefined;
@@ -84,6 +93,7 @@ export function Field({
   const errorId = error ? `${controlId}-error` : undefined;
   const control: ControlProps = {
     id: controlId,
+    ...(name ? { name } : {}),
     'aria-describedby': describedBy(hintId, errorId),
     ...(error ? { 'aria-invalid': true as const } : {}),
     ...(required ? { required: true } : {}),
@@ -121,12 +131,16 @@ export function Field({
           {hint}
         </p>
       ) : null}
-      {error ? (
-        <p className="ls-error" id={errorId}>
-          <Icon name="x-circle" size={16} />
-          <span>{error}</span>
-        </p>
-      ) : null}
+      {/* A persistent polite live region (display: contents, so it adds no grid gap): an error that appears on blur or
+          after a server reply is announced when it appears, not only on the next visit to the field (WIG). */}
+      <div className="ls-field-live" aria-live="polite">
+        {error ? (
+          <p className="ls-error" id={errorId}>
+            <Icon name="x-circle" size={16} />
+            <span>{error}</span>
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -142,6 +156,14 @@ type InputBase = Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'className
   ref?: Ref<HTMLInputElement> | undefined;
 };
 
+/**
+ * The id as a field name when the caller chose it; an id React generated (useId: `_r_3_`, the server's `_R_57d_`, `:r3:`, `«r3»`) is
+ * not a meaningful name.
+ */
+function callerName(id: string | undefined): string | undefined {
+  return id && !/^(?:_r_|:r|«r)/i.test(id) ? id : undefined;
+}
+
 /** Types that are personal or sign-in data: the browser may fill them; everything else is a work field with autofill off (WIG). */
 const AUTOFILL_TYPES = new Set(['email', 'tel', 'password', 'url']);
 /** Types whose value is an address, a code or a secret: never spell-checked. */
@@ -152,7 +174,7 @@ export function TextInput({ invalid, compact, className, type = 'text', ...rest 
     <input
       {...rest}
       // A meaningful name for autofill and form tools when the caller gave none (the id is unique and descriptive).
-      name={rest.name ?? rest.id}
+      name={rest.name ?? callerName(rest.id)}
       autoComplete={rest.autoComplete ?? (AUTOFILL_TYPES.has(type) ? undefined : 'off')}
       spellCheck={rest.spellCheck ?? (NO_SPELLCHECK_TYPES.has(type) ? false : undefined)}
       type={type}
@@ -207,7 +229,7 @@ export function NumberInput({ invalid, compact, className, ...rest }: Omit<Input
   return (
     <input
       {...rest}
-      name={rest.name ?? rest.id}
+      name={rest.name ?? callerName(rest.id)}
       autoComplete={rest.autoComplete ?? 'off'}
       type="number"
       // Whole numbers (quantities, VND) get the digits keypad; a decimal step gets the decimal one.
@@ -242,7 +264,7 @@ export function DateTextInput({
   onFocus,
   invalid,
   className,
-  placeholder = 'dd/mm/yyyy',
+  placeholder = 'dd/mm/yyyy…',
   ...rest
 }: Omit<InputBase, 'type' | 'value' | 'min' | 'max'> & {
   /** ISO date or ''. */
@@ -251,11 +273,14 @@ export function DateTextInput({
   max?: string | undefined;
 }) {
   const [text, setText] = useState(() => isoToDayMonthYear(value));
-  const focused = useRef(false);
-  // A date set by the screen (a "previous day" button, a reset) shows at once, unless the person is typing.
-  useEffect(() => {
-    if (!focused.current) setText(isoToDayMonthYear(value));
-  }, [value]);
+  const [focused, setFocused] = useState(false);
+  // A date set by the screen (a "previous day" button, a reset) shows at once, unless the person is typing. Adjusted
+  // while rendering against the last value seen, not in an effect (rbp rerender-derived-state-no-effect).
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if (!focused) setText(isoToDayMonthYear(value));
+  }
   const typed = readTypedDate(text);
   const outOfRange = typed !== null && typed !== '' && !isWithinRange(typed, min, max);
   return (
@@ -270,11 +295,11 @@ export function DateTextInput({
       invalid={invalid || outOfRange}
       className={className}
       onFocus={(event) => {
-        focused.current = true;
+        setFocused(true);
         onFocus?.(event);
       }}
       onBlur={(event) => {
-        focused.current = false;
+        setFocused(false);
         setText(isoToDayMonthYear(value));
         onBlur?.(event);
       }}
@@ -302,14 +327,138 @@ export function TimeInput(props: Omit<InputBase, 'type'>) {
 }
 
 /**
+ * A date and a 24 h time in two boxes (dd/mm/yyyy and HH:mm), never the browser's `datetime-local` (which shows the US order and AM/PM
+ * on a Vietnamese page). Value: `YYYY-MM-DDTHH:mm` or '' (the same as `datetime-local`). Only a whole date with a whole, valid
+ * time is a value: while either part is empty, half typed or invalid the field reports '' (never the previous value), so a
+ * required check fails and a save never carries a stale date. The typed time stays on screen; once the time box is left
+ * incomplete it turns invalid and, with `timeError`, says what to fix right under the boxes.
+ */
+export function DateTimeInput({
+  id,
+  value,
+  onValueChange,
+  timeLabel,
+  timeError,
+  invalid,
+  compact,
+  disabled,
+  min,
+  max,
+  'aria-describedby': describedByIds,
+}: {
+  /** Goes on the date box, so the field's label names it. */
+  id?: string | undefined;
+  value: string;
+  onValueChange: (value: string) => void;
+  /** Accessible name of the time box, e.g. "Giờ". */
+  timeLabel: string;
+  /** Shown and announced when the time box is left empty (with a date) or incomplete, e.g. "Nhập giờ dạng 14:30". */
+  timeError?: string | undefined;
+  invalid?: boolean | undefined;
+  compact?: boolean | undefined;
+  disabled?: boolean | undefined;
+  /** ISO dates bounding the date part. */
+  min?: string | undefined;
+  max?: string | undefined;
+  /** The Field's hint/error ids (from its control props); both boxes are described by them. */
+  'aria-describedby'?: string | undefined;
+}) {
+  const [datePart = '', timePart = ''] = value ? value.split('T') : [];
+  const [date, setDate] = useState(datePart);
+  const [time, setTime] = useState(timePart.slice(0, 5));
+  const [timeLeft, setTimeLeft] = useState(false);
+  const errorId = `${useId()}-time-error`;
+  // The value this field last reported or was given. A different value comes from the screen (a reset, a season's
+  // dates): show it, adjusted while rendering, not in an effect (rbp rerender-derived-state-no-effect).
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setDate(datePart);
+    setTime(timePart.slice(0, 5));
+    setTimeLeft(false);
+  }
+  const report = (nextDate: string, nextTime: string) => {
+    const validTime = readTypedTime(nextTime);
+    const next = nextDate && validTime ? `${nextDate}T${validTime}` : '';
+    setSeen(next);
+    if (next !== value) onValueChange(next);
+  };
+  const timeBad = time === '' ? date !== '' : readTypedTime(time) === null;
+  const timeInvalid = timeLeft ? timeBad : time.length === 5 && readTypedTime(time) === null;
+  const showError = timeInvalid && timeError !== undefined && !disabled;
+  return (
+    <>
+      <div className="ls-datetime">
+        <DateTextInput
+          id={id}
+          value={date}
+          min={min}
+          max={max}
+          invalid={invalid}
+          compact={compact}
+          disabled={disabled}
+          aria-describedby={describedByIds}
+          onChange={(event) => {
+            setDate(event.target.value);
+            report(event.target.value, time);
+          }}
+        />
+        <TextInput
+          type="text"
+          inputMode="numeric"
+          maxLength={5}
+          placeholder="HH:mm…"
+          aria-label={timeLabel}
+          aria-describedby={describedBy(describedByIds, showError && errorId)}
+          value={time}
+          invalid={invalid || timeInvalid}
+          compact={compact}
+          disabled={disabled}
+          onFocus={() => setTimeLeft(false)}
+          onBlur={() => setTimeLeft(true)}
+          onChange={(event) => {
+            const masked = maskTime(event.target.value);
+            setTime(masked);
+            report(date, masked);
+          }}
+        />
+      </div>
+      <div className="ls-field-live" aria-live="polite">
+        {showError ? (
+          <p className="ls-error" id={errorId}>
+            <Icon name="x-circle" size={16} />
+            <span>{timeError}</span>
+          </p>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+/**
  * Integer VND only: shows `1.234.567`, reports a whole number (or `null` when empty), and ignores
  * anything that is not a digit. `unit` is a visible suffix such as "₫".
  */
+const separators = new Map<string, string>();
+/** The locale's thousands separator, cached per locale (rbp js-cache-function-results). */
+function groupSeparator(locale: string | undefined): string {
+  if (!locale) return '.';
+  let found = separators.get(locale);
+  if (found === undefined) {
+    found =
+      new Intl.NumberFormat(locale).formatToParts(12345).find((part) => part.type === 'group')
+        ?.value ?? '.';
+    separators.set(locale, found);
+  }
+  return found;
+}
+
 export function MoneyInput({
   value,
   onValueChange,
   unit,
-  separator = '.',
+  separator,
+  locale,
   invalid,
   compact,
   className,
@@ -318,8 +467,12 @@ export function MoneyInput({
   value: number | null;
   onValueChange: (value: number | null) => void;
   unit?: string | undefined;
+  /** The thousands separator; by default the locale's (Intl), or '.' without a locale. */
   separator?: string | undefined;
+  /** The page language ('vi', 'en'): the separator follows it, like every other number on the page. */
+  locale?: string | undefined;
 }) {
+  const group = separator ?? groupSeparator(locale);
   return (
     <span className={cx('ls-money', className)}>
       <input
@@ -328,7 +481,7 @@ export function MoneyInput({
         inputMode="numeric"
         autoComplete="off"
         className={cx('ls-input ls-input-number', compact && 'ls-input-compact')}
-        value={formatMoney(value, separator)}
+        value={formatMoney(value, group)}
         aria-invalid={invalid || rest['aria-invalid'] || undefined}
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
           const parsed = parseMoney(event.target.value);
@@ -358,7 +511,7 @@ export function Textarea({
   return (
     <textarea
       {...rest}
-      name={rest.name ?? rest.id}
+      name={rest.name ?? callerName(rest.id)}
       className={cx('ls-input', 'ls-textarea', compact && 'ls-input-compact', className)}
       aria-invalid={invalid || rest['aria-invalid'] || undefined}
     />
@@ -428,6 +581,39 @@ export function Select({
 // ---------------------------------------------------------------------------------------------
 // Combobox (WAI-ARIA 1.2 editable combobox with a listbox popup)
 
+const ComboOptionRow = memo(function ComboOptionRow({
+  id,
+  option,
+  index,
+  active,
+  selected,
+  onHover,
+  onChoose,
+}: {
+  id: string;
+  option: ComboOption;
+  index: number;
+  active: boolean;
+  selected: boolean;
+  onHover: (index: number) => void;
+  onChoose: (option: ComboOption) => void;
+}) {
+  return (
+    <li
+      id={id}
+      role="option"
+      aria-selected={selected}
+      aria-disabled={option.disabled || undefined}
+      className={cx('ls-option', active && 'ls-option-active', selected && 'ls-option-selected')}
+      onMouseEnter={() => onHover(index)}
+      onClick={() => onChoose(option)}
+    >
+      {option.label}
+      {selected ? <Icon name="check" size={16} /> : null}
+    </li>
+  );
+});
+
 export function Combobox({
   id,
   options,
@@ -493,6 +679,12 @@ export function Combobox({
     onValueChange(option.value);
     close();
   }
+  // One stable handler for the memoised rows, so hovering an option re-renders two rows, not the list (rbp rerender-memo).
+  const chooseRef = useRef(choose);
+  useEffect(() => {
+    chooseRef.current = choose;
+  });
+  const chooseStable = useCallback((option: ComboOption) => chooseRef.current(option), []);
   function move(step: 1 | -1) {
     if (visible.length === 0) return;
     let index = active;
@@ -590,23 +782,16 @@ export function Combobox({
             <li className="ls-listbox-note">{emptyLabel}</li>
           ) : null}
           {visible.map((option, index) => (
-            <li
+            <ComboOptionRow
               key={option.value}
               id={`${inputId}-option-${index}`}
-              role="option"
-              aria-selected={option.value === value}
-              aria-disabled={option.disabled || undefined}
-              className={cx(
-                'ls-option',
-                index === active && 'ls-option-active',
-                option.value === value && 'ls-option-selected',
-              )}
-              onMouseEnter={() => setActive(index)}
-              onClick={() => choose(option)}
-            >
-              {option.label}
-              {option.value === value ? <Icon name="check" size={16} /> : null}
-            </li>
+              option={option}
+              index={index}
+              active={index === active}
+              selected={option.value === value}
+              onHover={setActive}
+              onChoose={chooseStable}
+            />
           ))}
         </ul>
       ) : null}
@@ -751,7 +936,11 @@ export function Switch({
 // ---------------------------------------------------------------------------------------------
 // Search
 
-/** Debounced search box with a clear button. `onSearch` receives the trimmed text. */
+/**
+ * Debounced search box with a clear button. `onSearch` receives the trimmed text. The visible placeholder names what the box
+ * searches (HIG C53: the label, "Tìm theo tên hoặc mã"), so the scope is seen, not only heard; an example of what to type
+ * ("Ví dụ: NV0012 hoặc Lan…") is the `hint`: the box's description for assistive technology and its hover title.
+ */
 export function SearchInput({
   value,
   defaultValue = '',
@@ -760,22 +949,30 @@ export function SearchInput({
   label,
   clearLabel,
   placeholder,
+  hint,
   className,
   id,
+  keyShortcut,
 }: {
   /** Controlled text (for example from the URL). Omit for an uncontrolled box. */
   value?: string | undefined;
   defaultValue?: string | undefined;
   onSearch: (query: string) => void;
   debounceMs?: number | undefined;
-  /** Accessible name; there is no visible label above a toolbar search. */
+  /** Accessible name and, by default, the placeholder: what the box searches ("Tìm theo tên hoặc mã"). No visible label above a toolbar search. */
   label: string;
   clearLabel: string;
+  /** Overrides the placeholder; it must still name the scope. An example belongs in `hint`. */
   placeholder?: string | undefined;
+  /** An example of what to type ("Ví dụ: Lan…"): the accessible description and the hover title, never the placeholder. */
+  hint?: string | undefined;
   className?: string | undefined;
   id?: string | undefined;
+  /** A key that focuses the box (the screen wires the key; this announces it), e.g. "/" on the counter (aria-keyshortcuts). */
+  keyShortcut?: string | undefined;
 }) {
   const [text, setText] = useState(value ?? defaultValue);
+  const hintId = useId();
   const search = useRef(onSearch);
   search.current = onSearch;
   const debouncer = useMemo(
@@ -783,9 +980,12 @@ export function SearchInput({
     [debounceMs],
   );
   useEffect(() => () => debouncer.cancel(), [debouncer]);
-  useEffect(() => {
+  // A controlled value that changes from outside (the URL, a reset) replaces the text, adjusted while rendering.
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
     if (value !== undefined) setText(value);
-  }, [value]);
+  }
 
   function clear() {
     debouncer.cancel();
@@ -800,7 +1000,10 @@ export function SearchInput({
         type="search"
         className="ls-input"
         aria-label={label}
-        placeholder={placeholder}
+        aria-describedby={hint ? hintId : undefined}
+        aria-keyshortcuts={keyShortcut}
+        placeholder={placeholder ?? label}
+        title={hint}
         autoComplete="off"
         value={text}
         onChange={(event) => {
@@ -826,6 +1029,11 @@ export function SearchInput({
           className="ls-search-clear"
           onClick={clear}
         />
+      ) : null}
+      {hint ? (
+        <span id={hintId} className="ls-visually-hidden">
+          {hint}
+        </span>
       ) : null}
     </div>
   );

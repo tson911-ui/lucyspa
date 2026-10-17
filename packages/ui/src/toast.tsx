@@ -10,22 +10,29 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { buttonClass } from './button-class';
 import { Icon, type IconName } from './icons';
 import {
   addToast,
   removeToast,
   TOAST_DURATION_MS,
+  ACTION_TOAST_DURATION_MS,
   type ToastData,
   type ToastTone,
 } from './toast-core';
 
-// Non-blocking feedback (contract section 7): bottom-right on desktop, bottom on a phone, 5 s,
-// `role="status"`. Hovering or focusing a toast pauses its timer so it can be read and dismissed.
+// Non-blocking feedback (contract section 7): bottom-right on desktop, bottom on a phone, 5 s (8 s with an action), announced
+// by the polite region. Hovering or focusing a toast pauses its timer so it can be read and dismissed; F8 focuses the newest.
+
+/** The key that moves focus to the newest toast's button (the common toast-region shortcut). */
+export const TOAST_HOTKEY = 'F8';
 
 export interface ToastInput {
   tone?: ToastTone | undefined;
   message: string;
   title?: string | undefined;
+  /** One action, e.g. undo after removing a line (C72). The toast closes when it is used. */
+  action?: { label: string; onAction: () => void } | undefined;
 }
 
 interface ToastApi {
@@ -64,12 +71,40 @@ export function ToastProvider({
     return id;
   }, []);
   const api = useMemo(() => ({ push, dismiss }), [push, dismiss]);
+  const region = useRef<HTMLDivElement | null>(null);
+  const hasToasts = toasts.length > 0;
+
+  // F8 jumps to the newest toast's action (or close) button, the toast-region shortcut of the common toast pattern: a keyboard
+  // user reaches the undo at once instead of tabbing through the page, and the focus pauses its timer. Listened to only while
+  // a toast is shown.
+  useEffect(() => {
+    if (!hasToasts) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== TOAST_HOTKEY || event.defaultPrevented) return;
+      const items = region.current?.querySelectorAll<HTMLElement>('.ls-toast');
+      const newest = items?.[items.length - 1];
+      const target = newest?.querySelector<HTMLElement>('.ls-toast-action, .ls-notice-close');
+      if (!target) return;
+      event.preventDefault();
+      target.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [hasToasts]);
 
   return (
     <ToastContext value={api}>
       {children}
-      {/* Always mounted and polite, so a toast that appears inside it is announced (WIG: async updates need aria-live). */}
-      <div className="ls-toast-region" role="region" aria-label={regionLabel} aria-live="polite">
+      {/* Always mounted and polite, so a toast that appears inside it is announced (WIG: async updates need aria-live). The
+          items carry no live role of their own (a nested polite region can be read twice); a danger toast is an alert. */}
+      <div
+        ref={region}
+        className="ls-toast-region"
+        role="region"
+        aria-label={regionLabel}
+        aria-live="polite"
+        aria-keyshortcuts={TOAST_HOTKEY}
+      >
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}
@@ -98,13 +133,16 @@ function ToastItem({
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused) return undefined;
-    const handle = setTimeout(() => onDismiss(toast.id), duration);
+    const handle = setTimeout(
+      () => onDismiss(toast.id),
+      toast.action ? Math.max(duration, ACTION_TOAST_DURATION_MS) : duration,
+    );
     return () => clearTimeout(handle);
-  }, [paused, duration, toast.id, onDismiss]);
+  }, [paused, duration, toast.id, toast.action, onDismiss]);
   return (
     <div
       className={`ls-toast ls-toast-${toast.tone}`}
-      role="status"
+      role={toast.tone === 'danger' ? 'alert' : undefined}
       onPointerEnter={() => setPaused(true)}
       onPointerLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -115,6 +153,19 @@ function ToastItem({
         {toast.title ? <p className="ls-toast-title">{toast.title}</p> : null}
         <p>{toast.message}</p>
       </div>
+      {toast.action ? (
+        <button
+          type="button"
+          aria-keyshortcuts={TOAST_HOTKEY}
+          className={buttonClass('secondary', 'md', 'ls-toast-action')}
+          onClick={() => {
+            toast.action?.onAction();
+            onDismiss(toast.id);
+          }}
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
       <button
         type="button"
         className="ls-notice-close"
