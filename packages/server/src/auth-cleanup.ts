@@ -14,6 +14,8 @@ export interface CleanupSummary {
   readonly deletedDeliveries: number;
   readonly deletedIntents: number;
   readonly deletedAnonymousSessions: number;
+  /** Session 10 A2: account-deletion emails past their deadline (sent or not), ciphertext erased. */
+  readonly expiredDeletionEmails: number;
 }
 
 /**
@@ -52,13 +54,37 @@ export class AuthCleanup {
     });
     const deletedIntents = await repeat(() => this.deleteIntents(batchSize));
     const deletedAnonymousSessions = await repeat(() => this.deleteAnonymousSessions(batchSize));
+    const expiredDeletionEmails = await repeat(() => this.expireDeletionEmails(batchSize));
     return {
       expiredDeliveries,
       deletedChallenges,
       deletedDeliveries,
       deletedIntents,
       deletedAnonymousSessions,
+      expiredDeletionEmails,
     };
+  }
+
+  /**
+   * Session 10 A2: a deleted account's confirmation email still PENDING past its deadline is EXPIRED and its sealed address erased,
+   * also when no mail transport runs (the sender would otherwise be the only one to clear it).
+   */
+  private expireDeletionEmails(batchSize: number): Promise<number> {
+    return this.transactions.withTransaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id::text AS id FROM account_deletion_emails
+        WHERE state = 'PENDING' AND expires_at <= clock_timestamp()
+          AND (lease_until IS NULL OR lease_until <= clock_timestamp())
+        ORDER BY expires_at, id
+        LIMIT ${batchSize}
+        FOR UPDATE SKIP LOCKED`;
+      if (rows.length === 0) return 0;
+      const result = await tx.accountDeletionEmail.updateMany({
+        where: { id: { in: rows.map((row) => row.id) }, state: 'PENDING' },
+        data: { state: 'EXPIRED', ...ERASED_DELIVERY },
+      });
+      return result.count;
+    });
   }
 
   /** PENDING deliveries past their deadline: mark EXPIRED and erase ciphertext. */

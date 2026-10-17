@@ -3,17 +3,20 @@
 import type { CustomerProfileResponse } from '@lucy-spa/contracts';
 import {
   Button,
+  buttonClass,
   Card,
   CardHeader,
   DescriptionList,
   Field,
   FormDialog,
   FormGrid,
+  Icon,
   Notice,
   PasswordInput,
   TextInput,
   type FormOverlayLabels,
 } from '@lucy-spa/ui';
+import Link from 'next/link';
 import { useId, useState } from 'react';
 import { fill } from '../../../i18n/customer';
 import {
@@ -37,8 +40,9 @@ import {
   saveCustomerName,
   verifyEmailChange,
 } from '../../../lib/customer/profile';
+import { NAV_TRANSITION } from '../../../lib/nav-transition';
 import { announceSessionChange } from '../../../lib/site-session';
-import { Badge } from '../../workforce/ui';
+import { StatusBadge } from '../member-ui';
 import { AccountScreen } from '../account-frame';
 import { useCustomer } from '../session';
 import { LoadState, useFetch } from './bookings';
@@ -142,9 +146,10 @@ export function ProfileView({
   onEditName: () => void;
   onChangeEmail: () => void;
 }) {
-  const { t } = useCustomer();
+  const { t, base } = useCustomer();
   const heading = useId();
   const emailHeading = useId();
+  const deleteHeading = useId();
   return (
     <>
       <Card as="section" aria-labelledby={heading}>
@@ -187,13 +192,31 @@ export function ProfileView({
               value: (
                 <>
                   {profile.email.address}{' '}
-                  <Badge tone={profile.email.verified ? 'success' : 'warning'}>
+                  <StatusBadge tone={profile.email.verified ? 'success' : 'warning'}>
                     {profile.email.verified ? text.emailVerified : text.emailUnverified}
-                  </Badge>
+                  </StatusBadge>
                 </>
               ),
             },
           ]}
+        />
+      </Card>
+      {/* Session 10 A2: the last group, its only control the destructive outline link (never the primary, never filled). */}
+      <Card as="section" aria-labelledby={deleteHeading}>
+        <CardHeader
+          id={deleteHeading}
+          title={text.deleteTitle}
+          description={text.deleteIntro}
+          actions={
+            <Link
+              href={`${base}/profile/delete`}
+              className={buttonClass('danger-outline')}
+              transitionTypes={NAV_TRANSITION}
+            >
+              <Icon name="trash" />
+              <span className="ls-btn-label">{text.deleteAction}</span>
+            </Link>
+          }
         />
       </Card>
     </>
@@ -275,6 +298,7 @@ function NameDialog({
               // The page names the problem beside the field (H12), not the browser's own bubble.
               required={false}
               aria-required="true"
+              name="name"
               autoComplete="name"
               maxLength={NAME_MAX}
               value={name}
@@ -357,11 +381,18 @@ function EmailDialog({
     });
   };
 
+  // The resend shows its own spinner (C38); the dialog's submit keeps its label meanwhile (one request at a time still holds).
+  const [resending, setResending] = useState(false);
   const resend = () =>
     guarded(async () => {
       if (step.kind !== 'code') return;
-      await resendEmailChange(api, step.flowToken);
-      setInfo(fill(text.resent, { email: step.email }));
+      setResending(true);
+      try {
+        await resendEmailChange(api, step.flowToken);
+        setInfo(fill(text.resent, { email: step.email }));
+      } finally {
+        setResending(false);
+      }
     });
 
   const verify = () => {
@@ -396,7 +427,7 @@ function EmailDialog({
         coding ? text.verify : text.sendCode,
         coding ? text.verifying : text.sendingCode,
       )}
-      busy={pending}
+      busy={pending && !resending}
       dirty={password !== '' || email !== '' || code !== '' || coding}
       error={
         error ? (
@@ -426,6 +457,7 @@ function EmailDialog({
                   showLabel={t.auth.showPassword}
                   hideLabel={t.auth.hidePassword}
                   maxLength={1024}
+                  name="current-password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(event) => {
@@ -449,6 +481,7 @@ function EmailDialog({
                   type="email"
                   inputMode="email"
                   maxLength={254}
+                  name="email"
                   autoComplete="email"
                   spellCheck={false}
                   autoCapitalize="none"
@@ -470,7 +503,12 @@ function EmailDialog({
             requiredLabel={t.common.required}
             error={fieldProblem}
             labelAction={
-              <Button variant="ghost" disabled={pending} onClick={() => void resend()}>
+              <Button
+                variant="ghost"
+                disabled={pending && !resending}
+                loading={resending}
+                onClick={() => void resend()}
+              >
                 {text.resend}
               </Button>
             }
@@ -481,6 +519,7 @@ function EmailDialog({
                 required={false}
                 aria-required="true"
                 inputMode="numeric"
+                name="one-time-code"
                 autoComplete="one-time-code"
                 spellCheck={false}
                 pattern="[0-9]{6}"
@@ -488,7 +527,7 @@ function EmailDialog({
                 value={code}
                 onChange={(event) => {
                   setShown(false);
-                  setCode(event.target.value);
+                  setCode(event.target.value.replace(/\D/g, ''));
                 }}
               />
             )}

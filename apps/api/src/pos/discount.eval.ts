@@ -276,7 +276,8 @@ export async function loadBirthday(
     where: { userId: payerUserId },
     select: { dateOfBirth: true },
   });
-  if (!profile) return null;
+  // No birthday on file (an erased profile of a deleted account, which can no longer pay anyway): no gift.
+  if (profile?.dateOfBirth == null) return null;
   const { businessDate } = await tx.invoice.findUniqueOrThrow({
     where: { id: invoiceId },
     select: { businessDate: true },

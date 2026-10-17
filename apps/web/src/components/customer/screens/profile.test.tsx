@@ -59,13 +59,36 @@ test('the profile: details as text, the phone and the birthday never as fields, 
   assert.match(html, /Số điện thoại và ngày sinh do Lucy Spa quản lý/);
   // Nothing on the page itself can be typed into: editing happens in a dialog.
   assert.doesNotMatch(html, /<input|<textarea|<select/);
-  // Two cards, each with its one action in the card header, and no heading carries a count or symbol.
-  assert.equal(html.match(/class="ls-card[ "]/g)?.length, 2);
-  assert.equal(html.match(/<h2/g)?.length, 2);
+  // Three cards (session 10 A2 adds "Xóa tài khoản" last), each with its one action in the card header, and no heading carries a
+  // count or symbol.
+  assert.equal(html.match(/class="ls-card[ "]/g)?.length, 3);
+  assert.equal(html.match(/<h2/g)?.length, 3);
   assert.match(html, /Thông tin cá nhân/);
   assert.match(html, /Email đăng nhập/);
-  assert.ok(html.indexOf('>Sửa<') > 0 && html.indexOf('>Đổi email<') > html.indexOf('>Sửa<'));
+  // C39: both buttons open a dialog that asks for more input, so their labels end with "…".
+  assert.ok(html.indexOf('>Sửa…<') > 0 && html.indexOf('>Đổi email…<') > html.indexOf('>Sửa…<'));
   assert.doesNotMatch(html, /wf-|<details|<fieldset/);
+});
+
+test('account deletion is the last group: a destructive outline link to its own page, never filled, never the primary', () => {
+  const html = paint(
+    <ProfileView
+      profile={profile}
+      text={customerProfileDictionary('vi')}
+      onEditName={() => undefined}
+      onChangeEmail={() => undefined}
+    />,
+  );
+  const group = html.slice(html.lastIndexOf('<section'));
+  assert.match(group, /<h2[^>]*>Xóa tài khoản<\/h2>/);
+  assert.match(group, /Xóa vĩnh viễn tài khoản Lucy Spa của bạn/);
+  const link = /<a[^>]*href="\/vi\/account\/profile\/delete"[^>]*>/.exec(group)?.[0] ?? '';
+  assert.match(link, /ls-btn-danger-outline/);
+  assert.doesNotMatch(group, /ls-btn-primary|ls-btn-danger[ "]/);
+  assert.ok(
+    html.indexOf('Xóa tài khoản') > html.indexOf('Email đăng nhập'),
+    'after the email group',
+  );
 });
 
 test('an unverified email is said so in words, and English reads the same page', () => {

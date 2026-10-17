@@ -118,7 +118,10 @@ export function presentProductOrder(
     invoiceCode: row.invoice.code,
     branchId: row.branchId,
     status: productOrderStatus(lines),
-    contactPhone: options.showContact ? row.contactPhone : (maskPhone(row.contactPhone) ?? '•••'),
+    // Empty only after the erasure of a never-paid online order of a deleted account (session 10 A2).
+    contactPhone: options.showContact
+      ? (row.contactPhone ?? '')
+      : (maskPhone(row.contactPhone) ?? '•••'),
     contactMasked: !options.showContact,
     contactName: options.showContact ? row.contactName : null,
     customer: row.customer ? { id: row.customer.id, displayName: row.customer.fullName } : null,

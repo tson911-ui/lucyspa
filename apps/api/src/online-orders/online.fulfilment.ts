@@ -168,8 +168,9 @@ export function effectiveAddress(row: Pick<OnlineStaffRow, 'onlineDetail' | 'add
   const detail = row.onlineDetail!;
   const fix = row.addressCorrections[0];
   return {
-    name: fix?.recipientName ?? detail.recipientName,
-    phone: fix?.recipientPhone ?? detail.recipientPhone,
+    // Empty only for a never-paid order of a deleted account (session 10 A2: the name and phone were erased).
+    name: fix?.recipientName ?? detail.recipientName ?? '',
+    phone: fix?.recipientPhone ?? detail.recipientPhone ?? '',
     provinceCode: fix?.provinceCode ?? detail.provinceCode,
     provinceName: fix?.provinceName ?? detail.provinceName,
     ward: fix?.ward ?? detail.ward,

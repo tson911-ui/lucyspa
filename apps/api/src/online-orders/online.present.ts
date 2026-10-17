@@ -97,8 +97,9 @@ export async function presentOnlineOrder(
     shippingFeeVnd: invoice.shippingFeeVnd.toString(),
     totalVnd: invoice.totalVnd.toString(),
     recipient: {
-      name: fix?.recipientName ?? detail.recipientName,
-      phone: fix?.recipientPhone ?? detail.recipientPhone,
+      // Empty only for a never-paid order of a deleted account (session 10 A2), which its owner can no longer open.
+      name: fix?.recipientName ?? detail.recipientName ?? '',
+      phone: fix?.recipientPhone ?? detail.recipientPhone ?? '',
       provinceName: fix?.provinceName ?? detail.provinceName,
       ward: fix?.ward ?? detail.ward,
       street: fix?.street ?? detail.street,

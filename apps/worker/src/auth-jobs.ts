@@ -11,6 +11,10 @@ import {
   type createLogger,
   type MailConfig,
 } from '@lucy-spa/server';
+import {
+  AccountDeletionEmailProcessor,
+  dispatchAccountDeletionEmails,
+} from './account-deletion-email.js';
 
 type Logger = ReturnType<typeof createLogger>;
 
@@ -121,6 +125,28 @@ export function startAuthJobs(
           }
         } catch (error) {
           logger.error(safeError(error), 'Auth email dispatch cycle failed');
+        }
+      }),
+    );
+    // Session 10 A2: the confirmation email of a deleted account, through the same transport and key ring.
+    const deletionEmails = new AccountDeletionEmailProcessor(
+      runner,
+      { deliveryKeys: config.deliveryKeys },
+      transport,
+    );
+    loops.push(
+      loop(config.dispatchIntervalMs, async () => {
+        try {
+          const summary = await dispatchAccountDeletionEmails(
+            database,
+            deletionEmails,
+            config.dispatchBatchSize,
+          );
+          if (summary.examined > 0) {
+            logger.info({ outcomes: summary.outcomes }, 'Account deletion email dispatch cycle');
+          }
+        } catch (error) {
+          logger.error(safeError(error), 'Account deletion email dispatch cycle failed');
         }
       }),
     );

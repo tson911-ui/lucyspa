@@ -386,6 +386,7 @@ test(
                 deletedDeliveries: 0,
                 deletedIntents: 0,
                 deletedAnonymousSessions: 0,
+                expiredDeletionEmails: 0,
               });
               const exists = {
                 challenge: (id: string) => tx.authChallenge.count({ where: { id } }),

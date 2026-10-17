@@ -2293,6 +2293,8 @@ export * from './reward.js';
 export * from './customer-loyalty.js';
 // Owner request 2026-10-06: the shop's Facebook / Zalo contact links (validation and the links the public site opens).
 export * from './contact-links.js';
+// Session 10 A2: a customer deletes their own account (check, then delete with the current password).
+export * from './account-deletion.js';
 
 export * from './website-link.js';
 export * from './website-page.js';

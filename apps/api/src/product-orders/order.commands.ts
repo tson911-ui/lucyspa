@@ -231,6 +231,7 @@ export async function handOver(
   // What the person said must match the order; the answer never says which part was wrong, and nothing said is stored.
   if (
     orderCode !== line.order.code.toUpperCase() ||
+    line.order.contactPhone === null ||
     phoneLast4 !== lastFour(line.order.contactPhone)
   ) {
     throw new AuthError('ORDER_HANDOVER_PROOF_INVALID');

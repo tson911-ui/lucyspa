@@ -21,6 +21,8 @@ const errors = {
   BOOKING_KTV_UNAVAILABLE: [409, 'The chosen staff member is not available at this time'],
   BOOKING_NO_SUITABLE_KTV: [409, 'No suitable staff member is available at this time'],
   BOOKING_CANCEL_NOT_ALLOWED: [409, 'This booking can no longer be cancelled'],
+  // Session 10 A2: something listed by the deletion check stops the account deletion (read the check again).
+  ACCOUNT_DELETION_BLOCKED: [409, 'Settle the listed items before deleting the account'],
   // Phase 3 Step 5 operational outcomes.
   BOOKING_ARRIVAL_TOO_EARLY: [409, 'The check-in window for this booking has not opened yet'],
   BOOKING_ARRIVAL_NOT_ALLOWED: [409, 'This booking can no longer be checked in'],

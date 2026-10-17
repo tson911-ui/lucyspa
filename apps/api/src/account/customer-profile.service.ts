@@ -26,8 +26,8 @@ export const dateOnly = (value: Date): string => value.toISOString().slice(0, 10
 
 /** The response for one loaded customer row (pure: nothing here reads the database). */
 export function presentCustomerProfile(user: ProfileRecord): CustomerProfileResponse {
-  const dateOfBirth =
-    user.customerProfile === null ? null : dateOnly(user.customerProfile.dateOfBirth);
+  const born = user.customerProfile?.dateOfBirth ?? null;
+  const dateOfBirth = born === null ? null : dateOnly(born);
   return {
     fullName: user.fullName,
     // A customer signs in by email, so it is always on file; an unverified one cannot sign in at all.

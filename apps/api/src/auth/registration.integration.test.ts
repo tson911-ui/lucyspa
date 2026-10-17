@@ -253,7 +253,7 @@ test(
                 assert.equal(user.preferredLocale, 'vi');
                 assert.equal(user.customerProfile?.address, '12 Lê Lợi, Quận 1');
                 assert.equal(
-                  user.customerProfile?.dateOfBirth.toISOString(),
+                  user.customerProfile?.dateOfBirth?.toISOString(),
                   '1990-02-28T00:00:00.000Z',
                 );
                 assert.equal(user.sessions.length, 0, 'activation never creates a session');

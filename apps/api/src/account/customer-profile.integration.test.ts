@@ -213,7 +213,10 @@ test(
               select: { phoneCanonical: true, customerProfile: { select: { dateOfBirth: true } } },
             });
             assert.equal(row.phoneCanonical, lan.phoneCanonical);
-            assert.equal(row.customerProfile?.dateOfBirth.toISOString().slice(0, 10), '1990-03-05');
+            assert.equal(
+              row.customerProfile?.dateOfBirth?.toISOString().slice(0, 10),
+              '1990-03-05',
+            );
             throw rollback;
           },
           { timeout: 60_000 },

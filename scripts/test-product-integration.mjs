@@ -36,6 +36,8 @@ await import('../apps/api/dist/online-orders/online.fulfilment.integration.test.
 await import('../apps/api/dist/online-orders/online.refunds.integration.test.js');
 await import('../apps/api/dist/online-orders/online.limits.integration.test.js');
 await import('../apps/api/dist/online-orders/online.race.integration.test.js');
+// Session 10 A2: customer account deletion (orders, sessions, sealed email, database guards of migration 20261216000000).
+await import('../apps/api/dist/account/account-deletion.integration.test.js');
 await import('../apps/api/dist/campaigns/campaign.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-source.integration.test.js');
 await import('../apps/api/dist/supplier-sources/supplier-source-scan.integration.test.js');

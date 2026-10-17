@@ -6,7 +6,7 @@ import type { Locale } from './locales';
  */
 const vi = {
   personalTitle: 'Thông tin cá nhân',
-  edit: 'Sửa',
+  edit: 'Sửa…',
   editTitle: 'Sửa thông tin cá nhân',
   save: 'Lưu thay đổi',
   saving: 'Đang lưu…',
@@ -14,7 +14,7 @@ const vi = {
   phone: 'Số điện thoại',
   birthday: 'Ngày sinh',
   managedNote:
-    'Số điện thoại và ngày sinh do Lucy Spa quản lý. Cần thay đổi? Hãy liên hệ spa để được hỗ trợ.',
+    'Số điện thoại và ngày sinh do Lucy Spa quản lý. Cần thay đổi? Hãy liên hệ tiệm để được hỗ trợ.',
   nameHint: 'Tên dùng trên lịch hẹn và hóa đơn của bạn.',
   nameRequired: 'Hãy nhập họ và tên.',
   nameTooLong: 'Họ và tên tối đa 200 ký tự.',
@@ -24,7 +24,7 @@ const vi = {
   emailLabel: 'Email',
   emailVerified: 'Đã xác minh',
   emailUnverified: 'Chưa xác minh',
-  changeEmail: 'Đổi email',
+  changeEmail: 'Đổi email…',
   changeEmailTitle: 'Đổi email đăng nhập',
   changeEmailIntro:
     'Nhập mật khẩu hiện tại và email mới. Email chỉ đổi sau khi bạn nhập đúng mã gửi đến địa chỉ mới.',
@@ -51,11 +51,63 @@ const vi = {
   discardBody: 'Những gì bạn vừa nhập sẽ không được lưu.',
   discardConfirm: 'Bỏ thay đổi',
   discardKeep: 'Tiếp tục sửa',
+  // Session 10 A2: account deletion (the entry on this page and its own page). Owner approval of the copy pending.
+  deleteTitle: 'Xóa tài khoản',
+  deleteIntro: 'Xóa vĩnh viễn tài khoản Lucy Spa của bạn và thông tin cá nhân đi kèm.',
+  deleteAction: 'Xóa tài khoản',
+  deletion: {
+    title: 'Xóa tài khoản',
+    intro: 'Hãy đọc kỹ trước khi xóa. Tài khoản đã xóa không thể khôi phục.',
+    back: 'Quay lại hồ sơ',
+    blockedTitle: 'Chưa thể xóa tài khoản',
+    blockedIntro: 'Hãy hoàn tất những việc dưới đây trước, rồi quay lại trang này.',
+    combos:
+      'Bạn còn {count} buổi đã trả trước trong combo. Hãy dùng hết các buổi này, hoặc yêu cầu hoàn tiền theo chính sách đổi trả và hoàn tiền.',
+    comboItem: '{name}: còn {count} buổi',
+    refundPolicy: 'Chính sách đổi trả và hoàn tiền',
+    seeCombos: 'Xem combo của tôi',
+    orders: 'Bạn còn đơn hàng chưa hoàn tất.',
+    seeOrder: 'Xem đơn {code}',
+    orderUnpaid: 'Đơn {code} đang chờ thanh toán. Hãy hủy đơn, hoặc đợi hết hạn thanh toán.',
+    orderInProgress: 'Đơn {code} đang được chuẩn bị hoặc đang giao. Hãy đợi đến khi bạn nhận hàng.',
+    orderPreorder:
+      'Đơn đặt trước {code} chưa được nhận. Hãy nhận hàng tại tiệm, hoặc liên hệ tiệm để hủy đơn.',
+    atSpa: 'Bạn đang có lịch hẹn hoặc lượt làm dịch vụ tại tiệm. Hãy đợi đến khi xong.',
+    returns:
+      'Bạn còn {count} yêu cầu đổi trả đang chờ tiệm xử lý. Hãy đợi đến khi tiệm xử lý xong.',
+    removedTitle: 'Những gì sẽ bị xóa',
+    removed: [
+      'Email, mật khẩu và quyền đăng nhập vào tài khoản.',
+      'Họ tên, số điện thoại, ngày sinh và địa chỉ của bạn.',
+      'Địa chỉ giao hàng đã lưu, giỏ hàng và thông báo.',
+      'Tên và số điện thoại người nhận trên các đơn hàng chưa từng thanh toán.',
+    ],
+    keptTitle: 'Những gì Lucy Spa vẫn lưu giữ',
+    kept: [
+      'Hóa đơn và thanh toán, theo quy định về kế toán. Các hóa đơn không còn gắn với tên của bạn.',
+      'Tên và số điện thoại người nhận trên các đơn hàng đã thanh toán, vì đó là chứng từ giao hàng.',
+      'Lịch sử lịch hẹn và các đánh giá bạn đã gửi.',
+    ],
+    lostTitle: 'Những gì bạn sẽ mất',
+    lostAlways: 'Hạng thành viên, điểm thưởng và quà tặng chưa dùng.',
+    lostPoints: 'Số điểm hiện có: {spa} điểm Lucy Spa và {beauty} điểm Lucy Beauty.',
+    lostBookings: 'Các lịch hẹn sắp tới dưới đây sẽ bị hủy:',
+    confirmTitle: 'Xác nhận xóa',
+    confirmIntro:
+      'Nhập mật khẩu hiện tại để xác nhận. Tài khoản bị xóa ngay, bạn được đăng xuất trên mọi thiết bị và nhận một email xác nhận.',
+    confirm: 'Xóa tài khoản vĩnh viễn',
+    deleting: 'Đang xóa…',
+    blockedNow: 'Vừa có việc cần hoàn tất trước khi xóa. Hãy xem danh sách bên dưới.',
+    deletedTitle: 'Tài khoản đã được xóa',
+    deletedBody:
+      'Bạn đã được đăng xuất. Lucy Spa sẽ gửi email xác nhận đến địa chỉ email trước đây của tài khoản.',
+    home: 'Về trang chủ',
+  },
 };
 
 const en: typeof vi = {
   personalTitle: 'Personal details',
-  edit: 'Edit',
+  edit: 'Edit…',
   editTitle: 'Edit personal details',
   save: 'Save changes',
   saving: 'Saving…',
@@ -63,7 +115,7 @@ const en: typeof vi = {
   phone: 'Phone number',
   birthday: 'Date of birth',
   managedNote:
-    'Lucy Spa manages your phone number and date of birth. Need a change? Contact the spa and we will help.',
+    'Lucy Spa manages your phone number and date of birth. Need a change? Contact the shop for help.',
   nameHint: 'The name used on your bookings and invoices.',
   nameRequired: 'Enter your full name.',
   nameTooLong: 'Your full name can have at most 200 characters.',
@@ -73,7 +125,7 @@ const en: typeof vi = {
   emailLabel: 'Email',
   emailVerified: 'Verified',
   emailUnverified: 'Not verified',
-  changeEmail: 'Change email',
+  changeEmail: 'Change email…',
   changeEmailTitle: 'Change sign-in email',
   changeEmailIntro:
     'Enter your current password and the new email. The email only changes after you enter the code sent to the new address.',
@@ -100,6 +152,59 @@ const en: typeof vi = {
   discardBody: 'What you entered will not be saved.',
   discardConfirm: 'Discard',
   discardKeep: 'Keep editing',
+  deleteTitle: 'Delete account',
+  deleteIntro:
+    'Permanently delete your Lucy Spa account and the personal details that come with it.',
+  deleteAction: 'Delete account',
+  deletion: {
+    title: 'Delete account',
+    intro: 'Read this carefully first. A deleted account cannot be restored.',
+    back: 'Back to profile',
+    blockedTitle: 'Your account cannot be deleted yet',
+    blockedIntro: 'Finish the items below first, then come back to this page.',
+    combos:
+      'You have {count} prepaid sessions left in your combos. Use them, or ask for a refund under the returns and refunds policy.',
+    comboItem: '{name}: {count} sessions left',
+    refundPolicy: 'Returns and refunds policy',
+    seeCombos: 'See my combos',
+    orders: 'You have orders that are not finished.',
+    seeOrder: 'See order {code}',
+    orderUnpaid:
+      'Order {code} is waiting for payment. Cancel it, or wait until the payment time runs out.',
+    orderInProgress: 'Order {code} is being prepared or delivered. Wait until you receive it.',
+    orderPreorder:
+      'Pre-order {code} has not been collected. Collect it at the shop, or contact the shop to cancel it.',
+    atSpa: 'You have a booking or a service in progress at the shop. Wait until it is finished.',
+    returns:
+      'You have {count} return requests waiting for the shop. Wait until the shop has handled them.',
+    removedTitle: 'What will be deleted',
+    removed: [
+      'Your email, password and access to the account.',
+      'Your name, phone number, date of birth and address.',
+      'Saved delivery addresses, your cart and your notifications.',
+      'The recipient name and phone on orders that were never paid.',
+    ],
+    keptTitle: 'What Lucy Spa keeps',
+    kept: [
+      'Invoices and payments, as accounting law requires. They are no longer linked to your name.',
+      'The recipient name and phone on paid orders, because they are delivery records.',
+      'Your booking history and the reviews you sent.',
+    ],
+    lostTitle: 'What you will lose',
+    lostAlways: 'Your membership tier, points and unused gifts.',
+    lostPoints: 'Points you have now: {spa} Lucy Spa points and {beauty} Lucy Beauty points.',
+    lostBookings: 'These upcoming bookings will be cancelled:',
+    confirmTitle: 'Confirm deletion',
+    confirmIntro:
+      'Enter your current password to confirm. The account is deleted at once, you are signed out on every device and you get a confirmation email.',
+    confirm: 'Delete account permanently',
+    deleting: 'Deleting…',
+    blockedNow: 'Something now needs finishing before the deletion. See the list below.',
+    deletedTitle: 'Your account was deleted',
+    deletedBody:
+      'You are signed out. Lucy Spa will send a confirmation to the email address the account used.',
+    home: 'Go to the home page',
+  },
 };
 
 export type CustomerProfileDictionary = typeof vi;

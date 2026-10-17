@@ -462,6 +462,8 @@ model User {
   credentialVersion              Int                              @default(1) @map("credential_version")
   authzVersion                   Int                              @default(1) @map("authz_version")
   rowVersion                     Int                              @default(1) @map("row_version")
+  /// Session 10 A2: set once when a customer deletes their own account (INACTIVE, no email, phone or password, placeholder name).
+  deletedAt                      DateTime?                        @map("deleted_at") @db.Timestamptz(3)
   createdAt                      DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                      DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   customerProfile                CustomerProfile?
@@ -626,9 +628,10 @@ model User {
 
 model CustomerProfile {
   userId      String   @id @map("user_id") @db.Uuid
-  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  dateOfBirth DateTime @map("date_of_birth") @db.Date
-  address     String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  /// NULL only for a deleted account (session 10 A2; guarded in SQL): both are erased together and never written again.
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  address     String?
 
   @@map("customer_profiles")
 }
@@ -806,6 +809,31 @@ model AuthDelivery {
   @@index([state, nextAttemptAt, leaseUntil, id], map: "auth_deliveries_claim_idx")
   @@index([expiresAt, id], map: "auth_deliveries_expiry_idx")
   @@map("auth_deliveries")
+}
+
+// Session 10 A2: the confirmation email of a deleted account. Same sealing and lifecycle as AuthDelivery: the address exists only in
+// the AES-GCM payload and is erased when the row leaves PENDING. One per account. No relation is declared on purpose (the foreign key
+// to users lives in migration 20261216000000).
+model AccountDeletionEmail {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String            @unique(map: "account_deletion_emails_user_key") @map("user_id") @db.Uuid
+  state             AuthDeliveryState @default(PENDING)
+  encryptedPayload  Bytes?            @map("encrypted_payload")
+  nonce             Bytes?
+  tag               Bytes?
+  keyVersion        Int?              @map("key_version")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt         DateTime          @map("expires_at") @db.Timestamptz(3)
+  attempts          Int               @default(0)
+  nextAttemptAt     DateTime          @map("next_attempt_at") @db.Timestamptz(3)
+  leaseToken        Bytes?            @map("lease_token")
+  leaseUntil        DateTime?         @map("lease_until") @db.Timestamptz(3)
+  deliveredAt       DateTime?         @map("delivered_at") @db.Timestamptz(3)
+  providerMessageId String?           @map("provider_message_id")
+  safeErrorCode     String?           @map("safe_error_code")
+
+  @@index([state, nextAttemptAt, leaseUntil, id], map: "account_deletion_emails_claim_idx")
+  @@map("account_deletion_emails")
 }
 
 model Session {
@@ -4307,8 +4335,8 @@ model ProductOrder {
   channel            InvoiceChannel            @default(COUNTER)
   customerUserId     String?                   @map("customer_user_id") @db.Uuid
   customer           User?                     @relation("ProductOrderCustomer", fields: [customerUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  /// Canonical +84 form; mandatory (OQ-34).
-  contactPhone       String                    @map("contact_phone") @db.VarChar(16)
+  /// Canonical +84 form; mandatory (OQ-34). NULL only after the erasure of a never-paid online order of a deleted account (A2).
+  contactPhone       String?                   @map("contact_phone") @db.VarChar(16)
   contactName        String?                   @map("contact_name") @db.VarChar(120)
   createdByUserId    String                    @map("created_by_user_id") @db.Uuid
   createdBy          User                      @relation("ProductOrderCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -4506,8 +4534,9 @@ model CustomerAddress {
 model OnlineOrderDetail {
   orderId          String       @id @map("order_id") @db.Uuid
   order            ProductOrder @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  recipientName    String       @map("recipient_name") @db.VarChar(120)
-  recipientPhone   String       @map("recipient_phone") @db.VarChar(16)
+  /// NULL (both) only after the erasure of a never-paid, cancelled order of a deleted account (session 10 A2, Owner answer 3).
+  recipientName    String?      @map("recipient_name") @db.VarChar(120)
+  recipientPhone   String?      @map("recipient_phone") @db.VarChar(16)
   provinceCode     String       @map("province_code") @db.VarChar(40)
   provinceName     String       @map("province_name") @db.VarChar(80)
   ward             String       @db.VarChar(120)

@@ -71,7 +71,14 @@ test('errors name the fix; anything else falls back to the generic message', () 
 test('no message blames the person, says "Oops" or uses "khám"', () => {
   for (const locale of ['vi', 'en'] as const) {
     const text = customerProfileDictionary(locale);
-    for (const value of Object.values(text)) {
+    // Every string, the nested account-deletion texts (session 10 A2) included.
+    const strings = (value: unknown): string[] =>
+      typeof value === 'string'
+        ? [value]
+        : value !== null && typeof value === 'object'
+          ? Object.values(value).flatMap(strings)
+          : [];
+    for (const value of strings(text)) {
       assert.doesNotMatch(value, /oops|khám/i);
       assert.doesNotMatch(value, /\s{2,}/);
     }

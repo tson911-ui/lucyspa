@@ -56,6 +56,16 @@ export {
 } from './auth-delivery.js';
 export { AuthCleanup, type CleanupLimits, type CleanupSummary } from './auth-cleanup.js';
 export {
+  ACCOUNT_DELETION_EMAIL_EVENT_TYPE,
+  ACCOUNT_DELETION_EMAIL_EVENT_VERSION,
+  ACCOUNT_DELETION_EMAIL_LIFETIME_MS,
+  accountDeletionEmailBinding,
+  parseAccountDeletionEmailEnvelope,
+  type AccountDeletionEmailEnvelope,
+  type AccountDeletionEmailLocale,
+  type NoticeEmailTransport,
+} from './account-deletion-email.js';
+export {
   classifySmtpFailure,
   FakeAuthEmailTransport,
   parseMailEnvironment,

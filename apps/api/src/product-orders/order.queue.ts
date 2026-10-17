@@ -195,7 +195,8 @@ export async function orderDetail(
     invoiceStatus: row.invoice.status as ProductOrderDetailResponse['invoiceStatus'],
     branchId: row.branchId,
     status: productOrderStatus(lines),
-    contactPhone: showContact ? row.contactPhone : (maskPhone(row.contactPhone) ?? '•••'),
+    // Empty only after the erasure of a never-paid online order of a deleted account (session 10 A2).
+    contactPhone: showContact ? (row.contactPhone ?? '') : (maskPhone(row.contactPhone) ?? '•••'),
     contactMasked: !showContact,
     contactName: showContact ? row.contactName : null,
     customer: row.customer ? { id: row.customer.id, displayName: row.customer.fullName } : null,
@@ -270,7 +271,7 @@ function presentQueueRow(row: QueueRow, today: string, now: Date): ProductOrderQ
     invoiceId: row.invoiceId,
     invoiceCode: row.order.invoice.code,
     customerName: row.order.customer?.fullName ?? null,
-    contactPhone: row.order.contactPhone,
+    contactPhone: row.order.contactPhone ?? '',
     contactName: row.order.contactName,
     variantId: row.variantId,
     sku: row.productLine.sku,
