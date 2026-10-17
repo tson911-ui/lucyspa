@@ -44,7 +44,8 @@ UI work must follow DESIGN.md.
   - One `Card` surface; nothing bordered inside a card; lists have no outer card (the table is one single-border surface).
   - Page = `Page` + `PageHeader` (one h1, one primary action, last at the trailing edge); footers are Cancel then Save, primary last.
   - Actions live in fixed places: page header, list toolbar, row `⋮` menu, card header, form/dialog footer. No stray buttons, no text-link actions.
-  - Any list that can exceed 20 rows is `DataTable` + `Pagination` (20/page); no raw `<table>`; one row height; numeric columns nowrap.
+  - Any list that can exceed 20 rows is `DataTable` + `Pagination` (20/page); no raw `<table>`; numeric columns nowrap. (The old "one
+    row height" is superseded by the Owner, 2026-10-16, session 10 answer 7: long names wrap and are never truncated.)
   - Create/edit: short form = Dialog, medium = Drawer, long = its own page. Never `<details>`, inline expanding cards or native `fieldset`.
   - A heading never repeats the label of its own control; no horizontal page scroll; toolbar controls have no labels above.
   - Headings are text only: no decorative number, count, badge or symbol next to a heading (a small count reads as a stray

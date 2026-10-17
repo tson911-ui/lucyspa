@@ -241,7 +241,7 @@ def main():
                         resolved_first[key] = first_link(ctx, args.web, lang, spec)
                         ctx.close()
                     if not resolved_first[key]:
-                        result = {"page": pg["name"], "skipped": "no record to open from " + pg["first"]["list"]}
+                        result = {"page": pg["name"], "skipped": "no record to open from " + str(pg["first"]["list"])}
                         (res_dir / f"{pg['name']}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
                         print(f"SKIP {pg['name']}: no record in {pg['first']['list']}", flush=True)
                         continue

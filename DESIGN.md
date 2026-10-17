@@ -766,9 +766,10 @@ The Owner's session 10 brief overrides the sections above where they differ. Rep
   table text are neutral. No role points at burgundy dark 11 `#dcadb0` or 12 `#f8ddde`: nothing reads as pink in dark mode (B22).
 - **Rule 4 (solid accent hover) is retired** (R11: hover never uses a vivid colour). The staff sidebar's current item keeps the solid
   accent (selected state).
-- **Focus ring (R22, pending Owner):** R22 names burgundy 8 `#dc949a`, which measures 2.40:1 on white and 2.21:1 on `#f5f5f7` (dark
-  step 8 `#873742`: 2.66:1 on black, 2.15:1 on `#1c1c1e`), below the 3:1 a focus indicator needs. Until the Owner decides, the ring is
-  the link colour (light `#60212a`, 12.0:1; dark gray 12).
+- **Focus ring (R22, Owner answer 1, 2026-10-16; replaces R22's step 8):** light = burgundy 11 `#60212a` (12.01:1 on white, 11.03:1 on
+  `#f5f5f7`, 9.29:1 on gray 4); dark = a neutral light ring, gray 12 `#f5f5f7`, never pink, at least 3:1 on every dark surface (19.29:1
+  on black, 15.63:1 on `#1c1c1e`, 12.80:1 on `#2c2c2e`, 10.42:1 on `#3a3a3c`). Burgundy 8 `#dc949a` measured 2.40:1 on white, below 3:1.
+- **Dark primary fill (A4, Owner answer 4):** burgundy dark 9 `#9b424e` is kept (hover `#a74c58`).
 
 ### 17.2 Components
 
@@ -786,6 +787,29 @@ The Owner's session 10 brief overrides the sections above where they differ. Rep
 - **Select (B9):** the icon-set chevron on every area; explicit text and background colours in both modes.
 - **Staff sign-in:** flat sunken canvas and one hairline card; no gradient, no botanical art (C8, C34).
 - **Brand-logo band (R16, replaces 9.1 1b's accent band):** a light band, logos in ink at one height, evenly spaced, no boxes.
+- **Cards and the primary (Owner answer 2, 2026-10-16; replaces brief item B15):** a service card links as a whole to the service page
+  and carries "Đặt lịch" as the secondary (outline) button; a product card links as a whole to the product page and has no button.
+  The filled primary appears only on detail pages, once per view. The card link is a stretched link (the name's anchor covers the card
+  through a pseudo-element); the outline button sits above it as a sibling, never inside the anchor.
+- **Long text in tables (Owner answer 7, replaces FR8's "one row height"):** names and titles wrap by word and are never truncated;
+  rows of one table may differ in height. Truncating meaningful text (ellipsis or line clamp on a name, title or value) is a defect.
+- **POS and admin layouts (Owner answer 5):** the POS board and the booking board keep their structure (restyle only). The new-product
+  form is its own page; loyalty groups its tabs into at most 6; the dashboard has a shortcuts block. No other layout changes.
+
+### 17.2a Account deletion (A2, Owner answer 3, 2026-10-16)
+
+- Entry in the account settings; one page explains what is deleted, what the law makes the shop keep, and what is lost (points,
+  upcoming bookings). The customer re-enters the password; deletion is immediate, a confirmation email follows, the session ends.
+  The destructive button is never the primary or the default; Cancel is always there.
+- Blocked while the customer has unused prepaid combo sessions: the page says so plainly and points to using them or asking for a
+  refund under the refund policy (link to that policy page).
+- Online orders with an issued invoice keep the recipient name and phone (legal record) and are detached from the account; orders
+  without an issued invoice have the recipient name and phone cleared. Invoices and payments stay, no longer linked to the person.
+- Admin sees an audit event without the deleted personal data. The privacy-policy text is a draft for the Owner
+  (`docs/redesign-s10/privacy-deletion-draft.md`); the published policy page is not changed.
+
+New or changed Vietnamese copy from session 10 is listed in `docs/redesign-s10/copy-review.md`, pending Owner approval before any
+deploy (answer 6).
 
 ### 17.3 Motion (G1-G8, replaces 11.3 reveal/stagger rows and 11.4)
 

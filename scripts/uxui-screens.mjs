@@ -19,7 +19,7 @@
 // capture is then the 900 px viewport, not the full page. `--eval` prints the value of a JS expression per render. Dark mode is the `prefers-color-scheme: dark` emulation, so pages without a `data-theme` attribute
 // follow it exactly as a visitor's system would. Needs Node 22+ (global WebSocket) and no dependency.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createProfile, disposeProfile } from './uxui-browser-profile.mjs';
@@ -48,7 +48,11 @@ for (let index = args.indexOf('--cookie'); index >= 0; index = args.indexOf('--c
 const beforeExpression = flag('before', '');
 // `--hover <selector[@@text]>`: moves the pointer onto that element just before the capture, to review its hover state (the brand tokens).
 const hoverSpec = flag('hover', '');
-const evalExpression = flag('eval', '');
+// `--eval @<file>` reads the expression from a file (an audit script longer than the Windows command line, 32 KB).
+const evalArgument = flag('eval', '');
+const evalExpression = evalArgument.startsWith('@')
+  ? readFileSync(evalArgument.slice(1), 'utf8')
+  : evalArgument;
 const all = args.includes('--all');
 if (all) args.splice(args.indexOf('--all'), 1);
 const allowStatus = args.includes('--allow-status');

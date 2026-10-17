@@ -28,6 +28,8 @@
     'heading-equals-control': 'FR10',
     'edge-overflow-right': 'FR11',
     'text-clipped': 'FR11',
+    // Owner answer 7 (2026-10-16): long names wrap; truncating meaningful text (ellipsis or line clamp that hides text) is a defect.
+    'text-truncated': 'C15',
     'content-overflow': 'FR11',
     'page-horizontal-scroll': 'FR11',
     'small-target': 'TGT',
@@ -353,15 +355,33 @@
     });
   }
 
-  // 5. Table rows and repeated blocks: uniform heights.
+  // 5. Table rows and repeated blocks: uniform heights. Owner answer 7 (2026-10-16, session 10): a row or item that is taller because its
+  // text wraps onto more lines passes (long names wrap, never truncate); only a height difference with no wrapped text behind it fails.
+  const lineCount = (node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const tops = new Set(
+      [...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)),
+    );
+    return tops.size;
+  };
+  const wraps = (block) =>
+    [...block.querySelectorAll('*')].concat(block).some((n) => {
+      const own = [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim());
+      return own && vis(n) && lineCount(n) > 1;
+    });
+  const unevenWithoutWrap = (blocks, tolerance) => {
+    const hs = blocks.map((b) => Math.round(b.getBoundingClientRect().height));
+    const min = Math.min(...hs);
+    return blocks.filter((b, i) => hs[i] - min > tolerance && !wraps(b)).length > 0;
+  };
   for (const table of document.querySelectorAll('table')) {
     if (!vis(table)) continue;
-    const hs = [...table.querySelectorAll('tbody tr')]
-      .filter(vis)
-      .map((tr) => Math.round(tr.getBoundingClientRect().height));
+    const rows = [...table.querySelectorAll('tbody tr')].filter(vis);
+    const hs = rows.map((tr) => Math.round(tr.getBoundingClientRect().height));
     if (hs.length > 1) {
       const distinct = [...new Set(hs)];
-      if (Math.max(...hs) - Math.min(...hs) > 2)
+      if (Math.max(...hs) - Math.min(...hs) > 2 && unevenWithoutWrap(rows, 2))
         add(
           'row-height-uneven',
           `table ${cls(table)}`,
@@ -376,7 +396,11 @@
     const items = [...list.children].filter(vis);
     if (items.length < 3) continue;
     const hs = items.map((li) => Math.round(li.getBoundingClientRect().height));
-    if (Math.max(...hs) - Math.min(...hs) > 6 && items.every((li) => li.tagName === 'LI'))
+    if (
+      Math.max(...hs) - Math.min(...hs) > 6 &&
+      items.every((li) => li.tagName === 'LI') &&
+      unevenWithoutWrap(items, 6)
+    )
       add(
         'list-height-uneven',
         `${region(list)}:${desc(list)}`,
@@ -453,6 +477,18 @@
   for (const el of all) {
     if (el instanceof SVGElement || ['HTML', 'BODY'].includes(el.tagName)) continue;
     const s = getComputedStyle(el);
+    // Owner answer 7: text cut by an ellipsis or a line clamp is a defect, even with the full text in a title (it used to pass).
+    const cut =
+      (s.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth + 1) ||
+      (s.webkitLineClamp && s.webkitLineClamp !== 'none' && el.scrollHeight > el.clientHeight + 1);
+    if (cut && (el.textContent || '').trim() && vis(el)) {
+      add(
+        'text-truncated',
+        `${region(el)}:${desc(el)}`,
+        `"${(el.textContent || '').trim().slice(0, 40)}" is cut (ellipsis or line clamp)`,
+      );
+      continue;
+    }
     if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) {
       // The season preview stage holds a frame laid out at its true width (1440 or 390) and scaled down to fit: the
       // overflow is the design (S6b), the stage clips it and has the scaled size.

@@ -36,7 +36,6 @@ const baselineOnly = flag('baseline');
 const locale = 'vi';
 
 const manifest = JSON.parse(readFileSync(resolve('scripts/uxui-audit-pages.json'), 'utf8')).pages;
-const auditSource = readFileSync(resolve('scripts/uxui-page-audit.js'), 'utf8');
 
 const selected = [];
 if (everything) selected.push(...Object.keys(manifest));
@@ -178,10 +177,18 @@ for (const name of selected) {
       '--theme-cookie',
       ...(page.public ? [] : cookieArgs),
       '--eval',
-      auditSource,
+      // The audit is passed as a file: its source is longer than the Windows command line allows (32 KB).
+      '@scripts/uxui-page-audit.js',
     ],
     { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 },
   );
+  if (result.error || typeof result.stdout !== 'string') {
+    console.log(
+      `FAIL  ${name}: the render process did not run (${result.error?.message ?? 'no output'})`,
+    );
+    failed += 1;
+    continue;
+  }
   const runs = {};
   for (const line of result.stdout.split('\n')) {
     const found = /^eval audit-\S+ (\d+) (light|dark): (.*)$/.exec(line);

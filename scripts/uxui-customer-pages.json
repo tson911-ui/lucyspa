@@ -36,7 +36,7 @@
     },
     {
       "name": "campaign",
-      "path": "products?campaign=ngay-hoi-lam-dep-mv74de11",
+      "path": "products?campaign=ngay-hoi-lam-dep-mva8nzja",
       "note": "A running campaign with a banner"
     },
     {
@@ -244,6 +244,30 @@
       "path": "cart",
       "as": "problem",
       "note": "Cart with more than the shop holds and a line without a picture"
+    },
+    {
+      "name": "account-delete",
+      "path": "account/profile/delete",
+      "as": "orders",
+      "note": "Session 10 A2: deletion blocked by unfinished online orders; points and an upcoming booking shown as losses"
+    },
+    {
+      "name": "account-delete-combo",
+      "path": "account/profile/delete",
+      "as": "pre",
+      "note": "Session 10 A2: deletion blocked by unused prepaid combo sessions (Owner answer 3, refund policy link)"
+    },
+    {
+      "name": "account-delete-ready",
+      "path": "account/profile/delete",
+      "as": "empty",
+      "note": "Session 10 A2: nothing blocks: the password step with Cancel and the danger-outline button"
+    },
+    {
+      "name": "account-deleted",
+      "path": "account/deleted",
+      "as": "public",
+      "note": "Session 10 A2: the confirmation page after the deletion (signed out)"
     }
   ]
 }

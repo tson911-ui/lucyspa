@@ -246,11 +246,60 @@
   const leaves = vis.filter(
     (el) => ownText(el) && !srOnly(el) && !fixedChain(el) && !el.matches(INTERACTIVE),
   );
+  // Scroll layer of an element (correction made at Step 4, documented in e2-thresholds.md): 'fixed' for fixed/sticky chrome, otherwise
+  // the nearest ancestor that scrolls vertically (the phone shell's page scroller, the staff sidebar's menu), else the page. Two elements
+  // of different layers have no fixed position against each other (it changes as one of them scrolls), so the overlap and the 8 px gap
+  // checks compare only elements of one layer. Coverage (pairs compared) is reported so a fall in the counts can be told from a fall in
+  // what was measured.
+  const layerCache = new Map();
+  // The layer is the NEAREST of: an ancestor that scrolls vertically, or a fixed/sticky container (each is its own layer). The sidebar's
+  // menu scrolls inside a sticky column: its items belong to the menu's scroll area, the collapse toggle below it to the sticky column.
+  const scrollLayer = (el) => {
+    if (['fixed', 'sticky'].includes(cs(el).position)) return el;
+    for (
+      let p = el.parentElement;
+      p && p !== document.body && p !== document.documentElement;
+      p = p.parentElement
+    ) {
+      if (layerCache.has(p)) return layerCache.get(p);
+      const ps = cs(p);
+      if (
+        ps.overflowY === 'auto' ||
+        ps.overflowY === 'scroll' ||
+        ps.position === 'fixed' ||
+        ps.position === 'sticky'
+      ) {
+        layerCache.set(p, p);
+        return p;
+      }
+    }
+    return 'page';
+  };
+  out.report.coverage = { overlapPairs: 0, gapPairs: 0 };
+  // Carousel and marquee windows (extends the carousel clip exclusion of the frozen doc): an element inside a horizontal clip window
+  // narrower than the screen (a scrolling chip row, the brand band's logo window) is compared by its part inside that window, cut
+  // left and right only; the page column itself is never such a window.
+  const hWindowRect = (el) => {
+    const r = el.getBoundingClientRect();
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const ox = cs(p).overflowX;
+      if (ox !== 'hidden' && ox !== 'clip' && ox !== 'auto' && ox !== 'scroll') continue;
+      const w = p.getBoundingClientRect();
+      if (w.width >= innerWidth - 1) continue;
+      const left = Math.max(r.left, w.left);
+      const right = Math.min(r.right, w.right);
+      return { left, right: Math.max(left, right), top: r.top, bottom: r.bottom };
+    }
+    return r;
+  };
   const overlapCheck = (list, kind) => {
-    const rs = list.map((el) => el.getBoundingClientRect());
+    const rs = list.map((el) => hWindowRect(el));
+    const layers = list.map((el) => scrollLayer(el));
     let n = 0;
     for (let i = 0; i < list.length && n < 30; i++) {
       for (let j = i + 1; j < list.length; j++) {
+        if (layers[i] !== layers[j]) continue;
+        out.report.coverage.overlapPairs++;
         const a = rs[i];
         const b = rs[j];
         const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
@@ -614,10 +663,17 @@
       });
   }
   let gapFails = 0;
-  for (let i = 0; i < tRects.length && gapFails < 20; i++) {
-    for (let j = i + 1; j < tRects.length; j++) {
-      const a = tRects[i];
-      const b = tRects[j];
+  // Only targets of one scroll layer are compared (see scrollLayer): a target in the scrolling page and one in fixed chrome (the phone tab
+  // bar, a floating button) or in another scroll area have no fixed distance.
+  const gapRects = tRects
+    .map(({ el }) => ({ el, r: hWindowRect(el), layer: scrollLayer(el) }))
+    .filter(({ r }) => r.right - r.left > 1);
+  for (let i = 0; i < gapRects.length && gapFails < 20; i++) {
+    for (let j = i + 1; j < gapRects.length; j++) {
+      const a = gapRects[i];
+      const b = gapRects[j];
+      if (a.layer !== b.layer) continue;
+      out.report.coverage.gapPairs++;
       if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
       const dx = Math.max(b.r.left - a.r.right, a.r.left - b.r.right);
       const dy = Math.max(b.r.top - a.r.bottom, a.r.top - b.r.bottom);
@@ -643,6 +699,95 @@
       }
     }
   }
+
+  // ---------- token probe (Step 4 additions below): a token resolved in the scope of an element ----------
+  const probeCache = new Map();
+  const tokenColor = (el, prop, token) => {
+    const scope = el.closest('[data-density]') || document.body;
+    const key = `${prop}|${token}`;
+    let perScope = probeCache.get(scope);
+    if (!perScope) probeCache.set(scope, (perScope = new Map()));
+    if (perScope.has(key)) return perScope.get(key);
+    const probe = document.createElement('span');
+    probe.style.cssText = `position:absolute;width:0;height:0;overflow:hidden;${prop}:var(${token})`;
+    scope.appendChild(probe);
+    const value = parse(getComputedStyle(probe)[prop === 'color' ? 'color' : 'backgroundColor']);
+    probe.remove();
+    perScope.set(key, value);
+    return value;
+  };
+
+  // ---------- focus ring (added at Step 4 for the Owner's answer 1): the ring colour against the surface it is drawn on ----------
+  // The ring is drawn outside the control (outline offset), so it sits on the parent's effective background. Need 3:1 (WCAG 2.4.13 /
+  // 1.4.11). Over a photo the pair is not measurable and is skipped (reported in photoRings).
+  const ringPairs = {};
+  let photoRings = 0;
+  for (const { el } of tRects.slice(0, 400)) {
+    const ring = tokenColor(el, 'color', '--ls-focus');
+    if (!ring || !el.parentElement) continue;
+    const { bg, photo } = effBg(el.parentElement);
+    if (photo) {
+      photoRings++;
+      continue;
+    }
+    const r = ratio(ring, bg);
+    const key = `${hex(ring)} on ${hex(bg)}`;
+    const p = (ringPairs[key] ||= { ratio: Math.round(r * 100) / 100, count: 0 });
+    p.count++;
+    if (r < 3 && p.count === 1)
+      fail('focus-ring', { el: label(el), ring: hex(ring), bg: hex(bg), ratio: p.ratio });
+  }
+  out.report.focusRing = ringPairs;
+  out.report.photoRings = photoRings;
+
+  // ---------- filled primaries per view (added at Step 4 for the Owner's answer 2) ----------
+  // A filled primary is a control painted in the primary fill (a selected state, a current menu item or a pressed toggle is not a
+  // button and is not counted). The page is scrolled through in steps of half a viewport (the phone shell scrolls inside
+  // [data-ls-scroll]) and, at each stop, the filled controls really on screen are counted: a bar that shows only while the page's own
+  // button is out of view (the phone booking bar) is counted only where it shows. More than one at a stop fails. Run at the end of
+  // the measure (it scrolls), then the page is put back. Correction made at Step 4 before any final run: the first version counted a
+  // fixed bar in every window, also where the page hides it.
+  const isFill = (el) => {
+    if (!el.matches('a,button,[role=button],input[type=submit]')) return false;
+    if (el.matches('[aria-current],[aria-selected=true],[aria-pressed=true],[aria-checked=true]'))
+      return false;
+    if (!visible(el) || srOnly(el)) return false;
+    const fill = tokenColor(el, 'background-color', '--ls-brand-fill');
+    const bg = parse(cs(el).backgroundColor);
+    if (!fill || !bg || bg[3] < 0.9) return false;
+    return [0, 1, 2].every((i) => Math.abs(bg[i] - fill[i]) <= 2);
+  };
+  const scanFills = async () => {
+    const scroller = document.querySelector('[data-ls-scroll]');
+    const backTo = { x: scrollX, y: scrollY, inner: scroller ? scroller.scrollTop : 0 };
+    const total = Math.max(
+      document.scrollingElement.scrollHeight,
+      scroller ? scroller.scrollHeight : 0,
+    );
+    const frame = () =>
+      new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 180));
+    let worst = { n: 0, at: 0, who: [] };
+    for (let y = 0; y < Math.max(total - H / 2, 1); y += H / 2) {
+      if (scroller) scroller.scrollTop = y;
+      else scrollTo(0, y);
+      await frame();
+      await settle();
+      const now = [
+        ...document.querySelectorAll('a,button,[role=button],input[type=submit]'),
+      ].filter((el) => {
+        if (!isFill(el)) return false;
+        const r = el.getBoundingClientRect();
+        return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+      });
+      if (now.length > worst.n)
+        worst = { n: now.length, at: Math.round(y), who: now.map((el) => label(el)) };
+    }
+    if (scroller) scroller.scrollTop = backTo.inner;
+    scrollTo(backTo.x, backTo.y);
+    out.report.filledPerView = worst.n;
+    if (worst.n > 1) fail('filled-per-view', worst);
+  };
 
   // ---------- colours: pink in dark, brand text, non-radix ----------
   const colorProps = (el) => {
@@ -718,6 +863,9 @@
       isInlineTextLink(el)
     )
       continue;
+    // A disabled control shows no hover or press by design (refinement made at Step 4, like the disabled exemption of the contrast
+    // checks; the baseline was measured with disabled controls included, so its hover/press counts may be slightly higher).
+    if (el.matches(':disabled') || el.closest('[aria-disabled=true],fieldset[disabled]')) continue;
     // A focusable scroll region (tabindex on a list or panel) is not a control: it needs focus, not hover or press.
     if (!el.matches(INTERACTIVE.replace(',[tabindex]:not([tabindex="-1"])', ''))) continue;
     el.setAttribute('data-s10-hover', String(n++));
@@ -733,8 +881,16 @@
     text: textEls.length,
     boxes: boxes.length,
   };
-  const summary = {};
-  for (const [k, v] of Object.entries(out.metrics)) summary[k] = v.length;
-  out.summary = summary;
-  return out;
+  // The filled-control scan scrolls the page, so it runs last; the summary is counted after it.
+  // A scan that throws never leaves the page unmeasured: the error is recorded and the rest of the measure is kept.
+  return scanFills()
+    .catch((error) => {
+      out.report.fillScanError = String(error && error.message ? error.message : error);
+    })
+    .then(() => {
+      const summary = {};
+      for (const [k, v] of Object.entries(out.metrics)) summary[k] = v.length;
+      out.summary = summary;
+      return out;
+    });
 });

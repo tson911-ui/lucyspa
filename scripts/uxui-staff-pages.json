@@ -1,5 +1,5 @@
 {
-  "note": "Every POS (counter) and admin route of the staff app (redesign session 10). `path` is relative to /{locale}/workforce/. `area` is pos or admin (DESIGN.md 14: group 2 = counter, group 3 = admin). `as` is the login: `owner` = the audit Owner of the scratch stack (all permissions, every branch; credentials in .local/polish1/api.mjs or .local/uxui-audit/creds.json, never in the repository); `public` = no sign-in. A `{first}` placeholder is resolved in the browser: open `list`, take the first link whose href contains `link` (and not `/new`), and use that path. Pages shot at 1024, 1280 and 1440 px light and dark, plus 200 % zoom at 1280.",
+  "note": "Every POS (counter) and admin route of the staff app (redesign session 10). `path` is relative to /{locale}/workforce/. `area` is pos or admin (DESIGN.md 14: group 2 = counter, group 3 = admin). `as` is the login: `owner` = the audit Owner of the scratch stack (all permissions, every branch; credentials in .local/polish1/api.mjs or .local/uxui-audit/creds.json, never in the repository); `public` = no sign-in; `reviewer` = an employee of the scratch stack with a paid payslip (my-payslip-detail; the audit Owner has none; credentials in .local/p9/reviewer.json). A `{first}` placeholder is resolved in the browser: open `list`, take the first link whose href contains `link` (and not `/new`), and use that path. Pages shot at 1024, 1280 and 1440 px light and dark, plus 200 % zoom at 1280.",
   "pages": [
     { "name": "staff-login", "path": "login", "area": "admin", "as": "public" },
     { "name": "staff-forgot", "path": "forgot-password", "area": "admin", "as": "public" },
@@ -70,7 +70,7 @@
       "path": "{first}",
       "first": { "list": "my-payslips", "link": "/workforce/my-payslips/" },
       "area": "admin",
-      "as": "owner"
+      "as": "reviewer"
     },
     { "name": "my-services", "path": "my-services", "area": "admin", "as": "owner" },
     {

@@ -120,6 +120,9 @@ const metrics = [
   'shadow-gradient',
   'transition-all',
   'console-errors',
+  // Added at Step 4 for the Owner's answers 1 and 2 (no baseline value: the baseline script did not measure them).
+  'focus-ring',
+  'filled-per-view',
 ];
 for (const [area, s] of Object.entries(sum)) {
   console.log(
