@@ -7,6 +7,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { getNotificationDictionary } from '../../i18n/notifications';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { mergeNotifications, notificationHref, notificationMessage } from '../../lib/notifications';
 import { CHANGED, timestampParts, useUnreadCount } from '../notifications/unread';
 import { useSiteSession } from './site-session';
@@ -63,29 +64,31 @@ function SignedInBell({ locale }: { locale: Locale }) {
   const panelId = useId();
 
   const close = useCallback(() => setOpen(false), []);
+  const request = useRef(0);
 
-  // Read the latest notifications each time the panel opens (a stale list would show a read one as unread).
-  useEffect(() => {
-    if (!open) return undefined;
-    let active = true;
+  // Opening the panel is the click itself: it reads the latest notifications then (a stale list would show a read one as unread),
+  // in the handler rather than an effect on `open` (react-best-practices rerender-move-effect-to-event).
+  function toggle() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
     setError(false);
+    const current = ++request.current;
     api
       .get<NotificationPage>('/api/v1/notifications', {}, { passive: true })
       .then((page) => {
-        if (active) setItems(panelItems(page.items));
+        if (current === request.current) setItems(panelItems(page.items));
       })
       .catch(() => {
-        if (active) setError(true);
+        if (current === request.current) setError(true);
       });
     // Focus moves into the panel (the first thing to act on), and Escape or leaving returns it to the bell.
-    const frame = requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
       panelRef.current?.querySelector<HTMLElement>('a, button')?.focus();
     });
-    return () => {
-      active = false;
-      cancelAnimationFrame(frame);
-    };
-  }, [open, api]);
+  }
 
   async function markRead(id: string) {
     if (pending) return;
@@ -119,7 +122,7 @@ function SignedInBell({ locale }: { locale: Locale }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       />
       {unread > 0 ? (
         <span className="ls-bell-count" data-testid="notification-badge" aria-hidden="true">
@@ -174,6 +177,7 @@ function SignedInBell({ locale }: { locale: Locale }) {
                     <Link
                       className="ls-bell-body"
                       href={href}
+                      transitionTypes={NAV_TRANSITION}
                       onClick={() => {
                         close();
                         if (unreadItem) void markRead(item.id);
@@ -198,7 +202,12 @@ function SignedInBell({ locale }: { locale: Locale }) {
           </ul>
         ) : null}
         <div className="ls-bell-foot">
-          <Link className={buttonClass('ghost')} href={`${base}/notifications`} onClick={close}>
+          <Link
+            className={buttonClass('ghost')}
+            href={`${base}/notifications`}
+            transitionTypes={NAV_TRANSITION}
+            onClick={close}
+          >
             {site.header.bell.viewAll}
           </Link>
         </div>

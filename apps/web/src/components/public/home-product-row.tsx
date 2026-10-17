@@ -22,9 +22,11 @@ export function HomeProductRow({
   const text = getSiteText(locale).home;
   return (
     <ScrollRow label={label} previous={text.rowPrevious} next={text.rowNext}>
-      {cards.map((card, index) => (
+      {cards.map((card) => (
         <li key={card.code} className="ls-snap-item">
-          <ProductCard locale={locale} card={card} priority={index < 2} />
+          {/* One card per product on the home page, so the picture can travel to the product page (F3.6). The row loads after the
+              first paint below the fold, so no picture of it is fetched first (rbp home-product-row.tsx:27). */}
+          <ProductCard locale={locale} card={card} sharePhoto />
         </li>
       ))}
     </ScrollRow>

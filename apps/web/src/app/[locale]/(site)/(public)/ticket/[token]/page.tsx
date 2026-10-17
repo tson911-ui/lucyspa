@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { TicketUnavailable, TicketView } from '../../../../../../components/public/ticket-view';
 import { isLocale } from '../../../../../../i18n/locales';
 import { productOrdersDictionary } from '../../../../../../i18n/product-orders';
+import { pageTitle } from '../../../../../../lib/page-title';
 import { fetchPublicTicket } from '../../../../../../lib/public-ticket';
 
 interface TicketPageProps {
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: TicketPageProps): Promise<Met
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   return {
-    title: productOrdersDictionary(locale).publicTicket.title,
+    title: pageTitle(productOrdersDictionary(locale).publicTicket.title),
     robots: { index: false, follow: false, nocache: true },
     referrer: 'no-referrer',
   };

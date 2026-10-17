@@ -17,6 +17,7 @@ import { getCustomerDictionary, type CustomerDictionary } from '../../i18n/custo
 import type { Locale } from '../../i18n/locales';
 import { ApiClient } from '../../lib/api/client';
 import { customerLogout, loadCustomerSession, loginHref } from '../../lib/customer/auth';
+import { clearCachedReads } from '../../lib/customer/fetch-cache';
 import { announceSessionChange, SITE_SESSION_CHANGED } from '../../lib/site-session';
 import { useSiteSession } from '../public/site-session';
 
@@ -94,63 +95,68 @@ type GuardState =
 /**
  * UX gate for the member area (every API call is still authorized by the server): anonymous
  * sessions go to login; staff sessions are refused with a sign-out option (contract section 13).
+ *
+ * One session read, not three (rbp session.tsx:109-127, :155-198): the site frame's session (read once per tab and again whenever a
+ * sign-in, a sign-out or a profile change is announced) already knows a member, so the area opens at once and follows it (a new name
+ * shows everywhere). Only when the frame knows no member (anonymous, a staff session, or its read failed) does the guard read once
+ * more, to tell those apart. Any change of session also clears the member's cached reads.
  */
 export function RequireCustomer({ children }: { children: ReactNode }) {
   const { api, base, t } = useCustomer();
   const router = useRouter();
   const pathname = usePathname();
-  // The site frame already knows the member after the first page: coming from a public page the area opens at once
-  // (the read below only confirms it); only a first load straight into the area waits, and it shows the page's shape.
   const site = useSiteSession();
-  const [state, setState] = useState<GuardState>(() =>
-    site.account ? { kind: 'customer', account: site.account } : { kind: 'loading' },
-  );
+  const [own, setOwn] = useState<GuardState>({ kind: 'loading' });
+  // Set by sign-out: the page is leaving for the sign-in page, so the guard does not send it there a second time.
+  const leaving = useRef(false);
+  const needsOwnRead = site.ready && site.account === null;
 
   useEffect(() => {
+    if (!needsOwnRead) return;
     let active = true;
     loadCustomerSession(api)
       .then((session) => {
         if (!active) return;
         if (session.kind === 'anonymous') {
-          router.replace(loginHref(base, pathname, window.location.search));
+          if (!leaving.current) router.replace(loginHref(base, pathname, window.location.search));
         } else if (session.kind === 'workforce') {
-          setState({ kind: 'workforce' });
+          setOwn({ kind: 'workforce' });
         } else {
-          setState({ kind: 'customer', account: session.account });
+          setOwn({ kind: 'customer', account: session.account });
         }
       })
-      .catch(() => active && setState({ kind: 'error' }));
+      .catch(() => active && setOwn({ kind: 'error' }));
     return () => {
       active = false;
     };
-    // Resolved once per mount; navigation inside the area keeps the session.
-  }, [api]);
+    // Read when the frame knows no member; navigation inside the area keeps the answer.
+  }, [api, needsOwnRead]);
 
-  // A change to the account itself (the profile saved a new name) announces on the window: the account held here follows, so the
-  // greeting on the other pages matches. Only a customer answer is taken; a sign-out is handled by `signOut` below.
   useEffect(() => {
-    const refresh = () => {
-      loadCustomerSession(api)
-        .then((session) => {
-          if (session.kind !== 'customer') return;
-          setState((current) =>
-            current.kind === 'customer' ? { kind: 'customer', account: session.account } : current,
-          );
-        })
-        .catch(() => undefined);
-    };
-    window.addEventListener(SITE_SESSION_CHANGED, refresh);
-    return () => window.removeEventListener(SITE_SESSION_CHANGED, refresh);
-  }, [api]);
+    window.addEventListener(SITE_SESSION_CHANGED, clearCachedReads);
+    return () => window.removeEventListener(SITE_SESSION_CHANGED, clearCachedReads);
+  }, []);
 
   const signOut = useCallback(async () => {
+    leaving.current = true;
     try {
       await customerLogout(api);
     } finally {
+      clearCachedReads();
+      site.markSignedOut();
       announceSessionChange();
       router.replace(`${base}/login?signedOut=1`);
     }
-  }, [api, base, router]);
+  }, [api, base, router, site]);
+
+  // The frame's member first; the guard's own answer only when the frame has none; waiting while the frame is still reading.
+  const state: GuardState = site.account
+    ? { kind: 'customer', account: site.account }
+    : !site.ready
+      ? { kind: 'loading' }
+      : own;
+  const account = state.kind === 'customer' ? state.account : null;
+  const accountValue = useMemo(() => (account ? { account, signOut } : null), [account, signOut]);
 
   if (state.kind === 'loading') {
     return (
@@ -171,6 +177,8 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
     return (
       <PublicMain className="ls-main-tall">
         <div className="ls-site-state">
+          {/* The page still has its one heading when the account cannot open (wig session.tsx:170). */}
+          <h1 className="ls-mem-state-title">{t.auth.areaErrorTitle}</h1>
           <p role="alert">{t.errors.unavailable}</p>
           <Button variant="primary" onClick={() => window.location.reload()}>
             {t.common.reload}
@@ -183,6 +191,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
     return (
       <PublicMain className="ls-main-tall">
         <div className="ls-site-state">
+          <h1 className="ls-mem-state-title">{t.auth.staffAccountTitle}</h1>
           <p role="alert">{t.auth.workforceNotAllowed}</p>
           <Button variant="primary" onClick={() => void signOut()}>
             {t.nav.signOut}
@@ -192,7 +201,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
     );
   }
   return (
-    <CustomerAccountContext.Provider value={{ account: state.account, signOut }}>
+    <CustomerAccountContext.Provider value={accountValue}>
       {children}
     </CustomerAccountContext.Provider>
   );

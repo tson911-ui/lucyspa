@@ -87,8 +87,8 @@ export function CheckoutAddress({
                 checked={selected === address.id}
                 onChange={() => onSelect(address.id)}
                 disabled={disabled}
-                title={`${address.recipientName} · ${nationalPhone(address.recipientPhone)}`}
-                meta={addressLine(address)}
+                title={address.recipientName}
+                meta={`${nationalPhone(address.recipientPhone)}, ${addressLine(address)}`}
               />
             ))}
             <ChoiceCard
@@ -112,6 +112,7 @@ export function CheckoutAddress({
             {(control) => (
               <TextInput
                 {...control}
+                name="recipientName"
                 autoComplete="name"
                 maxLength={ADDRESS_LIMITS.name}
                 value={draft.recipientName}
@@ -132,6 +133,7 @@ export function CheckoutAddress({
                 {...control}
                 type="tel"
                 inputMode="tel"
+                name="recipientPhone"
                 autoComplete="tel"
                 maxLength={ADDRESS_LIMITS.phone}
                 value={draft.recipientPhone}
@@ -150,6 +152,7 @@ export function CheckoutAddress({
             {(control) => (
               <Select
                 {...control}
+                name="provinceCode"
                 autoComplete="address-level1"
                 options={options}
                 placeholder={s.provincePlaceholder}
@@ -163,6 +166,7 @@ export function CheckoutAddress({
             {(control) => (
               <TextInput
                 {...control}
+                name="ward"
                 autoComplete="address-level2"
                 maxLength={ADDRESS_LIMITS.ward}
                 value={draft.ward}
@@ -175,6 +179,7 @@ export function CheckoutAddress({
             {(control) => (
               <TextInput
                 {...control}
+                name="street"
                 autoComplete="street-address"
                 maxLength={ADDRESS_LIMITS.street}
                 value={draft.street}

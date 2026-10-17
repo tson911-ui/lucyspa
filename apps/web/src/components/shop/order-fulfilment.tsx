@@ -8,7 +8,6 @@ import {
   ConfirmDialog,
   DescriptionList,
   Notice,
-  Reveal,
   Stack,
   type DescriptionItem,
 } from '@lucy-spa/ui';
@@ -16,6 +15,7 @@ import { useState } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { onlineFulfilmentDictionary } from '../../i18n/online-fulfilment';
 import { getShopText } from '../../i18n/online-shop';
+import { getSiteText } from '../../i18n/site';
 import { ApiError } from '../../lib/api/client';
 import { customerErrorMessage, formatDateTime } from '../../lib/customer/booking';
 import { formatVnd } from '../../lib/customer/invoice';
@@ -49,6 +49,7 @@ export function OrderFulfilment({
   const { api, t } = useCustomer();
   const text = onlineFulfilmentDictionary(locale).customer;
   const shop = getShopText(locale);
+  const newTab = getSiteText(locale).infoPage.newTab;
   const view = fulfilmentView(order);
   const [asking, setAsking] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -69,11 +70,12 @@ export function OrderFulfilment({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {shipment.trackingCode}
-                <span className="ls-hint">{` (${text.track})`}</span>
+                <span translate="no">{shipment.trackingCode}</span>
+                {/* Opens the carrier's site in a new tab, and says so (wig: new-tab hint). */}
+                <span className="ls-hint">{` (${text.track}, ${newTab})`}</span>
               </a>
             ) : (
-              shipment.trackingCode
+              <span translate="no">{shipment.trackingCode}</span>
             ),
           },
           ...(hideDates
@@ -109,50 +111,46 @@ export function OrderFulfilment({
   return (
     <>
       {view.any ? (
-        <Reveal>
-          <Card as="section" aria-label={text.title}>
-            <CardHeader
-              title={text.title}
-              actions={
-                view.canConfirm ? (
-                  <Button variant="primary" onClick={() => setAsking(true)}>
-                    {text.received}
-                  </Button>
-                ) : undefined
-              }
-            />
-            <Stack gap="block">
-              {confirmed ? <Notice tone="success">{text.receivedDone}</Notice> : null}
-              {view.failed ? <Notice tone="warning">{text.failed}</Notice> : null}
-              {view.refundedVnd ? (
-                <Notice tone="success">
-                  {fill(text.refunded, { amount: formatVnd(view.refundedVnd, locale) })}
-                </Notice>
-              ) : null}
-              {items.length > 0 ? <DescriptionList items={items} /> : null}
-            </Stack>
-          </Card>
-        </Reveal>
+        <Card as="section" aria-label={text.title}>
+          <CardHeader
+            title={text.title}
+            actions={
+              view.canConfirm ? (
+                <Button variant="primary" onClick={() => setAsking(true)}>
+                  {text.received}
+                </Button>
+              ) : undefined
+            }
+          />
+          <Stack gap="block">
+            {confirmed ? <Notice tone="success">{text.receivedDone}</Notice> : null}
+            {view.failed ? <Notice tone="warning">{text.failed}</Notice> : null}
+            {view.refundedVnd ? (
+              <Notice tone="success">
+                {fill(text.refunded, { amount: formatVnd(view.refundedVnd, locale) })}
+              </Notice>
+            ) : null}
+            {items.length > 0 ? <DescriptionList items={items} /> : null}
+          </Stack>
+        </Card>
       ) : null}
       {view.windows ? (
-        <Reveal>
-          <Card as="section" aria-label={text.returnsTitle}>
-            <CardHeader title={text.returnsTitle} />
-            <Stack gap="block">
-              <p>
-                {fill(text.personal, {
-                  until: formatDateTime(view.windows.personalPreferenceUntil, SHOP_ZONE, locale),
-                })}
-              </p>
-              <p>
-                {fill(text.wrong, {
-                  until: formatDateTime(view.windows.wrongOrDamagedUntil, SHOP_ZONE, locale),
-                })}
-              </p>
-              <p className="ls-hint">{text.handled}</p>
-            </Stack>
-          </Card>
-        </Reveal>
+        <Card as="section" aria-label={text.returnsTitle}>
+          <CardHeader title={text.returnsTitle} />
+          <Stack gap="block">
+            <p>
+              {fill(text.personal, {
+                until: formatDateTime(view.windows.personalPreferenceUntil, SHOP_ZONE, locale),
+              })}
+            </p>
+            <p>
+              {fill(text.wrong, {
+                until: formatDateTime(view.windows.wrongOrDamagedUntil, SHOP_ZONE, locale),
+              })}
+            </p>
+            <p className="ls-hint">{text.handled}</p>
+          </Stack>
+        </Card>
       ) : null}
       {asking ? (
         <ConfirmDialog

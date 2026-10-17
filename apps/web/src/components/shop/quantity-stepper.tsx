@@ -1,7 +1,7 @@
 'use client';
 
 import { IconButton, NumberInput } from '@lucy-spa/ui';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { clampQuantity } from '../../lib/shop/online';
 
 /**
@@ -26,7 +26,13 @@ export function QuantityStepper({
   disabled?: boolean;
 }) {
   const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
+  // A new value from outside (a button, the server) replaces the typed text while rendering, not in an effect after it (no frame
+  // with the old number; react-best-practices rerender-derived-state-no-effect).
+  const [shown, setShown] = useState(value);
+  if (shown !== value) {
+    setShown(value);
+    setDraft(String(value));
+  }
 
   function commit(raw: string) {
     const next = clampQuantity(Number(raw), max);

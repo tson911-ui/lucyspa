@@ -69,7 +69,12 @@ test('a short list is repeated to fill the loop; the second copy and the fillers
   const html = renderToStaticMarkup(<BrandBand locale="vi" brands={brands} />);
   assert.match(
     html,
-    /<section class="ls-brand-band" aria-label="Thương hiệu mỹ phẩm tại Lucy Spa"/,
+    /<section class="ls-brand-band ls-band--base" aria-label="Thương hiệu mỹ phẩm tại Lucy Spa"/,
+  );
+  // R16: the band is a light band in the page's alternation, never the accent solid.
+  assert.match(
+    renderToStaticMarkup(<BrandBand locale="vi" brands={brands} tone="alt" />),
+    /class="ls-brand-band ls-band--alt"/,
   );
   assert.match(html, /style="--ls-brand-seconds:60"/);
   // A pause control for the moving logos (WCAG 2.2.2): a labelled checkbox, no script.

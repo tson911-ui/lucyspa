@@ -9,6 +9,7 @@ import {
   Button,
   buttonClass,
   CheckField,
+  ConfirmDialog,
   Dialog,
   Field,
   Icon,
@@ -16,6 +17,7 @@ import {
   TextInput,
   VisuallyHidden,
 } from '@lucy-spa/ui';
+import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
@@ -27,6 +29,7 @@ import {
   stepFromAnswer,
   stepFromFailure,
 } from '../../lib/chat-core';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 
 interface Bubble {
   id: number;
@@ -59,6 +62,9 @@ export function ChatPanel({ locale, onClose }: { locale: Locale; onClose: () => 
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [reason, setReason] = useState<ChatFallbackReason | 'VISITOR'>('VISITOR');
+  // The callback form reports whether something is typed; closing then asks first, the panel hidden meanwhile (C60, one modal).
+  const [formDirty, setFormDirty] = useState(false);
+  const [asking, setAsking] = useState(false);
   const input = useRef<HTMLInputElement | null>(null);
   const log = useRef<HTMLDivElement | null>(null);
   const next = useRef(1);
@@ -96,7 +102,12 @@ export function ChatPanel({ locale, onClose }: { locale: Locale; onClose: () => 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = draft.trim();
-    if (text === '' || pending) return;
+    if (pending) return;
+    if (text === '') {
+      // The button stays enabled (nothing greyed out); an empty send just returns to the field.
+      input.current?.focus();
+      return;
+    }
     const honeypot = (new FormData(event.currentTarget).get('website') as string | null) ?? '';
     add({ from: 'visitor', text });
     setDraft('');
@@ -129,108 +140,141 @@ export function ChatPanel({ locale, onClose }: { locale: Locale; onClose: () => 
     }
   }
 
+  function close() {
+    if (view === 'form' && formDirty) setAsking(true);
+    else onClose();
+  }
+
   return (
-    <Dialog
-      open
-      size="md"
-      title={view === 'chat' ? t.title : view === 'form' ? t.form.title : t.form.sentTitle}
-      description={view === 'chat' ? t.notice : undefined}
-      closeLabel={t.close}
-      onClose={onClose}
-      initialFocus={input}
-      className="ls-chat"
-      footer={
-        view === 'chat' ? (
-          <div className="ls-chat-composer">
-            <form className="ls-chat-send" onSubmit={(event) => void send(event)}>
-              <VisuallyHidden>
-                <label htmlFor="ls-chat-input">{t.messageLabel}</label>
-              </VisuallyHidden>
-              <TextInput
-                id="ls-chat-input"
-                ref={input}
-                value={draft}
-                maxLength={500}
-                placeholder={t.messagePlaceholder}
-                autoComplete="off"
-                enterKeyHint="send"
-                onChange={(event) => setDraft(event.target.value)}
-              />
-              {/* A field no person fills: a script that does is not relayed. */}
-              <VisuallyHidden>
-                <input
-                  type="text"
-                  name="website"
-                  tabIndex={-1}
+    <>
+      <Dialog
+        open
+        size="md"
+        title={view === 'chat' ? t.title : view === 'form' ? t.form.title : t.form.sentTitle}
+        description={view === 'chat' ? t.notice : undefined}
+        closeLabel={t.close}
+        onClose={close}
+        suspended={asking}
+        initialFocus={input}
+        className="ls-chat"
+        footer={
+          view === 'chat' ? (
+            <div className="ls-chat-composer">
+              <form className="ls-chat-send" onSubmit={(event) => void send(event)}>
+                <VisuallyHidden>
+                  <label htmlFor="ls-chat-input">{t.messageLabel}</label>
+                </VisuallyHidden>
+                <TextInput
+                  id="ls-chat-input"
+                  name="message"
+                  ref={input}
+                  value={draft}
+                  maxLength={500}
+                  placeholder={t.messagePlaceholder}
                   autoComplete="off"
-                  aria-hidden="true"
+                  enterKeyHint="send"
+                  onChange={(event) => setDraft(event.target.value)}
                 />
-              </VisuallyHidden>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={draft.trim() === ''}
-                loading={pending}
-              >
-                {t.send}
+                {/* A field no person fills: a script that does is not relayed. */}
+                <VisuallyHidden>
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                  />
+                </VisuallyHidden>
+                <Button variant="primary" type="submit" loading={pending}>
+                  {t.send}
+                </Button>
+              </form>
+              <Button variant="secondary" icon="phone" onClick={() => toForm('VISITOR')}>
+                {t.leaveNumber}
               </Button>
-            </form>
-            <Button variant="secondary" icon="phone" onClick={() => toForm('VISITOR')}>
-              {t.leaveNumber}
+            </div>
+          ) : null
+        }
+      >
+        {view === 'chat' ? (
+          <div
+            className="ls-chat-log"
+            ref={log}
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
+            {bubbles.map((bubble) => (
+              <div key={bubble.id} className="ls-chat-msg" data-from={bubble.from}>
+                <VisuallyHidden>{bubble.from === 'visitor' ? t.you : t.assistant}: </VisuallyHidden>
+                <p className="ls-chat-text">{bubble.text}</p>
+                {bubble.book ? (
+                  // A path on this site: a router link with the route fade, and the chat closes as the booking page opens.
+                  <Link
+                    className={buttonClass('secondary', 'md')}
+                    href={bubble.book}
+                    transitionTypes={NAV_TRANSITION}
+                    onClick={onClose}
+                  >
+                    <Icon name="calendar" />
+                    <span className="ls-btn-label">{t.bookSlot}</span>
+                  </Link>
+                ) : null}
+              </div>
+            ))}
+            {pending ? (
+              <p className="ls-chat-typing" role="status">
+                {t.typing}
+              </p>
+            ) : null}
+            {notice ? (
+              <p className="ls-chat-note" role="status">
+                {notice}
+              </p>
+            ) : null}
+          </div>
+        ) : view === 'form' ? (
+          <CallbackForm
+            locale={locale}
+            reason={reason}
+            notice={notice}
+            onBack={() => {
+              setFormDirty(false);
+              setView('chat');
+            }}
+            onSent={() => {
+              setFormDirty(false);
+              setView('sent');
+            }}
+            onDirtyChange={setFormDirty}
+          />
+        ) : (
+          <div className="ls-chat-sent" role="status">
+            <Icon name="check" size={32} />
+            <p>{t.form.sentBody}</p>
+            <Button variant="primary" onClick={onClose}>
+              {t.form.sentClose}
             </Button>
           </div>
-        ) : null
-      }
-    >
-      {view === 'chat' ? (
-        <div
-          className="ls-chat-log"
-          ref={log}
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions"
-        >
-          {bubbles.map((bubble) => (
-            <div key={bubble.id} className="ls-chat-msg" data-from={bubble.from}>
-              <VisuallyHidden>{bubble.from === 'visitor' ? t.you : t.assistant}: </VisuallyHidden>
-              <p className="ls-chat-text">{bubble.text}</p>
-              {bubble.book ? (
-                <a className={buttonClass('secondary', 'md')} href={bubble.book}>
-                  <Icon name="calendar" />
-                  <span className="ls-btn-label">{t.bookSlot}</span>
-                </a>
-              ) : null}
-            </div>
-          ))}
-          {pending ? (
-            <p className="ls-chat-typing" role="status">
-              {t.typing}
-            </p>
-          ) : null}
-          {notice ? (
-            <p className="ls-chat-note" role="status">
-              {notice}
-            </p>
-          ) : null}
-        </div>
-      ) : view === 'form' ? (
-        <CallbackForm
-          locale={locale}
-          reason={reason}
-          notice={notice}
-          onBack={() => setView('chat')}
-          onSent={() => setView('sent')}
+        )}
+      </Dialog>
+      {asking ? (
+        <ConfirmDialog
+          title={t.form.discardTitle}
+          description={t.form.discardBody}
+          tone="warning"
+          confirmLabel={t.form.discardConfirm}
+          cancelLabel={t.form.discardKeep}
+          describeError={() => ({ message: '', reference: null })}
+          onConfirm={() => {
+            setAsking(false);
+            onClose();
+            return Promise.resolve();
+          }}
+          onCancel={() => setAsking(false)}
         />
-      ) : (
-        <div className="ls-chat-sent" role="status">
-          <Icon name="check" size={32} />
-          <p>{t.form.sentBody}</p>
-          <Button variant="primary" onClick={onClose}>
-            {t.form.sentClose}
-          </Button>
-        </div>
-      )}
-    </Dialog>
+      ) : null}
+    </>
   );
 }
 
@@ -240,18 +284,25 @@ function CallbackForm({
   notice,
   onBack,
   onSent,
+  onDirtyChange,
 }: {
   locale: Locale;
   reason: ChatFallbackReason | 'VISITOR';
   notice: string | null;
   onBack: () => void;
   onSent: () => void;
+  /** Whether anything is typed, so the panel can ask before closing (C60). */
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = getSiteText(locale).chat.form;
   const api = useMemo(() => new ApiClient(), []);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [note, setNote] = useState('');
+  const dirty = phone.trim() !== '' || name.trim() !== '' || note.trim() !== '';
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
   const [consent, setConsent] = useState(false);
   const [errors, setErrors] = useState<{ phone?: string; consent?: string }>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -266,7 +317,14 @@ function CallbackForm({
     if (!consent) found.consent = t.consentError;
     setErrors(found);
     setFailure(null);
-    if (found.phone || found.consent) return;
+    if (found.phone || found.consent) {
+      // Move to the first field with a problem once its error is drawn (wig: focus the first error on submit).
+      const form = event.currentTarget;
+      requestAnimationFrame(() => {
+        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      });
+      return;
+    }
     setPending(true);
     try {
       await api.post<ChatCallbackResponse>(CALLBACK, {
@@ -302,6 +360,7 @@ function CallbackForm({
         {(control) => (
           <TextInput
             {...control}
+            name="phone"
             type="tel"
             inputMode="tel"
             autoComplete="tel"
@@ -316,6 +375,7 @@ function CallbackForm({
         {(control) => (
           <TextInput
             {...control}
+            name="name"
             autoComplete="name"
             maxLength={80}
             value={name}
@@ -328,6 +388,8 @@ function CallbackForm({
         {(control) => (
           <Textarea
             {...control}
+            name="note"
+            autoComplete="off"
             rows={3}
             maxLength={500}
             value={note}
@@ -341,13 +403,15 @@ function CallbackForm({
       </VisuallyHidden>
       <CheckField
         label={t.consent}
+        name="consent"
         checked={consent}
         invalid={Boolean(errors.consent)}
+        aria-describedby={errors.consent ? 'ls-chat-consent-error' : undefined}
         disabled={pending}
         onChange={(event) => setConsent(event.target.checked)}
       />
       {errors.consent ? (
-        <p className="ls-chat-error" role="alert">
+        <p className="ls-chat-error" id="ls-chat-consent-error" role="alert">
           {errors.consent}
         </p>
       ) : null}

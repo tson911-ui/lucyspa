@@ -10,6 +10,7 @@ import type { Locale } from '../../i18n/locales';
 import { getShopText } from '../../i18n/online-shop';
 import { customerErrorMessage } from '../../lib/customer/booking';
 import { fill } from '../../lib/fill';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import {
   announceCartChange,
   promiseNumbers,
@@ -17,12 +18,10 @@ import {
   shopErrorMessage,
   signInHref,
 } from '../../lib/shop/online';
+import type { StoreContact } from '../public/product-offer';
 import { useSiteSession } from '../public/site-session';
 import { QuantityStepper } from './quantity-stepper';
 import { useOnlineSales } from './shop-data';
-
-/** Where the "buy in the shop" button leads: the shop details block lower on the same page. */
-const STORE_ANCHOR = '#product-store-title';
 
 /**
  * The purchase block of the product page (Phase 6 P6-19), a client island under the price and variant picker: it reads the
@@ -33,9 +32,12 @@ const STORE_ANCHOR = '#product-store-title';
 export function PurchaseBlock({
   locale,
   variant,
+  store = null,
 }: {
   locale: Locale;
   variant: PublicProductVariant;
+  /** The shop's phone and map link (from the shop profile), for the store and sold-out states. */
+  store?: StoreContact | null;
 }) {
   const t = getShopText(locale);
   const general = getCustomerDictionary(locale);
@@ -51,18 +53,25 @@ export function PurchaseBlock({
   // The room of one action row is kept while the shop's state is read, so the page does not move when it arrives.
   if (mode === 'LOADING')
     return <div className="ls-shop-buy" aria-busy="true" data-pending="true" />;
-  if (mode === 'STORE' || mode === 'SOLD_OUT') {
+  if (mode === 'STORE') {
+    // Bought in the shop: the line says so (an icon and a word), and calling the shop is the page's one filled button, with the directions
+    // beside it (product-store plan). Without the shop profile the line points to nothing it cannot back up.
     return (
       <div className="ls-shop-buy">
-        {mode === 'STORE' ? (
-          <a className={buttonClass('secondary', 'lg')} href={STORE_ANCHOR}>
-            {t.purchase.store}
-          </a>
-        ) : (
-          <Button variant="secondary" size="lg" disabled>
-            {t.purchase.soldOut}
-          </Button>
-        )}
+        <p className="ls-shop-where">
+          <Icon name="building" size={16} aria-hidden="true" />
+          {t.purchase.store}
+        </p>
+        {store ? <StoreActions store={store} call="primary" /> : null}
+      </div>
+    );
+  }
+  if (mode === 'SOLD_OUT') {
+    // Sold out: the availability line above says it with its icon; no disabled button stands in the slot. The next steps are asking the
+    // shop (secondary: nothing can be bought, so no filled button) and the similar products, which move up the page.
+    return (
+      <div className="ls-shop-buy">
+        {store ? <StoreActions store={store} call="secondary" /> : null}
       </div>
     );
   }
@@ -71,7 +80,11 @@ export function PurchaseBlock({
   if (mode === 'SIGN_IN') {
     return (
       <div className="ls-shop-buy">
-        <Link className={buttonClass('primary', 'lg')} href={signInHref(locale, pathname)}>
+        <Link
+          className={buttonClass('primary', 'lg')}
+          href={signInHref(locale, pathname)}
+          transitionTypes={NAV_TRANSITION}
+        >
           {t.purchase.signIn}
         </Link>
         <DeliveryLines
@@ -132,7 +145,11 @@ export function PurchaseBlock({
         <Notice tone="success">
           <span className="ls-shop-added">
             {t.purchase.added}
-            <Link className={buttonClass('ghost', 'md')} href={`/${locale}/cart`}>
+            <Link
+              className={buttonClass('ghost', 'md')}
+              href={`/${locale}/cart`}
+              transitionTypes={NAV_TRANSITION}
+            >
               {t.purchase.viewCart}
             </Link>
           </span>
@@ -140,6 +157,28 @@ export function PurchaseBlock({
       ) : null}
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
       <DeliveryLines locale={locale} sales={open} preOrder={preOrder} />
+    </div>
+  );
+}
+
+/** "Gọi cửa hàng" (a phone link) and "Chỉ đường" (the map, a new tab): two pills of one size side by side, the call first. */
+function StoreActions({ store, call }: { store: StoreContact; call: 'primary' | 'secondary' }) {
+  return (
+    <div className="ls-shop-store-actions">
+      <a className={buttonClass(call, 'lg')} href={store.telHref}>
+        <Icon name="phone" size={20} aria-hidden="true" />
+        {store.callLabel}
+      </a>
+      <a
+        className={buttonClass('secondary', 'lg')}
+        href={store.directionsHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${store.directionsLabel} (${store.newTab})`}
+      >
+        <Icon name="map-pin" size={20} aria-hidden="true" />
+        {store.directionsLabel}
+      </a>
     </div>
   );
 }
@@ -161,7 +200,10 @@ function DeliveryLines({
         <Icon name="truck" size={20} />
         <span>
           <strong>{t.freeShipping}</strong>
-          <span className="ls-hint">{fill(t.promise, promiseNumbers(sales))}</span>
+          {/* A pre-order item is sent when the stock arrives, so the usual sending time would contradict its own line below. */}
+          {preOrder ? null : (
+            <span className="ls-hint">{fill(t.promise, promiseNumbers(sales))}</span>
+          )}
         </span>
       </li>
       {preOrder ? (

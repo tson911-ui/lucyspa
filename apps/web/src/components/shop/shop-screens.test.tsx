@@ -33,7 +33,7 @@ function paint(node: ReactNode, path: string, locale: Locale = 'vi', sessionLost
   );
 }
 
-test('shop screen (C13): a title band with the back link, one h1 and a sentence, then the content band', () => {
+test('shop screen (C13): a title band with one h1 and a sentence, then the content band; the cart has no back control', () => {
   const html = paint(
     <ShopScreen title="Giỏ hàng" description="Giao hàng miễn phí.">
       <p>nội dung</p>
@@ -45,8 +45,8 @@ test('shop screen (C13): a title band with the back link, one h1 and a sentence,
     html,
     /<h1 class="ls-h1-display">Giỏ hàng<\/h1><p class="ls-lead">Giao hàng miễn phí\.<\/p>/,
   );
-  // The cart goes back to the products; the band order is alternate (title) then base (content).
-  assert.match(html, /<a class="[^"]*ls-back[^"]*" href="\/vi\/products">/);
+  // The cart is a top-level page: no back control (B7, C40); the band order is alternate (title) then base (content).
+  assert.doesNotMatch(html, /ls-back/);
   assert.deepEqual(
     [...html.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
     ['alt', 'base'],
@@ -64,7 +64,11 @@ test('shop screen: the checkout goes back to the cart, a form page is held to on
     'vi',
     true,
   );
-  assert.match(html, /href="\/vi\/cart"/);
+  // The checkout's parent is the cart: the icon-only chevron, named for it (no "← Quay lại" text).
+  assert.match(
+    html,
+    /<a class="[^"]*ls-back ls-btn-icon[^"]*" aria-label="Quay lại giỏ hàng" title="Quay lại giỏ hàng" href="\/vi\/cart"><svg/,
+  );
   assert.match(html, /<div class="ls-shop-content" data-narrow="true">/);
   assert.match(html, /ls-notice/);
   assert.doesNotMatch(html, /ls-description-list|ls-page-header/);

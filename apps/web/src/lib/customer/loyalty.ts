@@ -11,6 +11,7 @@ import type {
 import { fill } from '../../i18n/customer';
 import type { customerLoyaltyDictionary } from '../../i18n/customer-loyalty';
 import type { Locale } from '../../i18n/locales';
+import { dateFormat, numberFormat } from './invoice';
 
 /** Pure display helpers of the customer's membership page. Every number, status and name comes from the server. */
 
@@ -22,7 +23,7 @@ const ZONE = 'Asia/Ho_Chi_Minh';
 
 /** An instant as the calendar day it falls on in Vietnam, `dd/mm/yyyy`. */
 export function formatDay(iso: string, locale: Locale): string {
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+  return dateFormat(locale, {
     timeZone: ZONE,
     day: '2-digit',
     month: '2-digit',
@@ -32,7 +33,7 @@ export function formatDay(iso: string, locale: Locale): string {
 
 /** A point amount with a plus or a true minus sign, e.g. `+620` / `−20`. */
 export function formatSignedPoints(points: number, locale: Locale): string {
-  const text = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(Math.abs(points));
+  const text = numberFormat(locale).format(Math.abs(points));
   if (points > 0) return `+${text}`;
   return points < 0 ? `−${text}` : text;
 }

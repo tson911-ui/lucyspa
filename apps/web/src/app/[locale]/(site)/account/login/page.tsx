@@ -1,4 +1,14 @@
+import type { Metadata } from 'next';
 import { CustomerLoginScreen } from '../../../../../components/customer/screens/auth';
+import { authPageMetadata } from '../../../../../lib/customer/page-metadata';
+
+export function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  return authPageMetadata(params, (auth) => auth.loginTitle);
+}
 
 type Query = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);

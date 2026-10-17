@@ -2,7 +2,6 @@
 
 import {
   Band,
-  BrandWordmark,
   Button,
   buttonClass,
   Card,
@@ -14,6 +13,7 @@ import {
   TextInput,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../../lib/nav-transition';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
@@ -21,7 +21,6 @@ import { ApiError } from '../../../lib/api/client';
 import {
   completeCustomerReset,
   customerLogin,
-  loadCustomerSession,
   registerCustomer,
   requestCustomerReset,
   resendChallenge,
@@ -31,23 +30,33 @@ import {
 import { customerErrorMessage } from '../../../lib/customer/booking';
 import { announceSessionChange } from '../../../lib/site-session';
 import { dayMonthYearToIso, maskDayMonthYear } from '../../../lib/customer/date-input-core';
+import { useSiteSession } from '../../public/site-session';
 import { useCustomer } from '../session';
+import { confirmLeave, useUnsavedGuard } from '../unsaved-guard';
 
 const PASSWORD = { min: 8, max: 128 };
 const OTP = /^[0-9]{6}$/;
+/** The shape the profile's email change checks too (lib/customer/profile.ts); the server has the last word. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+$/;
 const passwordLength = (value: string) => [...value.normalize('NFC')].length;
 
-/** The centered card on the flat panel (DESIGN.md 9.2, Q4): the wordmark above it; the shared header and footer stay around it. */
+/**
+ * The centered card on the flat white band (DESIGN.md 9.2, Q4, session 10): the wordmark is the header's only (no second, decorative one
+ * above the card); the shared header and footer stay around it.
+ */
 function AuthCard({
   title,
   intro,
   mode,
+  leave,
   children,
 }: {
   title: string;
   intro?: string;
   /** Sign-in and registration switch between each other; the other steps have no switch. */
   mode?: 'login' | 'register';
+  /** The switch asks first while the form holds unsent entries. */
+  leave?: { dirty: boolean; message: string } | undefined;
   children: ReactNode;
 }) {
   const { t, base } = useCustomer();
@@ -57,9 +66,6 @@ function AuthCard({
     <PublicMain className="ls-main-tall">
       <Band tone="page" className="ls-auth-panel">
         <div className="ls-auth-stack">
-          <div className="ls-auth-brand" aria-hidden="true">
-            <BrandWordmark size="display" serif />
-          </div>
           <Card as="section" aria-labelledby={titleId} className="ls-member-card">
             <div className="ls-member-head">
               <h1 id={titleId} className="ls-member-title">
@@ -77,10 +83,11 @@ function AuthCard({
                 ]}
                 onChange={(next) => {
                   if (next === mode) return;
+                  if (leave && !confirmLeave(leave.dirty, leave.message)) return;
                   // The page to return to travels with the visitor between the two forms.
                   const carry = new URLSearchParams(window.location.search).get('next');
                   const query = carry ? `?${new URLSearchParams({ next: carry }).toString()}` : '';
-                  router.push(`${base}/${next}${query}`);
+                  router.push(`${base}/${next}${query}`, { transitionTypes: NAV_TRANSITION });
                 }}
               />
             ) : null}
@@ -99,20 +106,30 @@ function PasswordPair({
   onPassword,
   onConfirmation,
   label,
+  problem,
 }: {
   password: string;
   confirmation: string;
   onPassword: (value: string) => void;
   onConfirmation: (value: string) => void;
   label: string;
+  /** A problem of the pair, shown on the field it belongs to (the length on the password, a mismatch on the repeat). */
+  problem?: PasswordProblem | null | undefined;
 }) {
   const { t } = useCustomer();
   return (
     <>
-      <Field label={label} required requiredLabel={t.common.required} hint={t.auth.passwordHint}>
+      <Field
+        label={label}
+        required
+        requiredLabel={t.common.required}
+        hint={t.auth.passwordHint}
+        error={problem?.field === 'password' ? problem.text : undefined}
+      >
         {(control) => (
           <PasswordInput
             {...control}
+            name="new-password"
             showLabel={t.auth.showPassword}
             hideLabel={t.auth.hidePassword}
             autoComplete="new-password"
@@ -123,10 +140,16 @@ function PasswordPair({
           />
         )}
       </Field>
-      <Field label={t.auth.passwordConfirm} required requiredLabel={t.common.required}>
+      <Field
+        label={t.auth.passwordConfirm}
+        required
+        requiredLabel={t.common.required}
+        error={problem?.field === 'confirmation' ? problem.text : undefined}
+      >
         {(control) => (
           <PasswordInput
             {...control}
+            name="confirm-password"
             showLabel={t.auth.showPassword}
             hideLabel={t.auth.hidePassword}
             autoComplete="new-password"
@@ -140,15 +163,28 @@ function PasswordPair({
   );
 }
 
+interface PasswordProblem {
+  field: 'password' | 'confirmation';
+  text: string;
+}
+
 function passwordProblem(
   password: string,
   confirmation: string,
   t: ReturnType<typeof useCustomer>['t'],
-) {
+): PasswordProblem | null {
   const length = passwordLength(password);
-  if (length < PASSWORD.min || length > PASSWORD.max) return t.auth.passwordLength;
-  if (password !== confirmation) return t.auth.passwordMismatch;
+  if (length < PASSWORD.min || length > PASSWORD.max)
+    return { field: 'password', text: t.auth.passwordLength };
+  if (password !== confirmation) return { field: 'confirmation', text: t.auth.passwordMismatch };
   return null;
+}
+
+/** After a submit with a field error: the first field marked invalid takes the focus (wig auth.tsx:302, :406). */
+function focusFirstError() {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>('.ls-member-card [aria-invalid="true"]')?.focus();
+  });
 }
 
 function SubmitRow({
@@ -196,17 +232,13 @@ function LoginForm({ query }: { query: LoginQuery }) {
   const [message, setMessage] = useState<string | null>(null);
   const destination = safeCustomerNext(query.next ?? null, base);
 
+  // A member who is already signed in goes on at once. The site frame's session answers this (no third read of the session,
+  // rbp auth.tsx:199-209); sign-out marks it signed out before it comes here, so it never bounces a visitor who just left.
+  const site = useSiteSession();
+  const signedIn = site.ready && site.account !== null;
   useEffect(() => {
-    let active = true;
-    loadCustomerSession(api)
-      .then((session) => {
-        if (active && session.kind === 'customer') router.replace(destination);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [api, router, destination]);
+    if (signedIn) router.replace(destination);
+  }, [signedIn, router, destination]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -217,7 +249,7 @@ function LoginForm({ query }: { query: LoginQuery }) {
       await customerLogin(api, email, password);
       setPassword('');
       announceSessionChange();
-      router.replace(destination);
+      router.replace(destination, { transitionTypes: NAV_TRANSITION });
     } catch (error) {
       setPassword('');
       setMessage(
@@ -231,8 +263,14 @@ function LoginForm({ query }: { query: LoginQuery }) {
     }
   }
 
+  // C68: one line under the title says why an account is needed; arriving from the booking page, it says booking goes on after sign-in.
+  const fromBooking = destination === `${base}/book` || destination.startsWith(`${base}/book?`);
   return (
-    <AuthCard title={t.auth.loginTitle} intro={t.auth.loginIntro} mode="login">
+    <AuthCard
+      title={t.auth.loginTitle}
+      intro={fromBooking ? t.auth.loginIntroBooking : t.auth.loginIntro}
+      mode="login"
+    >
       {query.expired ? <Notice tone="warning">{t.auth.sessionExpired}</Notice> : null}
       {query.signedOut ? <Notice tone="info">{t.auth.signedOut}</Notice> : null}
       {query.activated ? <Notice tone="success">{t.auth.activated}</Notice> : null}
@@ -243,6 +281,7 @@ function LoginForm({ query }: { query: LoginQuery }) {
           {(control) => (
             <TextInput
               {...control}
+              name="email"
               type="email"
               autoComplete="username"
               spellCheck={false}
@@ -257,11 +296,16 @@ function LoginForm({ query }: { query: LoginQuery }) {
           label={t.auth.password}
           required
           requiredLabel={t.common.required}
-          labelAction={<Link href={`${base}/forgot-password`}>{t.auth.forgot}</Link>}
+          labelAction={
+            <Link href={`${base}/forgot-password`} transitionTypes={NAV_TRANSITION}>
+              {t.auth.forgot}
+            </Link>
+          }
         >
           {(control) => (
             <PasswordInput
               {...control}
+              name="password"
               showLabel={t.auth.showPassword}
               hideLabel={t.auth.hidePassword}
               autoComplete="current-password"
@@ -288,7 +332,11 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
   const { api, t } = useCustomer();
   const [otp, setOtp] = useState('');
   const [pending, setPending] = useState(false);
+  // The resend has its own busy state (C38): its button shows the spinner, the verify button keeps its label.
+  const [resending, setResending] = useState(false);
   const [message, setMessage] = useState<{ tone: 'danger' | 'info'; text: string } | null>(null);
+  // A code in the wrong form is said on the field itself, which takes the focus.
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [wait, setWait] = useState(60);
   useEffect(() => {
     if (wait <= 0) return;
@@ -298,11 +346,13 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
 
   async function verify(event: FormEvent) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || resending) return;
     if (!OTP.test(otp.trim())) {
-      setMessage({ tone: 'danger', text: t.auth.otpFailed });
+      setOtpError(t.auth.otpFailed);
+      focusFirstError();
       return;
     }
+    setOtpError(null);
     setPending(true);
     setMessage(null);
     try {
@@ -322,8 +372,8 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
   }
 
   async function resend() {
-    if (pending || wait > 0) return;
-    setPending(true);
+    if (pending || resending || wait > 0) return;
+    setResending(true);
     try {
       const response = await resendChallenge(api, flowToken);
       setWait(response.resendAfterSeconds);
@@ -331,7 +381,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
     } catch (error) {
       setMessage({ tone: 'danger', text: customerErrorMessage(error, t) });
     } finally {
-      setPending(false);
+      setResending(false);
     }
   }
 
@@ -343,11 +393,13 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
           label={t.auth.otp}
           required
           requiredLabel={t.common.required}
+          error={otpError ?? undefined}
           {...(wait > 0 ? { hint: fill(t.auth.resendWait, { seconds: wait }) } : {})}
         >
           {(control) => (
             <TextInput
               {...control}
+              name="one-time-code"
               inputMode="numeric"
               autoComplete="one-time-code"
               spellCheck={false}
@@ -367,6 +419,7 @@ function OtpStep({ flowToken, onVerified }: { flowToken: string; onVerified: () 
               type="button"
               variant="neutral"
               disabled={pending || wait > 0}
+              loading={resending}
               onClick={() => void resend()}
             >
               {t.auth.resend}
@@ -396,6 +449,22 @@ export function CustomerRegisterScreen() {
   const [flowToken, setFlowToken] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pairProblem, setPairProblem] = useState<PasswordProblem | null>(null);
+  // The email is checked once the person leaves the field (C52, H12), and said beside it.
+  const [emailLeft, setEmailLeft] = useState(false);
+  const emailError =
+    emailLeft && form.email.trim() !== '' && !EMAIL_SHAPE.test(form.email.trim())
+      ? t.auth.emailInvalid
+      : undefined;
+  // Unsent entries: the visitor is asked before leaving (never once the form is sent: the code step has its own card).
+  const dirty =
+    flowToken === null &&
+    !pending &&
+    (Object.values(form).some((value) => value.trim() !== '') ||
+      dobText !== '' ||
+      password !== '' ||
+      confirmation !== '');
+  useUnsavedGuard(dirty, t.auth.leaveRegister);
   const set = (key: keyof typeof form) => (value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -403,8 +472,9 @@ export function CustomerRegisterScreen() {
     event.preventDefault();
     if (pending) return;
     const problem = passwordProblem(password, confirmation, t);
+    setPairProblem(problem);
     if (problem) {
-      setMessage(problem);
+      focusFirstError();
       return;
     }
     setPending(true);
@@ -443,7 +513,9 @@ export function CustomerRegisterScreen() {
               activated: '1',
               ...(carry ? { next: carry } : {}),
             });
-            router.replace(`${base}/login?${query.toString()}`);
+            router.replace(`${base}/login?${query.toString()}`, {
+              transitionTypes: NAV_TRANSITION,
+            });
           }}
         />
       </AuthCard>
@@ -452,13 +524,19 @@ export function CustomerRegisterScreen() {
   const today = new Date().toISOString().slice(0, 10);
   const required = { required: true, requiredLabel: t.common.required } as const;
   return (
-    <AuthCard title={t.auth.registerTitle} intro={t.auth.registerIntro} mode="register">
+    <AuthCard
+      title={t.auth.registerTitle}
+      intro={t.auth.registerIntro}
+      mode="register"
+      leave={{ dirty, message: t.auth.leaveRegister }}
+    >
       {message ? <Notice tone="danger">{message}</Notice> : null}
       <form className="ls-member-form" onSubmit={(event) => void submit(event)}>
         <Field label={t.auth.fullName} {...required}>
           {(control) => (
             <TextInput
               {...control}
+              name="name"
               autoComplete="name"
               maxLength={200}
               value={form.fullName}
@@ -477,10 +555,11 @@ export function CustomerRegisterScreen() {
           {(control) => (
             <TextInput
               {...control}
+              name="date-of-birth"
               type="text"
               inputMode="numeric"
               autoComplete="off"
-              placeholder="dd/mm/yyyy"
+              placeholder={t.auth.dateOfBirthPlaceholder}
               maxLength={10}
               value={dobText}
               onChange={(event) => {
@@ -495,6 +574,7 @@ export function CustomerRegisterScreen() {
           {(control) => (
             <TextInput
               {...control}
+              name="address"
               autoComplete="street-address"
               maxLength={500}
               value={form.address}
@@ -502,10 +582,11 @@ export function CustomerRegisterScreen() {
             />
           )}
         </Field>
-        <Field label={t.auth.email} {...required}>
+        <Field label={t.auth.email} error={emailError} {...required}>
           {(control) => (
             <TextInput
               {...control}
+              name="email"
               type="email"
               autoComplete="email"
               spellCheck={false}
@@ -513,6 +594,7 @@ export function CustomerRegisterScreen() {
               maxLength={320}
               value={form.email}
               onChange={(event) => set('email')(event.target.value)}
+              onBlur={() => setEmailLeft(true)}
             />
           )}
         </Field>
@@ -520,6 +602,7 @@ export function CustomerRegisterScreen() {
           {(control) => (
             <TextInput
               {...control}
+              name="phone"
               type="tel"
               autoComplete="tel"
               inputMode="tel"
@@ -533,6 +616,7 @@ export function CustomerRegisterScreen() {
           {(control) => (
             <TextInput
               {...control}
+              name="referrer-phone"
               type="tel"
               autoComplete="off"
               inputMode="tel"
@@ -548,6 +632,7 @@ export function CustomerRegisterScreen() {
           confirmation={confirmation}
           onPassword={setPassword}
           onConfirmation={setConfirmation}
+          problem={pairProblem}
         />
         <SubmitRow pending={pending} label={t.auth.createAccount} pendingLabel={t.auth.creating} />
       </form>
@@ -567,6 +652,9 @@ export function CustomerForgotPasswordScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Field problems are said on the field (the code, the password pair), not in the notice at the top.
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [pairProblem, setPairProblem] = useState<PasswordProblem | null>(null);
   const busy = useRef(false);
 
   async function run(work: () => Promise<void>) {
@@ -598,23 +686,27 @@ export function CustomerForgotPasswordScreen() {
   };
   const complete = (event: FormEvent) => {
     event.preventDefault();
-    if (!OTP.test(otp.trim())) {
-      setMessage(t.auth.otpFailed);
-      return;
-    }
+    const codeProblem = OTP.test(otp.trim()) ? null : t.auth.otpFailed;
     const problem = passwordProblem(password, confirmation, t);
-    if (problem) {
-      setMessage(problem);
+    setOtpError(codeProblem);
+    setPairProblem(problem);
+    if (codeProblem || problem) {
+      focusFirstError();
       return;
     }
     void run(async () => {
       await completeCustomerReset(api, flowToken ?? '', otp, password);
-      router.replace(`${base}/login?reset=1`);
+      router.replace(`${base}/login?reset=1`, { transitionTypes: NAV_TRANSITION });
     });
   };
 
+  // Back to sign-in is the neutral pill before the primary (DESIGN 8.1, FR: never a text-link action).
   const back = (
-    <Link href={`${base}/login`} className={buttonClass('ghost')}>
+    <Link
+      href={`${base}/login`}
+      className={buttonClass('neutral')}
+      transitionTypes={NAV_TRANSITION}
+    >
       {t.auth.backToLogin}
     </Link>
   );
@@ -624,10 +716,11 @@ export function CustomerForgotPasswordScreen() {
       {message ? <Notice tone="danger">{message}</Notice> : null}
       {flowToken ? (
         <form className="ls-member-form" onSubmit={complete}>
-          <Field label={t.auth.otp} {...required}>
+          <Field label={t.auth.otp} {...required} error={otpError ?? undefined}>
             {(control) => (
               <TextInput
                 {...control}
+                name="one-time-code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 spellCheck={false}
@@ -644,6 +737,7 @@ export function CustomerForgotPasswordScreen() {
             confirmation={confirmation}
             onPassword={setPassword}
             onConfirmation={setConfirmation}
+            problem={pairProblem}
           />
           <SubmitRow
             pending={pending}
@@ -658,6 +752,7 @@ export function CustomerForgotPasswordScreen() {
             {(control) => (
               <TextInput
                 {...control}
+                name="email"
                 type="email"
                 autoComplete="email"
                 spellCheck={false}

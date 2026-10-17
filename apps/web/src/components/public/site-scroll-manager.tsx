@@ -1,6 +1,6 @@
 'use client';
 
-import { findScroller, onPageScroll, scrollPosition } from '@lucy-spa/ui';
+import { currentScroller, onPageScroll } from '@lucy-spa/ui';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
@@ -16,10 +16,12 @@ export function SiteScrollManager() {
   const positions = useRef(new Map<string, number>());
   const traversal = useRef(false);
 
-  // Remember where each page was left, and notice back/forward navigation.
+  // Remember where each page was left, and notice back/forward navigation. The shared page-scroll store hands over the
+  // position once per frame with the scroller cached (no querySelector or computed style per scroll event; one store shared
+  // with the contact button).
   useEffect(() => {
-    const stopScroll = onPageScroll(() => {
-      if (findScroller()) positions.current.set(current.current, scrollPosition());
+    const stopScroll = onPageScroll((position) => {
+      if (currentScroller()) positions.current.set(current.current, position);
     });
     const onPop = () => {
       traversal.current = true;
@@ -34,7 +36,7 @@ export function SiteScrollManager() {
   useEffect(() => {
     if (current.current === pathname) return undefined;
     current.current = pathname;
-    const scroller = findScroller();
+    const scroller = currentScroller();
     const back = traversal.current;
     traversal.current = false;
     if (!scroller) return undefined;

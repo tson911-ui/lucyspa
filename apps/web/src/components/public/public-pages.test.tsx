@@ -121,11 +121,17 @@ test('home: the tagline is the one h1, facts and visit read the Owner data, no m
   assert.match(html, /href="tel:\+84934936101"/);
   assert.match(html, /Thứ Hai – Thứ Bảy/);
   assert.match(html, /09:00 – 21:00/);
-  // The address opens the map (a search for the address while the Owner has set no link) in a new tab.
+  // The address is text (it wraps by word, B3); its caption is the "Chỉ đường" link to the map (a search for the address while the
+  // Owner has set no link), in a new tab and named so; the phone figure dials.
   assert.match(
     html,
-    /<a href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=[^"]*" target="_blank"/,
+    /<a class="ls-link ls-home-fact-link" href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=[^"]*" target="_blank" rel="noopener noreferrer" aria-label="Chỉ đường \(mở trong tab mới\)">Chỉ đường<\/a>/,
   );
+  assert.match(
+    html,
+    /<p class="ls-home-fact-figure" data-size="long">04 Nguyễn Quang Bích, Đà Nẵng<\/p>/,
+  );
+  assert.match(html, /<a class="ls-home-fact-tel" href="tel:\+84934936101" translate="no">/);
   // The "Ghé thăm" section is gone, and nothing is made up: the "why" section stays out until the Owner writes it.
   assert.doesNotMatch(html, /Ghé thăm/);
   assert.doesNotMatch(html, /Vì sao chọn/i);
@@ -171,7 +177,8 @@ test('home: a part that could not be read shows a notice and the rest still rend
   assert.match(noServices, /ls-home-facts/);
   const noSite = home({ ...full, site: null });
   assert.doesNotMatch(noSite, /ls-home-facts/);
-  assert.match(noSite, /<h1[^>]*>Lucy Spa<\/h1>/);
+  // Without a tagline the hero heading is a short line of its own, never the brand name alone (C41).
+  assert.match(noSite, /<h1[^>]*>Khoảnh khắc dành riêng cho bạn<\/h1>/);
   assert.match(noSite, /Gội đầu/);
   assert.match(home({ ...full, services: { groups: [] } }), /Danh mục dịch vụ đang được cập nhật/);
 });
@@ -198,15 +205,24 @@ test('home: the hero is the Owner picture under one flat scrim, else a flat band
   assert.match(withImage, /data-media="photo"/);
   assert.match(withImage, /class="ls-home-hero-scrim"/);
   assert.doesNotMatch(withImage, /ls-home-hero-caption/);
-  // Without a picture the hero is a flat band, and each frame says which of the shop's own photos belongs in it; none is made up.
+  // Without a picture (R13) the words sit beside the frame the photo will fill: the flat placeholder, with no caption posing as a photo
+  // credit and nothing made up. The intro's frame is the same placeholder.
   const flat = home(full);
   assert.match(flat, /data-media="flat"/);
-  assert.doesNotMatch(flat, /ls-home-hero-scrim/);
-  assert.match(flat, /Ảnh của tiệm: không gian thư giãn/);
-  assert.match(flat, /Ảnh của tiệm: kỹ thuật viên đang làm dịch vụ/);
+  assert.doesNotMatch(flat, /ls-home-hero-scrim|Ảnh của tiệm/);
+  assert.match(
+    flat,
+    /<div class="ls-slot ls-home-hero-slot" data-empty="true" aria-hidden="true">/,
+  );
+  assert.match(
+    flat,
+    /<div class="ls-slot ls-home-split-slot" data-empty="true" aria-hidden="true">/,
+  );
   assert.doesNotMatch(flat, /<img/);
-  // The primary action keeps its place; the outline-white form is the secondary button's, drawn only over a photo (pages-v2.css).
-  assert.equal(withImage.match(/ls-btn-primary/g)?.length, 1);
+  assert.doesNotMatch(flat, /ls-btn-on-photo/);
+  // The hero holds the page's one filled button (Owner answer 2); every other action on the home page is a secondary or a link.
+  for (const page of [withImage, flat]) assert.equal(page.match(/ls-btn-primary/g)?.length, 1);
+  assert.match(withImage, /ls-btn-secondary ls-btn-lg ls-btn-on-photo/);
 });
 
 test('footer: Facebook and Zalo icons sit with the contact lines, each only when its link is set', () => {
@@ -275,7 +291,8 @@ test('footer: the contact column comes from the shop profile and is absent witho
   assert.match(html, /Liên hệ/);
   assert.match(html, /Liên kết/);
   assert.match(html, /04 Nguyễn Quang Bích/);
-  assert.match(html, /Điện thoại: <a href="tel:\+84934936101">0934 936 101<\/a>/);
+  // The number is never machine-translated (translate="no").
+  assert.match(html, /Điện thoại: <a href="tel:\+84934936101" translate="no">0934 936 101<\/a>/);
   assert.match(html, /Đăng nhập \/ Đăng ký/);
   assert.match(html, /© 2026 Lucy Spa/);
   // The brand column holds the logo and the shop's own tagline (Shop info), with no blocks seeded; without a profile only the logo.
@@ -419,20 +436,30 @@ test('services list: the filter links, one section per group, a chosen group alo
   assert.equal(all.match(/<h1[ >]/g)?.length, 1);
   // The list is a top-level destination (the area home): no Back (DESIGN.md, C40/B7).
   assert.doesNotMatch(all, /ls-back/);
-  assert.match(all, /aria-current="true"[^>]*>Tất cả/);
+  // The chosen chip is filled and carries a check (not colour alone, C50).
+  assert.match(all, /aria-current="true"[^>]*><svg[^>]*>.*?<\/svg>Tất cả/);
   assert.match(all, /Gội thường/);
-  // A card is one link (the name, stretched over the card) plus a separate booking button named after the service; the photo is a flat
-  // placeholder. The title band and the chips row come before the first group, and the bands alternate from the base color.
+  // A card is one link (the name, stretched over the card) plus a separate booking button named after the service, outside the link and
+  // in the secondary (outline) style (Owner answer 2: the filled primary belongs to the detail page); the photo is a flat placeholder.
+  // The title band and the chips row come before the first group, and the bands alternate from the base color.
   assert.match(
     all,
-    /<h3 class="ls-svc-card-name"><a title="Gội thường" href="\/vi\/services\/GOI_THUONG">Gội thường<\/a><\/h3>/,
+    /<h3 class="ls-svc-card-name"><a href="\/vi\/services\/GOI_THUONG">Gội thường<\/a><\/h3>/,
   );
+  assert.match(
+    all,
+    /<\/h3>.*?<\/div><a class="ls-btn ls-btn-secondary ls-btn-md ls-svc-card-book" aria-label="Đặt lịch: Gội thường" href="\/vi\/account\/book\?service=GOI_THUONG">Đặt lịch<\/a><\/article>/,
+  );
+  assert.doesNotMatch(all, /ls-btn-primary/);
+  // The chips row is the bottom of the title band (B8: no strip of another colour between the bands).
+  assert.match(all, /<div class="ls-svc-chips ls-band--alt">/);
   assert.match(all, /class="ls-image-frame ls-svc-media"/);
   assert.ok(all.indexOf('ls-svc-title') < all.indexOf('ls-svc-chips'));
   assert.ok(all.indexOf('ls-svc-chips') < all.indexOf('ls-svc-grid'));
+  // The title band and its chips row share the alternate color; the groups then alternate from the base color.
   assert.deepEqual(
     [...all.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt', 'base', 'alt'],
+    ['alt', 'alt', 'base', 'alt'],
   );
   assert.match(all, /aria-label="Đặt lịch: Gội thường"/);
   assert.match(all, /role="search"/);
@@ -443,7 +470,7 @@ test('services list: the filter links, one section per group, a chosen group alo
   const nail = renderToStaticMarkup(<ServicesView locale="vi" data={services} group="NAIL" />);
   assert.match(nail, /Đính đá/);
   assert.doesNotMatch(nail, /Gội thường/);
-  assert.match(nail, /aria-current="true"[^>]*>Nail/);
+  assert.match(nail, /aria-current="true"[^>]*><svg[^>]*>.*?<\/svg>Nail/);
   assert.match(
     renderToStaticMarkup(<ServicesView locale="vi" data={null} group="" />),
     /Không tải được danh mục dịch vụ/,
@@ -498,7 +525,9 @@ test('service detail (C11b): the Owner’s photo replaces the placeholder, and e
       }}
     />,
   );
-  assert.match(full, /Ảnh của tiệm/, 'no photo: the flat placeholder with its caption');
+  // No photo: the flat placeholder (an icon, no caption posing as a photo credit).
+  assert.match(full, /<div class="ls-slot ls-svd-slot" data-empty="true" aria-hidden="true">/);
+  assert.doesNotMatch(full, /Ảnh của tiệm/);
   assert.match(full, /<h2[^>]*id="included-title"[^>]*>Dịch vụ bao gồm<\/h2>/);
   assert.match(
     full,
@@ -559,16 +588,31 @@ test('service detail: facts, the per-nail note, the booking link and the group n
     '/vi/services/DINH_DA',
   );
   assert.match(html, /<h1[^>]*>Đính đá \/ charm<\/h1>/);
-  // Back (an icon-only chevron named "Quay lại") sits above the title and, without history, goes to the service list.
+  // Back (an icon-only chevron named for its parent) sits above the title and, without history, goes to the service list. It is the
+  // one back affordance: no breadcrumb as well (B7).
   assert.match(
     html,
-    /<a class="[^"]*ls-back ls-btn-icon[^"]*" aria-label="Quay lại" title="Quay lại" href="\/vi\/services"><svg[^>]*>.*?<\/svg><\/a>.*<h1/s,
+    /<a class="[^"]*ls-back ls-btn-icon[^"]*" aria-label="Quay lại Dịch vụ" title="Quay lại Dịch vụ" href="\/vi\/services"><svg[^>]*>.*?<\/svg><\/a>.*<h1/s,
   );
-  assert.match(html, /5\.000 ₫ – 30\.000 ₫\/ngón/);
+  assert.doesNotMatch(html, /ls-crumbs/);
+  // The price and the time are values with their icon, no small label above them (B1); the labels are spoken.
+  assert.match(
+    html,
+    /<p class="ls-svd-price"><span class="ls-visually-hidden">Giá: <\/span>5\.000 ₫ – 30\.000 ₫\/ngón<\/p>/,
+  );
+  assert.match(
+    html,
+    /<p class="ls-svd-time"><svg[^>]*>.*?<\/svg><span class="ls-visually-hidden">Dự kiến: <\/span>/,
+  );
   assert.match(html, /Tính theo số ngón/);
   assert.match(html, /href="\/vi\/account\/book\?service=DINH_DA"/);
   assert.match(html, /Sơn gel/);
-  assert.match(html, /href="\/vi\/services\?group=NAIL"/);
+  // "Tất cả dịch vụ" is a quiet text link beside the one primary, not a second button.
+  assert.match(html, /<a class="ls-site-link" href="\/vi\/services">Tất cả dịch vụ<svg/);
+  // The related cards carry "Đặt lịch" as the secondary; the hero holds the page's one primary and the booking band the outline (on a
+  // short page both are in one view; Owner answer 2: once per view); the phone bar's primary shows only while neither is on screen.
+  assert.match(html, /ls-btn-secondary ls-btn-md ls-svc-card-book" aria-label="Đặt lịch: Sơn gel"/);
+  assert.equal(html.match(/ls-btn-primary/g)?.length, 2, 'the hero and the phone bar');
   // Split hero: the photo placeholder beside the copy; one primary in the hero and one in the booking band, the phone bar (hidden until the
   // page has measured) and the related services as a scroll row of cards. No FAQ, steps or "what is included" band while the Owner wrote none.
   assert.match(html, /class="ls-slot ls-svd-slot"/);
@@ -630,7 +674,7 @@ test('home facts strip: the Owner order, custom lines, hidden items; the whole s
   assert.doesNotMatch(html, /09:00 – 21:00/);
   assert.match(
     html,
-    /<a href="https:\/\/maps\.example\.com\/lucy" target="_blank" rel="noopener noreferrer">/,
+    /<a class="ls-link ls-home-fact-link" href="https:\/\/maps\.example\.com\/lucy" target="_blank" rel="noopener noreferrer"/,
   );
   // A stacked list on a phone and one row from a tablet up (pages-v2.css); each fact is a figure with a caption.
   assert.match(html, /<div class="ls-home-facts">/);
@@ -685,9 +729,10 @@ test('home offer ribbon: the most recent running campaign after the services, no
   assert.match(html, /<h2 class="ls-offer-title">Giảm 20% mỹ phẩm chăm sóc da<\/h2>/);
   assert.match(html, /Chỉ trong vài ngày\./);
   assert.match(html, /Đến hết ngày 31\/10\/2026/);
+  // A neutral card with the kit's secondary button: the hero holds the home page's one filled button (Owner answer 2, D5).
   assert.match(
     html,
-    /<a class="[^"]*ls-btn-offer" href="\/vi\/products\?campaign=ngay-hoi-thu">Mua ngay<\/a>/,
+    /<a class="ls-btn ls-btn-secondary ls-btn-lg" href="\/vi\/products\?campaign=ngay-hoi-thu">Mua ngay<\/a>/,
   );
   // While "Bán online" is off (or could not be read) the button never promises a purchase: it says "Xem ưu đãi" and leads to the same page.
   for (const closed of [{}, { onlineOpen: false }]) {
@@ -695,7 +740,7 @@ test('home offer ribbon: the most recent running campaign after the services, no
     assert.doesNotMatch(off, /Mua ngay/);
     assert.match(
       off,
-      /<a class="[^"]*ls-btn-offer" href="\/vi\/products\?campaign=ngay-hoi-thu">Xem ưu đãi<\/a>/,
+      /<a class="ls-btn ls-btn-secondary ls-btn-lg" href="\/vi\/products\?campaign=ngay-hoi-thu">Xem ưu đãi<\/a>/,
     );
   }
   // One ribbon only, below the hero and the price list; no campaign (or none readable) draws nothing.

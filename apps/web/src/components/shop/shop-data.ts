@@ -66,30 +66,60 @@ export function useOnlineSales(): { sales: SalesState; reload: () => Promise<Sal
   return { sales, reload };
 }
 
+/*
+ * One cart count for the whole page (react-best-practices client-swr-dedup): the header cart and the phone's account menu both show
+ * it, so they share one read, one in-flight request and one CART_CHANGED listener instead of two of each.
+ */
+let cartLines: number | null = null;
+let cartApi: ApiClient | null = null;
+let cartRead: Promise<void> | null = null;
+const cartListeners = new Set<(count: number | null) => void>();
+
+function readCartLines(api: ApiClient): Promise<void> {
+  if (cartRead) return cartRead;
+  cartRead = api
+    .get<OnlineCartResponse>('/api/v1/me/cart', {}, { passive: true })
+    .then((cart) => {
+      cartLines = cart.lines.length;
+      for (const listener of cartListeners) listener(cartLines);
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      cartRead = null;
+    });
+  return cartRead;
+}
+
+function cartChanged(): void {
+  if (cartApi) void readCartLines(cartApi);
+}
+
 /** The number of lines in the member's cart for the header; `null` until known or when nobody is signed in. */
 export function useCartLineCount(enabled: boolean): number | null {
   const { api, signedIn } = useSiteSession();
-  const [count, setCount] = useState<number | null>(null);
+  const active = signedIn && enabled;
+  const [count, setCount] = useState<number | null>(() => (active ? cartLines : null));
+  // Forget the last member's count while nobody is signed in, so the next sign-in never shows it.
+  if (!active && count !== null) setCount(null);
   useEffect(() => {
-    if (!signedIn || !enabled) {
-      setCount(null);
-      return undefined;
+    if (!active) return undefined;
+    cartListeners.add(setCount);
+    if (cartListeners.size === 1) {
+      cartApi = api;
+      window.addEventListener(CART_CHANGED, cartChanged);
     }
-    let active = true;
-    const read = () => {
-      api
-        .get<OnlineCartResponse>('/api/v1/me/cart', {}, { passive: true })
-        .then((cart) => active && setCount(cart.lines.length))
-        .catch(() => undefined);
-    };
-    read();
-    window.addEventListener(CART_CHANGED, read);
+    void readCartLines(api);
     return () => {
-      active = false;
-      window.removeEventListener(CART_CHANGED, read);
+      cartListeners.delete(setCount);
+      if (cartListeners.size === 0) {
+        window.removeEventListener(CART_CHANGED, cartChanged);
+        cartApi = null;
+        cartLines = null;
+      }
     };
-  }, [api, signedIn, enabled]);
-  return count;
+  }, [api, active]);
+  // Signed out or switched off: no count (derived, not reset in an effect).
+  return active ? count : null;
 }
 
 /** True when online ordering is open (the public settings say so). */

@@ -2,6 +2,7 @@
 
 import { buttonClass, Button, PublicPage } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../../lib/nav-transition';
 import { useParams } from 'next/navigation';
 import { isLocale } from '../../../i18n/locales';
 import { getSiteText } from '../../../i18n/site';
@@ -25,7 +26,11 @@ export default function SiteError({
         <Button variant="primary" size="lg" onClick={reset}>
           {text.retry}
         </Button>
-        <Link className={buttonClass('secondary', 'lg')} href={`/${locale}`}>
+        <Link
+          className={buttonClass('secondary', 'lg')}
+          href={`/${locale}`}
+          transitionTypes={NAV_TRANSITION}
+        >
           {text.home}
         </Link>
       </div>

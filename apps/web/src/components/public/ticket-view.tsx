@@ -3,7 +3,6 @@ import {
   Badge,
   buttonClass,
   Card,
-  CardHeader,
   DescriptionList,
   EmptyState,
   Band,
@@ -12,32 +11,44 @@ import {
   Stack,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import type { ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { productOrdersDictionary } from '../../i18n/product-orders';
-import { formatBusinessDate, formatVnd } from '../../lib/customer/invoice';
-import { orderStatusTone } from '../../lib/workforce/product-orders';
+import { formatVnd } from '../../lib/customer/invoice';
+import { expectedRange, orderLineTone } from '../customer/member-format';
+
+const paidFormats = new Map<string, Intl.DateTimeFormat>();
 
 /** An instant as the day it names in the shop's time zone (the ticket shows the day of payment, not the second). */
 function paidOn(instant: string, zone: string, locale: Locale): string {
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
-    timeZone: zone,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(instant));
+  const key = `${locale}-${zone}`;
+  let format = paidFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+      timeZone: zone,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    paidFormats.set(key, format);
+  }
+  return format.format(new Date(instant));
 }
 
-function expected(
-  line: Pick<ProductOrderTicketPublicResponse['lines'][number], 'expectedFrom' | 'expectedTo'>,
-  locale: Locale,
-  words: { range: string; afterPayment: string },
-): string {
-  if (!line.expectedFrom || !line.expectedTo) return words.afterPayment;
-  if (line.expectedFrom === line.expectedTo) return formatBusinessDate(line.expectedFrom, locale);
-  return words.range
-    .replace('{from}', formatBusinessDate(line.expectedFrom, locale))
-    .replace('{to}', formatBusinessDate(line.expectedTo, locale));
+/** An order or line state with its icon and word (B18): a cancelled line is neutral with a cross. */
+function TicketStatus({
+  status,
+  label,
+}: {
+  status: ProductOrderTicketPublicResponse['status'];
+  label: string;
+}) {
+  return (
+    <Badge tone={orderLineTone(status)} icon={status === 'CANCELLED' ? 'x-circle' : undefined}>
+      {label}
+    </Badge>
+  );
 }
 
 /**
@@ -71,6 +82,8 @@ function TicketFrame({
 /**
  * The digital pick-up ticket for the holder of the secret link: the code to read out at the counter, what was paid, each product with
  * its state and the expected range (an estimate, never a promise). No phone number, no address, no staff name, no other order.
+ * One card (session 10): the code large in ink (not the brand colour: it is not a link), the order's state under it, the facts, then
+ * the products as hairline rows. A line shows its own state only where it differs from the order's.
  */
 export function TicketView({
   locale,
@@ -89,13 +102,14 @@ export function TicketView({
         ) : null}
         <Card as="section" aria-label={p.title} className="ls-ticket">
           <div className="ls-ticket-head">
-            <div>
-              <p className="ls-ticket-label">{p.code}</p>
-              <p className="ls-ticket-code">{ticket.code}</p>
-            </div>
-            <Badge tone={orderStatusTone(ticket.status)}>{d.customerStatus[ticket.status]}</Badge>
+            <p className="ls-ticket-code">
+              <span className="ls-visually-hidden">{p.code}: </span>
+              <span translate="no">{ticket.code}</span>
+            </p>
+            <TicketStatus status={ticket.status} label={d.customerStatus[ticket.status]} />
           </div>
           <DescriptionList
+            className="ls-mem-summary"
             items={[
               { label: p.branch, value: ticket.branchName },
               ...(ticket.paidAt
@@ -107,34 +121,41 @@ export function TicketView({
               },
             ]}
           />
-        </Card>
-        <Card as="section" aria-label={p.items}>
-          <CardHeader title={p.items} description={p.expectedNote} />
-          <ul className="ls-ticket-lines">
-            {ticket.lines.map((line, index) => {
-              const name = locale === 'vi' ? line.nameVi : line.nameEn;
-              const waiting = line.status === 'PAID' || line.status === 'ORDERED';
-              return (
-                <li key={`${index}:${line.nameVi}`} className="ls-ticket-line">
-                  <p className="ls-ticket-line-name">{name}</p>
-                  <p className="ls-ticket-line-price">
-                    {p.colQuantity} {line.quantity} · {formatVnd(line.grossVnd, locale)}
-                  </p>
-                  <p className="ls-ticket-line-state">
-                    <Badge tone={orderStatusTone(line.status)}>
-                      {d.customerStatus[line.status]}
-                    </Badge>
-                    {waiting ? (
+          <section aria-label={p.items} className="ls-ticket-items">
+            <h2 className="ls-ticket-items-title">{p.items}</h2>
+            <p className="ls-ticket-note">{p.expectedNote}</p>
+            <ul className="ls-ticket-lines">
+              {ticket.lines.map((line, index) => {
+                const name = locale === 'vi' ? line.nameVi : line.nameEn;
+                const waiting = line.status === 'PAID' || line.status === 'ORDERED';
+                return (
+                  <li key={`${index}:${line.nameVi}`} className="ls-ticket-line">
+                    <div className="ls-ticket-line-row">
+                      <p className="ls-ticket-line-name">{name}</p>
+                      <p className="ls-ticket-line-price">{formatVnd(line.grossVnd, locale)}</p>
+                    </div>
+                    <p className="ls-ticket-line-state">
                       <span>
-                        {p.expected}:{' '}
-                        {expected(line, locale, { range: p.range, afterPayment: p.afterPayment })}
+                        {p.colQuantity} {line.quantity}
                       </span>
-                    ) : null}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
+                      {line.status !== ticket.status ? (
+                        <TicketStatus status={line.status} label={d.customerStatus[line.status]} />
+                      ) : null}
+                      {waiting ? (
+                        <span>
+                          {p.expected}:{' '}
+                          {expectedRange(line, locale, {
+                            range: p.range,
+                            afterPayment: p.afterPayment,
+                          })}
+                        </span>
+                      ) : null}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </Card>
       </Stack>
     </TicketFrame>
@@ -149,7 +170,11 @@ export function TicketUnavailable({ locale, retryHref }: { locale: Locale; retry
       <EmptyState
         title={p.unavailableTitle}
         action={
-          <Link className={buttonClass('secondary', 'md')} href={retryHref}>
+          <Link
+            className={buttonClass('secondary', 'md')}
+            href={retryHref}
+            transitionTypes={NAV_TRANSITION}
+          >
             {p.retry}
           </Link>
         }

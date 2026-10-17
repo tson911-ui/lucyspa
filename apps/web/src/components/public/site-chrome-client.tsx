@@ -9,8 +9,8 @@ import {
   type SiteLinkComponent,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { Suspense, type ReactNode } from 'react';
 import { getSiteText } from '../../i18n/site';
 import type { Locale } from '../../i18n/locales';
 import { headerNavItems, otherLocalePath, tabBarItems } from '../../lib/site-nav';
@@ -82,37 +82,61 @@ export function PublicTabBar({
   );
 }
 
-/** The cart and notifications (members), language, theme and account: round 44 px tools (40 px on a fine pointer). */
-export function PublicTools({ locale }: { locale: Locale }) {
+/**
+ * The other language's link. The visible code is part of the accessible name ("English (EN)", WIG label in name) and neither is
+ * machine-translated. The query (list filters, page, booking step) is kept, so switching language stays on the same view.
+ */
+function LanguageLink({ locale, search }: { locale: Locale; search: string }) {
   const text = getSiteText(locale);
   const pathname = usePathname();
   const other = locale === 'vi' ? 'en' : 'vi';
+  const code = other.toUpperCase();
+  return (
+    <Link
+      className="ls-site-tool"
+      href={`${otherLocalePath(pathname, locale)}${search ? `?${search}` : ''}`}
+      hrefLang={other}
+      lang={other}
+      translate="no"
+      aria-label={`${text.header.switchLanguage} (${code})`}
+    >
+      {code}
+    </Link>
+  );
+}
+
+function LanguageLinkWithQuery({ locale }: { locale: Locale }) {
+  // Outside the app router (unit tests) there is no search-params context and the hook returns null.
+  const params = useSearchParams() as URLSearchParams | null;
+  return <LanguageLink locale={locale} search={params?.toString() ?? ''} />;
+}
+
+/** The cart and notifications (members), language, theme and account: round 44 px tools (40 px on a fine pointer). */
+export function PublicTools({ locale }: { locale: Locale }) {
   return (
     <>
       <CartLink locale={locale} />
       <NotificationBell locale={locale} />
-      <Link
-        className="ls-site-tool"
-        href={otherLocalePath(pathname, locale)}
-        hrefLang={other}
-        lang={other}
-        aria-label={text.header.switchLanguage}
-      >
-        {other.toUpperCase()}
-      </Link>
+      {/* useSearchParams needs a Suspense boundary when a page is prerendered; the fallback is the same link without the query. */}
+      <Suspense fallback={<LanguageLink locale={locale} search="" />}>
+        <LanguageLinkWithQuery locale={locale} />
+      </Suspense>
       <PublicAccountMenu locale={locale} />
     </>
   );
 }
 
-/** The header call to action: the same on every public and account page, the booking pages included. */
+/**
+ * The header call to action: the same on every public and account page, the booking pages included. It is the secondary outline
+ * (Owner answer 2, 2026-10-16): the filled primary appears once per view, on detail pages and forms, so the header never adds a second.
+ */
 export function PublicHeaderCta({ locale }: { locale: Locale }) {
   const text = getSiteText(locale);
   return (
     <Link
       prefetch
       transitionTypes={NAV_TRANSITION}
-      className={buttonClass('primary', 'md')}
+      className={buttonClass('secondary', 'md')}
       href={`/${locale}/account/book`}
     >
       <Icon name="calendar" />

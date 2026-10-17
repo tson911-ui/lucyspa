@@ -21,7 +21,7 @@ const vi = {
     freeShipping: 'Miễn phí giao hàng',
     /** With {days}, {min}, {max}. */
     promise:
-      'Gửi trong {days} ngày làm việc, vận chuyển dự kiến {min} đến {max} ngày, không phải cam kết.',
+      'Gửi trong {days}\u00a0ngày làm việc, vận chuyển dự kiến {min} đến {max}\u00a0ngày, không phải cam kết.',
     preOrderNote:
       'Đơn có hàng đặt trước được gửi một lần khi đủ hàng. Thời gian chỉ là dự kiến, không phải cam kết.',
   },
@@ -37,7 +37,20 @@ const vi = {
     lines: 'Sản phẩm trong giỏ',
     summary: 'Tóm tắt đơn hàng',
     empty: 'Giỏ hàng của bạn đang trống.',
+    emptyTitle: 'Giỏ hàng đang trống',
+    emptyBody: 'Thêm mỹ phẩm từ cửa hàng online để đặt mua.',
     emptyAction: 'Xem mỹ phẩm',
+    /** With {name}: the line just removed, with the way to put it back (C72). */
+    removed: 'Đã bỏ {name} khỏi giỏ hàng.',
+    undo: 'Hoàn tác',
+    undoing: 'Đang hoàn tác…',
+    dismiss: 'Đóng thông báo',
+    toastRegion: 'Thông báo giỏ hàng',
+    /** The phone's pay bar (its accessible name). */
+    payBar: 'Tạm tính và thanh toán',
+    /** With {count}: the problem rows to fix, under the summary (the checkout button leads to the first). */
+    fixCount: 'Có {count} sản phẩm cần sửa trước khi thanh toán.',
+    closedTitle: 'Chưa mở bán online',
     unit: 'Đơn giá',
     quantity: 'Số lượng',
     /** With {name}. */
@@ -49,7 +62,7 @@ const vi = {
     lineTotal: 'Thành tiền',
     preOrder: 'Đặt trước',
     /** With {range}: the expected wait in days. */
-    preOrderWait: 'Dự kiến {range} ngày, không phải cam kết',
+    preOrderWait: 'Dự kiến {range}\u00a0ngày, không phải cam kết',
     preOrderNote:
       'Giỏ có hàng đặt trước. Đơn được gửi một lần khi đủ hàng, thời gian chỉ là dự kiến và không phải cam kết.',
     subtotal: 'Tạm tính',
@@ -131,6 +144,8 @@ const vi = {
     paymentPayosHint: 'Bạn thanh toán đủ tiền hàng trước; không trả tiền khi nhận hàng.',
     policy: 'Chính sách mua hàng online',
     policyAccept: 'Tôi đã đọc và đồng ý với chính sách mua hàng online',
+    policyMore: 'Xem toàn bộ chính sách',
+    policyLess: 'Thu gọn chính sách',
     policyRequired: 'Hãy đọc và đồng ý với chính sách để đặt hàng.',
     policyChanged: 'Chính sách vừa được cập nhật. Hãy đọc lại và đồng ý để tiếp tục.',
     place: 'Đặt hàng và thanh toán',
@@ -138,8 +153,12 @@ const vi = {
     redirecting: 'Đang chuyển sang trang thanh toán…',
     /** With {minutes}. */
     payNote:
-      'Bạn sẽ chuyển sang PayOS để thanh toán. Đơn chưa thanh toán sau {minutes} phút sẽ tự hủy.',
+      'Bạn sẽ chuyển sang PayOS để thanh toán. Đơn chưa thanh toán sau {minutes}\u00a0phút sẽ tự hủy.',
     backToCart: 'Quay lại giỏ hàng',
+    /** The leave question while the form holds entries (wig Forms: unsaved changes). */
+    leave: 'Đơn hàng chưa được đặt. Rời trang và bỏ thông tin đã nhập?',
+    /** The phone's pay bar (its accessible name). */
+    payBar: 'Tổng tiền và thanh toán',
     emptyTitle: 'Chưa có gì để thanh toán',
     emptyBody: 'Giỏ hàng của bạn đang trống.',
     closedTitle: 'Chưa mở bán online',
@@ -152,9 +171,35 @@ const vi = {
     title: 'Đơn hàng online',
     intro: 'Các đơn mua online của bạn tại Lucy Spa.',
     empty: 'Bạn chưa có đơn hàng online.',
+    emptyTitle: 'Chưa có đơn hàng online',
+    emptyBody: 'Mỹ phẩm bạn mua online sẽ hiện ở đây.',
     emptyAction: 'Xem mỹ phẩm',
+    /** The Back chevron of an order (its accessible name). */
+    backLabel: 'Quay lại đơn hàng online',
+    /** The pager and table words of the list (the member area does not load the staff dictionary). */
+    list: {
+      table: 'Bảng đơn hàng online',
+      nav: 'Trang của danh sách đơn hàng online',
+      first: 'Trang đầu',
+      previous: 'Trang trước',
+      next: 'Trang sau',
+      last: 'Trang cuối',
+      pageNumber: 'Trang {page}',
+      pageOf: 'Trang {page} / {pages}',
+      summary: 'Hiển thị {from}–{to} trong {total}',
+      pageSize: 'Số dòng mỗi trang',
+      pageSizeOption: '{size} dòng mỗi trang',
+      loading: 'Đang tải…',
+    },
+    /** The payment time is over: the badge says "Hết hạn thanh toán" and this sentence says what follows. */
+    expiredBadge: 'Hết hạn thanh toán',
+    expiredBody: 'Đơn đã hết hạn thanh toán nên sẽ tự hủy. Bạn chưa bị trừ tiền.',
+    notCharged: 'Bạn chưa bị trừ tiền.',
+    /** Under the timeline of an order waiting for pre-order goods. */
+    waitingNote: 'Ngày hàng về chỉ là dự kiến, không phải cam kết.',
     loadMore: 'Xem thêm',
-    notFound: 'Không tìm thấy đơn hàng này.',
+    notFound: 'Không tìm thấy đơn hàng này',
+    allOrders: 'Xem tất cả đơn hàng',
     actionsFor: 'Thao tác với đơn {code}',
     open: 'Xem đơn hàng',
     columns: {
@@ -183,8 +228,7 @@ const vi = {
       AWAITING_PAYMENT: 'Hãy thanh toán trước {time}. Còn lại {left}.',
       PAID: 'Cửa hàng đã nhận thanh toán và sẽ chuẩn bị hàng cho bạn.',
       READY_TO_SHIP: 'Cửa hàng đã nhận thanh toán và sẽ chuẩn bị hàng cho bạn.',
-      WAITING_GOODS:
-        'Đơn có hàng đặt trước nên cửa hàng sẽ gửi một lần khi đủ hàng. Ngày hàng về chỉ là dự kiến, không phải cam kết.',
+      WAITING_GOODS: 'Đơn đã thanh toán. Cửa hàng gửi hàng khi hàng đặt trước về đủ.',
       SHIPPED: 'Đơn đã được gửi đi.',
       DELIVERY_FAILED: 'Giao hàng chưa thành công. Cửa hàng sẽ liên hệ với bạn.',
       COMPLETED: 'Cảm ơn bạn đã mua hàng tại Lucy Spa.',
@@ -212,6 +256,9 @@ const vi = {
     preOrder: 'Đặt trước',
     /** With {range}. */
     preOrderWait: 'Dự kiến {range}',
+    /** With {from}, {to}: the expected arrival of a pre-ordered line (same words as the pick-up ticket). */
+    expectedRange: '{from} – {to}',
+    afterPayment: 'Sau khi thanh toán',
     lineCancelled: 'Đã hủy',
     /** With {amount}. */
     lineRefunded: 'Đã hoàn {amount}',
@@ -225,7 +272,7 @@ const vi = {
     phone: 'Số điện thoại',
     address: 'Địa chỉ',
     promise:
-      'Gửi trong {days} ngày làm việc, vận chuyển dự kiến {min} đến {max} ngày, không phải cam kết.',
+      'Gửi trong {days}\u00a0ngày làm việc, vận chuyển dự kiến {min} đến {max}\u00a0ngày, không phải cam kết.',
     checking: 'Đang kiểm tra thanh toán…',
     paidNow: 'Đã nhận thanh toán. Cảm ơn bạn!',
     cancelledBack:
@@ -275,7 +322,7 @@ const en: ShopText = {
     viewCart: 'View cart',
     freeShipping: 'Free delivery',
     promise:
-      'Shipped within {days} working days, transit expected {min} to {max} days; not a promise.',
+      'Shipped within {days}\u00a0working days, transit expected {min} to {max}\u00a0days; not a promise.',
     preOrderNote:
       'An order with pre-order goods is shipped once, when all the goods are in. The time is an estimate, not a promise.',
   },
@@ -290,7 +337,17 @@ const en: ShopText = {
     lines: 'Items in your cart',
     summary: 'Order summary',
     empty: 'Your cart is empty.',
+    emptyTitle: 'Your cart is empty',
+    emptyBody: 'Add cosmetics from the online shop to order them.',
     emptyAction: 'Browse products',
+    removed: '{name} was removed from the cart.',
+    undo: 'Undo',
+    undoing: 'Undoing…',
+    dismiss: 'Close this message',
+    toastRegion: 'Cart messages',
+    payBar: 'Subtotal and checkout',
+    fixCount: '{count} items need a change before checkout.',
+    closedTitle: 'Online sales are not open yet',
     unit: 'Price',
     quantity: 'Quantity',
     increase: 'Increase quantity of {name}',
@@ -299,7 +356,7 @@ const en: ShopText = {
     removeNamed: 'Remove {name} from the cart',
     lineTotal: 'Total',
     preOrder: 'Pre-order',
-    preOrderWait: 'Expected {range} days, not a promise',
+    preOrderWait: 'Expected {range}\u00a0days, not a promise',
     preOrderNote:
       'Your cart has pre-order goods. The order is shipped once, when all the goods are in; the time is an estimate, not a promise.',
     subtotal: 'Subtotal',
@@ -376,14 +433,18 @@ const en: ShopText = {
     paymentPayosHint: 'You pay the full amount before shipping; nothing is collected on delivery.',
     policy: 'Online purchase policy',
     policyAccept: 'I have read and agree to the online purchase policy',
+    policyMore: 'Read the whole policy',
+    policyLess: 'Show less of the policy',
     policyRequired: 'Read and agree to the policy to place the order.',
     policyChanged: 'The policy was just updated. Read it again and agree to continue.',
     place: 'Place order and pay',
     placing: 'Placing order…',
     redirecting: 'Opening the payment page…',
     payNote:
-      'You will go to PayOS to pay. An order that is not paid within {minutes} minutes is cancelled automatically.',
+      'You will go to PayOS to pay. An order that is not paid within {minutes}\u00a0minutes is cancelled automatically.',
     backToCart: 'Back to cart',
+    leave: 'The order is not placed yet. Leave the page and drop what you entered?',
+    payBar: 'Total and payment',
     emptyTitle: 'Nothing to pay for',
     emptyBody: 'Your cart is empty.',
     closedTitle: 'Online ordering is not open',
@@ -396,9 +457,32 @@ const en: ShopText = {
     title: 'Online orders',
     intro: 'Your online orders at Lucy Spa.',
     empty: 'You have no online orders yet.',
+    emptyTitle: 'No online orders yet',
+    emptyBody: 'Cosmetics you buy online will show here.',
     emptyAction: 'Browse products',
+    backLabel: 'Back to online orders',
+    list: {
+      table: 'Online orders table',
+      nav: 'Pages of online orders',
+      first: 'First page',
+      previous: 'Previous page',
+      next: 'Next page',
+      last: 'Last page',
+      pageNumber: 'Page {page}',
+      pageOf: 'Page {page} / {pages}',
+      summary: 'Showing {from}–{to} of {total}',
+      pageSize: 'Rows per page',
+      pageSizeOption: '{size} rows per page',
+      loading: 'Loading…',
+    },
+    expiredBadge: 'Payment time over',
+    expiredBody:
+      'The payment time is over, so the order will be cancelled. You have not been charged.',
+    notCharged: 'You have not been charged.',
+    waitingNote: 'The arrival date is an estimate, not a promise.',
     loadMore: 'Load more',
-    notFound: 'This order was not found.',
+    notFound: 'Order not found',
+    allOrders: 'See all orders',
     actionsFor: 'Actions for order {code}',
     open: 'View order',
     columns: {
@@ -425,8 +509,7 @@ const en: ShopText = {
       AWAITING_PAYMENT: 'Pay before {time}. Time left: {left}.',
       PAID: 'The shop received your payment and will prepare your goods.',
       READY_TO_SHIP: 'The shop received your payment and will prepare your goods.',
-      WAITING_GOODS:
-        'Your order has pre-order goods, so the shop ships once, when all the goods are in. The date is an estimate, not a promise.',
+      WAITING_GOODS: 'Your order is paid. The shop ships it when all the pre-order goods are in.',
       SHIPPED: 'Your order has been sent.',
       DELIVERY_FAILED: 'Delivery did not succeed. The shop will contact you.',
       COMPLETED: 'Thank you for shopping at Lucy Spa.',
@@ -453,6 +536,8 @@ const en: ShopText = {
     unit: 'Price',
     preOrder: 'Pre-order',
     preOrderWait: 'Expected {range}',
+    expectedRange: '{from} – {to}',
+    afterPayment: 'After payment',
     lineCancelled: 'Cancelled',
     lineRefunded: 'Refunded {amount}',
     subtotal: 'Subtotal',
@@ -465,9 +550,9 @@ const en: ShopText = {
     phone: 'Phone number',
     address: 'Address',
     promise:
-      'Shipped within {days} working days, transit expected {min} to {max} days; not a promise.',
+      'Shipped within {days}\u00a0working days, transit expected {min} to {max}\u00a0days; not a promise.',
     checking: 'Checking the payment…',
-    paidNow: 'We received your payment. Thank you!',
+    paidNow: 'The shop received your payment. Thank you!',
     cancelledBack:
       'You have not paid yet. The order is kept until it expires; press Pay to try again.',
     payFailed: 'The payment page could not be opened. The order is kept; press Pay to try again.',

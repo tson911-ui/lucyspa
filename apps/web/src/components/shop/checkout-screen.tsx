@@ -18,7 +18,6 @@ import {
   EmptyState,
   Field,
   Icon,
-  ChoiceCard,
   Notice,
   Stack,
   TextInput,
@@ -33,6 +32,7 @@ import { ApiError } from '../../lib/api/client';
 import { customerErrorMessage } from '../../lib/customer/booking';
 import { formatVnd } from '../../lib/customer/invoice';
 import { fill } from '../../lib/fill';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import {
   EMPTY_ADDRESS,
   addressFieldOf,
@@ -54,13 +54,18 @@ import {
   type QuoteResponse,
 } from '../../lib/shop/online';
 import { useCustomer } from '../customer/session';
+import { useUnsavedGuard } from '../customer/unsaved-guard';
 import { LoadState, useFetch } from '../customer/screens/bookings';
 import { CheckoutAddress } from './checkout-address';
 import { lineName } from './cart-screen';
+import { PayBar } from './pay-bar';
 import { ShopScreen } from './shop-frame';
 import { isOpen, useOnlineSales } from './shop-data';
 
 type Phase = 'idle' | 'placing' | 'redirecting';
+
+/** How many paragraphs of the purchase policy show before "Xem toàn bộ chính sách". */
+const POLICY_PREVIEW = 2;
 
 /**
  * "Thanh toán" (Phase 6 P6-19): the delivery address, an optional voucher, the quote of the order, the policy the customer must
@@ -80,8 +85,11 @@ export function CheckoutScreen() {
     'checkout-addresses',
   );
   const formRef = useRef<HTMLFormElement | null>(null);
-  const requestId = useRef<string>(newRequestId());
+  // One id for the whole attempt, made once (lazy: not a new id thrown away on every render).
+  const [requestId] = useState(newRequestId);
   const placed = useRef<OnlineOrderResponse | null>(null);
+  // Set just before the page itself leaves (PayOS or the order page), so the leave question never asks then.
+  const leaving = useRef(false);
 
   const [saved, setSaved] = useState<CustomerAddressResponse[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -107,20 +115,26 @@ export function CheckoutScreen() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [failure, setFailure] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<CustomerAddressResponse | null>(null);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  // Whether the customer typed or chose anything yet (the leave question asks only then).
+  const [edited, setEdited] = useState(false);
 
-  // The saved addresses and the profile arrive once: the first saved address (or the profile) fills the form.
-  useEffect(() => {
-    const data = addressRead.data;
-    if (!data || saved !== null) return;
-    setSaved(data.addresses);
-    const first = data.addresses[0];
+  // The saved addresses and the profile arrive once: the first saved address (or the profile) fills the form. Set while rendering
+  // (React's "adjust state when data arrives"), so the form never paints empty first (react-best-practices
+  // rerender-derived-state-no-effect).
+  const addressData = addressRead.data;
+  if (addressData && saved === null) {
+    setSaved(addressData.addresses);
+    const first = addressData.addresses[0];
     if (first) {
       setSelected(first.id);
       setDraft(draftFromSaved(first));
     } else {
-      setDraft(draftFromProfile(data.profile));
+      setDraft(draftFromProfile(addressData.profile));
     }
-  }, [addressRead.data, saved]);
+  }
+
+  useUnsavedGuard(edited && phase === 'idle', c.leave, { stillDirty: () => !leaving.current });
 
   // The quote is read when the page opens and when the voucher or the staff code changes. It saves nothing.
   const readQuote = useCallback(
@@ -198,7 +212,11 @@ export function CheckoutScreen() {
         <EmptyState
           icon="cart"
           action={
-            <Link className={buttonClass('secondary')} href={`/${locale}/products`}>
+            <Link
+              className={buttonClass('secondary')}
+              href={`/${locale}/products`}
+              transitionTypes={NAV_TRANSITION}
+            >
               {s.cart.closedAction}
             </Link>
           }
@@ -214,7 +232,11 @@ export function CheckoutScreen() {
         <EmptyState
           icon="cart"
           action={
-            <Link className={buttonClass('primary')} href={`/${locale}/products`}>
+            <Link
+              className={buttonClass('secondary')}
+              href={`/${locale}/products`}
+              transitionTypes={NAV_TRANSITION}
+            >
               {s.cart.emptyAction}
             </Link>
           }
@@ -231,12 +253,15 @@ export function CheckoutScreen() {
   const policy = policyParagraphs(sales, locale);
 
   function changeDraft(patch: Partial<AddressDraft>) {
-    const next = { ...draft, ...patch };
-    setDraft(next);
+    // Updater form: two quick changes never drop one (react-best-practices rerender-functional-setstate).
+    setDraft((old) => ({ ...old, ...patch }));
+    setEdited(true);
+    // A field that no longer matches the chosen saved address makes it a new address.
     const current = saved?.find((address) => address.id === selected);
     if (current) {
       const original = draftFromSaved(current);
-      if (JSON.stringify(original) !== JSON.stringify(next)) setSelected(null);
+      const keys = Object.keys(patch) as AddressField[];
+      if (keys.some((key) => patch[key] !== original[key])) setSelected(null);
     }
     setProblems((old) => {
       const left = { ...old };
@@ -247,6 +272,7 @@ export function CheckoutScreen() {
 
   function choose(id: string | null) {
     setSelected(id);
+    setEdited(true);
     const address = saved?.find((candidate) => candidate.id === id);
     if (address) setDraft(draftFromSaved(address));
     else
@@ -316,7 +342,7 @@ export function CheckoutScreen() {
             voucher: voucher ?? '',
             staffCode: staff ?? '',
             policyVersion: sales.policyVersion,
-            clientRequestId: requestId.current,
+            clientRequestId: requestId,
           }),
         );
         placed.current = order;
@@ -350,19 +376,26 @@ export function CheckoutScreen() {
       );
       if (payment.checkoutUrl) {
         setPhase('redirecting');
+        leaving.current = true;
         window.location.assign(payment.checkoutUrl);
         return;
       }
     } catch {
       /* the order page explains it and offers the payment button */
     }
-    router.replace(`${base}/orders/${order.id}?payFailed=1`);
+    leaving.current = true;
+    router.replace(`${base}/orders/${order.id}?payFailed=1`, { transitionTypes: NAV_TRANSITION });
   }
 
   const subtotal = quote
     ? formatVnd(quote.subtotalVnd, locale)
     : formatVnd(cart.subtotalVnd, locale);
   const discount = quote && BigInt(quote.discountVnd) > 0n ? quote.discountVnd : null;
+  const submitButton = (
+    <Button type="submit" variant="primary" size="lg" fullWidth loading={busy}>
+      {phase === 'redirecting' ? c.redirecting : phase === 'placing' ? c.placing : c.place}
+    </Button>
+  );
   return (
     <ShopScreen title={c.title} description={c.intro} narrow>
       {failure ? <Notice tone="danger">{failure}</Notice> : null}
@@ -371,7 +404,11 @@ export function CheckoutScreen() {
           <span className="ls-shop-added">
             {quoteFailure.message}
             {quoteFailure.cart ? (
-              <Link className={buttonClass('ghost', 'md')} href={`/${locale}/cart`}>
+              <Link
+                className={buttonClass('ghost', 'md')}
+                href={`/${locale}/cart`}
+                transitionTypes={NAV_TRANSITION}
+              >
                 {c.backToCart}
               </Link>
             ) : null}
@@ -398,26 +435,39 @@ export function CheckoutScreen() {
             />
             <Card as="section" aria-label={c.payment}>
               <CardHeader title={c.payment} />
-              <div className="ls-pay-methods" role="radiogroup" aria-label={c.payment}>
-                <ChoiceCard
-                  type="radio"
-                  name="payment-method"
-                  value="PAYOS"
-                  checked
-                  onChange={() => undefined}
-                  title={c.paymentPayos}
-                  meta={c.paymentPayosHint}
-                />
-              </div>
+              {/* One method: a plain line with its icon and sentence, not a radio with nothing to choose (no box inside the card). */}
+              <p className="ls-pay-method">
+                <Icon name="wallet" size={20} aria-hidden="true" />
+                <span>
+                  <strong>{c.paymentPayos}</strong>
+                  <span className="ls-shop-note">{c.paymentPayosHint}</span>
+                </span>
+              </p>
             </Card>
             <Card as="section" aria-label={c.policy}>
               <CardHeader title={c.policy} />
               <Stack gap="block">
-                <div className="ls-shop-policy" tabIndex={0} role="region" aria-label={c.policy}>
-                  {policy.map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
+                {/* The policy reads in the card at 14 px (no scroll box inside it): the first paragraphs, then the rest on request. */}
+                <div className="ls-shop-policy-text" id="checkout-policy">
+                  {(policyOpen ? policy : policy.slice(0, POLICY_PREVIEW)).map(
+                    (paragraph, index) => (
+                      <p key={index}>{paragraph}</p>
+                    ),
+                  )}
                 </div>
+                {policy.length > POLICY_PREVIEW ? (
+                  <div>
+                    <Button
+                      variant="neutral"
+                      icon={policyOpen ? 'chevron-up' : 'chevron-down'}
+                      aria-expanded={policyOpen}
+                      aria-controls="checkout-policy"
+                      onClick={() => setPolicyOpen((open) => !open)}
+                    >
+                      {policyOpen ? c.policyLess : c.policyMore}
+                    </Button>
+                  </div>
+                ) : null}
                 <CheckField
                   label={c.policyAccept}
                   checked={accepted}
@@ -425,6 +475,7 @@ export function CheckoutScreen() {
                   disabled={busy}
                   onChange={(event) => {
                     setAccepted(event.target.checked);
+                    setEdited(true);
                     if (event.target.checked) setPolicyError(null);
                   }}
                 />
@@ -446,16 +497,16 @@ export function CheckoutScreen() {
                   return (
                     <li key={line.variantId}>
                       <span className="ls-shop-mini-name">
-                        {source ? lineName(source, locale) : line.variantId}
-                        <span className="ls-hint">
+                        {/* The cart is read with the quote; until it is, the line shows no raw id (wig checkout-screen.tsx:449). */}
+                        {source ? lineName(source, locale) : null}
+                        <span className="ls-shop-line-meta">
                           {fill(c.quantityTimes, { quantity: line.quantity })}
-                          {line.mode === 'PRE_ORDER' ? (
-                            <>
-                              {' · '}
-                              <Badge tone="info">{c.preOrder}</Badge>
-                            </>
-                          ) : null}
                         </span>
+                        {line.mode === 'PRE_ORDER' ? (
+                          <Badge tone="outline" icon={false}>
+                            {c.preOrder}
+                          </Badge>
+                        ) : null}
                       </span>
                       <span className="ls-shop-mini-total">
                         {formatVnd(line.lineTotalVnd, locale)}
@@ -471,10 +522,14 @@ export function CheckoutScreen() {
                       {...control}
                       autoComplete="off"
                       autoCapitalize="characters"
+                      spellCheck={false}
                       maxLength={80}
                       value={voucherInput}
                       disabled={busy}
-                      onChange={(event) => setVoucherInput(event.target.value)}
+                      onChange={(event) => {
+                        setVoucherInput(event.target.value);
+                        setEdited(true);
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                           event.preventDefault();
@@ -485,7 +540,7 @@ export function CheckoutScreen() {
                   )}
                 </Field>
                 <Button
-                  variant="secondary"
+                  variant="neutral"
                   loading={checking}
                   disabled={busy}
                   onClick={() => void applyVoucher()}
@@ -501,10 +556,14 @@ export function CheckoutScreen() {
                       {...control}
                       autoComplete="off"
                       autoCapitalize="characters"
+                      spellCheck={false}
                       maxLength={40}
                       value={staffInput}
                       disabled={busy}
-                      onChange={(event) => setStaffInput(event.target.value)}
+                      onChange={(event) => {
+                        setStaffInput(event.target.value);
+                        setEdited(true);
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                           event.preventDefault();
@@ -515,7 +574,7 @@ export function CheckoutScreen() {
                   )}
                 </Field>
                 <Button
-                  variant="secondary"
+                  variant="neutral"
                   loading={checking}
                   disabled={busy}
                   onClick={() => void applyStaff()}
@@ -545,28 +604,30 @@ export function CheckoutScreen() {
                   },
                 ]}
               />
-              <p className="ls-hint">
+              <p className="ls-shop-note">
                 {fill(getShopText(locale).purchase.promise, promiseNumbers(sales))}
               </p>
-              {quote?.hasPreOrder ? <Notice tone="info">{c.preOrderNote}</Notice> : null}
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                fullWidth
-                loading={busy}
-                disabled={quote === null || checking}
-              >
-                {phase === 'redirecting'
-                  ? c.redirecting
-                  : phase === 'placing'
-                    ? c.placing
-                    : c.place}
-              </Button>
-              <p className="ls-hint">{fill(c.payNote, { minutes: sales.unpaidTimeoutMinutes })}</p>
+              {quote?.hasPreOrder ? (
+                <p className="ls-shop-note">
+                  <Icon name="info" size={16} aria-hidden="true" />
+                  {c.preOrderNote}
+                </p>
+              ) : null}
+              <div className="ls-pay-inline">{submitButton}</div>
+              <p className="ls-shop-note">
+                {fill(c.payNote, { minutes: sales.unpaidTimeoutMinutes })}
+              </p>
             </Stack>
           </Card>
         </div>
+        {/* Inside the form, so its button submits it; one of the two submit buttons is shown at a time (CSS). */}
+        <PayBar
+          label={c.payBar}
+          totalLabel={c.total}
+          total={quote ? formatVnd(quote.totalVnd, locale) : '—'}
+        >
+          {submitButton}
+        </PayBar>
       </form>
       {deleting ? (
         <ConfirmDialog

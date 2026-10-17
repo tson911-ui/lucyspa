@@ -18,7 +18,10 @@ export interface CampaignsPublicText {
   /** Link of the sale view back to the whole list. */
   allProducts: string;
   /** Accessible name of the sale view's top section. */
-  saleLabel: string;
+  /** A campaign link that matches no running campaign (ended, or a stale link): the empty state's heading, sentence and action. */
+  endedTitle: string;
+  endedBody: string;
+  endedAction: string;
 }
 
 const text: Record<Locale, CampaignsPublicText> = {
@@ -29,7 +32,10 @@ const text: Record<Locale, CampaignsPublicText> = {
     until: 'Đến hết ngày {date}',
     priceFrom: 'Khuyến mãi: {name}',
     allProducts: 'Xem tất cả sản phẩm',
-    saleLabel: 'Chương trình khuyến mãi',
+    endedTitle: 'Ưu đãi này đã kết thúc',
+    endedBody:
+      'Chương trình khuyến mãi này đã hết hạn hoặc không còn áp dụng. Mời bạn xem các mỹ phẩm đang bán.',
+    endedAction: 'Xem tất cả mỹ phẩm',
   },
   en: {
     stripsLabel: 'Promotions',
@@ -38,7 +44,10 @@ const text: Record<Locale, CampaignsPublicText> = {
     until: 'Until {date}',
     priceFrom: 'Promotion: {name}',
     allProducts: 'See all products',
-    saleLabel: 'Promotion',
+    endedTitle: 'This offer has ended',
+    endedBody:
+      'This promotion has ended or no longer applies. Have a look at the cosmetics on sale now.',
+    endedAction: 'See all cosmetics',
   },
 };
 

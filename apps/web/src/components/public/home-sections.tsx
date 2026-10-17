@@ -4,7 +4,7 @@ import type {
   PublicSlideImage,
   PublicWhy,
 } from '@lucy-spa/contracts';
-import { buttonClass, Icon, Notice, Reveal } from '@lucy-spa/ui';
+import { Icon, Notice } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
@@ -17,7 +17,9 @@ import {
   telHref,
   type HomeGroup,
 } from '../../lib/public-site-core';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { CategoryTile } from './category-tile';
+import { ReloadButton } from './reload-button';
 
 /** A section that could not be read: a notice with a way to try again; the rest of the page still renders. */
 export function LoadNotice({ locale, section }: { locale: Locale; section: string }) {
@@ -26,23 +28,23 @@ export function LoadNotice({ locale, section }: { locale: Locale; section: strin
     <div className="ls-page-notice">
       <Notice tone="warning">{fill(text.loadError, { section })}</Notice>
       <div className="ls-site-actions">
-        <Link className={buttonClass('secondary')} href={`/${locale}`} prefetch={false}>
-          {text.reload}
-        </Link>
+        <ReloadButton label={text.reload} />
       </div>
     </div>
   );
 }
 
 /**
- * The trust band (DESIGN.md 9.1, item 2): the facts every visitor looks for, as the Owner arranged them in Shop info (the built-in
- * opening hours, address and hotline, each can be hidden, and any custom lines, in the Owner's order), each as a `title` figure with a
- * small caption. The address opens the map link, the hotline dials. No number is made up: a figure is the Owner's own text. Nothing at
- * all when the Owner hid the strip or every item.
+ * The trust band (DESIGN.md 9.1, item 2; brief B3): the facts every visitor looks for, as the Owner arranged them in Shop info (the
+ * built-in opening hours, address and phone, each can be hidden, and any custom lines, in the Owner's order). Each fact is its value
+ * with a 14 px caption under it (icon + word), never a label above it. The hours and the phone are `title` figures; the address is
+ * long, so it is set one step smaller and wraps by word, and its caption is the "Chỉ đường" link (a new tab). The phone dials. No
+ * number is made up: a figure is the Owner's own text. Nothing at all when the Owner hid the strip or every item.
  */
 export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteResponse }) {
-  const text = getSiteText(locale).home;
-  const headline = hoursHeadline(site.hours, locale, text.closed);
+  const text = getSiteText(locale);
+  const home = text.home;
+  const headline = hoursHeadline(site.hours, locale, home.closed);
   const items = site.facts.flatMap((fact) => {
     const icon = <Icon className="ls-icon-lead" name={fact.icon} size={16} aria-hidden="true" />;
     if (fact.kind === 'HOURS') {
@@ -61,14 +63,20 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
     if (fact.kind === 'ADDRESS') {
       return [
         <div key="address" className="ls-home-fact" data-fact="address">
-          <p className="ls-home-fact-figure">
-            <a href={directionsUrl(site)} target="_blank" rel="noopener noreferrer">
-              {site.address}
-            </a>
+          <p className="ls-home-fact-figure" data-size="long">
+            {site.address}
           </p>
           <p className="ls-home-fact-caption">
             {icon}
-            {text.factAddress}
+            <a
+              className="ls-link ls-home-fact-link"
+              href={directionsUrl(site)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${home.directions} (${text.infoPage.newTab})`}
+            >
+              {home.directions}
+            </a>
           </p>
         </div>,
       ];
@@ -77,11 +85,13 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
       return [
         <div key="hotline" className="ls-home-fact" data-fact="hotline">
           <p className="ls-home-fact-figure">
-            <a href={telHref(site)}>{site.hotline}</a>
+            <a className="ls-home-fact-tel" href={telHref(site)} translate="no">
+              {site.hotline}
+            </a>
           </p>
           <p className="ls-home-fact-caption">
             {icon}
-            {text.hotline}
+            {home.hotline}
           </p>
         </div>,
       ];
@@ -99,41 +109,45 @@ export function FactsStrip({ locale, site }: { locale: Locale; site: PublicSiteR
 }
 
 /**
- * The top services (DESIGN.md 9.1, item 3): one column for each of the first groups in the Owner's order, with the Owner's short
- * description when there is one, and the group's first services as text, price and an arrow. Each row opens the service.
+ * The price list (DESIGN.md 9.1, item 3): one column for each of the first groups in the Owner's order, with the Owner's short
+ * description when there is one, and the group's first services as name and price. Each row is one link to the service; its hover is
+ * the neutral grey step inside the row's own box (B5: never black, nothing drawn outside the column).
  */
 export function TopServices({ locale, columns }: { locale: Locale; columns: HomeGroup[] }) {
   return (
     <div className="ls-home-top">
-      {columns.map(({ group, description }, index) => (
-        <Reveal key={group.code} index={index}>
-          <section className="ls-home-top-col" aria-labelledby={`top-${group.code}`}>
-            <h3 className="ls-home-top-title" id={`top-${group.code}`}>
-              {group.name}
-            </h3>
-            {description ? <p className="ls-home-top-desc">{description}</p> : null}
-            <ul className="ls-home-top-list">
-              {group.services.map((service) => (
-                <li key={service.code}>
-                  <Link className="ls-home-top-row" href={serviceHref(locale, service.code)}>
-                    <span className="ls-home-top-name">{service.name}</span>
-                    <span className="ls-home-top-price">{cardPrice(service, locale)}</span>
-                    <Icon name="chevron-right" size={16} aria-hidden="true" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </Reveal>
+      {columns.map(({ group, description }) => (
+        <section key={group.code} className="ls-home-top-col" aria-labelledby={`top-${group.code}`}>
+          <h3 className="ls-home-top-title" id={`top-${group.code}`}>
+            {group.name}
+          </h3>
+          {description ? <p className="ls-home-top-desc">{description}</p> : null}
+          <ul className="ls-home-top-list">
+            {group.services.map((service) => (
+              <li key={service.code}>
+                <Link
+                  className="ls-home-top-row"
+                  href={serviceHref(locale, service.code)}
+                  transitionTypes={NAV_TRANSITION}
+                >
+                  <span className="ls-home-top-name">{service.name}</span>
+                  <span className="ls-home-top-price">{cardPrice(service, locale)}</span>
+                  <Icon name="chevron-right" size={16} aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       ))}
     </div>
   );
 }
 
 /**
- * The category grid (DESIGN.md 9.1, item 6): one tile for each group, the name at the bottom-left and the whole tile one link. No count
- * or badge beside a name. A tile with a photo the Owner chose draws it under one flat scrim with the name in white; without one the tile
- * is the flat placeholder.
+ * The category grid (DESIGN.md 9.1, item 6; R15): one tile for each group, the whole tile one link, the name in white at the bottom
+ * leading corner over one flat scrim when the Owner chose a photo (the photo fills the tile), else the flat placeholder with ink text.
+ * No count or badge beside a name. Three columns from 1024 px; a last row that would hold one or two tiles widens them so no tile
+ * is left alone (B6, the stylesheet's six-track grid).
  */
 export function CategoryGrid({
   title,
@@ -146,11 +160,9 @@ export function CategoryGrid({
     <section className="ls-home-cats-group" aria-label={title}>
       <h3 className="ls-home-cats-title">{title}</h3>
       <ul className="ls-home-cats">
-        {items.map((item, index) => (
+        {items.map((item) => (
           <li key={item.key}>
-            <Reveal index={index}>
-              <CategoryTile name={item.name} href={item.href} image={item.image ?? null} />
-            </Reveal>
+            <CategoryTile name={item.name} href={item.href} image={item.image ?? null} />
           </li>
         ))}
       </ul>
@@ -179,13 +191,11 @@ export function WhyCards({ why }: { why: PublicWhy }) {
     <ul className="ls-home-why">
       {why.cards.map((card, index) => (
         <li key={`${card.heading}-${index}`}>
-          <Reveal index={index}>
-            <article className="ls-home-why-card">
-              <Icon name={card.icon} size={24} aria-hidden="true" />
-              <h3 className="ls-home-why-title">{card.heading}</h3>
-              <p className="ls-home-why-text">{card.description}</p>
-            </article>
-          </Reveal>
+          <article className="ls-home-why-card">
+            <Icon name={card.icon} size={24} aria-hidden="true" />
+            <h3 className="ls-home-why-title">{card.heading}</h3>
+            <p className="ls-home-why-text">{card.description}</p>
+          </article>
         </li>
       ))}
     </ul>

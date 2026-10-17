@@ -1,6 +1,7 @@
 import type { PublicProductBrand, PublicSlideImage } from '@lucy-spa/contracts';
 import { MotionPause } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import type { CSSProperties } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
@@ -49,6 +50,7 @@ function LogoSet({
               className="ls-brand-link"
               href={`/${locale}/products?brand=${encodeURIComponent(brand.code)}`}
               aria-label={text.home.brandLink.replace('{name}', brand.name)}
+              transitionTypes={NAV_TRANSITION}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized renditions with their alpha channel */}
               <img
@@ -58,6 +60,8 @@ function LogoSet({
                 height={brand.logo.height}
                 alt={filler ? '' : brand.logo.alt}
                 decoding="async"
+                // The copy that only closes the loop starts off screen: it may wait.
+                loading={filler ? 'lazy' : undefined}
               />
             </Link>
           </li>
@@ -68,19 +72,27 @@ function LogoSet({
 }
 
 /**
- * The brand band under the home hero (session 9, DESIGN.md 9.1): the logos of the cosmetics brands the shop sells, white on the burgundy
- * solid, one uniform height, each linking to that brand's product list. Server markup and CSS only (no script): the track moves slowly
- * and endlessly, pauses while the pointer is over it, a link has focus or a finger is down, has a pause checkbox, and under reduced motion or
- * the off switch it is a still, wrapped row of the first set.
- * Nothing is drawn when no brand is switched on.
+ * The brand band under the home hero (R16, DESIGN.md 17.2): a light band of the logos of the cosmetics brands the shop sells, drawn in ink at
+ * one height, evenly spaced, no boxes, each linking to that brand's product list. Server markup and CSS only (no script): the track moves
+ * slowly and endlessly (a continuous marquee, one of the page's allowed motions), pauses while the pointer is over it, a link has focus or a
+ * finger is down, has a pause checkbox, and under reduced motion, data saver or the off switch it is a still, wrapped row of the first set.
+ * The band takes its place in the home page's alternation (`tone`). Nothing is drawn when no brand is switched on.
  */
-export function BrandBand({ locale, brands }: { locale: Locale; brands: readonly BandBrand[] }) {
+export function BrandBand({
+  locale,
+  brands,
+  tone = 'base',
+}: {
+  locale: Locale;
+  brands: readonly BandBrand[];
+  tone?: 'base' | 'alt';
+}) {
   if (brands.length === 0) return null;
   const text = getSiteText(locale);
   const loop = loopOf(brands);
   return (
     <section
-      className="ls-brand-band"
+      className={`ls-brand-band ls-band--${tone}`}
       aria-label={text.home.brandBandLabel}
       style={{ '--ls-brand-seconds': loop.length * SECONDS_PER_LOGO } as CSSProperties}
     >

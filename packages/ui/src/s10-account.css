@@ -1,0 +1,63 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): account pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages. */
+
+/* A2 account deletion (apps/web/src/components/customer/screens/account-deletion.tsx; classes used only there). One card per role
+   (blockers, consequences, confirmation); inside a card the groups are split by spacing and one hairline, never boxed. */
+[data-ui='v2'] .ls-acct-del {
+  display: grid;
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-acct-del-block {
+  display: grid;
+  gap: var(--ls-space-3);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-acct-del-block + .ls-acct-del-block {
+  border-top: 1px solid var(--ls-border);
+  padding-top: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-acct-del-block > p {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-acct-del-list {
+  display: grid;
+  gap: var(--ls-space-2);
+  margin: 0;
+  padding-inline-start: var(--ls-space-5);
+}
+
+/* Two navigation links side by side: 44 px tall targets, at least 8 px apart, wrapping at 200 % text. */
+[data-ui='v2'] .ls-acct-del-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2) var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-acct-del-links > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+[data-ui='v2'] .ls-acct-del-form {
+  display: grid;
+  gap: var(--ls-space-4);
+}
+
+/* Cancel first, the destructive outline last at the trailing edge (DESIGN 8.1 footers); they stack on a narrow screen. */
+[data-ui='v2'] .ls-acct-del-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ls-space-3);
+}
+
+/* An order row: the advice, then its link on a line of its own (44 px target, Step 7 audit). */
+[data-ui='v2'] .ls-acct-del-list p {
+  margin: 0;
+}

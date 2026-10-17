@@ -1,0 +1,1107 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): public pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages. */
+
+/* ---- Placeholders (8.9 image frame; product-noimage plan) --------------------------------------------------------------------------- */
+/* A missing photo is one grey step from the band it sits on (never pure white or pure black, which read as a hole cut in the page): grey 2
+   on the base band, grey 3 on the alternate band. Hover and pressed go one step further each. */
+[data-ui='v2'] {
+  --ls-s10-ph: var(--ls-gray-2);
+  --ls-s10-ph-hover: var(--ls-gray-3);
+  --ls-s10-ph-pressed: var(--ls-gray-4);
+  /* Brand logos are marks: drawn in ink on a light page, in white on a dark one (R16). */
+  --ls-s10-logo-filter: brightness(0);
+}
+
+[data-ui='v2'] .ls-band--alt {
+  --ls-s10-ph: var(--ls-gray-3);
+  --ls-s10-ph-hover: var(--ls-gray-4);
+  --ls-s10-ph-pressed: var(--ls-gray-5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-preview-theme='light']) [data-ui='v2'] {
+    --ls-s10-logo-filter: brightness(0) invert(1);
+  }
+}
+
+:root[data-preview-theme='dark'] [data-ui='v2'],
+[data-preview-theme='dark'] [data-ui='v2'],
+[data-preview-theme='dark'][data-ui='v2'] {
+  --ls-s10-logo-filter: brightness(0) invert(1);
+}
+
+[data-ui='v2'] .ls-slot[data-empty='true'] {
+  place-items: center;
+  background: var(--ls-s10-ph);
+  color: var(--ls-text-subtle);
+}
+
+/* ---- Home: hero (R13, 9.1 item 1) --------------------------------------------------------------------------------------------------- */
+/* With the shop's photo: the full-width photo under the flat scrim, the words at the bottom (pages-v2.css). Without it: the words beside the
+   frame the photo will fill (from 1024 px; under them on a phone and a tablet). The opening sequence runs through `useMotion`
+   (home-hero.tsx), so the CSS keyframes of the earlier pass no longer apply. */
+[data-ui='v2'] .ls-home-hero-inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: var(--ls-space-7);
+  align-items: center;
+  padding-block: var(--ls-space-9);
+}
+
+[data-ui='v2'] .ls-home-hero-copy {
+  padding-block: 0;
+}
+
+[data-ui='v2'] .ls-home-hero-copy .ls-hero-title {
+  text-wrap: balance;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-hero-inner {
+    padding-block: var(--ls-space-10);
+  }
+
+  [data-ui='v2'] .ls-home-hero[data-media='flat'] .ls-home-hero-inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--ls-space-10);
+  }
+}
+
+[data-ui='v2'] .ls-home-hero-img,
+[data-ui='v2'] .ls-home-hero-copy > * {
+  animation: none;
+}
+
+[data-ui='v2'] [data-media='photo'] .ls-btn-on-photo:active {
+  background: color-mix(in srgb, var(--ls-on-photo) 16%, transparent);
+}
+
+/* ---- Home: brand band (R16, DESIGN.md 17.2) ----------------------------------------------------------------------------------------- */
+/* A light band in the page's alternation: logos in ink at one height, evenly spaced, no boxes, no colour. The pause control is a neutral
+   round button. The marquee and its still form under reduced motion and the off switch stay as pages-v2.css draws them. */
+[data-ui='v2'] .ls-brand-band {
+  padding-block: var(--ls-space-6);
+  background: var(--ls-band-base);
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-brand-band.ls-band--alt {
+  background: var(--ls-band-alt);
+}
+
+[data-ui='v2'] .ls-brand-logo {
+  height: var(--ls-space-7);
+  filter: var(--ls-s10-logo-filter);
+}
+
+[data-ui='v2'] .ls-brand-pause {
+  border-color: var(--ls-border-control);
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] :is(.ls-brand-pause, .ls-brand-link):focus-visible {
+  outline-color: var(--ls-focus);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-brand-pause:hover {
+    border-color: var(--ls-text);
+    background: var(--ls-hover-bg);
+  }
+
+  [data-ui='v2'] .ls-brand-link:hover {
+    border-block-end-color: var(--ls-text);
+  }
+}
+
+[data-ui='v2'] .ls-brand-pause:active {
+  background: var(--ls-pressed-bg);
+}
+
+[data-ui='v2'] .ls-brand-link:active {
+  border-block-end-color: var(--ls-text-muted);
+}
+
+/* ---- Home: trust band (B3) ---------------------------------------------------------------------------------------------------------- */
+/* Words break between words only (never one syllable per line); the address is one step smaller than the other figures; the phone and the
+   map link are 44 px targets. */
+[data-ui='v2'] .ls-home-fact-figure {
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-home-fact-figure[data-size='long'] {
+  font-size: var(--ls-type-heading);
+  line-height: var(--ls-lh-heading);
+  text-wrap: pretty;
+}
+
+[data-ui='v2'] .ls-home-fact-tel,
+[data-ui='v2'] .ls-home-fact-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+[data-ui='v2'] .ls-home-fact-tel {
+  white-space: nowrap;
+}
+
+[data-ui='v2'] .ls-home-fact-figure a:active {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+}
+
+/* ---- Home: price list rows (B5) ----------------------------------------------------------------------------------------------------- */
+/* The column's words sit 12 px in, so a row's hover tint (one grey step, never black, never the accent) stays inside the column's box
+   instead of an outline drawn past it. */
+[data-ui='v2'] :is(.ls-home-top-title, .ls-home-top-desc) {
+  padding-inline: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-home-top-row {
+  padding-inline: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-home-top-name {
+  overflow-wrap: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-home-top-row:hover {
+    background: var(--ls-hover-bg);
+    outline: 0;
+  }
+}
+
+[data-ui='v2'] .ls-home-top-row:active {
+  background: var(--ls-pressed-bg);
+}
+
+/* ---- Home: category grid (R15, B6) -------------------------------------------------------------------------------------------------- */
+/* Six tracks: a tile takes two (three across from 1024 px) or three (two across from 640 px). A last row that would leave one or two tiles
+   alone widens them to fill it, and the wider ratio keeps every row the same height (no orphan). Four tiles are two rows of two. */
+[data-ui='v2'] .ls-home-cats > li {
+  --ls-s10-tile: 16 / 9;
+}
+
+[data-ui='v2'] .ls-home-cat {
+  aspect-ratio: var(--ls-s10-tile);
+  background: var(--ls-s10-ph);
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-home-cats {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  [data-ui='v2'] .ls-home-cats > li {
+    --ls-s10-tile: 4 / 3;
+    grid-column: span 3;
+  }
+
+  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(odd) {
+    --ls-s10-tile: 8 / 3;
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-home-cats > li,
+  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(odd) {
+    --ls-s10-tile: 4 / 3;
+    grid-column: span 2;
+  }
+
+  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(3n + 1) {
+    --ls-s10-tile: 4 / 1;
+    grid-column: span 6;
+  }
+
+  [data-ui='v2'] .ls-home-cats > li:nth-last-child(2):nth-child(3n + 1),
+  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(3n + 2) {
+    --ls-s10-tile: 2 / 1;
+    grid-column: span 3;
+  }
+
+  [data-ui='v2'] .ls-home-cats:has(> li:nth-child(4):last-child) > li {
+    --ls-s10-tile: 2 / 1;
+    grid-column: span 3;
+  }
+}
+
+/* Hover is never the accent (R11): a flat tile goes one grey step; a photo tile keeps its scrim (the white name stays readable) and the
+   photo moves 2 %. Pressed: the tile presses in. */
+[data-ui='v2'] .ls-home-cat {
+  transition: scale var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+[data-ui='v2'] .ls-home-cat-img {
+  transition: scale var(--ls-dur-base) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-home-cat:hover {
+    background: var(--ls-s10-ph-hover);
+    color: var(--ls-text);
+  }
+
+  [data-ui='v2'] .ls-home-cat[data-media='photo']:hover {
+    background: var(--ls-s10-ph);
+    color: var(--ls-on-photo);
+  }
+
+  [data-ui='v2'] .ls-home-cat[data-media='photo']:hover::after {
+    background: var(--ls-scrim);
+    opacity: 1;
+  }
+
+  [data-ui='v2'] .ls-home-cat[data-media='photo']:hover .ls-home-cat-img {
+    scale: 1.02;
+  }
+}
+
+[data-ui='v2'] .ls-home-cat:active {
+  scale: var(--ls-press-scale);
+}
+
+[data-ui='v2'] .ls-home-cat:not([data-media='photo']):active {
+  background: var(--ls-s10-ph-pressed);
+}
+
+/* ---- Home: the running offer -------------------------------------------------------------------------------------------------------- */
+/* A neutral card (the accent is never a background, D5): ink words, a neutral outline badge and the kit's secondary button. */
+[data-ui='v2'] .ls-offer-card {
+  background: var(--ls-bg-surface);
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-offer-card .ls-offer-badge {
+  border-color: var(--ls-border-control);
+  color: var(--ls-text);
+}
+
+[data-ui='v2'] .ls-offer-card :is(.ls-offer-message, .ls-offer-until) {
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-offer-picture {
+  background: var(--ls-s10-ph);
+}
+
+/* ---- Cards with a stretched link (Owner answer 2; 8.3) ------------------------------------------------------------------------------ */
+/* The name's link covers the card (its ::after, pages-v2.css); a service card's "Đặt lịch" outline button sits above it. The focus ring is
+   drawn round the whole card, the card presses in when its link is pressed, and the photo moves 2 % on hover. Names wrap by word and are
+   never cut (Owner answer 7, C15). */
+[data-ui='v2'] .ls-pcard-name a {
+  display: block;
+  overflow: visible;
+  overflow-wrap: break-word;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+}
+
+[data-ui='v2'] .ls-svc-card-name a {
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] :is(.ls-pcard-name, .ls-svc-card-name) a:focus-visible {
+  outline: 0;
+}
+
+[data-ui='v2']
+  :is(.ls-pcard, .ls-svc-card):has(:is(.ls-pcard-name, .ls-svc-card-name) a:focus-visible) {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: var(--ls-space-1);
+  border-radius: var(--ls-radius-lg);
+}
+
+[data-ui='v2'] :is(.ls-pcard, .ls-svc-card) {
+  transition: scale var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+[data-ui='v2'] :is(.ls-pcard, .ls-svc-card):has(:is(.ls-pcard-name, .ls-svc-card-name) a:active) {
+  scale: var(--ls-press-scale);
+}
+
+[data-ui='v2'] .ls-svc-media img {
+  transition: scale var(--ls-dur-base) var(--ls-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-svc-card:hover .ls-svc-media img {
+    scale: 1.02;
+  }
+
+  [data-ui='v2'] :is(.ls-pcard, .ls-svc-card):hover :is(.ls-pcard-name, .ls-svc-card-name) a {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: var(--ls-space-1);
+  }
+}
+
+[data-ui='v2'] :is(.ls-pcard-media, .ls-svc-media) {
+  background: var(--ls-s10-ph);
+}
+
+/* ---- Filter chips (B8, B10, B14, C4, C50) ------------------------------------------------------------------------------------------- */
+/* The services chips row is the bottom of the title band (same surface; B8: no black strip between two bands), sticky under the header.
+   A chosen chip is the accent fill with a check (not colour alone); its hover goes one fill step, never grey. A row that scrolls lets the
+   next chip peek and snaps chip by chip (B10). */
+[data-ui='v2'] .ls-svc-chips {
+  background: var(--ls-band-alt);
+}
+
+[data-ui='v2'] .ls-pills {
+  scroll-snap-type: x proximity;
+}
+
+[data-ui='v2'] .ls-pills a {
+  gap: var(--ls-space-2);
+  scroll-snap-align: start;
+}
+
+[data-ui='v2'] .ls-pills a svg {
+  flex: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-pills a[aria-current='true']:hover {
+    color: var(--ls-on-brand);
+    background: var(--ls-brand-fill-hover);
+  }
+}
+
+[data-ui='v2'] .ls-pills a[aria-current='true']:active {
+  color: var(--ls-on-brand);
+  background: var(--ls-brand-fill-pressed);
+}
+
+/* A top category whose sub-category is chosen: the selected tint, so only the chosen chip is filled (C4: one accent fill). */
+[data-ui='v2'] .ls-pills a[data-ancestor='true'],
+[data-ui='v2'] .ls-pills a[data-ancestor='true']:is(:hover, :active) {
+  color: var(--ls-brand-on-soft);
+  background: var(--ls-brand-soft);
+}
+
+/* ---- Services list ------------------------------------------------------------------------------------------------------------------ */
+[data-ui='v2'] .ls-svc-intro {
+  gap: var(--ls-space-4);
+}
+
+/* ---- Service detail (9.2) ----------------------------------------------------------------------------------------------------------- */
+/* The price first (the title role), then the time with its icon: values without labels above them (B1); the labels are spoken only. */
+[data-ui='v2'] .ls-svd-price {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-svd-time {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: center;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-svd-time svg {
+  flex: none;
+}
+
+[data-ui='v2'] .ls-svd-copy .ls-hero-actions {
+  align-items: center;
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-svd-slot {
+  width: 100%;
+}
+
+/* ---- Products: list (9.2) ----------------------------------------------------------------------------------------------------------- */
+/* One quiet line per running campaign: a tag icon, the headline in ink, a text link (no tinted box, no badge above). */
+[data-ui='v2'] .ls-camp-strips {
+  gap: 0;
+}
+
+[data-ui='v2'] .ls-camp-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2) var(--ls-space-3);
+  align-items: center;
+  min-height: var(--ls-control-h);
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-camp-line + .ls-camp-line {
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-camp-line svg {
+  flex: none;
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-camp-line-text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-weight: var(--ls-weight-label);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-camp-line-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-camp-hero-meta {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+}
+
+/* The toolbar: search, brand, sort (and the phone's filter button) at one height and one pill shape. */
+[data-ui='v2'] .ls-prod-tools :is(.ls-select, select, .ls-btn) {
+  min-height: var(--ls-control-h);
+  border-radius: var(--ls-radius-full);
+}
+
+[data-ui='v2'] .ls-prod-brand {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-prod-brand {
+    display: block;
+    flex: 0 1 var(--ls-field-sm);
+    min-width: 0;
+  }
+}
+
+/* Cards in the grid: the body stays a column so the price ends each card on one line within a row (B6). */
+[data-ui='v2'] .ls-pcard {
+  grid-template-rows: auto 1fr;
+}
+
+[data-ui='v2'] .ls-pcard .ls-prod-stock,
+[data-ui='v2'] .ls-prod-offer .ls-prod-stock {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: center;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-prod-stock svg {
+  flex: none;
+}
+
+/* Sold out is a status: the warning colour with its icon and word (never colour alone, B18). */
+[data-ui='v2'] .ls-prod-stock[data-state='OUT_OF_STOCK'] {
+  color: var(--ls-warning);
+  font-weight: var(--ls-weight-label);
+}
+
+/* ---- Products: the product page (9.2, R17) ------------------------------------------------------------------------------------------ */
+/* Gallery 7 / info 5 from 1024 px; below it the gallery takes the full width, so the picture fills its square frame edge to edge instead of
+   sitting centred with margins. */
+[data-ui='v2'] .ls-prod-gallery {
+  max-width: none;
+  margin-inline: 0;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-prod-detail {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: start;
+  }
+}
+
+[data-ui='v2'] .ls-prod-viewport {
+  background: var(--ls-s10-ph);
+}
+
+[data-ui='v2'] .ls-prod-slide[data-empty='true'] {
+  color: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-prod-thumb {
+  background: var(--ls-s10-ph);
+}
+
+/* The gallery's thumbnails are buttons: a hover ring one step from rest and a stronger one when pressed (the chosen one keeps its
+   accent ring, the focus ring wins over both). The photo fills the button, so the state is drawn by the outline, not the fill. */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-prod-thumb:not([aria-current='true']):hover {
+    outline-color: var(--ls-border-control);
+  }
+}
+
+[data-ui='v2'] .ls-prod-thumb:not([aria-current='true']):active {
+  outline-color: var(--ls-text-subtle);
+}
+
+[data-ui='v2'] .ls-prod-thumb:focus-visible {
+  outline-color: var(--ls-focus);
+}
+
+[data-ui='v2'] .ls-prod-info .ls-h1-display {
+  overflow-wrap: break-word;
+}
+
+/* Category (a link) and brand under the price: one quiet line, no middle dot, no eyebrow above the name. */
+[data-ui='v2'] .ls-prod-meta-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-1) var(--ls-space-4);
+  align-items: center;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-prod-meta-links .ls-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+/* The variant picker (a segmented control) fills the column; long labels wrap inside their segment. */
+[data-ui='v2'] .ls-prod-offer .ls-prod-variants {
+  width: 100%;
+}
+
+/* Bought in the shop: the line, then the call and the directions as two pills of one size side by side (stacked when narrow). */
+[data-ui='v2'] .ls-shop-where {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: center;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-store-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-shop-store-actions .ls-btn {
+  gap: var(--ls-space-2);
+}
+
+/* The delivery facts: grey icons (accent is for actions, A3) and 14 px muted sentences (B1). */
+[data-ui='v2'] .ls-shop-facts li > svg {
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-shop-facts .ls-hint {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* Where to buy: a plain text section in the about band (no card inside the band, B12/B19), one line per fact with its icon. */
+[data-ui='v2'] .ls-prod-store {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-prod-store-lines {
+  display: grid;
+  gap: var(--ls-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-prod-store-lines li {
+  display: flex;
+  gap: var(--ls-space-3);
+  align-items: flex-start;
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-prod-store-lines svg {
+  flex: none;
+  margin-top: var(--ls-space-1);
+  color: var(--ls-text-muted);
+}
+
+/* ---- Shop: notes and line meta (B1: 14 px muted, not 12 px faint; icon + words) ------------------------------------------------- */
+[data-ui='v2'] .ls-shop-note {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: flex-start;
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-note[data-tone='warning'] {
+  color: var(--ls-warning);
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] :is(.ls-shop-note, .ls-shop-problem) svg {
+  flex: none;
+  margin-top: calc(var(--ls-space-1) / 2);
+}
+
+[data-ui='v2'] .ls-shop-line-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-1);
+  align-items: center;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* ---- Cart (9.2): rows that reflow by their own width, never one letter per line (C16) ------------------------------------------- */
+/* The list is a size container: a row is thumb + words on one line and the stepper, remove and total on the next, until the list is
+   36 rem wide (rem grows with the text size, so at 200 % text the rows stay two-line). Only then does the stepper move beside the words. */
+[data-ui='v2'] .ls-shop-lines {
+  container-type: inline-size;
+}
+
+[data-ui='v2'] .ls-shop-line {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+[data-ui='v2'] .ls-shop-line-side {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+@container (min-width: 36rem) {
+  [data-ui='v2'] .ls-shop-line {
+    grid-template-columns: auto minmax(12ch, 1fr) auto;
+  }
+
+  [data-ui='v2'] .ls-shop-line-side {
+    grid-column: auto;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
+
+[data-ui='v2'] .ls-shop-line-name {
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-heading);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-shop-line-price del {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+}
+
+/* A missing picture is a framed placeholder one grey step from the card (its text starts on the same edge as the others). */
+[data-ui='v2'] .ls-shop-line-thumb .ls-thumb {
+  background: var(--ls-gray-3);
+  color: var(--ls-text-subtle);
+}
+
+/* A line's problem: the danger icon and the words under the name; the checkout button brings the focus here. */
+[data-ui='v2'] .ls-shop-problem {
+  display: flex;
+  gap: var(--ls-space-2);
+  align-items: flex-start;
+  color: var(--ls-danger);
+}
+
+[data-ui='v2'] .ls-shop-problem:focus {
+  border-radius: var(--ls-radius-sm);
+  outline: 2px solid var(--ls-focus);
+  outline-offset: var(--ls-space-1);
+}
+
+/* The undo row after a line is removed (C72): one hairline row, the words, "Hoàn tác" and a close button. */
+[data-ui='v2'] .ls-shop-undo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2) var(--ls-space-3);
+  align-items: center;
+  padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) var(--ls-space-4);
+  border: 1px solid var(--ls-border);
+  border-radius: var(--ls-radius-lg);
+}
+
+[data-ui='v2'] .ls-shop-undo > svg {
+  flex: none;
+  color: var(--ls-success);
+}
+
+[data-ui='v2'] .ls-shop-undo p {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+  overflow-wrap: break-word;
+}
+
+/* ---- Cart and checkout: the phone's pay bar (plans customer/cart, customer/checkout) ------------------------------------------------ */
+/* Below 1024 px the total and the one filled button stay at the bottom of the scrolling page, above the tab bar: the kit's sticky action
+   bar, in the flow, so it keeps its own room at the end of the content and covers nothing; the summary card's copy of the button is
+   hidden there, so one filled button is in view. No entrance motion. At a large text size the bar wraps and stops sticking. */
+[data-ui='v2'] .ls-pay-bar {
+  display: none;
+}
+
+@media (max-width: 1023.98px) {
+  [data-ui='v2'] .ls-pay-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ls-space-2) var(--ls-space-4);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ls-space-3) 0 calc(var(--ls-space-3) + var(--ls-safe-bottom));
+    animation: none;
+  }
+
+  [data-ui='v2'] .ls-pay-inline {
+    display: none;
+  }
+}
+
+html[data-text-large] [data-ui='v2'] .ls-pay-bar {
+  position: relative;
+  bottom: auto;
+}
+
+[data-ui='v2'] .ls-pay-bar-total {
+  display: grid;
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-pay-bar-label {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-pay-bar-total strong {
+  font-size: var(--ls-type-price);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-price);
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-pay-bar-action {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+/* ---- Checkout --------------------------------------------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-pay-method {
+  display: flex;
+  gap: var(--ls-space-3);
+  align-items: flex-start;
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-pay-method > svg {
+  flex: none;
+  margin-top: var(--ls-space-1);
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-pay-method > span {
+  display: grid;
+  gap: var(--ls-space-1);
+}
+
+[data-ui='v2'] .ls-pay-method strong {
+  font-weight: var(--ls-weight-label);
+}
+
+[data-ui='v2'] .ls-shop-policy-text {
+  display: grid;
+  gap: var(--ls-space-3);
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-shop-policy-text p {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-shop-mini-name {
+  display: grid;
+  gap: var(--ls-space-1);
+  justify-items: start;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* ---- Online orders ---------------------------------------------------------------------------------------------------------------- */
+/* An order's lines: one hairline row each, the name (it wraps) and "quantity × price" under it, the line total at the trailing edge. */
+[data-ui='v2'] .ls-order-lines {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-order-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ls-space-4);
+  align-items: start;
+  padding-block: var(--ls-space-4);
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-order-line:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+[data-ui='v2'] .ls-order-line:last-child {
+  padding-bottom: 0;
+}
+
+[data-ui='v2'] .ls-order-line-main {
+  display: grid;
+  gap: var(--ls-space-1);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-order-line-name {
+  font-weight: var(--ls-weight-label);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-order-line-total {
+  white-space: nowrap;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* The state sentence is body text (17/400), one short line; the live countdown keeps its digits still and warns under five minutes. */
+[data-ui='v2'] .ls-shop-state {
+  font-weight: var(--ls-weight-body);
+}
+
+[data-ui='v2'] .ls-order-countdown {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+  align-items: center;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+[data-ui='v2'] .ls-order-countdown[data-urgent='true'] {
+  color: var(--ls-warning);
+}
+
+[data-ui='v2'] .ls-timeline-date {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* The delivery address in the summary card, under a hairline: plain lines. */
+[data-ui='v2'] .ls-order-address {
+  display: grid;
+  gap: var(--ls-space-1);
+  margin-top: var(--ls-space-6);
+  padding-top: var(--ls-space-6);
+  border-top: 1px solid var(--ls-border);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-order-address-title {
+  margin: 0 0 var(--ls-space-2);
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-order-address p {
+  margin: 0;
+}
+
+/* A cancelled order is a record, not a bill: its totals are quiet. */
+[data-ui='v2']
+  .ls-order-layout[data-closed='true']
+  .ls-order-summary
+  :is(.ls-dl-term, .ls-dl-value) {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+}
+
+/* ---- Contact (9.2, contact plan) -------------------------------------------------------------------------------------------------- */
+/* The words leading, the framed map trailing (7 / 5 from 1024 px, the map as tall as the words, at least 20 rem). */
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-contact-band .ls-info-split {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--ls-space-10);
+    align-items: stretch;
+  }
+
+  [data-ui='v2'] .ls-contact-band .ls-contact-place {
+    grid-template-rows: minmax(20rem, 1fr) auto;
+    height: 100%;
+  }
+
+  [data-ui='v2'] .ls-contact-band .ls-contact-map {
+    aspect-ratio: auto;
+  }
+}
+
+[data-ui='v2'] .ls-contact-text {
+  display: grid;
+  gap: var(--ls-space-6);
+  align-content: start;
+}
+
+[data-ui='v2'] .ls-contact-address {
+  margin: 0;
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-contact-lines {
+  display: grid;
+  gap: var(--ls-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-contact-lines > li {
+  display: flex;
+  gap: var(--ls-space-3);
+  align-items: flex-start;
+  font-size: var(--ls-type-body);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-contact-lines > li > svg {
+  flex: none;
+  margin-top: var(--ls-space-1);
+  color: var(--ls-text-muted);
+}
+
+/* The ways to reach the spa: pills of one size in a grid (no orphan on a second row of one). */
+[data-ui='v2'] .ls-contact-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--ls-space-3);
+}
+
+[data-ui='v2'] :is(.ls-contact-actions, .ls-contact-place) .ls-btn {
+  gap: var(--ls-space-2);
+}
+
+/* The map is a framed picture: a hairline keeps the light map from glaring on the dark band (no filter on a third-party map). */
+[data-ui='v2'] .ls-contact-band .ls-contact-map {
+  border: 1px solid var(--ls-border);
+}
+
+/* ---- Information pages (policies) ------------------------------------------------------------------------------------------------- */
+/* Below 1024 px the side table of contents is a disclosure at the top of the text; from 1024 px the kit's sticky aside takes over. */
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-info-toc-phone {
+    display: none;
+  }
+}
+
+[data-ui='v2'] .ls-info-article .ls-info-toc-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-info-article .ls-info-toc-list li + li {
+  margin-top: 0;
+}
+
+[data-ui='v2'] .ls-info-article .ls-info-toc-list a {
+  display: flex;
+  align-items: center;
+  min-height: var(--ls-control-h);
+}
+
+/* An email or a phone number inside a policy sentence stays an inline link: the measure exempts links in running text from the target
+   size, and block padding made two links on neighbouring lines overlap (E2). */
+[data-ui='v2'] .ls-info-article .ls-info-contact {
+  padding-block: 0;
+}
+
+[data-ui='v2'] .ls-info-h2 {
+  margin-top: var(--ls-space-9);
+  font-size: var(--ls-type-heading);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-info-section:first-child .ls-info-h2 {
+  margin-top: 0;
+}
+
+/* Contact: the ways to reach the spa stack one per line in the words column (each label on one line), the same size as the map's button, so
+   the last of them and the map's button end on one line (grid alignment). */
+[data-ui='v2'] .ls-contact-band .ls-contact-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The description band holds one column now (the in-store lines moved to the buy column): one readable measure, no empty second column. */
+[data-ui='v2'] .ls-pd-about-grid:not(:has(> :nth-child(2))) {
+  grid-template-columns: minmax(0, 46rem);
+}
+
+/* 640-767 px (also a laptop at 200 % zoom): the price is at its price role there, so a card needs 10 rem for "từ 231.200 ₫";
+   below 640 px the price takes the body role and the 7.5 rem cards of the phone grid hold it (pages-v2.css). */
+@media (min-width: 640px) and (max-width: 767px) {
+  [data-ui='v2'] .ls-prod-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+  }
+}
+
+/* Contact from 768 to 1023 px: one column (words, then the map). Two 340 px columns wrapped the address and left the columns' last
+   actions at different heights; the words-and-map split starts at 1024 px (above). */
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-ui='v2'] .ls-contact-band .ls-info-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The store block is a new topic after the buy actions: a block gap (32 px) above it, not the 16 px of the rows inside the column. */
+[data-ui='v2'] .ls-prod-info > .ls-prod-store {
+  margin-block-start: var(--ls-space-4);
+}
+
+/* The size picker is the kit's segmented control: the old radio-card rule (site.css .ls-prod-variants, a one-column grid) stacked its
+   options under a thumb sized for one row. It keeps the segmented row. */
+[data-ui='v2'] .ls-segmented.ls-prod-variants {
+  display: flex;
+}

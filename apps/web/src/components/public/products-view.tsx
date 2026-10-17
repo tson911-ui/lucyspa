@@ -5,19 +5,11 @@ import type {
   PublicProductsResponse,
   PublicSiteResponse,
 } from '@lucy-spa/contracts';
-import {
-  Accordion,
-  Badge,
-  Band,
-  buttonClass,
-  EmptyState,
-  Icon,
-  PublicMain,
-  Reveal,
-} from '@lucy-spa/ui';
+import { Accordion, Badge, Band, buttonClass, EmptyState, Icon, PublicMain } from '@lucy-spa/ui';
 import Link from 'next/link';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import {
   activeFilterCount,
   activeCampaign,
@@ -28,16 +20,16 @@ import {
 } from '../../lib/public-products-core';
 import { directionsUrl, hoursHeadline, telHref } from '../../lib/public-site-core';
 import { PageBack } from '../navigation/page-back';
-import { CampaignHero, CampaignStrips } from './campaign-views';
+import { CampaignEnded, CampaignHero, CampaignStrips } from './campaign-views';
 import { LoadNotice } from './home-sections';
 import { ProductCard } from './product-card';
 import { ProductGallery } from './product-gallery';
 import { ProductImage } from './product-image';
-import { ProductOffer } from './product-offer';
+import { ProductOffer, type StoreContact } from './product-offer';
 import { ProductsPager, ProductsToolbar } from './products-controls';
-import { PublicBreadcrumbs } from './public-breadcrumbs';
 import { ScrollRow } from './scroll-row';
 
+/** The back chevron of a product page (C40, B7): icon only, named for its parent; nothing on the list, a top-level destination. */
 function ProductsBack({ locale }: { locale: Locale }) {
   return (
     <PageBack
@@ -154,9 +146,10 @@ function FilterGroups({
 }
 
 /**
- * The category and brand chips of the list (DESIGN.md 9.2), from 640 px; a phone has the filter sheet instead. They are links, so they work
- * without scripts and can be shared. The first row is the top-level categories; once one is chosen (or one of its sub-categories) a
- * second row offers its sub-categories. Choosing the parent again is the way back to all of it.
+ * The category chips of the list (DESIGN.md 9.2), from 640 px; a phone has the filter sheet instead. They are links, so they work without
+ * scripts and can be shared. The first row is the top-level categories; once one is chosen (or one of its sub-categories) a second row
+ * offers its sub-categories. Only the chosen chip is filled (with a check); a parent whose sub-category is chosen takes the selected tint
+ * (C4: one accent fill). The brand is a select in the toolbar, not a second chip row.
  */
 function FilterChips({
   locale,
@@ -169,38 +162,40 @@ function FilterChips({
 }) {
   const text = getSiteText(locale).products;
   const top = data.categories.filter((category) => category.parentCode === null);
+  if (top.length === 0) return null;
   const chosen = data.categories.find((category) => category.code === state.category);
   const activeTop = chosen ? (chosen.parentCode ?? chosen.code) : '';
   const subs = data.categories.filter((category) => category.parentCode === activeTop);
   const href = (patch: Partial<ProductsState>) => productsHref(locale, withFilter(state, patch));
-  const chip = (key: string, label: string, selected: boolean, to: string) => (
+  const chip = (key: string, label: string, selected: boolean, to: string, ancestor = false) => (
     <Link
       key={key}
       href={to}
       prefetch={false}
       scroll={false}
       aria-current={selected ? 'true' : undefined}
+      data-ancestor={ancestor ? 'true' : undefined}
     >
+      {selected ? <Icon name="check" size={16} aria-hidden="true" /> : null}
       {label}
     </Link>
   );
   return (
     <div className="ls-prod-chips">
-      {top.length > 0 ? (
-        <nav className="ls-pills" aria-label={text.categories}>
-          {chip('all', text.allCategories, state.category === '', href({ category: '' }))}
-          {top.map((category) =>
-            chip(
-              category.code,
-              category.name,
-              activeTop === category.code,
-              href({ category: category.code }),
-            ),
-          )}
-        </nav>
-      ) : null}
+      <nav className="ls-pills" aria-label={text.categories}>
+        {chip('all', text.allCategories, state.category === '', href({ category: '' }))}
+        {top.map((category) =>
+          chip(
+            category.code,
+            category.name,
+            state.category === category.code,
+            href({ category: category.code }),
+            activeTop === category.code && state.category !== category.code,
+          ),
+        )}
+      </nav>
       {subs.length > 0 ? (
-        <nav className="ls-pills" aria-label={text.categories}>
+        <nav className="ls-pills" aria-label={text.subCategories}>
           {subs.map((category) =>
             chip(
               category.code,
@@ -211,22 +206,16 @@ function FilterChips({
           )}
         </nav>
       ) : null}
-      {data.brands.length > 1 ? (
-        <nav className="ls-pills" aria-label={text.brands}>
-          {chip('all-brands', text.allBrands, state.brand === '', href({ brand: '' }))}
-          {data.brands.map((brand) =>
-            chip(brand.code, brand.name, state.brand === brand.code, href({ brand: brand.code })),
-          )}
-        </nav>
-      ) : null}
     </div>
   );
 }
 
 /**
- * The public cosmetics list (DESIGN.md 9.2): the title band (the Owner's hero, or a plain title) with the campaign strips, then the list band
- * with the search, the sort, the category and brand chips, the grid of cards (2 / 3 / 4 across) and the pager, and the Owner's commitment as
- * a last band. Everything the visitor chose is in the address, so the server draws exactly that page. The page has one `h1`.
+ * The public cosmetics list (DESIGN.md 9.2): the title band (the Owner's hero, or a plain title, or a running campaign's sale view) with the
+ * campaign lines, then the list band with the search, the brand and the sort, the category chips, the grid of cards (2 / 3 / 4 across) and
+ * the pager, and the Owner's commitment as a last band. Everything the visitor chose is in the address, so the server draws exactly that
+ * page. The page has one `h1`; the list band is named, not titled (a heading "Sản phẩm" under "Mỹ phẩm" repeated it). A campaign link that
+ * matches no running campaign says the offer has ended (with a way on) instead of an empty list. Nothing reveals on scroll (G2).
  */
 export function ProductsView({
   locale,
@@ -246,11 +235,12 @@ export function ProductsView({
   const text = getSiteText(locale);
   const t = text.products;
   const hero = data?.hero ?? null;
-  const filterGroups = data ? <FilterGroups locale={locale} state={state} data={data} /> : null;
   const hasFilters = data !== null && (data.categories.length > 0 || data.brands.length > 1);
   const title = hero?.title ?? t.title;
-  // A sale view of a campaign that is running replaces the Owner's hero; an unknown or ended one shows the normal page.
+  // A sale view of a campaign that is running replaces the Owner's hero. A campaign the visitor asked for that is not among the running
+  // ones (read successfully) has ended: the list band says so. When the campaigns could not be read, the normal page is shown.
   const sale = activeCampaign(campaigns, state);
+  const ended = Boolean(state.campaign) && sale === null && campaigns !== null;
   const plain = !state.campaign;
   const reset = productsHref(
     locale,
@@ -265,10 +255,9 @@ export function ProductsView({
   return (
     <PublicMain>
       <Band tone="page" className="ls-band--alt ls-prod-title">
-        <ProductsBack locale={locale} />
         {sale ? (
           <CampaignHero locale={locale} campaign={sale} onlineOpen={onlineOpen} />
-        ) : hero ? (
+        ) : hero && !ended ? (
           <section
             className={`ls-prod-hero${hero.image ? ' ls-prod-hero-image' : ''}`}
             aria-labelledby="products-title-h1"
@@ -287,15 +276,19 @@ export function ProductsView({
           </section>
         ) : (
           <div className="ls-public-title">
-            <h1 className="ls-h1-display">{title}</h1>
+            <h1 className="ls-h1-display">{ended ? t.title : title}</h1>
             <p className="ls-lead">{t.lead}</p>
           </div>
         )}
-        {plain && !sale ? (
+        {plain ? (
           <CampaignStrips locale={locale} campaigns={campaigns} onlineOpen={onlineOpen} />
         ) : null}
       </Band>
-      {data === null ? (
+      {ended ? (
+        <Band tone="page" className="ls-band--base">
+          <CampaignEnded locale={locale} />
+        </Band>
+      ) : data === null ? (
         <Band tone="page" className="ls-band--base">
           <LoadNotice locale={locale} section={t.title} />
         </Band>
@@ -303,8 +296,13 @@ export function ProductsView({
         <Band tone="page" className="ls-band--base">
           <EmptyState
             icon="droplet"
+            title={t.emptyTitle}
             action={
-              <Link className={buttonClass('secondary')} href={`/${locale}/services`}>
+              <Link
+                className={buttonClass('secondary')}
+                href={`/${locale}/services`}
+                transitionTypes={NAV_TRANSITION}
+              >
                 {t.emptyAction}
               </Link>
             }
@@ -314,21 +312,23 @@ export function ProductsView({
         </Band>
       ) : (
         <>
-          <Band tone="page" labelledBy={PRODUCTS_LIST_ID} className="ls-band--base ls-prod-list">
-            <div className="ls-prod-head">
-              <h2 className="ls-site-h2" id={PRODUCTS_LIST_ID}>
-                {t.sectionTitle}
-              </h2>
-              <ProductsToolbar locale={locale} state={state}>
-                {hasFilters ? filterGroups : null}
+          <Band tone="page" label={t.sectionTitle} className="ls-band--base ls-prod-list">
+            <div className="ls-prod-head" id={PRODUCTS_LIST_ID}>
+              <ProductsToolbar
+                locale={locale}
+                state={state}
+                brands={data.brands.length > 1 ? data.brands : []}
+              >
+                {hasFilters ? <FilterGroups locale={locale} state={state} data={data} /> : null}
               </ProductsToolbar>
             </div>
             {hasFilters ? <FilterChips locale={locale} state={state} data={data} /> : null}
             {data.items.length === 0 ? (
               <EmptyState
                 icon="search"
+                title={t.noMatchTitle}
                 action={
-                  <Link className={buttonClass('secondary')} href={reset}>
+                  <Link className={buttonClass('secondary')} href={reset} scroll={false}>
                     {t.filterReset}
                   </Link>
                 }
@@ -339,9 +339,13 @@ export function ProductsView({
               <ul className="ls-prod-grid">
                 {data.items.map((card, index) => (
                   <li key={card.code}>
-                    <Reveal index={index % 6}>
-                      <ProductCard locale={locale} card={card} priority={index < 2} sharePhoto />
-                    </Reveal>
+                    <ProductCard
+                      locale={locale}
+                      card={card}
+                      priority={index < 2}
+                      level={2}
+                      sharePhoto
+                    />
                   </li>
                 ))}
               </ul>
@@ -361,7 +365,10 @@ export function ProductsView({
   );
 }
 
-/** "Mua trực tiếp tại cửa hàng": where to buy, from the shop profile. */
+/**
+ * "Mua trực tiếp tại cửa hàng": where to buy, from the shop profile, as plain text in the about band (address, phone, hours). The actions
+ * to call the shop and to get directions sit in the buy column at the top of the page (B16), so they are not repeated here.
+ */
 function StoreBlock({ locale, site }: { locale: Locale; site: PublicSiteResponse }) {
   const text = getSiteText(locale);
   const t = text.products.store;
@@ -370,43 +377,54 @@ function StoreBlock({ locale, site }: { locale: Locale; site: PublicSiteResponse
     <section className="ls-prod-store" aria-labelledby="product-store-title">
       <h2 id="product-store-title">{t.title}</h2>
       <p>{t.body}</p>
-      <dl>
-        <div>
-          <dt>{t.address}</dt>
-          <dd>{site.address}</dd>
-        </div>
-        <div>
-          <dt>{t.hotline}</dt>
-          <dd>{site.hotline}</dd>
-        </div>
+      <ul className="ls-prod-store-lines">
+        <li>
+          <Icon name="map-pin" size={20} aria-hidden="true" />
+          <span>
+            <span className="ls-visually-hidden">{t.address}: </span>
+            {site.address}
+          </span>
+        </li>
+        <li>
+          <Icon name="phone" size={20} aria-hidden="true" />
+          {/* The number dials on a phone; it is the way to call while the buy column holds the online purchase. */}
+          <a className="ls-link" href={telHref(site)} translate="no">
+            <span className="ls-visually-hidden">{t.hotline}: </span>
+            {site.hotline}
+          </a>
+        </li>
         {hours ? (
-          <div>
-            <dt>{hours.label}</dt>
-            <dd>{hours.value}</dd>
-          </div>
+          <li>
+            <Icon name="clock" size={20} aria-hidden="true" />
+            <span>
+              {hours.label} {hours.value}
+            </span>
+          </li>
         ) : null}
-      </dl>
-      <div className="ls-site-actions">
-        <a
-          className={buttonClass('secondary')}
-          href={directionsUrl(site)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {t.directions}
-        </a>
-        <a className={buttonClass('primary')} href={telHref(site)}>
-          {t.call}
-        </a>
-      </div>
+      </ul>
     </section>
   );
 }
 
+/** The shop's phone and map link for the buy column's store actions (B16): the call and the directions are secondary buttons there. */
+function storeContact(site: PublicSiteResponse | null, locale: Locale): StoreContact | null {
+  if (!site) return null;
+  const t = getSiteText(locale);
+  return {
+    telHref: telHref(site),
+    directionsHref: directionsUrl(site),
+    callLabel: t.products.store.call,
+    directionsLabel: t.products.store.directions,
+    newTab: t.infoPage.newTab,
+  };
+}
+
 /**
- * One product on its own page (DESIGN.md 9.2): a split hero with the gallery on the left and the name, price, labels, variants and purchase
- * block on the right; then a band with the description, the usage / ingredients accordion and where to buy (the shop's own details), the
- * Owner's commitment, and the other products of the category as a row. A band is drawn only when it has content.
+ * One product on its own page (DESIGN.md 9.2): a split hero with the gallery on the left (its first picture arrives from the list card:
+ * the page's one moment) and the name, the labels, the price, the category and brand links, the variants and the purchase block on the
+ * right, which holds the page's one filled button (B16); then a band with the description, the usage / ingredients accordion and where to
+ * buy (text only), the Owner's commitment, and the other products of the category as a row. A band is drawn only when it has content. The
+ * way back is the chevron alone (no breadcrumb as well: one back affordance).
  */
 export function ProductDetailView({
   locale,
@@ -438,26 +456,32 @@ export function ProductDetailView({
   // The hero band is the alternate color; the bands after it alternate down the page.
   let tone: 'alt' | 'base' = 'alt';
   const nextTone = () => (tone = tone === 'alt' ? 'base' : 'alt');
-  const hasAbout = Boolean(product.description) || product.sections.length > 0 || site !== null;
+  const hasAbout = Boolean(product.description) || product.sections.length > 0;
+  const soldOut = product.variants.every((variant) => variant.stock.state === 'OUT_OF_STOCK');
+  // A function, so the band takes its colour where it is placed (first on a sold-out page, last otherwise).
+  const relatedBand = () =>
+    related.length > 0 ? (
+      <Band
+        tone="page"
+        labelledBy="product-related-title"
+        className={`ls-band--${nextTone()} ls-prod-related`}
+      >
+        <h2 className="ls-site-h2" id="product-related-title">
+          {soldOut ? t.similar : t.related}
+        </h2>
+        <ScrollRow label={t.related} previous={text.home.rowPrevious} next={text.home.rowNext}>
+          {related.map((card) => (
+            <li key={card.code} className="ls-snap-item">
+              <ProductCard locale={locale} card={card} />
+            </li>
+          ))}
+        </ScrollRow>
+      </Band>
+    ) : null;
   return (
     <PublicMain>
       <Band tone="page" className="ls-band--alt ls-pd-hero">
         <ProductsBack locale={locale} />
-        <PublicBreadcrumbs
-          label={t.breadcrumbs}
-          items={[
-            { label: t.title, href: `/${locale}/products` },
-            ...(product.category
-              ? [
-                  {
-                    label: product.category.name,
-                    href: `/${locale}/products?category=${encodeURIComponent(product.category.code)}`,
-                  },
-                ]
-              : []),
-            { label: product.name },
-          ]}
-        />
         <div className="ls-prod-detail">
           <ProductGallery
             images={product.images}
@@ -468,21 +492,42 @@ export function ProductDetailView({
             nextLabel={t.galleryNext}
           />
           <div className="ls-prod-info">
-            {product.category || product.brand ? (
-              <span className="ls-prod-meta">
-                {[product.category?.name, product.brand].filter(Boolean).join(' · ')}
-              </span>
-            ) : null}
             <h1 className="ls-h1-display">{product.name}</h1>
             {product.isNew ? (
               <div className="ls-prod-detail-badges">
                 <Badge tone="outline">{t.badgeNew}</Badge>
               </div>
             ) : null}
-            <ProductOffer locale={locale} variants={product.variants} />
+            <ProductOffer
+              locale={locale}
+              variants={product.variants}
+              store={storeContact(site, locale)}
+              meta={
+                product.category || product.brand ? (
+                  <p className="ls-prod-meta-links">
+                    {product.category ? (
+                      <Link
+                        className="ls-link"
+                        href={`/${locale}/products?category=${encodeURIComponent(product.category.code)}`}
+                        transitionTypes={NAV_TRANSITION}
+                      >
+                        {product.category.name}
+                      </Link>
+                    ) : null}
+                    {product.brand ? (
+                      <span className="ls-prod-meta-brand">{product.brand}</span>
+                    ) : null}
+                  </p>
+                ) : null
+              }
+            />
+            {/* The in-store lines belong to the buy column (plan customer/product-detail: flattened into the column, hairline rows). */}
+            {site ? <StoreBlock locale={locale} site={site} /> : null}
           </div>
         </div>
       </Band>
+      {/* Sold out: the similar products come first, as the next step (product-soldout plan). */}
+      {soldOut ? relatedBand() : null}
       {hasAbout ? (
         <Band tone="page" className={`ls-band--${nextTone()} ls-pd-about`}>
           <div className="ls-pd-about-grid">
@@ -508,7 +553,6 @@ export function ProductDetailView({
                 </div>
               ) : null}
             </div>
-            {site ? <StoreBlock locale={locale} site={site} /> : null}
           </div>
         </Band>
       ) : null}
@@ -517,26 +561,7 @@ export function ProductDetailView({
           <CommitmentBox commitment={commitment} headingLevel={2} />
         </Band>
       ) : null}
-      {related.length > 0 ? (
-        <Band
-          tone="page"
-          labelledBy="product-related-title"
-          className={`ls-band--${nextTone()} ls-prod-related`}
-        >
-          <Reveal>
-            <h2 className="ls-site-h2" id="product-related-title">
-              {t.related}
-            </h2>
-          </Reveal>
-          <ScrollRow label={t.related} previous={text.home.rowPrevious} next={text.home.rowNext}>
-            {related.map((card) => (
-              <li key={card.code} className="ls-snap-item">
-                <ProductCard locale={locale} card={card} />
-              </li>
-            ))}
-          </ScrollRow>
-        </Band>
-      ) : null}
+      {soldOut ? null : relatedBand()}
     </PublicMain>
   );
 }

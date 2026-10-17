@@ -18,7 +18,6 @@ function ProductRowSkeleton({ count }: { count: number }) {
             <div className="ls-pcard">
               <div className="ls-pcard-media" />
               <div className="ls-pcard-body">
-                <span className="ls-pcard-meta ls-skel">&nbsp;</span>
                 <span className="ls-pcard-name ls-skel ls-skel-name">&nbsp;</span>
                 <span className="ls-skel ls-skel-price">&nbsp;</span>
               </div>

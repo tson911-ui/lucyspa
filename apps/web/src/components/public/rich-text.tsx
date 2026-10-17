@@ -1,7 +1,8 @@
 import { inlineText, type RichBlock, type RichInline } from '@lucy-spa/contracts';
 import { InfoTable } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { Fragment } from 'react';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
+import { Fragment, type ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
 
 /**
@@ -9,28 +10,71 @@ import type { Locale } from '../../i18n/locales';
  * the Owner writes can only ever look like text, and every link was checked by the same rule when the page was saved (the API
  * refuses the rest) and is checked again below. `/{locale}/...` in a link is the visitor's language.
  */
+/** An email address or a Vietnamese phone number written as plain words (0934 936 101, 0934.936.101, +84 934 936 101). */
+const CONTACT = /([\w.+-]+@[\w-]+(?:\.[\w-]+)+)|((?:\+84|0)(?:[ .]?\d){8,10})(?!\d)/g;
+const SEPARATORS = /[ .]/g;
+
+/**
+ * Plain words with the contacts in them made tappable (policy-terms plan): an email becomes a `mailto:` link and a phone number a `tel:`
+ * link, with exactly the words the Owner wrote. Nothing else in the text changes.
+ */
+export function linkContacts(text: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  let last = 0;
+  for (const match of text.matchAll(CONTACT)) {
+    const start = match.index ?? 0;
+    if (start > last) parts.push(text.slice(last, start));
+    const [found, email] = match;
+    parts.push(
+      <a
+        key={start}
+        className="ls-info-contact"
+        href={email ? `mailto:${email}` : `tel:${found.replace(SEPARATORS, '')}`}
+        translate="no"
+      >
+        {found}
+      </a>,
+    );
+    last = start + found.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function Inlines({
   inlines,
   locale,
   newTabLabel,
+  inLink = false,
 }: {
   inlines: readonly RichInline[];
   locale: Locale;
   newTabLabel: string;
+  /** Inside a link already: the words stay plain (no link in a link). */
+  inLink?: boolean;
 }) {
   return (
     <>
       {inlines.map((inline, index) => {
-        if (inline.type === 'text') return <Fragment key={index}>{inline.text}</Fragment>;
+        if (inline.type === 'text') {
+          return (
+            <Fragment key={index}>{inLink ? inline.text : linkContacts(inline.text)}</Fragment>
+          );
+        }
         const children = (
-          <Inlines inlines={inline.children} locale={locale} newTabLabel={newTabLabel} />
+          <Inlines
+            inlines={inline.children}
+            locale={locale}
+            newTabLabel={newTabLabel}
+            inLink={inLink || inline.type === 'link'}
+          />
         );
         if (inline.type === 'strong') return <strong key={index}>{children}</strong>;
         if (inline.type === 'em') return <em key={index}>{children}</em>;
         const href = inline.href.replace('/{locale}', `/${locale}`);
         if (href.startsWith('/')) {
           return (
-            <Link key={index} href={href}>
+            <Link key={index} href={href} transitionTypes={NAV_TRANSITION}>
               {children}
             </Link>
           );

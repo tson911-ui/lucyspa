@@ -8,9 +8,13 @@ export default function Loading() {
   return (
     <PublicMain>
       <section className="ls-home-hero ls-band--alt" data-media="flat" aria-busy="true">
-        <div className="ls-container ls-home-hero-copy">
-          <Skeleton lines={2} height="var(--ls-space-9)" width="60%" />
-          <Skeleton lines={2} height="var(--ls-space-5)" width="80%" />
+        <div className="ls-container ls-home-hero-inner">
+          <div className="ls-home-hero-copy">
+            <Skeleton lines={2} height="var(--ls-space-9)" width="60%" />
+            <Skeleton lines={2} height="var(--ls-space-5)" width="80%" />
+          </div>
+          {/* The frame the hero photo (or its placeholder) takes, so nothing moves when the page arrives. */}
+          <div className="ls-slot ls-home-hero-slot" data-empty="true" aria-hidden="true" />
         </div>
       </section>
       <Band tone="page" className="ls-band--base">

@@ -28,11 +28,14 @@ import {
   Skeleton,
   Steps,
   TextInput,
+  useOptionalToast,
   useStepSlide,
+  useUrlState,
   type DescriptionItem,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { NAV_TRANSITION } from '../../../lib/nav-transition';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
 import { ApiError } from '../../../lib/api/client';
 import {
@@ -50,6 +53,7 @@ import {
   type BookingDraft,
   type Person,
 } from '../../../lib/customer/booking';
+import { invalidateCachedReads } from '../../../lib/customer/fetch-cache';
 import { formatBusinessDate } from '../../../lib/customer/invoice';
 import { matchesQuery } from '../../../lib/search-core';
 import {
@@ -66,6 +70,8 @@ import {
 } from '../../../lib/customer/booking-view';
 import { PageBack } from '../../navigation/page-back';
 import { useCustomer } from '../session';
+import { formatSlotTime } from '../member-format';
+import { useUnsavedGuard } from '../unsaved-guard';
 
 /** From this many services the first step offers a search box (a short list needs none). */
 const SEARCH_FROM = 8;
@@ -110,6 +116,55 @@ interface StepNav {
   onNext: () => void;
 }
 
+/** The step lives in the address bar (`?step=`), so Back/Forward move between steps and a reload stays on the step (wig book.tsx:120). */
+const STEP_URL_DEFAULTS = { step: 'services' };
+
+/** The choices of an unfinished booking are kept for this tab, so a reload (or Back into the flow) finds them again. */
+const DRAFT_STORAGE_KEY = 'ls-book-draft';
+
+function isDraft(value: unknown): value is BookingDraft {
+  if (typeof value !== 'object' || value === null) return false;
+  const draft = value as Record<string, unknown>;
+  const strings = (list: unknown) =>
+    Array.isArray(list) && list.every((item) => typeof item === 'string');
+  return (
+    typeof draft['branchId'] === 'string' &&
+    typeof draft['date'] === 'string' &&
+    typeof draft['startTime'] === 'string' &&
+    strings(draft['serviceIds']) &&
+    strings(draft['recipientOf']) &&
+    strings(draft['staffOf']) &&
+    Array.isArray(draft['people'])
+  );
+}
+
+function storedDraft(): BookingDraft {
+  try {
+    const raw = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    const value: unknown = raw ? JSON.parse(raw) : null;
+    return isDraft(value) ? value : emptyDraft();
+  } catch {
+    return emptyDraft();
+  }
+}
+
+function keepDraft(draft: BookingDraft | null): void {
+  try {
+    if (draft) window.sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    else window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // Storage blocked (private window): the flow works, only a reload forgets the choices.
+  }
+}
+
+/** The furthest step the choices allow: a reload or a shared address never opens a step whose earlier choices are missing. */
+function furthestStep(draft: BookingDraft): Step {
+  if (draft.serviceIds.length === 0) return 'services';
+  if (peopleProblem(draft) !== null) return 'guests';
+  if (!draft.date || !draft.startTime) return 'when';
+  return 'confirm';
+}
+
 /**
  * "Đặt lịch": four visible steps (services, guests, staff and time, confirm) over the same data and rules as before:
  * the server plans, re-checks under locks and confirms (O4); this screen only collects choices. The services may
@@ -117,16 +172,22 @@ interface StepNav {
  */
 export function BookScreen() {
   const { api, t, locale, base, sessionLost } = useCustomer();
-  const [step, setStep] = useState<Step>('services');
-  const [draft, setDraft] = useState<BookingDraft>(emptyDraft);
-  const [message, setMessage] = useState<string | null>(null);
+  const toast = useOptionalToast();
+  const [url, setUrl] = useUrlState(STEP_URL_DEFAULTS);
+  // The first render is the server's (an empty draft); the tab's stored draft is restored in a layout effect, before the browser paints
+  // (reading sessionStorage during render made the hydrated page differ from the server's: React #418).
+  const [chosenDraft, setDraft] = useState<BookingDraft>(emptyDraft);
+  useLayoutEffect(() => {
+    setDraft(storedDraft());
+  }, []);
+  // A failed confirmation and "Continue used while something is missing" belong to the step they happened on.
+  const [failure, setFailure] = useState<{ step: Step; text: string } | null>(null);
+  const [askedAt, setAskedAt] = useState<Step | null>(null);
   const [pending, setPending] = useState(false);
   const [created, setCreated] = useState<CustomerBookingDetail | null>(null);
   const idempotencyKey = useRef<string>('');
   const heading = useRef<HTMLHeadingElement>(null);
-  // The step slides in along the direction of the sequence (C17); before the success branch below, so the hook order never changes.
   const slide = useRef<HTMLDivElement>(null);
-  useStepSlide(slide, STEPS.indexOf(step));
   const preselected = useRef(false);
   // The branch, the day and the start time a booking link named (the website chat's link); applied once each.
   const prefill = useRef<BookingPrefill | null>(null);
@@ -143,6 +204,32 @@ export function BookScreen() {
     return prefill.current;
   };
   const onlyBranch = branches.data?.branches.length === 1 ? branches.data.branches[0] : undefined;
+  // One active branch: no question to ask. The branch is derived in render, not set by an effect (rbp book.tsx:153-156).
+  const draft: BookingDraft =
+    chosenDraft.branchId || !onlyBranch ? chosenDraft : { ...chosenDraft, branchId: onlyBranch.id };
+  // The step the address asks for, held back to the furthest one the choices allow.
+  const askedStep: Step = (STEPS as readonly string[]).includes(String(url.step))
+    ? (url.step as Step)
+    : 'services';
+  const step: Step = STEPS[
+    Math.min(STEPS.indexOf(askedStep), STEPS.indexOf(furthestStep(draft)))
+  ] as Step;
+  // The step slides in along the direction of the sequence (C17, G3: feedback through useMotion); also on Back/Forward.
+  useStepSlide(slide, STEPS.indexOf(step));
+  // Unsent choices: kept for this tab, and the visitor is asked before leaving the page (never after the booking is made).
+  const dirty =
+    created === null &&
+    !pending &&
+    (chosenDraft.serviceIds.length > 0 || chosenDraft.people.length > 1 || chosenDraft.date !== '');
+  useEffect(() => keepDraft(dirty ? chosenDraft : null), [dirty, chosenDraft]);
+  useUnsavedGuard(dirty, t.book.leaveBooking, { onLeave: () => keepDraft(null) });
+  // The new step's heading takes the focus (after a button or Back/Forward), not on the first paint.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    heading.current?.focus();
+  }, [step]);
   useEffect(() => {
     // A link that names a branch chooses it (when the customer has more than one to choose from).
     if (branchPrefilled.current || !branches.data || branches.data.branches.length < 2) return;
@@ -150,10 +237,6 @@ export function BookScreen() {
     const id = prefillBranchId(linked().branchCode, branches.data.branches);
     if (id) setDraft((current) => (current.branchId ? current : { ...current, branchId: id }));
   }, [branches.data]);
-  useEffect(() => {
-    // One active branch: no question to ask.
-    if (onlyBranch && !draft.branchId) setDraft({ ...emptyDraft(), branchId: onlyBranch.id });
-  }, [onlyBranch?.id]);
   const branch = useLoad(
     draft.branchId
       ? () =>
@@ -228,6 +311,18 @@ export function BookScreen() {
   );
   const serviceLabel = (service: BranchService) =>
     locale === 'vi' ? service.nameVi : service.nameEn;
+  // The search is matched once per service and the groups are built once per change of list or query (rbp book.tsx:478-493).
+  const serviceGroups = useMemo(() => {
+    const services = branch.data?.services ?? [];
+    const matching = services.filter((service) =>
+      matchesQuery(locale === 'vi' ? service.nameVi : service.nameEn, serviceQuery),
+    );
+    return {
+      none: services.length > 0 && matching.length === 0,
+      groups: groupByCategory(matching, locale),
+    };
+  }, [branch.data, serviceQuery, locale]);
+  const selectedIds = new Set(draft.serviceIds);
   const serviceName = (id: string) => {
     const service = servicesById.get(id);
     return service ? serviceLabel(service) : '';
@@ -255,33 +350,74 @@ export function BookScreen() {
       service.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''
     }`;
 
+  /**
+   * Removes a guest at once and offers to bring them back for 8 s ("Hoàn tác" in the toast, wig book.tsx:896): the guest returns to
+   * the same place, with the services that were theirs (those that still point at "myself" because of the removal).
+   */
+  function removePerson(person: Person) {
+    const position = chosenDraft.people.findIndex((entry) => entry.key === person.key);
+    const theirs = chosenDraft.recipientOf.map((key) => key === person.key);
+    update((current) => ({
+      ...current,
+      people: current.people.filter((entry) => entry.key !== person.key),
+      recipientOf: current.recipientOf.map((key) => (key === person.key ? SELF.key : key)),
+    }));
+    toast?.push({
+      tone: 'info',
+      message: fill(t.book.guestRemoved, {
+        name: person.name.trim() || t.book.relations[person.relation],
+      }),
+      action: {
+        label: t.book.undo,
+        onAction: () =>
+          update((current) => {
+            if (current.people.some((entry) => entry.key === person.key)) return current;
+            const people = [...current.people];
+            people.splice(Math.min(Math.max(position, 0), people.length), 0, person);
+            return {
+              ...current,
+              people,
+              recipientOf: current.recipientOf.map((key, at) =>
+                theirs[at] && key === SELF.key ? person.key : key,
+              ),
+            };
+          }),
+      },
+    });
+  }
+
+  // A step change is a new history entry (Back returns to the previous step); the heading focus follows the step (effect above).
   function go(next: Step) {
-    setMessage(null);
-    setStep(next);
     if (next === 'confirm') idempotencyKey.current = crypto.randomUUID();
-    requestAnimationFrame(() => heading.current?.focus());
+    setUrl({ step: next });
   }
 
   async function confirm() {
     if (pending) return;
+    // A confirm step opened by a reload has no key yet: one is made here, and a retry reuses it.
+    if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
     setPending(true);
-    setMessage(null);
+    setFailure(null);
     try {
       // The same key on a retry returns the same booking instead of a duplicate.
-      setCreated(
-        await api.post<CustomerBookingDetail>(
-          '/api/v1/me/bookings',
-          createRequest(draft, idempotencyKey.current),
-        ),
+      const booking = await api.post<CustomerBookingDetail>(
+        '/api/v1/me/bookings',
+        createRequest(draft, idempotencyKey.current),
       );
+      keepDraft(null);
+      // The member's booking lists change with it.
+      invalidateCachedReads('/api/v1/me/bookings');
+      setCreated(booking);
     } catch (error) {
       const text = customerErrorMessage(error, t);
       if (error instanceof ApiError && RETRY_TIME_CODES.has(error.code)) {
         update((current) => ({ ...current, startTime: '' }));
         setTimesAttempt((value) => value + 1);
-        setStep('when');
+        setFailure({ step: 'when', text });
+        setUrl({ step: 'when' }, { replace: true });
+      } else {
+        setFailure({ step: 'confirm', text });
       }
-      setMessage(text);
     } finally {
       setPending(false);
     }
@@ -328,7 +464,11 @@ export function BookScreen() {
               >
                 {t.book.bookAnother}
               </Button>
-              <Link className={buttonClass('primary')} href={`${base}/bookings/${created.id}`}>
+              <Link
+                className={buttonClass('primary')}
+                href={`${base}/bookings/${created.id}`}
+                transitionTypes={NAV_TRANSITION}
+              >
                 {t.book.viewBooking}
               </Link>
             </div>
@@ -360,21 +500,43 @@ export function BookScreen() {
     draft.serviceIds.every(
       (_, position) => (staff.data?.services[position]?.employees.length ?? 0) > 0,
     );
-  const canContinue =
+  // What still stops the step, in words (null = the step can go on). The button stays usable and says this when used (wig book.tsx:394).
+  const missing =
     step === 'services'
       ? draft.serviceIds.length > 0 && chosen.length === draft.serviceIds.length
+        ? null
+        : t.book.missing.services
       : step === 'guests'
         ? peopleProblem(draft) === null
+          ? null
+          : t.book.recipientNameRequired
         : step === 'when'
-          ? staffReady &&
-            Boolean(draft.date && draft.startTime && times.data?.starts.includes(draft.startTime))
-          : true;
+          ? !staffReady && staff.data
+            ? t.book.missing.staff
+            : staffReady &&
+                Boolean(
+                  draft.date && draft.startTime && times.data?.starts.includes(draft.startTime),
+                )
+              ? null
+              : t.book.missing.when
+          : null;
   const nav: StepNav = {
     back: index > 0 ? () => go(STEPS[index - 1] as Step) : null,
-    nextLabel: step === 'confirm' ? t.book.confirm : t.common.next,
-    canContinue,
+    // The button names the next step ("Chọn khách"), not a generic "Tiếp tục" (wig customer.ts:10).
+    nextLabel: step === 'confirm' ? t.book.confirm : t.book.nextTo[step],
+    canContinue: missing === null,
     pending: step === 'confirm' && pending,
-    onNext: () => (step === 'confirm' ? void confirm() : go(STEPS[index + 1] as Step)),
+    onNext: () => {
+      if (missing !== null) {
+        // The reason shows under the step heading, which takes the focus so it is read out and in view; it goes away by itself
+        // once the choice is made (derived from `missing`, not stored).
+        setAskedAt(step);
+        heading.current?.focus();
+        return;
+      }
+      if (step === 'confirm') void confirm();
+      else go(STEPS[index + 1] as Step);
+    },
   };
 
   const fixedTotal = formatFixedTotal(totals, locale);
@@ -388,12 +550,7 @@ export function BookScreen() {
           {t.common.back}
         </Button>
       ) : null}
-      <Button
-        variant="primary"
-        loading={nav.pending}
-        disabled={!nav.canContinue}
-        onClick={nav.onNext}
-      >
+      <Button variant="primary" loading={nav.pending} onClick={nav.onNext}>
         {nav.pending ? t.book.confirming : nav.nextLabel}
       </Button>
     </>
@@ -423,7 +580,13 @@ export function BookScreen() {
             <h2 ref={heading} tabIndex={-1} className="ls-booking-step-title">
               {t.book.steps[step]}
             </h2>
-            {message ? <Notice tone="danger">{message}</Notice> : null}
+            {failure && failure.step === step ? (
+              <Notice tone="danger">{failure.text}</Notice>
+            ) : null}
+            {/* The guests step already says what is missing in its own notice below the fields. */}
+            {askedAt === step && missing !== null && step !== 'guests' ? (
+              <Notice tone="warning">{missing}</Notice>
+            ) : null}
 
             {step === 'services' ? (
               <>
@@ -469,34 +632,26 @@ export function BookScreen() {
                     <SearchInput
                       label={t.book.searchServices}
                       clearLabel={t.book.searchClear}
-                      placeholder={t.book.searchServices}
+                      hint={t.book.searchPlaceholder}
                       debounceMs={150}
                       onSearch={setServiceQuery}
                     />
                   </div>
                 ) : null}
-                {branch.data &&
-                serviceQuery !== '' &&
-                !branch.data.services.some((service) =>
-                  matchesQuery(serviceLabel(service), serviceQuery),
-                ) ? (
+                {serviceQuery !== '' && serviceGroups.none ? (
                   <Notice tone="info">
                     {fill(t.book.noServiceMatch, { query: serviceQuery })}
                   </Notice>
                 ) : null}
                 {branch.data
-                  ? groupByCategory(
-                      branch.data.services.filter((service) =>
-                        matchesQuery(serviceLabel(service), serviceQuery),
-                      ),
-                      locale,
-                    ).map((group) => (
+                  ? serviceGroups.groups.map((group) => (
                       <FormSection key={group.key} title={group.name}>
-                        <div className="ls-choice-list">
+                        {/* One hairline list surface per category, not a tile per service (B12, B19). */}
+                        <div className="ls-choice-list ls-mem-choices">
                           {group.services.map((service) => (
                             <ChoiceCard
                               key={service.id}
-                              checked={draft.serviceIds.includes(service.id)}
+                              checked={selectedIds.has(service.id)}
                               onChange={() =>
                                 update((current) => toggleService(current, service.id))
                               }
@@ -587,15 +742,7 @@ export function BookScreen() {
                             ),
                           }))
                         }
-                        onRemove={() =>
-                          update((current) => ({
-                            ...current,
-                            people: current.people.filter((entry) => entry.key !== person.key),
-                            recipientOf: current.recipientOf.map((key) =>
-                              key === person.key ? SELF.key : key,
-                            ),
-                          }))
-                        }
+                        onRemove={() => removePerson(person)}
                       />
                     ))}
                 </FormSection>
@@ -725,7 +872,7 @@ export function BookScreen() {
                             value={start}
                             checked={draft.startTime === start}
                             onChange={() => update((current) => ({ ...current, startTime: start }))}
-                            title={start}
+                            title={formatSlotTime(start, locale)}
                           />
                         ))}
                       </div>
@@ -744,11 +891,21 @@ export function BookScreen() {
                       : []),
                     {
                       label: t.book.when,
-                      value: `${formatBusinessDate(draft.date, locale)} · ${draft.startTime}`,
+                      value: `${formatBusinessDate(draft.date, locale)}, ${formatSlotTime(draft.startTime, locale)}`,
                     },
+                    // Who and with whom as two labelled lines, not one dotted string.
                     ...draft.serviceIds.map((id, position): DescriptionItem => ({
                       label: serviceName(id),
-                      value: `${t.book.for}: ${personLabel(draft.recipientOf[position] ?? SELF.key)} · ${t.book.staff}: ${staffName(position)}`,
+                      value: (
+                        <span className="ls-mem-value-lines">
+                          <span>
+                            {t.book.for}: {personLabel(draft.recipientOf[position] ?? SELF.key)}
+                          </span>
+                          <span>
+                            {t.book.staff}: {staffName(position)}
+                          </span>
+                        </span>
+                      ),
                     })),
                   ]}
                 />
@@ -811,9 +968,10 @@ export function BookScreen() {
       {totals.count > 0 ? (
         <div className="ls-action-bar">
           <div className="ls-action-tally">
-            <span>
-              {fill(t.book.selectedCount, { count: totals.count })} ·{' '}
-              {fill(t.book.estimate, { minutes: totals.minutes })}
+            {/* Two values side by side, not a dotted string. */}
+            <span className="ls-mem-tally">
+              <span>{fill(t.book.selectedCount, { count: totals.count })}</span>
+              <span>{fill(t.book.estimate, { minutes: totals.minutes })}</span>
             </span>
             <strong>
               {totalLine}
@@ -887,13 +1045,19 @@ function PersonEditor({
   onRemove: () => void;
 }) {
   const { t } = useCustomer();
+  // Each guest card and its remove button are named by the guest (two cards never read the same to a screen reader).
+  const who = person.name.trim() || t.book.other;
   return (
-    <Card as="section" aria-label={t.book.other}>
+    <Card as="section" aria-label={who}>
       <CardHeader
         title={t.book.other}
         headingLevel={3}
         actions={
-          <Button variant="neutral" onClick={onRemove}>
+          <Button
+            variant="neutral"
+            onClick={onRemove}
+            aria-label={fill(t.book.removeGuest, { name: who })}
+          >
             {t.book.remove}
           </Button>
         }
@@ -903,6 +1067,7 @@ function PersonEditor({
           {(control) => (
             <Select
               {...control}
+              name="guest-relation"
               value={person.relation}
               options={OTHER_RELATIONS.map((relation) => ({
                 value: relation,
@@ -918,6 +1083,7 @@ function PersonEditor({
           {(control) => (
             <TextInput
               {...control}
+              name="guest-name"
               maxLength={200}
               autoComplete="off"
               value={person.name}
@@ -931,6 +1097,7 @@ function PersonEditor({
               {...control}
               type="tel"
               inputMode="tel"
+              name="guest-phone"
               maxLength={24}
               autoComplete="off"
               value={person.phone}

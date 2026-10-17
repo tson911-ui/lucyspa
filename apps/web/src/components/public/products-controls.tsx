@@ -4,6 +4,7 @@ import { Button, Drawer, Pagination, SearchInput, Select } from '@lucy-spa/ui';
 import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
+import { fill } from '../../i18n/fill';
 import { getSiteText } from '../../i18n/site';
 import {
   activeFilterCount,
@@ -15,17 +16,21 @@ import {
 } from '../../lib/public-products-core';
 
 /**
- * The search, the filter button of a phone or tablet and the sort of the cosmetics list (design 16.2). The state lives in the
+ * The search, the brand (from 640 px), the filter button of a phone and the sort of the cosmetics list (design 16.2). One height (44 px)
+ * and one pill shape for every control (fd plan). The brand is a select, not a second chip row, so the list has one accent chip row (C4). The state lives in the
  * address bar: a change goes to the new address and the page is read again on the server, so a filtered list can be shared and
  * the Back button undoes it. The filter links themselves are drawn by the server page and handed in as `children`.
  */
 export function ProductsToolbar({
   locale,
   state,
+  brands = [],
   children,
 }: {
   locale: Locale;
   state: ProductsState;
+  /** The brands to choose from (two or more), shown as a select from 640 px; a phone chooses them in the sheet. */
+  brands?: readonly { code: string; name: string }[];
   /** The filter groups (links) shown in the sheet of a phone or tablet; none when the catalog has nothing to filter by. */
   children?: ReactNode;
 }) {
@@ -40,19 +45,31 @@ export function ProductsToolbar({
         value={state.q}
         label={text.searchLabel}
         clearLabel={text.searchClear}
-        placeholder={text.searchLabel}
+        hint={text.searchPlaceholder}
         onSearch={(q) => {
           if (q !== state.q) go(withFilter(state, { q }));
         }}
       />
+      {brands.length > 1 ? (
+        <Select
+          className="ls-prod-brand"
+          aria-label={text.brands}
+          value={state.brand}
+          options={[
+            { value: '', label: text.allBrands },
+            ...brands.map((brand) => ({ value: brand.code, label: brand.name })),
+          ]}
+          onChange={(event) => go(withFilter(state, { brand: event.target.value }))}
+        />
+      ) : null}
       {children ? (
         <Button
-          variant="secondary"
+          variant="neutral"
           icon="filter"
           className="ls-prod-filter-button"
           onClick={() => setOpen(true)}
         >
-          {active > 0 ? `${text.filterButton} (${active})` : text.filterButton}
+          {active > 0 ? fill(text.filterButtonCount, { count: active }) : text.filterButton}
         </Button>
       ) : null}
       <Select

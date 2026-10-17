@@ -61,9 +61,12 @@ test('the review card: private and skippable said first, five stars, an optional
   assert.match(html, /Điều bạn muốn nhắn/);
   assert.match(html, /Tối đa 1000 ký tự/);
   assert.match(html, /maxLength="1000"|maxlength="1000"/i);
-  // The footer reads "Để sau" then the primary action last, which cannot be used before a rating is chosen.
+  // The footer reads "Để sau" (neutral, never filled) then the primary action last. The primary stays usable before a rating is chosen:
+  // used then, it says what is missing (wig review-card.tsx:178), so it is not disabled.
   assert.ok(html.indexOf('Để sau') < html.indexOf('Gửi đánh giá'));
-  assert.match(html, /<button[^>]*disabled[^>]*>[^<]*(<[^>]*>)*[^<]*Gửi đánh giá/);
+  assert.match(html, /class="[^"]*ls-btn-neutral[^"]*"[^>]*>(<[^>]*>)*Để sau/);
+  assert.doesNotMatch(html, /<button[^>]*disabled[^>]*>[^<]*(<[^>]*>)*[^<]*Gửi đánh giá/);
+  assert.equal(html.match(/ls-btn-primary/g)?.length, 1, 'one filled button');
   assert.doesNotMatch(html, /wf-|<details/);
 });
 

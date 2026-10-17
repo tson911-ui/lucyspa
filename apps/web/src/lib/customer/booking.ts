@@ -5,6 +5,7 @@ import type {
 } from '@lucy-spa/contracts';
 import type { CustomerDictionary } from '../../i18n/customer';
 import { ApiError } from '../api/client';
+import { dateFormat, formatVnd } from './invoice';
 
 /**
  * Pure helpers of the customer booking flow. The web app never decides availability or
@@ -140,14 +141,14 @@ export function availabilityQuery(draft: BookingDraft) {
 
 /** Integer VND as `150.000 ₫`; a range when min ≠ max. */
 export function formatVndRange(min: string, max: string, locale: string): string {
-  const format = (value: string) =>
-    `${new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(BigInt(value))} ₫`;
-  return min === max ? format(min) : `${format(min)} – ${format(max)}`;
+  return min === max
+    ? formatVnd(min, locale)
+    : `${formatVnd(min, locale)} – ${formatVnd(max, locale)}`;
 }
 
-/** An instant in the branch's timezone. */
+/** An instant in the branch's timezone (one cached formatter per language, zone and options). */
 export function formatDateTime(iso: string, timezone: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+  return dateFormat(locale, {
     timeZone: timezone,
     weekday: 'short',
     day: '2-digit',
@@ -159,7 +160,7 @@ export function formatDateTime(iso: string, timezone: string, locale: string): s
 }
 
 export function formatTime(iso: string, timezone: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', {
+  return dateFormat(locale, {
     timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',

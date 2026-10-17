@@ -8,6 +8,7 @@ import type {
   CustomerLoyaltySummaryResponse,
 } from '@lucy-spa/contracts';
 import {
+  Badge,
   Button,
   buttonClass,
   Card,
@@ -15,23 +16,19 @@ import {
   ConfirmDialog,
   DataTable,
   DescriptionList,
-  EmptyState,
   ErrorState,
   Icon,
   ListSection,
   Notice,
-  Reveal,
-  RowActions,
   Skeleton,
   type DataTableColumn,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { NAV_TRANSITION } from '../../../lib/nav-transition';
+import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { fill } from '../../../i18n/customer';
 import { customerLoyaltyDictionary } from '../../../i18n/customer-loyalty';
-import { loyaltyDictionary } from '../../../i18n/loyalty';
-import { getWorkforceDictionary } from '../../../i18n/workforce';
+import { loyaltyNames as loyaltyDictionary } from '../../../i18n/loyalty-names';
 import { ApiError } from '../../../lib/api/client';
 import {
   customerErrorMessage,
@@ -40,35 +37,59 @@ import {
   formatVndRange,
   statusTone,
 } from '../../../lib/customer/booking';
+import {
+  cachedRead,
+  invalidateCachedReads,
+  peekCachedRead,
+} from '../../../lib/customer/fetch-cache';
 import { formatBusinessDate, formatVnd, invoiceTone } from '../../../lib/customer/invoice';
-import { formatPoints } from '../../../lib/workforce/loyalty';
-import { useClientPaging } from '../../../lib/workforce/use-client-paging';
-import { useUnreadCount } from '../../notifications/inbox';
-import { Badge, Empty } from '../../workforce/ui';
+import { useUnreadCount } from '../../notifications/unread';
 import { AccountScreen, accountSections } from '../account-frame';
+import { formatPoints } from '../member-format';
+import { useMemberPaging } from '../member-paging';
+import { MemberEmpty, RowLink, StatusBadge } from '../member-ui';
 import { useCustomer, useCustomerAccount } from '../session';
 
-export function useFetch<T>(load: () => Promise<T>, key: string) {
+/**
+ * Loads data for a screen; a change of `key` (every input of `load`) loads again. With `cache` (the request's own identity: its path
+ * and query, never a short name that two screens could share) reads are shared and reused for a short while (lib/customer/fetch-cache):
+ * two components asking for the same thing send one request, and a recent answer paints at once. Without it every mount reads afresh
+ * (the shop screens' behaviour, unchanged).
+ */
+export function useFetch<T>(load: () => Promise<T>, key: string, options: { cache?: string } = {}) {
+  const cache = options.cache;
+  // The first render matches the server's (nothing loaded): reading the shared cache during render made a part that hydrates after
+  // another (streamed Suspense) paint data where the server painted the loading state, a hydration text mismatch (React #418). The
+  // recent answer is applied in a layout effect instead: before the browser paints, so still no loading flash.
   const [state, setState] = useState<{ data: T | null; error: unknown }>({
     data: null,
     error: null,
   });
   const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     let active = true;
-    setState({ data: null, error: null });
-    load()
+    const recent = cache ? peekCachedRead<T>(cache) : undefined;
+    setState({ data: recent ?? null, error: null });
+    if (recent !== undefined) return;
+    (cache ? cachedRead(cache, load) : load())
       .then((data) => active && setState({ data, error: null }))
       .catch((error: unknown) => active && setState({ data: null, error }));
     return () => {
       active = false;
     };
-    // `key` captures every input of `load`.
+    // `key` captures every input of `load`; `cache` follows it.
   }, [key, attempt]);
   return {
     ...state,
-    retry: useCallback(() => setAttempt((value) => value + 1), []),
-    set: (data: T) => setState({ data, error: null }),
+    retry: useCallback(() => {
+      if (cache) invalidateCachedReads(cache);
+      setAttempt((value) => value + 1);
+    }, [cache]),
+    set: (data: T) => {
+      // A screen that writes shows the server's answer; the cached read of the same thing is now old.
+      if (cache) invalidateCachedReads(cache);
+      setState({ data, error: null });
+    },
   };
 }
 
@@ -93,7 +114,7 @@ export function LoadState({ error, retry }: { error: unknown; retry: () => void 
   );
 }
 
-/** A page whose record is missing: the notice and the way back, in the page's own frame. */
+/** A page whose record is missing: the page says so in its heading and offers the way back to the list, in the page's own frame. */
 export function NotFoundPage({
   message,
   backHref,
@@ -104,10 +125,9 @@ export function NotFoundPage({
   backLabel: string;
 }) {
   return (
-    <AccountScreen title={backLabel} narrow>
-      <Notice tone="warning">{message}</Notice>
+    <AccountScreen title={message} narrow>
       <div>
-        <Link href={backHref} className={buttonClass('secondary')}>
+        <Link href={backHref} className={buttonClass('secondary')} transitionTypes={NAV_TRANSITION}>
           {backLabel}
         </Link>
       </div>
@@ -115,129 +135,112 @@ export function NotFoundPage({
   );
 }
 
-/** Bookings as one table (Part 2 contract 5.6): the time is the link to the booking, the row menu opens it too. */
+/** The services of a booking in full (they wrap; nothing is cut, C15). */
+function servicesText(item: CustomerBookingSummary, locale: 'vi' | 'en'): string {
+  return item.serviceNames.map((name) => (locale === 'vi' ? name.vi : name.en)).join(', ');
+}
+
+/** A neutral booking state still shows an icon with its word (B18): a finished visit is a tick. */
+function BookingStatus({ status }: { status: CustomerBookingSummary['status'] }) {
+  const { t } = useCustomer();
+  return (
+    <StatusBadge tone={statusTone(status)} icon={status === 'COMPLETED' ? 'check' : undefined}>
+      {t.bookings.status[status]}
+    </StatusBadge>
+  );
+}
+
+/**
+ * Bookings as one hairline table (DESIGN.md 8.4): the whole row opens the booking (the time is its name), so there is no row menu that
+ * repeats the link. Below 640 px the rows stay in one surface (`phoneRows="compact"`), not one card per booking.
+ */
 function BookingsTable({
   items,
   listName,
-  empty,
-  paged = true,
-  loading = false,
-  skeletonRows = 5,
+  pageParam,
 }: {
   items: readonly CustomerBookingSummary[];
   listName: string;
-  empty: ReactNode;
-  /** The overview shows a fixed short list and says so instead of paging. */
-  paged?: boolean;
-  /** Skeleton rows in the final layout while the bookings load (what follows the table does not move). */
-  loading?: boolean;
-  skeletonRows?: number;
+  /** The name of this list's page in the address bar (two lists share the screen). */
+  pageParam: string;
 }) {
   const { t, locale, base } = useCustomer();
-  const router = useRouter();
-  const w = getWorkforceDictionary(locale);
-  const paging = useClientPaging(w, listName);
-  const columns: DataTableColumn<CustomerBookingSummary>[] = [
-    {
-      key: 'when',
-      header: t.bookings.columns.when,
-      mobileTitle: true,
-      cell: (item) => (
-        <Link className="ls-link" href={`${base}/bookings/${item.id}`}>
-          {formatDateTime(item.startsAt, item.branch.timezone, locale)}
-        </Link>
-      ),
-    },
-    {
-      key: 'services',
-      header: t.bookings.columns.services,
-      truncate: true,
-      width: 'lg',
-      // The first service and "+N" for the rest: a cell holds one short value (frontend rule 8).
-      cell: (item) => {
-        const [first, ...rest] = item.serviceNames.map((name) =>
-          locale === 'vi' ? name.vi : name.en,
-        );
-        return first === undefined ? '—' : rest.length > 0 ? `${first} +${rest.length}` : first;
-      },
-    },
-    {
-      key: 'branch',
-      header: t.bookings.columns.branch,
-      hideBelow: 'lg',
-      truncate: true,
-      cell: (item) => item.branch.name,
-    },
-    {
-      key: 'status',
-      header: t.bookings.columns.status,
-      cell: (item) => (
-        <Badge tone={statusTone(item.status)}>{t.bookings.status[item.status]}</Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      header: t.bookings.columns.actions,
-      actions: true,
-      cell: (item) => (
-        <RowActions
-          menuLabel={fill(t.bookings.actionsFor, { code: item.code })}
-          items={[
-            {
-              id: 'open',
-              label: t.bookings.open,
-              icon: 'eye',
-              onSelect: () => router.push(`${base}/bookings/${item.id}`),
-            },
-          ]}
-        />
-      ),
-    },
-  ];
+  const paging = useMemberPaging(t, listName, pageParam);
   // One branch only: a column that says the same thing on every row is left out.
   const oneBranch = new Set(items.map((item) => item.branch.name)).size <= 1;
+  // One column set per language, area and branch case (not per render): a client table re-sorts when its columns change (rbp-ui).
+  const columns = useMemo<DataTableColumn<CustomerBookingSummary>[]>(() => {
+    const all: DataTableColumn<CustomerBookingSummary>[] = [
+      {
+        key: 'when',
+        header: t.bookings.columns.when,
+        mobileTitle: true,
+        cell: (item) => {
+          const when = formatDateTime(item.startsAt, item.branch.timezone, locale);
+          return (
+            <RowLink
+              href={`${base}/bookings/${item.id}`}
+              label={`${when}, ${servicesText(item, locale)}`}
+            >
+              {when}
+            </RowLink>
+          );
+        },
+      },
+      {
+        key: 'services',
+        header: t.bookings.columns.services,
+        cell: (item) => servicesText(item, locale) || '—',
+      },
+      {
+        key: 'branch',
+        header: t.bookings.columns.branch,
+        hideBelow: 'lg',
+        cell: (item) => item.branch.name,
+      },
+      {
+        key: 'status',
+        header: t.bookings.columns.status,
+        cell: (item) => <BookingStatus status={item.status} />,
+      },
+    ];
+    return oneBranch ? all.filter((column) => column.key !== 'branch') : all;
+  }, [t, locale, base, oneBranch]);
   return (
     <DataTable
       mode="client"
-      className="ls-cards-one-line"
-      caption={fill(w.common.list.table, { list: listName })}
-      columns={oneBranch ? columns.filter((column) => column.key !== 'branch') : columns}
+      className="ls-mem-rows"
+      phoneRows="compact"
+      drillDown
+      caption={fill(t.list.table, { list: listName })}
+      columns={columns}
       rows={items}
       rowKey={(item) => item.id}
-      empty={empty}
-      loading={loading}
-      loadingLabel={t.common.loading}
-      skeletonRows={skeletonRows}
-      paging={
-        paged ? paging : { off: 'A fixed short list on the overview; the full list has the pager.' }
-      }
+      paging={paging}
     />
   );
 }
 
 /**
- * One summary card of the account home (DESIGN.md 9.2): a heading, a short line or two, and a pill that says where the card goes. The whole
- * card is one link; hovering it fills the pill (rule 4), not the card.
+ * One summary card of the account home (DESIGN.md 9.2, B19): the whole card is one link (its heading and a chevron say where it goes);
+ * nothing inside it is a button.
  */
 function SummaryCard({
   href,
   title,
-  cta,
   children,
 }: {
   href: string;
   title: string;
-  cta: string;
   children: ReactNode;
 }) {
   return (
-    <Link href={href} className="ls-acct-card">
-      <h2 className="ls-acct-card-title">{title}</h2>
+    <Link href={href} className="ls-acct-card ls-mem-card" transitionTypes={NAV_TRANSITION}>
+      <div className="ls-mem-card-head">
+        <h2 className="ls-acct-card-title">{title}</h2>
+        <Icon name="chevron-right" size={20} aria-hidden="true" />
+      </div>
       <div className="ls-acct-card-body">{children}</div>
-      <span className="ls-acct-card-cta">
-        {cta}
-        <Icon name="chevron-right" size={16} aria-hidden="true" />
-      </span>
     </Link>
   );
 }
@@ -249,14 +252,17 @@ export function CustomerHomeScreen() {
   const bookings = useFetch(
     () => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'),
     'home',
+    { cache: '/api/v1/me/bookings' },
   );
   const loyalty = useFetch(
     () => api.get<CustomerLoyaltySummaryResponse>('/api/v1/me/loyalty'),
     'home-loyalty',
+    { cache: '/api/v1/me/loyalty' },
   );
   const invoices = useFetch(
     () => api.get<CustomerInvoiceListResponse>('/api/v1/me/invoices'),
     'home-invoices',
+    { cache: '/api/v1/me/invoices' },
   );
   const unread = useUnreadCount(api);
   const points = customerLoyaltyDictionary(locale);
@@ -267,108 +273,101 @@ export function CustomerHomeScreen() {
   const loading = <Skeleton lines={2} />;
   return (
     <AccountScreen
-      title={t.home.title}
-      description={`${fill(t.home.greeting, { name: account.displayName })} ${t.home.intro}`}
+      title={fill(t.home.greetingTitle, { name: account.displayName })}
+      description={t.home.intro}
     >
-      <div className="ls-acct-grid">
-        <Reveal index={0}>
-          <SummaryCard
-            href={next ? `${base}/bookings/${next.id}` : `${base}/book`}
-            title={t.home.upcoming}
-            cta={next ? t.home.openBooking : t.home.bookCta}
-          >
-            {bookings.error ? (
-              quiet(customerErrorMessage(bookings.error, t))
-            ) : !bookings.data ? (
-              loading
-            ) : next ? (
-              <>
-                <p className="ls-acct-card-figure">
-                  {formatDateTime(next.startsAt, next.branch.timezone, locale)}
-                </p>
-                <p className="ls-acct-card-note">
-                  {next.serviceNames
-                    .map((name) => (locale === 'vi' ? name.vi : name.en))
-                    .join(', ')}
-                </p>
-                <Badge tone={statusTone(next.status)}>{t.bookings.status[next.status]}</Badge>
-              </>
-            ) : (
-              quiet(t.home.none)
-            )}
-          </SummaryCard>
-        </Reveal>
-        <Reveal index={1}>
-          <SummaryCard href={`${base}/loyalty`} title={t.home.hubRewards} cta={t.home.openPoints}>
-            {loyalty.error ? (
-              quiet(customerErrorMessage(loyalty.error, t))
-            ) : !loyalty.data ? (
-              loading
-            ) : !loyalty.data.live ? (
-              quiet(points.notLive)
-            ) : (
-              <dl className="ls-acct-points">
-                {loyalty.data.wallets.map((wallet) => (
-                  <div key={wallet.wallet}>
-                    <dt>{l.wallets[wallet.wallet]}</dt>
-                    <dd>
-                      {formatPoints(wallet.balancePoints, locale)} · {l.tiers[wallet.tier]}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </SummaryCard>
-        </Reveal>
-        <Reveal index={2}>
-          <SummaryCard
-            href={latest ? `${base}/invoices/${latest.id}` : `${base}/invoices`}
-            title={t.home.lastInvoice}
-            cta={t.home.openInvoices}
-          >
-            {invoices.error ? (
-              quiet(customerErrorMessage(invoices.error, t))
-            ) : !invoices.data ? (
-              loading
-            ) : latest ? (
-              <>
-                <p className="ls-acct-card-figure">{formatVnd(latest.totalVnd, locale)}</p>
-                <p className="ls-acct-card-note">
-                  {formatBusinessDate(latest.businessDate, locale)}
-                </p>
-                <Badge tone={invoiceTone(latest.status)}>{t.invoices.status[latest.status]}</Badge>
-              </>
-            ) : (
-              quiet(t.home.noInvoice)
-            )}
-          </SummaryCard>
-        </Reveal>
-        <Reveal index={3}>
-          <SummaryCard
-            href={`${base}/notifications`}
-            title={t.home.hubNotifications}
-            cta={t.home.openNotifications}
-          >
-            {unread.failed
-              ? quiet(t.errors.unavailable)
-              : unread.count === null
-                ? loading
-                : quiet(
-                    unread.count > 0
-                      ? fill(t.home.unreadCount, { count: unread.count })
-                      : t.home.unreadNone,
-                  )}
-          </SummaryCard>
-        </Reveal>
+      <div className="ls-acct-grid ls-mem-grid">
+        <SummaryCard
+          href={next ? `${base}/bookings/${next.id}` : `${base}/book`}
+          title={t.home.upcoming}
+        >
+          {bookings.error ? (
+            quiet(customerErrorMessage(bookings.error, t))
+          ) : !bookings.data ? (
+            loading
+          ) : next ? (
+            <>
+              <p className="ls-acct-card-figure">
+                {formatDateTime(next.startsAt, next.branch.timezone, locale)}
+              </p>
+              <p className="ls-acct-card-note">{servicesText(next, locale)}</p>
+              <BookingStatus status={next.status} />
+            </>
+          ) : (
+            <>
+              {quiet(t.home.none)}
+              {quiet(t.home.bookHint)}
+            </>
+          )}
+        </SummaryCard>
+        <SummaryCard href={`${base}/loyalty`} title={t.home.hubRewards}>
+          {loyalty.error ? (
+            quiet(customerErrorMessage(loyalty.error, t))
+          ) : !loyalty.data ? (
+            loading
+          ) : !loyalty.data.live ? (
+            quiet(points.notLive)
+          ) : (
+            <dl className="ls-mem-facts">
+              {loyalty.data.wallets.map((wallet) => (
+                <div key={wallet.wallet}>
+                  <dt>{l.wallets[wallet.wallet]}</dt>
+                  <dd>
+                    <span>
+                      {fill(t.home.points, { n: formatPoints(wallet.balancePoints, locale) })}
+                    </span>
+                    <Badge tone="neutral" icon="award">
+                      {l.tiers[wallet.tier]}
+                    </Badge>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </SummaryCard>
+        <SummaryCard
+          href={latest ? `${base}/invoices/${latest.id}` : `${base}/invoices`}
+          title={t.home.lastInvoice}
+        >
+          {invoices.error ? (
+            quiet(customerErrorMessage(invoices.error, t))
+          ) : !invoices.data ? (
+            loading
+          ) : latest ? (
+            <>
+              <p className="ls-acct-card-figure">{formatVnd(latest.totalVnd, locale)}</p>
+              <p className="ls-acct-card-note">{formatBusinessDate(latest.businessDate, locale)}</p>
+              <StatusBadge
+                tone={invoiceTone(latest.status)}
+                icon={latest.status === 'CANCELLED' ? 'x-circle' : undefined}
+              >
+                {t.invoices.status[latest.status]}
+              </StatusBadge>
+            </>
+          ) : (
+            quiet(t.home.noInvoice)
+          )}
+        </SummaryCard>
+        <SummaryCard href={`${base}/notifications`} title={t.home.hubNotifications}>
+          {unread.failed
+            ? quiet(t.errors.unavailable)
+            : unread.count === null
+              ? loading
+              : quiet(
+                  unread.count > 0
+                    ? fill(t.home.unreadCount, { count: unread.count })
+                    : t.home.unreadNone,
+                )}
+        </SummaryCard>
       </div>
-      {/* A phone has no tabs: the same six places as one list. */}
+      {/* A phone has no tabs: the same six places as one list (below 768 px only; the tabs take over from there). */}
       <nav aria-label={t.nav.menu} className="ls-acct-list">
         <ul className="ls-hub">
           {accountSections(t, base)
             .filter((section) => section.key !== 'home')
             .map((section) => (
               <li key={section.key}>
-                <Link href={section.href}>
+                <Link href={section.href} transitionTypes={NAV_TRANSITION}>
                   <span>{section.label}</span>
                   <Icon name="chevron-right" size={16} aria-hidden="true" />
                 </Link>
@@ -383,49 +382,45 @@ export function CustomerHomeScreen() {
 /** "Lịch hẹn của tôi": upcoming and history, both from the server. */
 export function CustomerBookingsScreen() {
   const { api, t, base } = useCustomer();
-  const list = useFetch(() => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'), 'list');
+  const list = useFetch(() => api.get<CustomerBookingListResponse>('/api/v1/me/bookings'), 'list', {
+    cache: '/api/v1/me/bookings',
+  });
   return (
     <AccountScreen title={t.bookings.title}>
       {list.data && list.data.upcoming.length === 0 && list.data.history.length === 0 ? (
-        <EmptyState
+        <MemberEmpty
           icon="calendar-check"
-          action={
-            <Link href={`${base}/book`} className={buttonClass('primary')}>
-              {t.home.bookCta}
-            </Link>
-          }
+          title={t.bookings.emptyTitle}
+          actionHref={`${base}/book`}
+          actionLabel={t.home.bookCta}
         >
           {t.bookings.emptyAll}
-        </EmptyState>
+        </MemberEmpty>
       ) : list.data ? (
-        <>
-          <Reveal>
-            <ListSection title={t.bookings.upcoming}>
-              {list.data.upcoming.length === 0 ? (
-                <p className="ls-empty-line">{t.bookings.emptyUpcoming}</p>
-              ) : (
-                <BookingsTable
-                  items={list.data.upcoming}
-                  listName={t.bookings.upcoming}
-                  empty={<Empty>{t.bookings.emptyUpcoming}</Empty>}
-                />
-              )}
-            </ListSection>
-          </Reveal>
-          <Reveal>
-            <ListSection title={t.bookings.history}>
-              {list.data.history.length === 0 ? (
-                <p className="ls-empty-line">{t.bookings.emptyHistory}</p>
-              ) : (
-                <BookingsTable
-                  items={list.data.history}
-                  listName={t.bookings.history}
-                  empty={<Empty>{t.bookings.emptyHistory}</Empty>}
-                />
-              )}
-            </ListSection>
-          </Reveal>
-        </>
+        <div className="ls-mem-sections">
+          <ListSection title={t.bookings.upcoming}>
+            {list.data.upcoming.length === 0 ? (
+              <p className="ls-empty-line">{t.bookings.emptyUpcoming}</p>
+            ) : (
+              <BookingsTable
+                items={list.data.upcoming}
+                listName={t.bookings.upcoming}
+                pageParam="upcomingPage"
+              />
+            )}
+          </ListSection>
+          <ListSection title={t.bookings.history}>
+            {list.data.history.length === 0 ? (
+              <p className="ls-empty-line">{t.bookings.emptyHistory}</p>
+            ) : (
+              <BookingsTable
+                items={list.data.history}
+                listName={t.bookings.history}
+                pageParam="historyPage"
+              />
+            )}
+          </ListSection>
+        </div>
       ) : (
         <LoadState error={list.error} retry={list.retry} />
       )}
@@ -436,7 +431,9 @@ export function CustomerBookingsScreen() {
 /** One own booking; cancellation until service START (O3), decided by the server. */
 export function CustomerBookingDetailScreen({ id }: { id: string }) {
   const { api, t, locale, base } = useCustomer();
-  const detail = useFetch(() => api.get<CustomerBookingDetail>(`/api/v1/me/bookings/${id}`), id);
+  const detail = useFetch(() => api.get<CustomerBookingDetail>(`/api/v1/me/bookings/${id}`), id, {
+    cache: `/api/v1/me/bookings/${id}`,
+  });
   const [cancelling, setCancelling] = useState(false);
   const [message, setMessage] = useState<{
     tone: 'success' | 'danger' | 'warning';
@@ -454,13 +451,15 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
       );
     }
     return (
-      <AccountScreen title={t.bookings.detailTitle} narrow>
+      <AccountScreen title={t.bookings.detailTitle} backLabel={t.bookings.back} narrow>
         <LoadState error={detail.error} retry={detail.retry} />
       </AccountScreen>
     );
   }
   const booking = detail.data;
   const zone = booking.branch.timezone;
+  const when = `${formatDateTime(booking.startsAt, zone, locale)}–${formatTime(booking.endsAt, zone, locale)}`;
+  const cancelled = booking.status === 'CANCELLED';
   const recipient = (key: string) => {
     const entry = booking.recipients.find((item) => item.key === key);
     if (!entry) return '';
@@ -475,6 +474,7 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
         ...(reason ? { reason } : {}),
       });
       detail.set(result);
+      invalidateCachedReads('/api/v1/me/bookings');
       setCancelling(false);
       setMessage(
         result.cancelledLate
@@ -494,70 +494,86 @@ export function CustomerBookingDetailScreen({ id }: { id: string }) {
   }
 
   return (
-    <AccountScreen
-      title={t.bookings.detailTitle}
-      description={booking.code}
-      actions={
-        booking.canCancel ? (
-          <Button variant="danger-outline" onClick={() => setCancelling(true)}>
-            {t.bookings.cancelTitle}
-          </Button>
-        ) : undefined
-      }
-    >
+    <AccountScreen title={t.bookings.detailTitle} description={when} backLabel={t.bookings.back}>
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-      <div className="ls-order-layout ls-order-layout-aside-first">
-        <Reveal>
-          <Card as="section" aria-label={t.bookings.detailTitle} className="ls-order-aside">
-            <DescriptionList
-              items={[
-                { label: t.bookings.code, value: booking.code },
-                { label: t.book.branch, value: booking.branch.name },
-                {
-                  label: t.book.when,
-                  value: `${formatDateTime(booking.startsAt, zone, locale)} – ${formatTime(booking.endsAt, zone, locale)}`,
-                },
-                {
-                  label: t.bookings.statusLabel,
-                  value: (
-                    <Badge tone={statusTone(booking.status)}>
-                      {t.bookings.status[booking.status]}
-                    </Badge>
-                  ),
-                },
-              ]}
-            />
-          </Card>
-        </Reveal>
-        <Reveal>
-          <Card as="section" aria-label={t.bookings.services} className="ls-order-main-card">
-            <CardHeader title={t.bookings.services} />
-            <ul className="ls-line-list">
-              {booking.lines.map((line) => (
-                <li key={line.sequence} className="ls-line-item">
-                  <p className="ls-line-title">
-                    {line.sequence}. {locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}
+      {cancelled && !message ? (
+        <p className="ls-mem-status-line">
+          <Icon name="x-circle" size={20} aria-hidden="true" />
+          {t.bookings.cancelledLine}
+        </p>
+      ) : null}
+      <div className="ls-mem-split">
+        <Card as="section" aria-label={t.bookings.services} className="ls-mem-main">
+          <CardHeader title={t.bookings.services} />
+          <ul className="ls-mem-lines">
+            {booking.lines.map((line) => (
+              <li key={line.sequence} className="ls-mem-line">
+                <div className="ls-mem-line-head">
+                  <p className="ls-mem-line-name">
+                    {locale === 'vi' ? line.serviceNameVi : line.serviceNameEn}
                   </p>
-                  <p className="ls-line-price">
+                  <p className="ls-mem-line-price">
                     {formatVndRange(line.priceMinVnd, line.priceMaxVnd, locale)}
                     {line.pricingUnit === 'PER_NAIL' ? ` ${t.book.perNail}` : ''}
                   </p>
-                  <p className="ls-line-meta">
-                    {formatTime(line.startsAt, zone, locale)}–
-                    {formatTime(line.endsAt, zone, locale)} ·{' '}
-                    {fill(t.book.duration, { minutes: line.durationMinutes })}
-                  </p>
-                  <p className="ls-line-meta">
-                    {t.bookings.recipient}: {recipient(line.recipientKey)} · {t.bookings.staff}:{' '}
-                    {line.employee.displayName}
-                    {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <p className="ls-detail-note">{t.book.priceNote}</p>
-          </Card>
-        </Reveal>
+                </div>
+                <dl className="ls-mem-facts">
+                  <div>
+                    <dt>{t.book.when}</dt>
+                    <dd>
+                      {formatTime(line.startsAt, zone, locale)}–
+                      {formatTime(line.endsAt, zone, locale)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t.bookings.durationLabel}</dt>
+                    <dd>{fill(t.book.duration, { minutes: line.durationMinutes })}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.bookings.recipient}</dt>
+                    <dd>{recipient(line.recipientKey)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.bookings.staff}</dt>
+                    <dd>
+                      {line.employee.displayName}
+                      {line.assignmentMode === 'ANY' ? ` (${t.bookings.anyAssigned})` : ''}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <p className="ls-mem-note">{t.book.priceNote}</p>
+        </Card>
+        <Card as="section" aria-label={t.bookings.detailTitle} className="ls-mem-aside">
+          <BookingStatus status={booking.status} />
+          <DescriptionList
+            className="ls-mem-summary"
+            items={[
+              { label: t.bookings.code, value: <span translate="no">{booking.code}</span> },
+              { label: t.book.branch, value: booking.branch.name },
+              { label: t.book.when, value: when },
+            ]}
+          />
+          {booking.canCancel ? (
+            <div className="ls-mem-aside-actions">
+              <Button variant="danger-outline" onClick={() => setCancelling(true)}>
+                {t.bookings.cancelOpen}
+              </Button>
+            </div>
+          ) : cancelled ? (
+            <div className="ls-mem-aside-actions">
+              <Link
+                href={`${base}/book`}
+                className={buttonClass('primary')}
+                transitionTypes={NAV_TRANSITION}
+              >
+                {t.bookings.bookAgain}
+              </Link>
+            </div>
+          ) : null}
+        </Card>
       </div>
       {cancelling ? (
         <ConfirmDialog

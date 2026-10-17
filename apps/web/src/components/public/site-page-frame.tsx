@@ -1,5 +1,6 @@
+import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import { MotionGate, SelectIconScope } from '@lucy-spa/ui';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import type { Locale } from '../../i18n/locales';
 import { fetchHasPublicProducts, fetchPublicSite } from '../../lib/public-site';
 import { loadSiteDecor, SeasonSiteFrame } from '../season/site-frame';
@@ -12,22 +13,32 @@ import { SiteSessionProvider } from './site-session';
 /**
  * The one frame of the customer side (Part 2 contract 3.1): the public pages, the member auth pages and the member
  * area all sit between the same header and footer, with the same phone tab bar and the same seasonal decoration.
+ *
+ * The season decoration and "has products" are awaited here, together (both remembered for a minute, so usually already there):
+ * the header menu and the tab bar hydrate with the rest of the frame. Streamed in their own boundaries, a member's session could
+ * resolve before they hydrated, and their signed-in entries then differed from the server's HTML (React #418, member pages only).
+ * The footer and the floating contact button, which do not depend on the session, stream behind their own boundary
+ * (rbp async-suspense-boundaries) and follow the shop profile.
  */
 export async function SitePageFrame({ locale, children }: { locale: Locale; children: ReactNode }) {
-  // A season with site-wide art (S6) decorates the whole page; without one the page keeps its exact structure.
-  // The shop profile (cached 60 s, shared with the pages) feeds the footer's contact column.
-  const [decor, site, hasProducts] = await Promise.all([
+  const site = fetchPublicSite(locale);
+  const [decor, hasProducts] = await Promise.all([
     loadSiteDecor(locale),
-    fetchPublicSite(locale),
     fetchHasPublicProducts(locale),
   ]);
   const header = <PublicHeader locale={locale} decor={decor} hasProducts={hasProducts} />;
-  const footer = <PublicFooter locale={locale} site={site} hasProducts={hasProducts} />;
+  const footer = (
+    <Suspense fallback={null}>
+      <FooterWhenKnown locale={locale} site={site} hasProducts={hasProducts} />
+    </Suspense>
+  );
   // The floating contact button is the last thing of the content (just before the footer), so it never covers the footer.
   const content = (
     <>
       {children}
-      <ContactWidget locale={locale} site={site} />
+      <Suspense fallback={null}>
+        <ContactWhenKnown locale={locale} site={site} />
+      </Suspense>
     </>
   );
 
@@ -59,4 +70,26 @@ export async function SitePageFrame({ locale, children }: { locale: Locale; chil
       <MotionGate />
     </div>
   );
+}
+
+async function FooterWhenKnown({
+  locale,
+  site,
+  hasProducts,
+}: {
+  locale: Locale;
+  site: Promise<PublicSiteResponse | null>;
+  hasProducts: boolean;
+}) {
+  return <PublicFooter locale={locale} site={await site} hasProducts={hasProducts} />;
+}
+
+async function ContactWhenKnown({
+  locale,
+  site,
+}: {
+  locale: Locale;
+  site: Promise<PublicSiteResponse | null>;
+}) {
+  return <ContactWidget locale={locale} site={await site} />;
 }

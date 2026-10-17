@@ -62,9 +62,18 @@ export function ProductGallery({
           }}
         >
           {images.length === 0 ? (
-            <div className="ls-prod-slide" aria-hidden="true">
-              <Icon name="droplet" size={48} />
-            </div>
+            // The flat placeholder has the frame of a real picture and the same name as the card's, so the card still travels into it.
+            shareName ? (
+              <SharedPhoto name={shareName}>
+                <div className="ls-prod-slide" data-empty="true" aria-hidden="true">
+                  <Icon name="droplet" size={24} />
+                </div>
+              </SharedPhoto>
+            ) : (
+              <div className="ls-prod-slide" data-empty="true" aria-hidden="true">
+                <Icon name="droplet" size={24} />
+              </div>
+            )
           ) : (
             images.map((image, index) => {
               const slide = (

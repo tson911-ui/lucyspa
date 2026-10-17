@@ -1,23 +1,16 @@
 'use client';
 
 import type { PublicPopupResponse } from '@lucy-spa/contracts';
-import { PromoDialog, type PromoLink } from '@lucy-spa/ui';
-import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { getDictionary } from '../../i18n/dictionaries';
 import type { Locale } from '../../i18n/locales';
-import {
-  loadPublicPopup,
-  markSessionSeen,
-  popupSeenKey,
-  publicPopupContent,
-  sessionSeen,
-} from '../../lib/popup-core';
+import { loadPublicPopup, markSessionSeen, popupSeenKey, sessionSeen } from '../../lib/popup-core';
 
-const RouterLink: PromoLink = ({ href, className, onClick, children }) => (
-  <Link href={href} {...(className ? { className } : {})} {...(onClick ? { onClick } : {})}>
-    {children}
-  </Link>
+// The dialog is fetched only once a live popup was found (react-best-practices bundle-conditional).
+const PromoPopupDialog = dynamic(
+  () => import('./promo-popup-dialog').then((module) => module.PromoPopupDialog),
+  { ssr: false },
 );
 
 const browserStorage = (): Storage | null => {
@@ -61,12 +54,11 @@ export function PromoPopup({ locale }: { locale: Locale }) {
 
   if (!popup) return null;
   return (
-    <PromoDialog
-      content={publicPopupContent(popup)}
+    <PromoPopupDialog
+      popup={popup}
       label={text.promoLabel}
       closeLabel={text.promoClose}
       onClose={() => setPopup(null)}
-      LinkComponent={RouterLink}
     />
   );
 }

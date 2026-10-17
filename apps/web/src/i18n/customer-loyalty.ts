@@ -14,6 +14,11 @@ import type { Locale } from './locales';
 const vi = {
   title: 'Điểm thưởng và ưu đãi',
   intro: 'Điểm, hạng thành viên, combo, quà tặng và những người bạn đã giới thiệu tại Lucy Spa.',
+  start: {
+    title: 'Bắt đầu tích điểm',
+    text: 'Mỗi {amount} thanh toán được 1 điểm. Điểm được cộng sau lượt làm dịch vụ đầu tiên.',
+  },
+  more: { title: 'Combo, quà tặng và giới thiệu' },
   notLive:
     'Chương trình điểm thưởng của Lucy Spa chưa bắt đầu. Khi bắt đầu, điểm, combo và quà tặng của bạn sẽ hiện ở đây.',
   points: {
@@ -26,7 +31,7 @@ const vi = {
   },
   tiers: {
     title: 'Các hạng thành viên',
-    rule: '1.000đ thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau.',
+    rule: '{amount} thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau.',
     columns: {
       tier: 'Hạng',
       points: 'Điểm cần có',
@@ -130,6 +135,11 @@ type Dictionary = typeof vi;
 const en: Dictionary = {
   title: 'Points and rewards',
   intro: 'Your points, member tier, combos, gifts and the people you referred to Lucy Spa.',
+  start: {
+    title: 'Start collecting points',
+    text: 'Every {amount} paid earns 1 point. Points are added after your first visit.',
+  },
+  more: { title: 'Combos, gifts and referrals' },
   notLive:
     'The Lucy Spa rewards programme has not started yet. Once it does, your points, combos and gifts will show here.',
   points: {
@@ -142,7 +152,7 @@ const en: Dictionary = {
   },
   tiers: {
     title: 'Membership tiers',
-    rule: 'Every 1,000đ paid = 1 point. Points never expire. A new tier applies from your next payment.',
+    rule: 'Every {amount} paid = 1 point. Points never expire. A new tier applies from your next payment.',
     columns: {
       tier: 'Tier',
       points: 'Points needed',
@@ -156,7 +166,7 @@ const en: Dictionary = {
     empty: 'You have no points activity yet.',
     columns: {
       date: 'Date',
-      wallet: 'Points',
+      wallet: 'Points type',
       what: 'Details',
       points: 'Points',
     },

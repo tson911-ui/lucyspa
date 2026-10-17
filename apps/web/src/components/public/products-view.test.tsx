@@ -92,8 +92,18 @@ test('list: no hero from the Owner means a plain title; the page has exactly one
   assert.ok(!text.includes('ls-prod-commitment'), 'no commitment box');
   assert.ok(!text.includes('LUCY BEAUTY SELECTION'), 'nothing is copied from the reference');
   assert.ok(!text.includes('Tư vấn phù hợp'), 'no claim the Owner did not write');
-  // The section heading is text only: no count, badge or symbol beside it.
-  assert.match(text, /<h2[^>]*id="products-list"[^>]*>Sản phẩm<\/h2>/);
+  // No heading repeats the page title (an h2 "Sản phẩm" under the h1 "Mỹ phẩm"): the list band is named instead, and the toolbar
+  // keeps the anchor the pager and the campaign button go to. No back control on this top-level page (B7).
+  assert.doesNotMatch(text, /<h2[^>]*>Sản phẩm<\/h2>/);
+  assert.match(text, /<section class="[^"]*ls-prod-list" aria-label="Sản phẩm">/);
+  assert.match(text, /<div class="ls-prod-head" id="products-list">/);
+  assert.doesNotMatch(text, /ls-back/);
+  // The cards are the list's headings (h2 under the one h1); no eyebrow above a name.
+  assert.match(
+    text,
+    /<h2 class="ls-pcard-name"><a href="\/vi\/products\/kem-duong">Kem dưỡng ẩm<\/a><\/h2>/,
+  );
+  assert.doesNotMatch(text, /ls-pcard-meta/);
 });
 
 test('list: the Owner hero and commitment box appear, in the visitor language, with one h1 (the hero headline)', () => {
@@ -147,10 +157,21 @@ test('cards: image, category, name link, price, struck list price, percent, "M�
   assert.ok(text.includes('<del>389.000 ₫</del>') && text.includes('329.000 ₫'));
   assert.ok(text.includes('-15%'));
   assert.ok(text.includes('>Mới<'));
-  assert.ok(text.includes('>Hết hàng<'), 'sold out is a badge');
-  assert.ok(text.includes('Đặt trước, dự kiến 3–5 ngày'));
+  // B18: the labels are neutral (Mới outline, sale ink) and sold out is the warning status with its icon.
+  assert.match(text, /<span class="ls-badge ls-badge-outline">Mới<\/span>/);
+  assert.match(
+    text,
+    /<span class="ls-badge ls-badge-warning"><svg[^>]*>.*?<\/svg>Hết hàng<\/span>/,
+  );
+  assert.ok(text.includes('Đặt trước, dự kiến 3–5\u00a0ngày'));
   assert.ok(text.includes('từ 100.000 ₫'), 'a range reads "from"');
-  assert.match(text, /<h3[^>]*class="[^"]*ls-pcard-name[^"]*"/);
+  assert.match(text, /<h2[^>]*class="[^"]*ls-pcard-name[^"]*"/);
+  // A product card holds no button and no second link: the name's link is the card's one target (Owner answer 2).
+  assert.equal(count(text, /<button\b/g), 0);
+  assert.equal(count(text, /<article class="ls-pcard">.*?<\/article>/g), 4);
+  for (const article of text.match(/<article class="ls-pcard">.*?<\/article>/g) ?? []) {
+    assert.equal(count(article, /<a\b/g), 1);
+  }
   assert.ok(!/còn \d+|\d+ sản phẩm|tồn|quantity/i.test(text), 'no quantity anywhere');
   // A card without a picture shows a quiet placeholder icon, not a made-up photo.
   assert.ok(text.includes('<svg'));
@@ -173,13 +194,16 @@ test('filters: category links with the chosen one marked, sub-categories under t
     />,
   );
   assert.ok(text.includes('href="/vi/products?category=rua"'), 'the chosen filter, back at page 1');
-  assert.match(text, /<a[^>]*aria-current="true"[^>]*>Sữa rửa mặt<\/a>/);
-  // The chip rows (from 640 px): the top-level categories first, the chosen one's parent marked, then its sub-categories in a second row.
+  assert.match(text, /<a[^>]*aria-current="true"[^>]*>(<svg.*?<\/svg>)?Sữa rửa mặt<\/a>/);
+  // The chip rows (from 640 px): the top-level categories first, the chosen one's parent marked with the selected tint (not a second
+  // fill, C4), then its sub-categories in a second row where the chosen chip is filled with a check (C50).
   const rows = text.split('<nav class="ls-pills"').slice(1);
   assert.equal(rows.length, 2);
-  assert.match(rows[0]!, /aria-current="true"[^>]*>Chăm sóc da<\/a>/);
+  // Only the chosen chip is current; its parent is marked with the selected tint, not announced as current.
+  assert.match(rows[0]!, /<a data-ancestor="true" href="[^"]*">Chăm sóc da<\/a>/);
   assert.ok(rows[0]!.includes('Mặt nạ') && !rows[0]!.includes('Sữa rửa mặt'));
-  assert.match(rows[1]!, /aria-current="true"[^>]*>Sữa rửa mặt<\/a>/);
+  assert.match(rows[1]!, /aria-current="true"[^>]*><svg[^>]*>.*?<\/svg>Sữa rửa mặt<\/a>/);
+  assert.equal(count(text, /data-ancestor/g), 1);
   // The phone's sheet keeps the full link list with the sub-category under its parent (rendered only while the sheet is open).
   assert.ok(!text.includes('Thương hiệu</h3>'), 'one brand is nothing to filter by');
   const many = html(
@@ -195,7 +219,9 @@ test('filters: category links with the chosen one marked, sub-categories under t
       state={EMPTY_PRODUCTS_STATE}
     />,
   );
-  assert.ok(many.includes('Thương hiệu') && many.includes('href="/vi/products?brand=b2"'));
+  // Several brands: a brand select in the toolbar (from 640 px), not a second chip row.
+  assert.match(many, /<select aria-label="Thương hiệu"/);
+  assert.match(many, /<option value="b2">Hãng hai<\/option>/);
   const none = html(<ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} />);
   assert.ok(!none.includes('Danh mục'), 'nothing to filter by: no sidebar, no filter button');
   assert.ok(!none.includes('ls-prod-filter-button'));
@@ -277,16 +303,33 @@ test('detail: one h1, gallery, price per variant with its own stock, where to bu
   assert.ok(
     text.includes('80.000 ₫') && text.includes('<del>100.000 ₫</del>') && text.includes('-20%'),
   );
-  assert.equal(count(text, /type="radio"/g), 2, 'a picker only when there are several variants');
-  assert.ok(text.includes('Đặt trước, dự kiến 3–5 ngày'));
+  // The variants are one segmented control (no price box per variant); the price above follows the choice.
+  assert.equal(count(text, /role="radio"/g), 2, 'a picker only when there are several variants');
+  assert.match(
+    text,
+    /<div role="radiogroup" aria-label="Loại" class="ls-segmented ls-prod-variants"/,
+  );
+  // One back affordance: the chevron (named for the list), no breadcrumb as well; no middle-dot meta, no eyebrow above the name.
+  assert.match(text, /aria-label="Quay lại Mỹ phẩm"/);
+  assert.doesNotMatch(text, /ls-crumbs| · /);
+  assert.match(
+    text,
+    /<p class="ls-prod-meta-links"><a class="ls-link" href="\/vi\/products\?category=da">Chăm sóc da<\/a>/,
+  );
+  // The availability line belongs to the chosen variant (the first in stock: none to say); the pre-order one is a choice in the picker.
+  assert.doesNotMatch(text, /class="ls-prod-stock"/);
+  assert.match(text, /role="radio" aria-checked="false"[^>]*>50 ml</);
   assert.ok(text.includes('Dưỡng ẩm cho da.'));
   assert.ok(text.includes('Mua trực tiếp tại cửa hàng'));
   assert.ok(text.includes('04 Nguyễn Quang Bích, Đà Nẵng') && text.includes('0934 936 101'));
   assert.ok(text.includes('href="tel:+84934936101"'));
   assert.ok(text.includes('Sản phẩm cùng danh mục') && text.includes('href="/vi/products/khac"'));
   assert.ok(text.includes('Cam kết') && text.includes('Một dòng'));
-  // The breadcrumb leads back to the list and the category.
+  // The category under the price leads to the list filtered to it.
   assert.ok(text.includes('href="/vi/products?category=da"'));
+  // The where-to-buy block is text in the band, with no button of its own (B16: one filled button, in the buy column).
+  const storeBlock = text.slice(text.indexOf('<section class="ls-prod-store"'));
+  assert.doesNotMatch(storeBlock.slice(0, storeBlock.indexOf('</section>')), /ls-btn/);
   // Online ordering is Wave 4: no cart, no buy button, no quantity.
   assert.ok(!/Mua ngay|Thêm vào giỏ|Add to cart|Buy now|name="quantity"/i.test(text));
   assert.ok(!/<form\b/.test(text));
@@ -327,7 +370,7 @@ test('detail (C12): bands alternate from the hero, the gallery has arrows with n
   );
 });
 
-test('list (C12): chips for the categories and brands from 640 px, the second row holds the sub-categories of the chosen parent', () => {
+test('list (C12, C4): category chips from 640 px with the brand as a select; the second row holds the sub-categories of the chosen parent', () => {
   const rich = data({
     categories: [
       { code: 'da', name: 'Chăm sóc da', parentCode: null, image: null },
@@ -341,24 +384,32 @@ test('list (C12): chips for the categories and brands from 640 px, the second ro
   const start = html(<ProductsView locale="vi" data={rich} state={EMPTY_PRODUCTS_STATE} />);
   assert.equal(
     start.match(/<nav class="ls-pills"/g)?.length,
-    2,
-    'categories and brands; no sub-category row yet',
+    1,
+    'categories only (one accent chip row); no sub-category row yet',
   );
   assert.match(start, /<div class="ls-prod-chips">/);
+  assert.match(
+    start,
+    /<select aria-label="Thương hiệu"[^>]*><option value="" selected="">Tất cả thương hiệu<\/option>/,
+  );
   const chosen = html(
-    <ProductsView locale="vi" data={rich} state={{ ...EMPTY_PRODUCTS_STATE, category: 'da' }} />,
+    <ProductsView
+      locale="vi"
+      data={rich}
+      state={{ ...EMPTY_PRODUCTS_STATE, category: 'da', brand: 'b2' }}
+    />,
   );
   assert.equal(
     chosen.match(/<nav class="ls-pills"/g)?.length,
-    3,
+    2,
     'the parent chosen: its sub-categories join',
   );
-  // A chip is a link carrying the whole state, so the list can be shared; the chosen one is marked.
+  // A chip is a link carrying the whole state, so the list can be shared; the chosen one is marked with a check.
   assert.match(
     chosen,
-    /<a aria-current="true" href="\/vi\/products\?category=da">Chăm sóc da<\/a>/,
+    /<a aria-current="true" href="\/vi\/products\?category=da&amp;brand=b2"><svg[^>]*>.*?<\/svg>Chăm sóc da<\/a>/,
   );
-  assert.match(chosen, /href="\/vi\/products\?category=da&amp;brand=b2">Hãng hai/);
+  assert.match(chosen, /<option value="b2" selected="">Hãng hai<\/option>/);
   // Nothing to filter by: no chip rows at all.
   assert.doesNotMatch(
     html(<ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} />),
@@ -389,8 +440,16 @@ test('detail: one variant has no picker; no picture shows a placeholder; no shop
     />,
     '/vi/products/kem-duong',
   );
-  assert.equal(count(text, /type="radio"/g), 0);
+  assert.equal(count(text, /role="radio"/g), 0);
   assert.equal(count(text, /class="ls-prod-thumb"/g), 0);
+  // The flat placeholder has the frame of a picture and keeps the card's photo name, so the card still travels into it.
+  assert.match(text, /<div class="ls-prod-slide" data-empty="true" aria-hidden="true">/);
+  // Sold out is said once in the availability line, with the warning icon; no disabled button stands in the buy slot.
+  assert.match(
+    text,
+    /<p class="ls-prod-stock" data-state="OUT_OF_STOCK"><svg[^>]*>.*?<\/svg>Hết hàng<\/p>/,
+  );
+  assert.doesNotMatch(text, /disabled=""[^>]*>Hết hàng/);
   assert.ok(text.includes('Hết hàng'));
   assert.ok(!text.includes('Mua trực tiếp tại cửa hàng'));
   assert.ok(!text.includes('Sản phẩm cùng danh mục'));
@@ -404,8 +463,14 @@ test('the English page uses English wording and the English store block', () => 
     <ProductDetailView locale="en" detail={detail()} site={site} />,
     '/en/products/kem-duong',
   );
-  assert.ok(text.includes('Buy in the shop') && text.includes('Directions'));
-  assert.ok(text.includes('Pre-order, expected 3–5 days'));
+  assert.ok(text.includes('Buy in the shop') && text.includes('Back to Cosmetics'));
+  const preOrder = detail({ variants: [detail().product.variants[1]!] });
+  assert.ok(
+    html(
+      <ProductDetailView locale="en" detail={preOrder} site={site} />,
+      '/en/products/x',
+    ).includes('Pre-order, expected 3–5\u00a0days'),
+  );
   assert.ok(text.includes('href="/en/products/khac"'));
 });
 
@@ -446,11 +511,14 @@ test('campaigns: the plain list shows a slim strip for each running campaign, tw
   const text = html(
     <ProductsView locale="vi" data={data()} state={EMPTY_PRODUCTS_STATE} campaigns={three} />,
   );
-  assert.equal(count(text, /class="ls-camp-strip"/g), 2);
+  assert.equal(count(text, /class="ls-camp-line"/g), 2);
   assert.ok(text.includes('href="/vi/products?campaign=ngay-hoi-lam-dep"'));
   assert.ok(text.includes('href="/vi/products?campaign=tet-sale"'));
   assert.ok(!text.includes('thu-ba'));
   assert.ok(text.includes('Xem ưu đãi'), 'a campaign without a button label gets the default');
+  // A quiet line: no tinted box, no badge above the words; the link names its campaign for assistive technology.
+  assert.doesNotMatch(text.slice(text.indexOf('ls-camp-strips')), /ls-badge/);
+  assert.match(text, /aria-label="Xem ưu đãi: Tết"/);
   assert.equal(count(text, /<h1\b/g), 1);
   // Nothing is drawn when there is no news of campaigns (not read, or none running).
   for (const none of [null, []]) {
@@ -488,9 +556,8 @@ test('campaigns: a sale view opens with the banner, headline, message and button
   assert.ok(closed.includes('Xem sản phẩm') && closed.includes('href="#products-list"'));
   assert.ok(text.includes('Đến hết ngày 31/10/2026'));
   assert.ok(text.includes('/api/v1/public/media/22222222-2222-4222-8222-222222222222/lg'));
-  assert.equal(count(text, /class="ls-camp-strip"/g), 0, 'no strips inside the sale view itself');
-  // Paging keeps the campaign and the sort.
-  assert.ok(text.includes('campaign=ngay-hoi-lam-dep'));
+  assert.equal(count(text, /class="ls-camp-line"/g), 0, 'no strips inside the sale view itself');
+  // The pager keeps the campaign and the sort (it builds the address from the whole state: public-products-core productsHref).
   assert.ok(text.includes('href="/vi/products"'), 'a way back to every product');
   // A campaign with no picture and no words still has an h1 (its name) and no broken image.
   const bare = html(
@@ -508,7 +575,7 @@ test('campaigns: a sale view opens with the banner, headline, message and button
   assert.ok(bare.includes('Xem sản phẩm'));
 });
 
-test('campaigns: an unknown or ended campaign shows the normal page and its normal empty message', () => {
+test('campaigns: an unknown or ended campaign says the offer has ended, with one way on to all cosmetics', () => {
   const text = html(
     <ProductsView
       locale="vi"
@@ -518,10 +585,17 @@ test('campaigns: an unknown or ended campaign shows the normal page and its norm
     />,
   );
   assert.equal(count(text, /<h1\b/g), 1);
-  assert.ok(text.includes('Mỹ phẩm'), 'the plain title');
+  assert.match(text, /<h1[^>]*>Mỹ phẩm<\/h1>/, 'the plain title');
   assert.equal(count(text, /ls-camp-/g), 0);
-  assert.ok(text.includes('Mỹ phẩm sắp có tại Lucy Spa'));
-  // The campaigns could not be read at all: the same page.
+  // The empty state: icon, heading, one sentence, one action (secondary: the list page is not a detail page).
+  assert.match(text, /<p class="ls-empty-title">Ưu đãi này đã kết thúc<\/p>/);
+  assert.ok(text.includes('Chương trình khuyến mãi này đã hết hạn hoặc không còn áp dụng.'));
+  assert.match(
+    text,
+    /<a class="ls-btn ls-btn-secondary ls-btn-md" href="\/vi\/products">Xem tất cả mỹ phẩm<\/a>/,
+  );
+  assert.ok(!text.includes('ls-prod-grid') && !text.includes('Xóa bộ lọc'));
+  // The campaigns could not be read at all: the normal page (nothing proves the offer ended).
   const failed = html(
     <ProductsView
       locale="vi"
@@ -534,15 +608,15 @@ test('campaigns: an unknown or ended campaign shows the normal page and its norm
   assert.equal(count(failed, /ls-camp-/g), 0);
 });
 
-test('campaigns: a card and the product page show the sale block and a link to the campaign sale view, no badge', () => {
+test('campaigns: a card shows the sale block (no link inside the card link); the product page links to the campaign sale view', () => {
   const list = html(
     <ProductsView locale="vi" data={data({ items: [onSale()] })} state={EMPTY_PRODUCTS_STATE} />,
   );
   assert.ok(list.includes('-25%'));
   assert.ok(list.includes('<del>289.000 ₫</del>'));
-  assert.equal(count(list, /class="ls-prod-campaign"/g), 1);
-  assert.ok(list.includes('href="/vi/products?campaign=ngay-hoi-lam-dep"'));
-  assert.ok(list.includes('Khuyến mãi: '));
+  // The card is one link (Owner answer 2): the campaign line, a second link, lives on the product page only.
+  assert.equal(count(list, /class="ls-prod-campaign"/g), 0);
+  assert.ok(!list.includes('href="/vi/products?campaign=ngay-hoi-lam-dep"'));
   // The percent is the brand-coloured text of the price block (never a badge on the picture); a plain price has no campaign line.
   const percent = html(
     <ProductsView

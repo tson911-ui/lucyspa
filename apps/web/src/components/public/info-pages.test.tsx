@@ -79,7 +79,18 @@ test('an information page: one h1, the text before the first heading, h2 section
   const html = renderToStaticMarkup(<InfoPageView locale="vi" page={page()} />);
   assert.equal(html.match(/<h1\b/g)?.length, 1);
   assert.match(html, /<h1[^>]*>Chính sách đổi trả<\/h1>/);
-  assert.equal(html.match(/<h2\b/g)?.length, 2, 'the two ## headings, nothing else');
+  // The two ## headings and the phone's "Trong trang này" disclosure (hidden from 1024 px, where the side table of contents shows).
+  assert.equal(
+    html.match(/<h2\b/g)?.length,
+    3,
+    'the two ## headings and the phone table of contents',
+  );
+  assert.match(html, /<div class="ls-info-toc-phone">/);
+  // B17: the title band holds the h1 and one sentence (here the day the text last changed).
+  assert.match(
+    html,
+    /<h1 class="ls-h1-display">Chính sách đổi trả<\/h1><p class="ls-lead">Cập nhật ngày 14\/10\/2026\.<\/p>/,
+  );
   assert.match(html, /<section id="dieu-kien-doi-tra"/);
   assert.match(html, /<section id="hoan-tien"/);
   assert.match(html, /<h3 id="ngoai-le">Ngoại lệ<\/h3>/);
@@ -178,8 +189,17 @@ test('the contact page: the embed of the address with a title, lazy loading and 
   // The address, the fallback link to the same place, the hotline and the hours.
   assert.match(html, /04 Nguyễn Quang Bích, Đà Nẵng/);
   assert.match(html, /href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=/);
-  assert.match(html, /Mở trong Google Maps<span class="ls-visually-hidden"> \(mở trong tab mới\)/);
-  assert.match(html, /<a href="tel:\+84934936101">0934 936 101<\/a>/);
+  // "Chỉ đường" under the map (a new tab, said so); the phone number is plain selectable text, "Gọi ngay" dials it (one link, not two).
+  assert.match(html, /Chỉ đường<span class="ls-visually-hidden"> \(mở trong tab mới\)/);
+  assert.match(html, /<span translate="no">0934 936 101<\/span>/);
+  assert.equal(html.match(/href="tel:\+84934936101"/g)?.length, 1);
+  // Values without small labels above them (B1): the labels are spoken only; "Gọi ngay" is the one filled button.
+  assert.doesNotMatch(html, /ls-place-label|<dt/);
+  assert.equal(html.match(/ls-btn-primary/g)?.length, 1);
+  assert.ok(
+    html.indexOf('ls-contact-text') < html.indexOf('<iframe'),
+    'the words lead, the map follows',
+  );
   assert.match(html, /09:00/);
   assert.match(html, /Gọi ngay/);
   assert.match(html, /Nhắn Zalo/);

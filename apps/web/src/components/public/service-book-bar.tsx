@@ -2,6 +2,7 @@
 
 import { buttonClass } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { useEffect, useState } from 'react';
 
 /**
@@ -53,7 +54,7 @@ export function ServiceBookBar({
       aria-label={label}
     >
       <p className="ls-svc-bar-price">{price}</p>
-      <Link className={buttonClass('primary', 'md')} href={href}>
+      <Link className={buttonClass('primary', 'md')} href={href} transitionTypes={NAV_TRANSITION}>
         {action}
       </Link>
     </div>

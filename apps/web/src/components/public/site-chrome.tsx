@@ -1,5 +1,6 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { BrandIcon, BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
@@ -25,8 +26,11 @@ export function PublicHeader({
   locale: Locale;
   /** The season's site decoration (logo accent), or null for the plain wordmark. */
   decor: SiteDecorSpec | null;
-  /** False while no product is published: the Mỹ phẩm menu entry is left out. */
-  hasProducts?: boolean;
+  /**
+   * False while no product is published: the Mỹ phẩm menu entry is left out. A promise streams the menu: the header paints at
+   * once with the full menu and the entry is settled when the answer arrives (rbp async-suspense-boundaries).
+   */
+  hasProducts?: boolean | Promise<boolean>;
 }) {
   const text = getSiteText(locale);
   return (
@@ -43,11 +47,29 @@ export function PublicHeader({
           </SiteLogo>
         </Link>
       }
-      nav={<PublicNav locale={locale} hasProducts={hasProducts} />}
+      nav={
+        typeof hasProducts === 'boolean' ? (
+          <PublicNav locale={locale} hasProducts={hasProducts} />
+        ) : (
+          <Suspense fallback={<PublicNav locale={locale} />}>
+            <NavWhenKnown locale={locale} hasProducts={hasProducts} />
+          </Suspense>
+        )
+      }
       tools={<PublicTools locale={locale} />}
       cta={<PublicHeaderCta locale={locale} />}
     />
   );
+}
+
+async function NavWhenKnown({
+  locale,
+  hasProducts,
+}: {
+  locale: Locale;
+  hasProducts: Promise<boolean>;
+}) {
+  return <PublicNav locale={locale} hasProducts={await hasProducts} />;
 }
 
 export function PublicFooter({
@@ -119,7 +141,9 @@ export function PublicFooter({
               site.address,
               <span key="tel">
                 {phoneBefore}
-                <a href={telHref(site)}>{site.hotline}</a>
+                <a href={telHref(site)} translate="no">
+                  {site.hotline}
+                </a>
                 {phoneAfter}
               </span>,
               ...(hours ? [`${hours.label}: ${hours.value}`] : []),

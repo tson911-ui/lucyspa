@@ -37,12 +37,17 @@ export interface SiteText {
     errorTitle: string;
     errorBody: string;
     retry: string;
+    /** A pre-order ticket link that is wrong or revoked (the same words as the ticket page, here so the 404 needs no shop dictionary). */
+    ticketTitle: string;
+    ticketBody: string;
   };
   header: {
     brand: string;
     language: string;
     switchLanguage: string;
     account: string;
+    /** Signed out, the account control is one link to the sign-in page (C47), whose switch also offers registration. */
+    signInOrRegister: string;
     bookNow: string;
     /** The notification bell and its panel (the list's own wording is in the notifications dictionary). */
     bell: {
@@ -55,7 +60,8 @@ export interface SiteText {
     };
   };
   /** Information pages the Owner writes (policies, terms): the table of contents, and the page that is not there. */
-  infoPage: { toc: string; notFoundTitle: string; newTab: string };
+  /** `updated` with {date}: the sentence under a page title when the page has no description of its own. */
+  infoPage: { toc: string; notFoundTitle: string; newTab: string; updated: string };
   /** The contact page: the map, the address, the hours and the ways to reach the spa. */
   contactPage: {
     title: string;
@@ -120,6 +126,11 @@ export interface SiteText {
       sentTitle: string;
       sentBody: string;
       sentClose: string;
+      /** Closing the panel with a number typed asks first (C60, H13). */
+      discardTitle: string;
+      discardBody: string;
+      discardConfirm: string;
+      discardKeep: string;
     };
   };
   footer: {
@@ -155,6 +166,8 @@ export interface SiteText {
     };
   };
   home: {
+    /** The hero heading while the shop has no tagline (C41: the brand name is not a page title). */
+    fallbackTitle: string;
     /** The product, in one factual sentence under the tagline. */
     lead: string;
     bookNow: string;
@@ -189,9 +202,8 @@ export interface SiteText {
     categoriesLead: string;
     categoryServices: string;
     categoryProducts: string;
-    /** The captions of the photo placeholders (the Owner replaces them with the shop's own photos). */
-    photoSpace: string;
-    photoIntro: string;
+    /** The address fact's link to the map (opens in a new tab). */
+    directions: string;
   };
   services: {
     title: string;
@@ -202,6 +214,8 @@ export interface SiteText {
     /** Time estimate label. */
     estimate: string;
     price: string;
+    /** The heading of the empty list (the sentence is `empty`). */
+    emptyTitle: string;
     empty: string;
     detailLead: string;
     /** The button back to the list, under the service. */
@@ -215,19 +229,20 @@ export interface SiteText {
     faq: string;
     /** The search field above the list, its clear button, and the line shown when nothing matches (with {query}). */
     searchLabel: string;
+    /** An example of what to type, ending with "…" (never the label repeated). */
+    searchPlaceholder: string;
     searchClear: string;
+    /** The heading of the empty search result (the sentence is `noMatch`). */
+    noMatchTitle: string;
     noMatch: string;
     perNailNote: string;
     priceNote: string;
     notFoundTitle: string;
     notFoundBody: string;
-    breadcrumbs: string;
     /** The booking band at the bottom of a service page: its heading and one sentence (the page's phone bar uses `bookBar` as its name). */
     ctaTitle: string;
     ctaLead: string;
     bookBar: string;
-    /** The caption of the service photo placeholder. */
-    photoService: string;
   };
   /** The public cosmetics catalog (Phase 6 P6-6). Hero and commitment words are the Owner's, from the admin, never from here. */
   products: {
@@ -238,7 +253,10 @@ export interface SiteText {
     searchClear: string;
     sortLabel: string;
     sorts: { featured: string; newest: string; price_asc: string; price_desc: string };
+    /** Opens the filter sheet (more input): ends with "…" (C39). */
     filterButton: string;
+    /** The same with the number of active filters, `{count}`. */
+    filterButtonCount: string;
     filterTitle: string;
     filterDone: string;
     filterReset: string;
@@ -246,6 +264,8 @@ export interface SiteText {
     allCategories: string;
     brands: string;
     allBrands: string;
+    /** The accessible name of the second chip row (the sub-categories of the chosen category). */
+    subCategories: string;
     badgeNew: string;
     /** "Tiết kiệm {amount}": the saving of a sale price, a small line under it. */
     saleSave: string;
@@ -255,10 +275,15 @@ export interface SiteText {
     outOfStock: string;
     /** With {days}: "Đặt trước, dự kiến 3–5 ngày". */
     preOrder: string;
+    /** The headings of the two empty states (nothing published; nothing matches the filters). */
+    emptyTitle: string;
+    noMatchTitle: string;
     empty: string;
     /** The button under the empty message: where to look meanwhile (the services). */
     emptyAction: string;
     noMatch: string;
+    /** An example of what to type, ending with "…". */
+    searchPlaceholder: string;
     pager: {
       nav: string;
       first: string;
@@ -269,7 +294,6 @@ export interface SiteText {
       summary: string;
     };
     backLabel: string;
-    breadcrumbs: string;
     back: string;
     detailLead: string;
     gallery: string;
@@ -282,6 +306,8 @@ export interface SiteText {
     /** The fixed headings of the four description sections (Claude integration); the text under each comes from the product. */
     sections: { benefits: string; ingredients: string; usage: string; suitableFor: string };
     related: string;
+    /** The related row's heading on a sold-out product, where it is the next step. */
+    similar: string;
     notFoundTitle: string;
     notFoundBody: string;
     store: {
@@ -325,12 +351,16 @@ const text = {
       errorBody:
         'Có trục trặc khi mở trang này, bạn thử tải lại sau ít phút hoặc gọi hotline của tiệm.',
       retry: 'Tải lại',
+      ticketTitle: 'Không tìm thấy phiếu',
+      ticketBody:
+        'Liên kết này không đúng, đã bị thu hồi hoặc đã hết hạn. Hãy hỏi cửa hàng để nhận liên kết mới.',
     },
     header: {
       brand: 'Lucy Spa, về trang chủ',
       language: 'Ngôn ngữ',
       switchLanguage: 'English',
       account: 'Tài khoản của tôi',
+      signInOrRegister: 'Đăng nhập hoặc đăng ký',
       bookNow: 'Đặt lịch',
       bell: { label: 'Thông báo', unread: '{count} chưa đọc', viewAll: 'Xem tất cả' },
     },
@@ -338,15 +368,16 @@ const text = {
       toc: 'Trong trang này',
       notFoundTitle: 'Không tìm thấy trang này',
       newTab: 'mở trong tab mới',
+      updated: 'Cập nhật ngày {date}.',
     },
     contactPage: {
       title: 'Liên hệ',
       lead: 'Địa chỉ, giờ mở cửa và các cách liên hệ với Lucy Spa.',
       mapTitle: 'Bản đồ đường đến Lucy Spa',
-      openMap: 'Mở trong Google Maps',
+      openMap: 'Chỉ đường',
       quickContact: 'Liên hệ nhanh',
       address: 'Địa chỉ',
-      hotline: 'Hotline',
+      hotline: 'Điện thoại',
       hours: 'Giờ mở cửa',
       call: 'Gọi ngay',
       zalo: 'Nhắn Zalo',
@@ -360,7 +391,7 @@ const text = {
       zalo: 'Nhắn Zalo',
       messenger: 'Nhắn Messenger',
       call: 'Gọi Lucy Spa',
-      chat: 'Chat với Lucy',
+      chat: 'Chat với Lucy…',
     },
     chat: {
       title: 'Chat với Lucy',
@@ -370,13 +401,13 @@ const text = {
       greeting:
         'Xin chào! Mình có thể giúp bạn về giá dịch vụ, giờ mở cửa, khuyến mãi, sản phẩm và giờ còn trống.',
       messageLabel: 'Tin nhắn của bạn',
-      messagePlaceholder: 'Nhập câu hỏi của bạn',
+      messagePlaceholder: 'Ví dụ: giờ mở cửa hôm nay…',
       send: 'Gửi',
       typing: 'Lucy đang trả lời…',
       you: 'Bạn',
       assistant: 'Lucy',
       bookSlot: 'Đặt lịch giờ này',
-      leaveNumber: 'Để lại số điện thoại, tiệm gọi lại',
+      leaveNumber: 'Để lại số để tiệm gọi lại…',
       wait: 'Bạn nhắn hơi nhanh. Vui lòng chờ một chút rồi thử lại.',
       fallbackDown:
         'Lúc này trợ lý chưa trả lời được. Bạn để lại số điện thoại, tiệm sẽ gọi lại cho bạn.',
@@ -398,6 +429,10 @@ const text = {
         sentTitle: 'Tiệm đã nhận số của bạn',
         sentBody: 'Nhân viên sẽ gọi lại cho bạn trong giờ mở cửa.',
         sentClose: 'Đóng',
+        discardTitle: 'Bỏ thông tin đã nhập?',
+        discardBody: 'Số điện thoại và lời nhắn bạn vừa nhập sẽ mất.',
+        discardConfirm: 'Bỏ và đóng',
+        discardKeep: 'Tiếp tục nhập',
       },
     },
     footer: {
@@ -424,6 +459,7 @@ const text = {
       },
     },
     home: {
+      fallbackTitle: 'Khoảnh khắc dành riêng cho bạn',
       lead: 'Chọn dịch vụ, chọn giờ còn trống và giữ chỗ trực tuyến trong vài phút.',
       bookNow: 'Đặt lịch',
       viewServices: 'Xem dịch vụ',
@@ -436,7 +472,7 @@ const text = {
         'Giá niêm yết rõ ràng cho từng dịch vụ. Chọn một dịch vụ để xem chi tiết và đặt lịch.',
       viewAll: 'Xem tất cả',
       viewAllOf: 'Xem tất cả dịch vụ nhóm {group}',
-      hotline: 'Hotline',
+      hotline: 'Điện thoại',
       closed: 'Đóng cửa',
       loadError: 'Không tải được {section} lúc này. Vui lòng thử lại sau ít phút.',
       reload: 'Tải lại trang',
@@ -452,8 +488,7 @@ const text = {
       categoriesLead: 'Chọn nhóm dịch vụ hoặc danh mục mỹ phẩm bạn quan tâm.',
       categoryServices: 'Dịch vụ',
       categoryProducts: 'Mỹ phẩm',
-      photoSpace: 'Ảnh của tiệm: không gian thư giãn',
-      photoIntro: 'Ảnh của tiệm: kỹ thuật viên đang làm dịch vụ',
+      directions: 'Chỉ đường',
     },
     services: {
       title: 'Dịch vụ',
@@ -463,26 +498,27 @@ const text = {
       book: 'Đặt lịch',
       estimate: 'Dự kiến',
       price: 'Giá',
+      emptyTitle: 'Bảng giá đang được cập nhật',
       empty: 'Chưa có dịch vụ nào để hiển thị.',
       detailLead: 'Giá và thời gian dự kiến của dịch vụ.',
       back: 'Tất cả dịch vụ',
-      backLabel: 'Quay lại',
+      backLabel: 'Quay lại Dịch vụ',
       related: 'Dịch vụ cùng nhóm',
       included: 'Dịch vụ bao gồm',
       steps: 'Các bước thực hiện',
       faq: 'Câu hỏi thường gặp',
       searchLabel: 'Tìm dịch vụ',
+      searchPlaceholder: 'Ví dụ: gội đầu, sơn gel…',
       searchClear: 'Xóa nội dung tìm',
-      noMatch: 'Không có dịch vụ nào khớp "{query}". Thử một tên khác hoặc bỏ nội dung tìm.',
+      noMatchTitle: 'Không có dịch vụ phù hợp',
+      noMatch: 'Không có dịch vụ nào khớp “{query}”. Thử một tên khác hoặc bỏ nội dung tìm.',
       perNailNote: 'Tính theo số ngón; số ngón và giá cuối cùng được chốt tại tiệm.',
       priceNote: 'Thời gian là dự kiến; giá cuối cùng được chốt tại tiệm.',
       notFoundTitle: 'Không tìm thấy dịch vụ',
       notFoundBody: 'Dịch vụ này không còn hoặc đang tạm ngưng. Xem các dịch vụ khác của tiệm.',
-      breadcrumbs: 'Đường dẫn',
       ctaTitle: 'Sẵn sàng đặt lịch?',
       ctaLead: 'Chọn giờ còn trống và giữ chỗ trực tuyến trong vài phút.',
       bookBar: 'Đặt lịch dịch vụ này',
-      photoService: 'Ảnh của tiệm: dịch vụ này',
     },
     products: {
       title: 'Mỹ phẩm',
@@ -497,7 +533,8 @@ const text = {
         price_asc: 'Giá thấp đến cao',
         price_desc: 'Giá cao đến thấp',
       },
-      filterButton: 'Lọc',
+      filterButton: 'Lọc…',
+      filterButtonCount: 'Lọc ({count})…',
       filterTitle: 'Lọc sản phẩm',
       filterDone: 'Xong',
       filterReset: 'Xóa bộ lọc',
@@ -505,15 +542,19 @@ const text = {
       allCategories: 'Tất cả',
       brands: 'Thương hiệu',
       allBrands: 'Tất cả thương hiệu',
+      subCategories: 'Danh mục con',
       badgeNew: 'Mới',
       saleSave: 'Tiết kiệm {amount}',
-      saleLeftDays: 'Còn {days} ngày {time}',
+      saleLeftDays: 'Còn {days}\u00a0ngày {time}',
       saleLeft: 'Còn {time}',
       outOfStock: 'Hết hàng',
-      preOrder: 'Đặt trước, dự kiến {days} ngày',
+      preOrder: 'Đặt trước, dự kiến {days}\u00a0ngày',
+      emptyTitle: 'Mỹ phẩm sắp có',
+      noMatchTitle: 'Không có sản phẩm phù hợp',
       empty: 'Mỹ phẩm sắp có tại Lucy Spa. Trong lúc chờ, mời bạn xem các dịch vụ của tiệm.',
       emptyAction: 'Xem dịch vụ',
-      noMatch: 'Không có sản phẩm phù hợp. Thử đổi từ khóa hoặc bỏ bớt bộ lọc.',
+      noMatch: 'Thử đổi từ khóa hoặc bỏ bớt bộ lọc.',
+      searchPlaceholder: 'Ví dụ: kem chống nắng…',
       pager: {
         nav: 'Phân trang sản phẩm',
         first: 'Trang đầu',
@@ -523,8 +564,7 @@ const text = {
         pageNumber: 'Trang {page}',
         summary: 'Hiển thị {from}–{to} trong {total}',
       },
-      backLabel: 'Quay lại',
-      breadcrumbs: 'Đường dẫn',
+      backLabel: 'Quay lại Mỹ phẩm',
       back: 'Tất cả mỹ phẩm',
       detailLead: 'Giá niêm yết và tình trạng hàng của sản phẩm.',
       gallery: 'Ảnh sản phẩm',
@@ -540,6 +580,7 @@ const text = {
         suitableFor: 'Phù hợp với ai',
       },
       related: 'Sản phẩm cùng danh mục',
+      similar: 'Sản phẩm tương tự',
       notFoundTitle: 'Không tìm thấy sản phẩm',
       notFoundBody:
         'Sản phẩm này không còn bán hoặc đang tạm ngưng. Xem các sản phẩm khác của tiệm.',
@@ -575,35 +616,40 @@ const text = {
       rewards: 'Rewards',
     },
     errors: {
-      notFoundTitle: 'We could not find this page',
+      notFoundTitle: 'This page could not be found',
       notFoundBody: 'The address may be mistyped, or the page is gone.',
       home: 'Back to home',
       errorTitle: 'This page did not load',
       errorBody:
         'Something went wrong opening this page; try again in a few minutes or call the shop hotline.',
       retry: 'Try again',
+      ticketTitle: 'Ticket not found',
+      ticketBody:
+        'This link is not valid, has been revoked or has expired. Ask the shop for a new link.',
     },
     header: {
       brand: 'Lucy Spa, back to the home page',
       language: 'Language',
       switchLanguage: 'Tiếng Việt',
       account: 'My account',
+      signInOrRegister: 'Sign in or create an account',
       bookNow: 'Book now',
       bell: { label: 'Notifications', unread: '{count} unread', viewAll: 'View all' },
     },
     infoPage: {
       toc: 'On this page',
-      notFoundTitle: 'We could not find this page',
+      notFoundTitle: 'This page could not be found',
       newTab: 'opens in a new tab',
+      updated: 'Updated {date}.',
     },
     contactPage: {
       title: 'Contact',
       lead: 'The address, opening hours and ways to reach Lucy Spa.',
       mapTitle: 'Map to Lucy Spa',
-      openMap: 'Open in Google Maps',
+      openMap: 'Directions',
       quickContact: 'Quick contact',
       address: 'Address',
-      hotline: 'Hotline',
+      hotline: 'Phone',
       hours: 'Opening hours',
       call: 'Call now',
       zalo: 'Message on Zalo',
@@ -617,7 +663,7 @@ const text = {
       zalo: 'Message on Zalo',
       messenger: 'Message on Messenger',
       call: 'Call Lucy Spa',
-      chat: 'Chat with Lucy',
+      chat: 'Chat with Lucy…',
     },
     chat: {
       title: 'Chat with Lucy',
@@ -627,13 +673,13 @@ const text = {
       greeting:
         'Hello! I can help with service prices, opening hours, promotions, products and free time slots.',
       messageLabel: 'Your message',
-      messagePlaceholder: 'Type your question',
+      messagePlaceholder: 'For example: opening hours today…',
       send: 'Send',
       typing: 'Lucy is replying…',
       you: 'You',
       assistant: 'Lucy',
       bookSlot: 'Book this time',
-      leaveNumber: 'Leave a phone number, we call you back',
+      leaveNumber: 'Leave your number for a call back…',
       wait: 'You are writing a little fast. Please wait a moment and try again.',
       fallbackDown:
         'The assistant cannot answer right now. Leave a phone number and the shop will call you back.',
@@ -655,6 +701,10 @@ const text = {
         sentTitle: 'The shop has your number',
         sentBody: 'A staff member will call you back during opening hours.',
         sentClose: 'Close',
+        discardTitle: 'Discard what you typed?',
+        discardBody: 'The phone number and message you typed will be lost.',
+        discardConfirm: 'Discard and close',
+        discardKeep: 'Keep typing',
       },
     },
     footer: {
@@ -681,6 +731,7 @@ const text = {
       },
     },
     home: {
+      fallbackTitle: 'A moment just for you',
       lead: 'Choose your services, pick a free time and book online in minutes.',
       bookNow: 'Book now',
       viewServices: 'View services',
@@ -692,9 +743,9 @@ const text = {
       groupsLead: 'Clear listed prices for every service. Pick one to see the details and book.',
       viewAll: 'View all',
       viewAllOf: 'View all {group} services',
-      hotline: 'Hotline',
+      hotline: 'Phone',
       closed: 'Closed',
-      loadError: 'We could not load the {section} right now. Please try again in a few minutes.',
+      loadError: 'The {section} could not be loaded right now. Please try again in a few minutes.',
       reload: 'Reload the page',
       sectionServices: 'service catalogue',
       noServices: 'The service catalogue is being updated.',
@@ -708,8 +759,7 @@ const text = {
       categoriesLead: 'Pick a service group or a cosmetics category you like.',
       categoryServices: 'Services',
       categoryProducts: 'Cosmetics',
-      photoSpace: 'The shop’s own photo: the relaxation space',
-      photoIntro: 'The shop’s own photo: a technician at work',
+      directions: 'Directions',
     },
     services: {
       title: 'Services',
@@ -719,27 +769,29 @@ const text = {
       book: 'Book',
       estimate: 'Estimated',
       price: 'Price',
+      emptyTitle: 'The price list is being updated',
       empty: 'There are no services to show yet.',
       detailLead: 'Price and estimated time of this service.',
       back: 'All services',
-      backLabel: 'Back',
+      backLabel: 'Back to Services',
       related: 'More in this group',
       included: 'What is included',
       steps: 'How it goes',
       faq: 'Frequently asked questions',
-      searchLabel: 'Find a service',
+      searchLabel: 'Search services',
+      searchPlaceholder: 'For example: hair wash…',
       searchClear: 'Clear the search',
-      noMatch: 'No service matches "{query}". Try another name or clear the search.',
+      noMatchTitle: 'No matching services',
+      noMatch: 'No service matches “{query}”. Try another name or clear the search.',
       perNailNote:
         'Priced per nail; the number of nails and the final price are settled at the shop.',
       priceNote: 'The time is an estimate; the final price is settled at the shop.',
       notFoundTitle: 'Service not found',
-      notFoundBody: 'This service is no longer offered or is paused. See the shop other services.',
-      breadcrumbs: 'Breadcrumbs',
+      notFoundBody:
+        "This service is no longer offered or is paused. See the shop's other services.",
       ctaTitle: 'Ready to book?',
       ctaLead: 'Pick a free time and book online in minutes.',
       bookBar: 'Book this service',
-      photoService: 'The shop’s own photo: this service',
     },
     products: {
       title: 'Cosmetics',
@@ -754,7 +806,8 @@ const text = {
         price_asc: 'Price, low to high',
         price_desc: 'Price, high to low',
       },
-      filterButton: 'Filter',
+      filterButton: 'Filter…',
+      filterButtonCount: 'Filter ({count})…',
       filterTitle: 'Filter products',
       filterDone: 'Done',
       filterReset: 'Clear filters',
@@ -762,15 +815,20 @@ const text = {
       allCategories: 'All',
       brands: 'Brand',
       allBrands: 'All brands',
+      subCategories: 'Sub-categories',
       badgeNew: 'New',
       saleSave: 'You save {amount}',
-      saleLeftDays: '{days} days {time} left',
+      saleLeftDays: '{days}\u00a0days {time} left',
       saleLeft: '{time} left',
       outOfStock: 'Out of stock',
-      preOrder: 'Pre-order, expected {days} days',
-      empty: 'Cosmetics are coming soon to Lucy Spa. In the meantime, have a look at our services.',
+      preOrder: 'Pre-order, expected {days}\u00a0days',
+      empty:
+        'Cosmetics are coming soon to Lucy Spa. In the meantime, have a look at the shop’s services.',
+      emptyTitle: 'Cosmetics are coming soon',
+      noMatchTitle: 'No matching products',
       emptyAction: 'See services',
-      noMatch: 'No products match. Try other words or remove a filter.',
+      noMatch: 'Try other words or remove a filter.',
+      searchPlaceholder: 'For example: sunscreen…',
       pager: {
         nav: 'Product pages',
         first: 'First page',
@@ -780,8 +838,7 @@ const text = {
         pageNumber: 'Page {page}',
         summary: 'Showing {from}–{to} of {total}',
       },
-      backLabel: 'Back',
-      breadcrumbs: 'Breadcrumbs',
+      backLabel: 'Back to Cosmetics',
       back: 'All cosmetics',
       detailLead: 'Listed price and availability of the product.',
       gallery: 'Product pictures',
@@ -797,8 +854,9 @@ const text = {
         suitableFor: 'Who it suits',
       },
       related: 'More in this category',
+      similar: 'Similar products',
       notFoundTitle: 'Product not found',
-      notFoundBody: 'This product is no longer sold or is paused. See the shop other products.',
+      notFoundBody: "This product is no longer sold or is paused. See the shop's other products.",
       store: {
         title: 'Buy in the shop',
         body: 'Visit Lucy Spa to see and buy the product. Call first to check availability.',

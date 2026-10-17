@@ -1,9 +1,10 @@
 import type { PublicCampaign, PublicProductPrice } from '@lucy-spa/contracts';
-import { Badge, buttonClass, Icon } from '@lucy-spa/ui';
+import { Badge, buttonClass, EmptyState, Icon } from '@lucy-spa/ui';
 import Link from 'next/link';
 import { getCampaignsPublicText } from '../../i18n/campaigns-public';
 import type { Locale } from '../../i18n/locales';
 import { fill } from '../../lib/fill';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import {
   campaignBanner,
   campaignCtaLabel,
@@ -34,7 +35,11 @@ export function PriceCampaignLine({
   return (
     <p className="ls-prod-campaign">
       {before}
-      <Link href={campaignHref(locale, price.campaign.slug)} title={price.campaign.name}>
+      <Link
+        href={campaignHref(locale, price.campaign.slug)}
+        title={price.campaign.name}
+        transitionTypes={NAV_TRANSITION}
+      >
         {price.campaign.name}
       </Link>
       {after}
@@ -42,7 +47,11 @@ export function PriceCampaignLine({
   );
 }
 
-/** One slim strip for each running campaign (two at most) above the plain list, each linking to its sale view. */
+/**
+ * One quiet line for each running campaign (two at most) above the plain list: a tag icon, the campaign's headline in ink and a text link
+ * to its sale view (no tinted box, no eyebrow badge: the accent stays on the link). The link names the campaign for assistive technology,
+ * so two lines never read as two identical links.
+ */
 export function CampaignStrips({
   locale,
   campaigns,
@@ -58,28 +67,32 @@ export function CampaignStrips({
   const text = getCampaignsPublicText(locale);
   return (
     <ul className="ls-camp-strips" aria-label={text.stripsLabel}>
-      {shown.map((campaign) => (
-        <li key={campaign.slug}>
-          <Link className="ls-camp-strip" href={campaignHref(locale, campaign.slug)}>
-            {campaign.badge ? <Badge tone="brand">{campaign.badge}</Badge> : null}
-            <span className="ls-camp-strip-text" title={campaign.headline ?? campaign.name}>
-              {campaign.headline ?? campaign.name}
-            </span>
-            <span className="ls-camp-strip-cta">
-              {campaignCtaLabel(campaign, onlineOpen, text.stripCta)}
-              <Icon name="chevron-right" size={16} aria-hidden="true" />
-            </span>
-          </Link>
-        </li>
-      ))}
+      {shown.map((campaign) => {
+        const headline = campaign.headline ?? campaign.name;
+        const cta = campaignCtaLabel(campaign, onlineOpen, text.stripCta);
+        return (
+          <li key={campaign.slug} className="ls-camp-line">
+            <Icon name="tag" size={20} aria-hidden="true" />
+            <span className="ls-camp-line-text">{headline}</span>
+            <Link
+              className="ls-link ls-camp-line-link"
+              href={campaignHref(locale, campaign.slug)}
+              transitionTypes={NAV_TRANSITION}
+              aria-label={`${cta}: ${headline}`}
+            >
+              {cta}
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 /**
  * The running offer on the home page: the most recent running campaign, in the Owner's words (badge, headline, message, last day,
- * button) on one big soft ribbon, with the campaign's own banner beside the words when the Owner chose one (Admin > Website >
- * Campaigns). The button leads to the sale view and says "Xem ưu đãi" while "Bán online" is OFF (the Owner's own words only when ON).
+ * button) on one neutral card (the accent is never a background: D5, A3), with the campaign's own banner beside the words when the Owner
+ * chose one (Admin > Website > Campaigns). The button is the secondary: the hero holds the home page's one filled button (Owner answer 2). The button leads to the sale view and says "Xem ưu đãi" while "Bán online" is OFF (the Owner's own words only when ON).
  * It shows only while the campaign runs (the API only sends the running ones), so it follows the campaign's own schedule.
  */
 export function HomeOffer({
@@ -104,15 +117,17 @@ export function HomeOffer({
       <div className="ls-container">
         <div className="ls-offer-card" data-picture={banner ? 'true' : 'false'}>
           <div className="ls-offer-body">
-            {campaign.badge ? <span className="ls-offer-badge">{campaign.badge}</span> : null}
             <h2 className="ls-offer-title">{campaign.headline ?? campaign.name}</h2>
             {campaign.message ? <p className="ls-offer-message">{campaign.message}</p> : null}
+            {/* The badge follows the words (no eyebrow above the title), as on the campaign hero. */}
+            {campaign.badge ? <span className="ls-offer-badge">{campaign.badge}</span> : null}
             <p className="ls-offer-until">
               {fill(text.until, { date: campaignEndText(campaign.endsAt, locale) })}
             </p>
             <Link
-              className={buttonClass('neutral', 'lg', 'ls-btn-offer')}
+              className={buttonClass('secondary', 'lg')}
               href={campaignHref(locale, campaign.slug)}
+              transitionTypes={NAV_TRANSITION}
             >
               {campaignCtaLabel(campaign, onlineOpen, text.stripCta)}
             </Link>
@@ -129,8 +144,34 @@ export function HomeOffer({
 }
 
 /**
- * The top section of a campaign's sale view: the Owner's banner, headline (the page's one h1), message and button. It reuses the
- * catalog hero, so the picture sits above the words on a phone and beside them from 768 px.
+ * A campaign link that matches no running campaign (it ended, or the link is stale): the list band says so plainly, with one way on to all
+ * cosmetics, instead of an empty filtered list that looks like a search with no result.
+ */
+export function CampaignEnded({ locale }: { locale: Locale }) {
+  const text = getCampaignsPublicText(locale);
+  return (
+    <EmptyState
+      icon="tag"
+      title={text.endedTitle}
+      action={
+        <Link
+          className={buttonClass('secondary')}
+          href={`/${locale}/products`}
+          transitionTypes={NAV_TRANSITION}
+        >
+          {text.endedAction}
+        </Link>
+      }
+    >
+      {text.endedBody}
+    </EmptyState>
+  );
+}
+
+/**
+ * The top section of a campaign's sale view: the Owner's banner, headline (the page's one h1), message, badge and last day, and the
+ * hero's one filled button (to the list below) with the secondary to all products. It reuses the catalog hero, so the picture sits above
+ * the words on a phone and beside them from 768 px.
  */
 export function CampaignHero({
   locale,
@@ -149,19 +190,24 @@ export function CampaignHero({
       aria-labelledby="products-title-h1"
     >
       <div className="ls-prod-hero-copy">
-        <p className="ls-camp-hero-meta">
-          {campaign.badge ? <Badge tone="brand">{campaign.badge}</Badge> : null}
-          <span>{fill(text.until, { date: campaignEndText(campaign.endsAt, locale) })}</span>
-        </p>
         <h1 className="ls-site-display" id="products-title-h1">
           {campaign.headline ?? campaign.name}
         </h1>
         {campaign.message ? <p className="ls-lead">{campaign.message}</p> : null}
+        {/* The badge and the last day follow the words (no eyebrow above the title); the badge is neutral, never the accent (B18). */}
+        <p className="ls-camp-hero-meta">
+          {campaign.badge ? <Badge tone="neutral">{campaign.badge}</Badge> : null}
+          <span>{fill(text.until, { date: campaignEndText(campaign.endsAt, locale) })}</span>
+        </p>
         <div className="ls-site-actions">
           <a className={buttonClass('primary')} href={`#${PRODUCTS_LIST_ID}`}>
             {campaignCtaLabel(campaign, onlineOpen, text.saleCta)}
           </a>
-          <Link className={buttonClass('secondary')} href={`/${locale}/products`}>
+          <Link
+            className={buttonClass('secondary')}
+            href={`/${locale}/products`}
+            transitionTypes={NAV_TRANSITION}
+          >
             {text.allProducts}
           </Link>
         </div>

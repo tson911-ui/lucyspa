@@ -233,9 +233,10 @@ test('the tier table marks the customer tier of each wallet: one badge when equa
 test('the tier section says how points are earned, in both languages', () => {
   assert.equal(
     vi.tiers.rule,
-    '1.000đ thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau.',
+    '{amount} thanh toán = 1 điểm. Điểm không hết hạn. Hạng mới áp dụng từ lần thanh toán sau.',
   );
-  assert.match(en.tiers.rule, /1,000/);
+  // The amount is a formatted price (Intl, "₫"), filled in by the page; never typed into the copy.
+  assert.match(en.tiers.rule, /\{amount\} paid = 1 point/);
   assert.match(en.tiers.rule, /never expire/);
   assert.match(en.tiers.rule, /next payment/);
 });

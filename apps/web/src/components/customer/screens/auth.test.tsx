@@ -74,6 +74,24 @@ test('sign-in puts "Quên mật khẩu?" at the end of the password label row an
   assert.doesNotMatch(html, /wf-/);
 });
 
+test('C68: the line under the sign-in title says why an account is needed, and arriving from booking says booking goes on', () => {
+  const plain = paint(<CustomerLoginScreen />, 'vi');
+  assert.match(plain, /Đăng nhập để đặt lịch, xem lịch hẹn và điểm thưởng\./);
+  const booking = paint(<CustomerLoginScreen query={{ next: '/vi/account/book' }} />, 'vi');
+  assert.match(booking, /Đăng nhập để tiếp tục đặt lịch\./);
+  // Every field has a name (wig auth.tsx:244); the back action of the reset card is the neutral pill, not a text link.
+  assert.match(plain, /name="email"/);
+  assert.match(plain, /name="password"/);
+  const forgot = paint(<CustomerForgotPasswordScreen />, 'vi');
+  assert.match(forgot, /class="[^"]*ls-btn-neutral[^"]*"[^>]*>Quay lại đăng nhập</);
+  assert.equal(forgot.match(/ls-btn-primary/g)?.length, 1);
+});
+
+test('the register date of birth placeholder comes from the dictionary, not an English literal', () => {
+  assert.match(paint(<CustomerRegisterScreen />, 'vi'), /placeholder="ngày\/tháng\/năm"/);
+  assert.match(paint(<CustomerRegisterScreen />, 'en'), /placeholder="dd\/mm\/yyyy"/);
+});
+
 test('the whole sign-in card is in the first markup, with no skeleton to swap for the form', () => {
   const html = paint(<CustomerLoginScreen />, 'vi');
   assert.match(html, /class="ls-card ls-member-card"/);

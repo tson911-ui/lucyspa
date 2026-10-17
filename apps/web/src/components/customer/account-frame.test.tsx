@@ -8,7 +8,9 @@ import type { Locale } from '../../i18n/locales';
 import { ApiClient } from '../../lib/api/client';
 import { customer } from '../../test/support';
 import { AccountScreen, accountSections } from './account-frame';
+import { MemberEmpty } from './member-ui';
 import { CustomerAccountContext, CustomerContext } from './session';
+import { CustomerHomeScreen } from './screens/bookings';
 import { CustomerLoginScreen } from './screens/auth';
 import { CustomerNotificationsScreen } from './screens/notifications';
 import { CustomerLoyaltyScreen } from './screens/loyalty';
@@ -75,6 +77,33 @@ test('C15: the tabs are the seven places of the account (profile last), in the o
   }
 });
 
+test('session 10: the account home greets by name as its one h1, with four whole-card links and no button inside them', () => {
+  const html = paint(<CustomerHomeScreen />);
+  assert.equal(html.match(/<h1\b/g)?.length, 1);
+  assert.match(html, /<h1[^>]*>Xin chào, Lan<\/h1>/);
+  const cards = html.match(/<a [^>]*class="ls-acct-card ls-mem-card"/g) ?? [];
+  assert.equal(cards.length, 4);
+  assert.doesNotMatch(html, /ls-acct-card-cta|ls-btn/, 'no pill or button inside a card (B19)');
+  assert.doesNotMatch(html, / · /, 'no middle-dot strings');
+});
+
+test('session 10: an empty list is a heading, a sentence and one outline action (never a filled one)', () => {
+  const html = paint(
+    <MemberEmpty
+      icon="receipt"
+      title="Chưa có hóa đơn"
+      actionHref="/vi/account/book"
+      actionLabel="Đặt lịch"
+    >
+      Hóa đơn sẽ hiện ở đây sau lượt làm dịch vụ đầu tiên.
+    </MemberEmpty>,
+  );
+  assert.match(html, /class="ls-empty-title">Chưa có hóa đơn</);
+  assert.match(html, /class="ls-empty-text">Hóa đơn sẽ hiện/);
+  assert.match(html, /<a [^>]*class="[^"]*ls-btn-secondary[^"]*"[^>]*>Đặt lịch<\/a>/);
+  assert.doesNotMatch(html, /ls-btn-primary/);
+});
+
 test('C15: a lost session is a notice inside the content band, and the title carries the page action', () => {
   const html = paint(
     <AccountScreen title="Lịch hẹn" actions={<button type="button">Hủy</button>}>
@@ -94,11 +123,12 @@ test('C15: the pages that moved off the member frame each draw one h1 through th
   }
 });
 
-test('C15: sign-in is the wordmark above one centered card on the flat panel, no aside and no gradient classes', () => {
+test('C15: sign-in is one centered card on the flat band (the wordmark only in the header), no aside and no gradient classes', () => {
   const html = paint(<CustomerLoginScreen />);
   assert.equal(html.match(/<h1\b/g)?.length, 1);
   assert.match(html, /class="ls-band ls-band-page ls-auth-panel"/);
-  assert.match(html, /class="ls-auth-brand" aria-hidden="true"/);
+  // Session 10: no second, decorative wordmark above the card (the header has it).
+  assert.doesNotMatch(html, /ls-auth-brand|ls-wordmark/);
   assert.match(html, /class="ls-card ls-member-card"/);
   assert.doesNotMatch(html, /ls-member-aside|ls-member-auth/);
 });

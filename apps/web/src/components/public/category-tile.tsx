@@ -3,6 +3,7 @@
 import type { PublicSlideImage } from '@lucy-spa/contracts';
 import { useImageFailure } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { frameImage } from '../../lib/public-image';
 
 /**
@@ -23,7 +24,12 @@ export function CategoryTile({
   const { failed, ref, onError } = useImageFailure(picture.src ?? undefined);
   const shown = picture.src !== null && !failed;
   return (
-    <Link className="ls-home-cat" href={href} {...(shown ? { 'data-media': 'photo' } : {})}>
+    <Link
+      className="ls-home-cat"
+      href={href}
+      transitionTypes={NAV_TRANSITION}
+      {...(shown ? { 'data-media': 'photo' } : {})}
+    >
       {shown && picture.src !== null ? (
         // eslint-disable-next-line @next/next/no-img-element -- the media route already serves sized WebP renditions
         <img

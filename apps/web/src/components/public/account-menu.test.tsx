@@ -5,44 +5,42 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { getSiteText } from '../../i18n/site';
 import { accountMenuItems, PublicAccountMenu } from './account-menu';
 
-const labels = (signedIn: boolean, locale: 'vi' | 'en') =>
+const labels = (locale: 'vi' | 'en') =>
   accountMenuItems({
-    signedIn,
     base: `/${locale}/account`,
     text: getSiteText(locale).member,
-    go: () => undefined,
     signOut: () => undefined,
   }).map((item) => item.label);
 
-test('signed out the menu offers sign-in and registration, signed in the member pages and sign-out', () => {
-  assert.deepEqual(labels(false, 'vi'), ['Đăng nhập', 'Đăng ký']);
-  assert.deepEqual(labels(true, 'vi'), ['Tài khoản của tôi', 'Điểm thưởng', 'Đăng xuất']);
-  assert.deepEqual(labels(false, 'en'), ['Sign in', 'Create account']);
-  assert.deepEqual(labels(true, 'en'), ['My account', 'Rewards', 'Sign out']);
+test('signed in the menu offers the member pages and sign-out', () => {
+  assert.deepEqual(labels('vi'), ['Tài khoản của tôi', 'Điểm thưởng', 'Đăng xuất']);
+  assert.deepEqual(labels('en'), ['My account', 'Rewards', 'Sign out']);
 });
 
-test('choosing an entry goes to its member page; sign-out is the only entry that signs out', () => {
-  const went: string[] = [];
+test('each page entry is a real link to its member page; sign-out is the only action and the only entry that signs out', () => {
   let signedOut = 0;
   const items = accountMenuItems({
-    signedIn: true,
     base: '/vi/account',
     text: getSiteText('vi').member,
-    go: (path) => went.push(path),
     signOut: () => (signedOut += 1),
   });
+  // Links, not router pushes from a button (wig account-menu.tsx:41): a new tab and a middle click work.
+  assert.deepEqual(
+    items.flatMap((item) => (item.href ? [item.href] : [])),
+    ['/vi/account', '/vi/account/loyalty'],
+  );
   for (const item of items) item.onSelect?.();
-  assert.deepEqual(went, ['/vi/account', '/vi/account/loyalty']);
   assert.equal(signedOut, 1);
 });
 
-test('before the session is known the header shows one named account button and no member entries', () => {
+test('signed out (and before the session is known) the header shows one named link to sign-in, not a two-item menu (C47)', () => {
   const html = renderToStaticMarkup(
     <AppRouterContext.Provider value={{ push: () => undefined } as never}>
       <PublicAccountMenu locale="vi" />
     </AppRouterContext.Provider>,
   );
-  assert.match(html, /aria-label="Tài khoản của tôi"/);
-  assert.match(html, /aria-haspopup="menu"/);
+  assert.match(html, /<a[^>]*aria-label="Đăng nhập hoặc đăng ký"/);
+  assert.match(html, /href="\/vi\/account\/login"/);
+  assert.doesNotMatch(html, /aria-haspopup="menu"/);
   assert.doesNotMatch(html, /Điểm thưởng|Đăng xuất|notification-badge/);
 });

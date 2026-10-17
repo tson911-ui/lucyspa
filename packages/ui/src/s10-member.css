@@ -1,0 +1,697 @@
+/* Session 10 page work (Owner brief 2026-10-16, Steps 4-6): member pages. Loaded after foundation-v2.css. Tokens only (no hex, no px
+   spacing literals); rules scoped to classes used only by these pages (`ls-mem-*` hooks set by the member screens, plus the account
+   title band, the booking flow, the sign-in card and the public ticket). No shadow, no gradient, no transition: all. */
+
+/* ---- Account title band: one sub-navigation per width (B7, plan account) ---------------------------------------------------------- */
+/* The tabs from 768 px, the quick-links list below it, never both: the shared sub-nav rule (`.ls-subnav`, display flex) is as specific as
+   the old account rule and loaded later, so at 200 % zoom (720 css px) both showed. A record page draws no tabs at all (account-frame). */
+[data-ui='v2'] .ls-acct-title .ls-subnav.ls-acct-tabs {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-acct-title .ls-subnav.ls-acct-tabs {
+    display: flex;
+  }
+
+  [data-ui='v2'] .ls-acct-body .ls-acct-list {
+    display: none;
+  }
+}
+
+/* ---- Account home: four whole-card links (B19, Owner answer 2) ----------------------------------------------------------------------- */
+/* One surface per card (the surface step on the white band, no border), the heading with a trailing chevron, no pill or button inside.
+   The cards of a row share one height; hover is one grey step, pressed the next (R21), never a vivid fill. */
+[data-ui='v2'] .ls-mem-grid {
+  align-items: stretch;
+}
+
+[data-ui='v2'] .ls-acct-card.ls-mem-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-4);
+  height: 100%;
+  min-height: var(--ls-control-h);
+  transition: background-color var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+[data-ui='v2'] .ls-mem-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-mem-card-head > svg {
+  flex: none;
+  margin-top: var(--ls-space-1);
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-mem-card .ls-acct-card-title {
+  overflow-wrap: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-acct-card.ls-mem-card:hover {
+    background: var(--ls-hover-bg);
+  }
+}
+
+[data-ui='v2'] .ls-acct-card.ls-mem-card:active {
+  background: var(--ls-pressed-bg);
+}
+
+/* ---- Label / value rows (account card points, booking lines): hairline list, label 14 muted, value 14 ink (B1, no eyebrow) ---------- */
+[data-ui='v2'] .ls-mem-facts {
+  display: grid;
+  width: 100%;
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-mem-facts > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ls-space-2) var(--ls-space-4);
+  padding-block: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-mem-facts > div + div {
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-mem-facts dt {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-mem-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ls-space-2);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+  text-align: end;
+  overflow-wrap: break-word;
+}
+
+/* ---- Section headings of the member lists: the heading role (21), clearly above the table text (plan bookings) -------------------- */
+[data-ui='v2'] .ls-mem-sections {
+  display: grid;
+  gap: var(--ls-space-9);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-mem-sections .ls-list-section-title {
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-mem-hint {
+  margin: 0;
+  max-width: 42.5rem;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* ---- Member tables: whole-row links, names wrap by word, nothing cut (C15, Owner answer 7) --------------------------------------------- */
+/* The name cell's link is stretched over its row; the row is the one target (no row menu repeating it). Its text is ink, not the accent:
+   a column of burgundy dates read as decoration. Hover is the neutral row tint (Q3), the focus ring goes round the whole row. */
+[data-ui='v2'] .ls-mem-rows .ls-table tbody tr {
+  position: relative;
+}
+
+[data-ui='v2'] .ls-mem-rows .ls-mem-row-link {
+  color: var(--ls-text);
+  font-weight: var(--ls-weight-label);
+  text-decoration: none;
+  outline: none;
+}
+
+[data-ui='v2'] .ls-mem-rows .ls-mem-row-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* The focus ring is drawn by the stretched area, so it goes round the whole row it opens. */
+[data-ui='v2'] .ls-mem-rows .ls-mem-row-link:focus-visible::after {
+  outline: 2px solid var(--ls-focus);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-mem-rows .ls-table tbody tr:has(.ls-mem-row-link):hover .ls-mem-row-link {
+    text-decoration: underline;
+    text-underline-offset: var(--ls-space-1);
+  }
+}
+
+[data-ui='v2'] .ls-mem-rows .ls-table tbody tr:has(.ls-mem-row-link):active td {
+  background: var(--ls-pressed-bg);
+}
+
+/* A plain cell wraps by word too (the kit unclamps its clipped cells and titles; a plain cell is still one line by default). */
+[data-ui='v2'] .ls-mem-rows .ls-table td {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-mem-rows .ls-table td.ls-cell-numeric {
+  white-space: nowrap;
+}
+
+/* A two-line cell: the code (or a combo name), then a muted detail under it. */
+[data-ui='v2'] .ls-mem-cell-stack {
+  display: grid;
+  gap: var(--ls-space-1);
+  justify-items: start;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-mem-cell-sub {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-label);
+}
+
+@media (max-width: 639px) {
+  /* Phone rows (one surface, hairline rows): the title takes the lines it needs, no reserved two-line box. */
+  [data-ui='v2'] .ls-mem-rows .ls-table td.ls-cell-title > *,
+  [data-ui='v2'] .ls-mem-rows .ls-table td.ls-cell-title a {
+    display: block;
+    min-height: 0;
+  }
+
+  [data-ui='v2'] .ls-mem-rows .ls-table.ls-table-compact td.ls-cell-title > .ls-mem-cell-stack {
+    display: grid;
+    padding-block: var(--ls-space-2);
+  }
+
+  [data-ui='v2'] .ls-mem-rows .ls-table.ls-table-compact td.ls-cell-title .ls-mem-row-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--ls-control-h);
+  }
+
+  [data-ui='v2'] .ls-mem-rows .ls-table.ls-table-compact tbody tr td {
+    font-size: var(--ls-type-label);
+  }
+}
+
+/* ---- Empty lists: icon, heading, one sentence, one outline action; no box around it (B12, plan bookings-empty) ----------------------- */
+[data-ui='v2'] .ls-acct-content > .ls-empty.ls-mem-empty,
+[data-ui='v2'] .ls-mem-empty {
+  border: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-mem-empty .ls-empty-icon {
+  color: var(--ls-text-muted);
+}
+
+[data-ui='v2'] .ls-mem-empty .ls-empty-text {
+  max-width: 35rem;
+  color: var(--ls-text-muted);
+}
+
+/* ---- Record pages (booking, invoice): one column on a phone, from 1024 px the record left and its summary card right ---------------- */
+/* Same order at every width (main, then the summary); the two columns start at one top edge. */
+[data-ui='v2'] .ls-mem-split {
+  display: grid;
+  gap: var(--ls-space-6);
+  align-items: stretch;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-mem-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
+    gap: var(--ls-space-7);
+  }
+}
+
+/* The aside sticks only where the header does (a window over 35em, 560 css px at the default text size: 200 % zoom and 200 % text
+   scroll it away from the first paint, as foundation-v2 does for the header), and never once the page counts as large text
+   (HeaderFit, foundation-v2), so a tall aside is never cut off below the fold. */
+@media (min-width: 1024px) and (min-height: 35.01em) {
+  [data-ui='v2'] .ls-mem-aside {
+    position: sticky;
+    top: calc(var(--ls-site-header-h-compact) + var(--ls-space-4));
+  }
+}
+
+[data-ui='v2'] .ls-mem-main {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-mem-aside {
+  display: grid;
+  gap: var(--ls-space-4);
+  justify-items: start;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-mem-aside > .ls-dl {
+  width: 100%;
+}
+
+[data-ui='v2'] .ls-mem-aside-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ls-space-2);
+  width: 100%;
+  padding-top: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-mem-aside-actions > .ls-btn {
+  flex: 1 1 auto;
+}
+
+/* The summary facts: label at the start, value at the end, a hairline between (no eyebrow captions, B1). */
+[data-ui='v2'] .ls-mem-summary {
+  gap: 0;
+}
+
+[data-ui='v2'] .ls-mem-summary .ls-dl-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-4);
+  padding-block: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-mem-summary .ls-dl-row + .ls-dl-row {
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-mem-summary .ls-dl-term {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-mem-summary .ls-dl-value {
+  min-width: 0;
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
+  text-align: end;
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-mem-totals {
+  width: 100%;
+  padding-top: var(--ls-space-2);
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-mem-totals .ls-dl-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The lines of a record: name and amount on the first line, the details as labelled rows under it; a hairline between lines. */
+[data-ui='v2'] .ls-mem-lines {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-ui='v2'] .ls-mem-line {
+  display: grid;
+  gap: var(--ls-space-2);
+  padding-block: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-mem-line + .ls-mem-line {
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-mem-line:first-child {
+  padding-top: 0;
+}
+
+[data-ui='v2'] .ls-mem-line-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-mem-line-name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-mem-line-price {
+  margin: 0;
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-heading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+[data-ui='v2'] .ls-mem-line-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-1) var(--ls-space-4);
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-mem-note {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+/* A cancelled booking says so at the top in words and an icon (neutral ink, not colour alone, C5). */
+[data-ui='v2'] .ls-mem-status-line {
+  display: flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-body);
+}
+
+[data-ui='v2'] .ls-mem-status-line > svg {
+  flex: none;
+  color: var(--ls-text-muted);
+}
+
+/* ---- Loyalty: two wallet cards of one height, the tier on its own line, the points at the title size; no shadow, no blue -------------- */
+[data-ui='v2'] .ls-mem-wallets {
+  display: grid;
+  gap: var(--ls-space-6);
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  [data-ui='v2'] .ls-mem-wallets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+[data-ui='v2'] .ls-mem-wallet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-mem-wallet > .ls-dl {
+  margin-top: auto;
+}
+
+[data-ui='v2'] .ls-mem-wallet-tier {
+  margin: 0;
+}
+
+[data-ui='v2'] .ls-mem-points {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* The tier table: the kit's one hairline surface; the numbers right-aligned on one line; the own tier marked by a tick and words in ink. */
+[data-ui='v2'] .ls-mem-tiers .ls-info-table-wrap {
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  [data-ui='v2'] .ls-mem-tiers .ls-info-table :is(th, td):not(:first-child) {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+    white-space: nowrap;
+  }
+}
+
+[data-ui='v2'] .ls-mem-tier-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ls-space-1) var(--ls-space-3);
+}
+
+[data-ui='v2'] .ls-mem-tier-name {
+  font-weight: var(--ls-weight-title);
+}
+
+[data-ui='v2'] .ls-mem-own {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-1);
+  color: var(--ls-text);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-label);
+  white-space: normal;
+}
+
+/* The combos, uses, referrals and gifts under one heading: each block a sub-heading (heading role) and its one line or table. */
+[data-ui='v2'] .ls-mem-subsections {
+  display: grid;
+  gap: var(--ls-space-7);
+}
+
+[data-ui='v2'] .ls-mem-subsection {
+  display: grid;
+  gap: var(--ls-space-3);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-mem-subtitle {
+  margin: 0;
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+/* ---- Booking flow --------------------------------------------------------------------------------------------------------------------- */
+/* The current step is told by its bar (the accent) and its weight; its words are ink, not the accent (B22: nothing reads as pink in dark). */
+[data-ui='v2'] .ls-book-title .ls-steps li[aria-current='step'] {
+  color: var(--ls-text);
+}
+
+/* The services of one category: one list surface with hairline rows, not a tile per service (B12, B19). The note of a nail service is
+   always the second line, so every row has one shape (B6). */
+[data-ui='v2'] .ls-mem-choices {
+  gap: 0;
+  overflow: hidden;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+}
+
+[data-ui='v2'] .ls-mem-choices .ls-choice {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+[data-ui='v2'] .ls-mem-choices .ls-choice + .ls-choice {
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-mem-choices .ls-choice[data-checked='true'] {
+  border-color: var(--ls-border);
+  background: var(--ls-brand-soft);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-mem-choices .ls-choice:not(.ls-choice-disabled):hover,
+  [data-ui='v2'] .ls-mem-choices .ls-choice[data-checked='true']:not(.ls-choice-disabled):hover {
+    border-color: var(--ls-border);
+    background: var(--ls-hover-bg);
+  }
+}
+
+[data-ui='v2'] .ls-mem-choices .ls-choice:not(.ls-choice-disabled):active {
+  background: var(--ls-pressed-bg);
+}
+
+[data-ui='v2'] .ls-mem-choices .ls-choice-extra {
+  flex: 1 0 100%;
+  order: 3;
+  /* Under the name, past the tick (24) and the row gap (16). */
+  padding-inline-start: calc(var(--ls-space-6) + var(--ls-space-4));
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-mem-choices .ls-choice-title {
+  overflow-wrap: break-word;
+}
+
+/* The phone action bar: the count and the time as two values, not a dotted string. */
+[data-ui='v2'] .ls-mem-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--ls-space-3);
+}
+
+/* The review step: who and with whom as two lines. */
+[data-ui='v2'] .ls-mem-value-lines {
+  display: grid;
+  gap: var(--ls-space-1);
+}
+
+/* ---- Review card (invoice) ------------------------------------------------------------------------------------------------------------- */
+[data-ui='v2'] .ls-mem-field {
+  display: grid;
+  gap: var(--ls-space-2);
+}
+
+/* ---- Notifications (the shared inbox inside the member frame) ------------------------------------------------------------------------ */
+[data-ui='v2'] .ls-mem-inbox {
+  display: grid;
+  gap: var(--ls-space-6);
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-mem-inbox-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- The account cannot open / a staff session: the state has its heading ------------------------------------------------------------ */
+[data-ui='v2'] .ls-mem-state-title {
+  margin: 0;
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+}
+
+/* ---- Public pick-up ticket: one card; the code in ink at a scale size (title, 28), the products as hairline rows --------------------- */
+/* The code is not a link, so it is not the brand colour (A3, E2 brand-text); 28 is on the 6.3 scale (the old fluid size was not). */
+[data-ui='v2'] .ls-ticket-page .ls-ticket .ls-ticket-code {
+  margin: 0;
+  color: var(--ls-text);
+  font-size: var(--ls-type-title);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-title);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket {
+  display: grid;
+  gap: var(--ls-space-6);
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-head {
+  gap: var(--ls-space-2);
+}
+
+[data-ui='v2'] .ls-ticket-items {
+  display: grid;
+  gap: var(--ls-space-2);
+  padding-top: var(--ls-space-4);
+  border-top: 1px solid var(--ls-border);
+}
+
+[data-ui='v2'] .ls-ticket-items-title {
+  margin: 0;
+  font-size: var(--ls-type-heading);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+}
+
+[data-ui='v2'] .ls-ticket-note {
+  margin: 0;
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-line-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ls-space-1) var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-line-name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-heading);
+  overflow-wrap: break-word;
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-line-price {
+  color: var(--ls-text);
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-heading);
+  white-space: nowrap;
+}
+
+[data-ui='v2'] .ls-ticket-page .ls-ticket-line-state {
+  color: var(--ls-text-muted);
+  font-size: var(--ls-type-label);
+  line-height: var(--ls-lh-label);
+}
+
+@media print {
+  [data-ui='v2'] .ls-ticket-page .ls-ticket {
+    break-inside: avoid;
+  }
+}
+
+/* Whole-row links answer the pointer themselves (E2 hovers the link, not the row). */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-mem-rows .ls-mem-row-link:hover {
+    text-decoration-line: underline;
+  }
+}
+
+[data-ui='v2'] .ls-mem-rows .ls-mem-row-link:active {
+  opacity: 0.72;
+}
+
+/* The tier table's numbers (points, discount) never break inside a number ("10.000" was split on a phone); the tier column wraps. */
+[data-ui='v2'] .ls-mem-tiers :is(td, th):not(:first-child) {
+  white-space: nowrap;
+}
+
+/* A tier name is one word ("Diamond", "Platinum"): it never breaks inside the word; only the "your tier" mark under it wraps. */
+[data-ui='v2'] .ls-mem-tiers .ls-mem-tier-name {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}

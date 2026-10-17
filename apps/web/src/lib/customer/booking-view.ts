@@ -1,4 +1,16 @@
 import type { CustomerBookingBranchResponse } from '@lucy-spa/contracts';
+import { numberFormat } from './invoice';
+
+/** One collator per language for the name sort (react-best-practices js-cache-function-results). */
+const COLLATORS = new Map<string, Intl.Collator>();
+function collator(locale: string): Intl.Collator {
+  let found = COLLATORS.get(locale);
+  if (!found) {
+    found = new Intl.Collator(locale);
+    COLLATORS.set(locale, found);
+  }
+  return found;
+}
 
 /**
  * Pure helpers of the booking page's list and summary (Part 2 contract 5.5). The server still plans, prices and
@@ -113,7 +125,7 @@ export function groupByCategory(
     group.services.sort((a, b) => {
       const byPrice = BigInt(a.priceMinVnd) - BigInt(b.priceMinVnd);
       if (byPrice !== 0n) return byPrice < 0n ? -1 : 1;
-      return label(a).localeCompare(label(b), locale);
+      return collator(locale).compare(label(a), label(b));
     });
   }
   return [...groups.values()];
@@ -149,8 +161,7 @@ export function bookingTotals(services: readonly BranchService[]): BookingTotals
 /** The "Tạm tính" figure: the fixed prices (a range when they differ), or null when only per-nail services are chosen. */
 export function formatFixedTotal(totals: BookingTotals, locale: 'vi' | 'en'): string | null {
   if (totals.fixedMaxVnd === 0n && totals.hasPerNail) return null;
-  const format = (value: bigint) =>
-    `${new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-US').format(value)} ₫`;
+  const format = (value: bigint) => `${numberFormat(locale).format(value)} ₫`;
   return totals.fixedMinVnd === totals.fixedMaxVnd
     ? format(totals.fixedMinVnd)
     : `${format(totals.fixedMinVnd)} – ${format(totals.fixedMaxVnd)}`;

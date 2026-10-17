@@ -9,6 +9,7 @@ import {
   type StoreBadgeItem,
 } from '@lucy-spa/ui';
 import Link from 'next/link';
+import { NAV_TRANSITION } from '../../lib/nav-transition';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
@@ -102,7 +103,7 @@ export function footerBlockItems(
                     {item.label}
                   </a>
                 ) : (
-                  <Link key={item.url} href={item.url}>
+                  <Link key={item.url} href={item.url} transitionTypes={NAV_TRANSITION}>
                     {item.label}
                   </Link>
                 ),

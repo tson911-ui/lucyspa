@@ -212,7 +212,8 @@ test('screens: booking starts at the services step of four; home greets; VI and 
   const bookEn = paint(<BookScreen />, 'en');
   assert.match(bookEn, new RegExp(en.book.steps.confirm));
   const home = paint(<CustomerHomeScreen />);
-  assert.match(home, /Tài khoản của tôi/);
+  // Session 10: the account home's one h1 greets the member by name.
+  assert.match(home, /<h1[^>]*>Xin chào, Lan<\/h1>/);
   assert.match(home, /href="\/vi\/account\/book"/);
   const detail = paint(<CustomerBookingDetailScreen id="b-1" />, 'en');
   assert.ok(detail.includes(en.common.loading), 'detail is loaded from the server, never faked');

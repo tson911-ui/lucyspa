@@ -1,4 +1,8 @@
 import { notFound } from 'next/navigation';
+// Session 10 page work (Steps 4-6), one sheet per area, after the foundation (the root layout's sheets load first).
+import '@lucy-spa/ui/s10-public.css';
+import '@lucy-spa/ui/s10-member.css';
+import '@lucy-spa/ui/s10-account.css';
 import { PageTransition } from '../../../components/public/page-transition';
 import { SitePageFrame } from '../../../components/public/site-page-frame';
 import { isLocale } from '../../../i18n/locales';
