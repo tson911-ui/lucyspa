@@ -122,8 +122,8 @@ function useFormOverlay({
       ref={formRef}
       className="ls-form"
       onSubmit={(event) => {
-        // A dialog opened from inside this form (the image picker's description step) renders inline, so its own form's submit
-        // bubbles here through React; it is that form's business, never a save of this one (hotfix 1, 2026-10-17).
+        // A form nested in this one (a dialog opened from inside it renders inline) is not this form's business. Chromium never
+        // delivers a nested form's submit to React at all (hotfix 2); an engine that bubbles it must not save this form either.
         if (event.target !== event.currentTarget) return;
         event.preventDefault();
         if (!busy) void onSubmit();

@@ -176,8 +176,9 @@ test('FormDialog: the discard prompt suspends the form, so one modal is on the s
   view.unmount();
 });
 
-// Hotfix 1 (2026-10-17): the image picker's description step is a Dialog with its own form, opened inside a FormDialog (the brand
-// form). Dialogs are not portaled, so its submit bubbled into the brand form, which saved and closed before the image came back.
+// Hotfix 1/2 (2026-10-17): a Dialog with its own form opened inside a FormDialog (the image picker's description step in the brand
+// form). Dialogs are not portaled. jsdom bubbles the nested submit into the host form, so the host must ignore it; real Chromium does
+// not deliver it past the nested form at all (the real cause of the brand-logo bug, proved in a browser: see media-picker.tsx).
 function NestedForms({ calls }: { calls: string[] }) {
   const [describing, setDescribing] = useState(true);
   return (

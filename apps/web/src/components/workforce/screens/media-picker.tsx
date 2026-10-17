@@ -19,7 +19,7 @@ import {
   Spinner,
   TextInput,
 } from '@lucy-spa/ui';
-import { useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { fill } from '../../../i18n/workforce';
 import { paginationLabels, toolbarLabels, resultsText } from '../../../lib/workforce/list-view';
 import {
@@ -97,7 +97,7 @@ export function MediaPicker({
 
   if (step.kind === 'describe') {
     return (
-      <Describe
+      <MediaDescribeStep
         asset={step.asset}
         onBack={() => setStep({ kind: 'list' })}
         onClose={onClose}
@@ -195,7 +195,7 @@ export function MediaPicker({
 }
 
 /** The one question before an undescribed image can be used: its Vietnamese description. */
-function Describe({
+export function MediaDescribeStep({
   asset,
   onBack,
   onClose,
@@ -211,8 +211,7 @@ function Describe({
   const [altVi, setAltVi] = useState('');
   const [missing, setMissing] = useState(false);
   const submit = useSubmit();
-  const formId = useId();
-  const formRef = useRef<HTMLFormElement | null>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
   // A typed description is never dropped silently: Back and Close ask first (wig media-picker.tsx:239).
   const [leaving, setLeaving] = useState<(() => void) | null>(null);
   const dirty = altVi.trim() !== '' && !submit.pending;
@@ -258,26 +257,18 @@ function Describe({
           <Button variant="secondary" onClick={() => leave(onBack)} disabled={submit.pending}>
             {text.back}
           </Button>
-          {/* A real form: Enter in the description field saves it. */}
-          <Button type="submit" form={formId} variant="primary" loading={submit.pending}>
+          <Button variant="primary" loading={submit.pending} onClick={() => void save()}>
             {text.altSave}
           </Button>
         </>
       }
     >
-      <form
-        id={formId}
-        ref={formRef}
-        noValidate
-        aria-label={text.altTitle}
-        onSubmit={(event) => {
-          event.preventDefault();
-          // The picker opens inside the host's form (a brand, service, popup or season form) and the Dialog is not portaled: without
-          // this the submit bubbles on and saves or closes the host form before the image is handed back (hotfix 1, 2026-10-17).
-          event.stopPropagation();
-          void save();
-        }}
-      >
+      {/*
+        Not a <form>: the picker opens inside its host's form (brand, service, popup, season...) and the Dialog is not portaled, so a form
+        here would be a form nested in a form. Chromium delivers the submit of such a form only to itself, never to React, so nothing
+        called preventDefault and the browser sent a GET that reloaded the page (hotfix 2, 2026-10-17). Save is a button; Enter saves.
+      */}
+      <div ref={formRef} role="group" aria-label={text.altTitle}>
         {submit.error ? <ErrorState error={submit.error} t={t} /> : null}
         <MediaPreview
           src={mediaVariantUrl(asset.id, 'md')}
@@ -298,10 +289,15 @@ function Describe({
               maxLength={MEDIA_ALT_MAX}
               value={altVi}
               onChange={(event) => setAltVi(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+                event.preventDefault();
+                void save();
+              }}
             />
           )}
         </Field>
-      </form>
+      </div>
       {leaving ? (
         <ConfirmDialog
           title={t.common.form.discardTitle}
