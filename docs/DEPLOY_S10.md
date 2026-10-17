@@ -8,7 +8,7 @@ For the Owner. Paste each numbered block into the iNET web terminal (logged in t
 
 - `20261216000000_customer_account_deletion` (customer deletes their own account): `users.deleted_at`; a third legal shape of a customer row (inactive, deleted, no email, phone or password, the placeholder name "Tài khoản đã xóa") that the database keeps deleted for good (new trigger `users_deletion_guard`); date of birth and address may be empty **only** for a deleted customer; recipient name and phone of an unpaid, cancelled online order may be cleared once, only when the customer is deleted (paid orders keep them); new table `account_deletion_emails` for the sealed confirmation email. It also replaces the check constraints on `users`, `product_orders` and `online_order_details`, adds one on `customer_profiles` (plus a guard trigger), and replaces two existing guard functions (`lucy_guard_product_order`, `lucy_guard_online_order_details`); the database re-checks every existing row once (block 3 proves they pass on a copy of your data). **No existing row is changed.**
 
-**Permissions:** unchanged, still 82. **`.env`:** nothing to change (the deletion confirmation email uses the same `AUTH_DELIVERY_KEYS` and SMTP settings as the sign-in codes; block 1 checks the key is there). No new library, no new pm2 process, no nginx change. The 8 policy pages are already live; there is **no policy import** in this guide.
+**Permissions:** unchanged, still 82. **`.env`:** nothing to change (the deletion confirmation email uses the same `AUTH_DELIVERY_KEYS` and SMTP settings as the sign-in codes; block 1 checks the key is set in `.env` or `.env.auth.local`). No new library, no new pm2 process, no nginx change. The 8 policy pages are already live; there is **no policy import** in this guide.
 **What changes for people:** the POS and admin screens (and the customer pages) take the fixes of the session 10 quality pass; features, prices, orders, points and permissions are unchanged. New for customers: **Profile, Delete account** (password confirmation, upcoming bookings cancelled, points lost, invoices and payments kept without the person's name).
 **Time:** about 25 to 35 minutes (the web build is the longest). Between block 4 and block 5 the API and worker are **stopped for 1 to 2 minutes**: POS is briefly unavailable, so tell the cashier first. Customer pages may show a short error while web reloads.
 
@@ -44,8 +44,8 @@ at_least "web online" "$(count_online lucyspa-web)" 1
 expect "api online" "$(count_online lucyspa-api)" "1"
 expect "worker online" "$(count_online lucyspa-worker)" "1"
 expect "account deletion not there yet (users.deleted_at | account_deletion_emails)" "$(sqlq $DB "$A2COLS")" "0|0"
-expect "email key ring present in .env (count only, nothing printed)" "$(grep -c '^AUTH_DELIVERY_KEYS=' .env)" "1"
-expect "email active key version present in .env" "$(grep -c '^AUTH_DELIVERY_ACTIVE_VERSION=' .env)" "1"
+at_least "email key ring set in .env or .env.auth.local (lines counted, nothing printed)" "$(cat .env .env.auth.local 2>/dev/null | grep -c '^AUTH_DELIVERY_KEYS=')" 1
+at_least "email active key version set in .env or .env.auth.local (lines counted, nothing printed)" "$(cat .env .env.auth.local 2>/dev/null | grep -c '^AUTH_DELIVERY_ACTIVE_VERSION=')" 1
 FREE=$(df -BG / | awk 'NR==2{gsub("G","",$4);print $4}')
 [ "$FREE" -ge 3 ] || dung "disk has $FREE GB free, need at least 3 GB"
 echo "OK  free disk: $FREE GB"
@@ -94,7 +94,7 @@ echo "=== BLOCK 1 DONE: no STOP. Next: block 2 ==="
 )
 ```
 
-**Expect:** a list of `OK` lines (running code `8afcb6f...`, `138|82`, `8`, `0`, `1`, `1`, `0|0`, the two `.env` counts `1`, free disk, the two backup paths), one `Recorded:` line (users/invoices/payments were 9/2/2 at the group 1 deploy; they may be higher now), and `=== BLOCK 1 DONE`. About 1 to 3 minutes. **If different:** any `STOP:` means the server is not in the state this guide was written for (another commit running, a different migration count, a change in the working tree, a pm2 process down, a missing email key, disk low): send the screenshot, do nothing else. The backups made here stay on disk; they are harmless.
+**Expect:** a list of `OK` lines (running code `8afcb6f...`, `138|82`, `8`, `0`, `1`, `1`, `0|0`, the two email key lines found in `.env` or `.env.auth.local` (1 or more each), free disk, the two backup paths), one `Recorded:` line (users/invoices/payments were 9/2/2 at the group 1 deploy; they may be higher now), and `=== BLOCK 1 DONE`. About 1 to 3 minutes. **If different:** any `STOP:` means the server is not in the state this guide was written for (another commit running, a different migration count, a change in the working tree, a pm2 process down, a missing email key, disk low): send the screenshot, do nothing else. The backups made here stay on disk; they are harmless.
 
 ## Block 2: fetch the code, install, build (nothing is restarted; the database is not touched)
 
@@ -146,6 +146,7 @@ eval "$(node scripts/scratch-db-env.mjs $SCRATCH)" || dung "the helper refused t
 expect "pointing at the scratch database" "${DATABASE_URL##*/}" "$SCRATCH"
 expect "copy: restored at 138|82" "$(sqlq $SCRATCH "$COUNTS")" "138|82"
 pnpm db:deploy || dung "db:deploy on the scratch copy failed"
+expect "REAL database still at 138|82" "$(sqlq $DB "$COUNTS")" "138|82"
 SYNC=$(pnpm db:permissions:sync 2>&1); echo "$SYNC" | tail -n 1
 echo "$SYNC" | grep -q "0 inserted, 82 already present" || dung "permission catalogue on the copy is not '0 inserted, 82 already present'"
 unset DATABASE_URL
@@ -164,6 +165,7 @@ expect "copy: invoices unchanged" "$(sqlq $SCRATCH "select count(*) from invoice
 expect "copy: payments unchanged" "$(sqlq $SCRATCH "select count(*) from payments")" "$PAYMENTS_BEFORE"
 echo "Time of the migration on the copy (send to Claude):"
 sqlq $SCRATCH "select migration_name||' '||round(extract(epoch from finished_at - started_at)::numeric, 3)||' s' from _prisma_migrations where migration_name >= '20261216' order by migration_name"
+expect "REAL database still at 138|82" "$(sqlq $DB "$COUNTS")" "138|82"
 docker exec lucy-spa-postgres-1 sh -c "dropdb -U \"\$POSTGRES_USER\" $SCRATCH" || dung "could not drop the scratch database"
 expect "scratch database dropped" "$(sqlq $DB "select count(*) from pg_database where datname = '$SCRATCH'")" "0"
 echo "=== BLOCK 3 DONE: no STOP. The real database was not touched. Next: block 4 ==="
