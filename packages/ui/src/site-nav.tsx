@@ -15,7 +15,12 @@ function RouteLinks({
   return (
     <>
       {items.map((item) => (
-        <Link key={item.key} href={item.href} aria-current={item.current ? 'page' : undefined}>
+        <Link
+          key={item.key}
+          href={item.href}
+          aria-current={item.current ? 'page' : undefined}
+          data-label={item.label}
+        >
           {item.label}
         </Link>
       ))}

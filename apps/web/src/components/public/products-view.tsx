@@ -27,6 +27,7 @@ import { ProductGallery } from './product-gallery';
 import { ProductImage } from './product-image';
 import { ProductOffer, type StoreContact } from './product-offer';
 import { ProductsPager, ProductsToolbar } from './products-controls';
+import { ChipRail } from './chip-rail';
 import { ScrollRow } from './scroll-row';
 
 /** The back chevron of a product page (C40, B7): icon only, named for its parent; nothing on the list, a top-level destination. */
@@ -161,6 +162,7 @@ function FilterChips({
   data: PublicProductsResponse;
 }) {
   const text = getSiteText(locale).products;
+  const scroll = getSiteText(locale).home;
   const top = data.categories.filter((category) => category.parentCode === null);
   if (top.length === 0) return null;
   const chosen = data.categories.find((category) => category.code === state.category);
@@ -182,7 +184,7 @@ function FilterChips({
   );
   return (
     <div className="ls-prod-chips">
-      <nav className="ls-pills" aria-label={text.categories}>
+      <ChipRail label={text.categories} previous={scroll.scrollPrevious} next={scroll.scrollNext}>
         {chip('all', text.allCategories, state.category === '', href({ category: '' }))}
         {top.map((category) =>
           chip(
@@ -193,9 +195,13 @@ function FilterChips({
             activeTop === category.code && state.category !== category.code,
           ),
         )}
-      </nav>
+      </ChipRail>
       {subs.length > 0 ? (
-        <nav className="ls-pills" aria-label={text.subCategories}>
+        <ChipRail
+          label={text.subCategories}
+          previous={scroll.scrollPrevious}
+          next={scroll.scrollNext}
+        >
           {subs.map((category) =>
             chip(
               category.code,
@@ -204,7 +210,7 @@ function FilterChips({
               href({ category: category.code }),
             ),
           )}
-        </nav>
+        </ChipRail>
       ) : null}
     </div>
   );
@@ -254,7 +260,7 @@ export function ProductsView({
     data.categories.length === 0;
   return (
     <PublicMain>
-      <Band tone="page" className="ls-band--alt ls-prod-title">
+      <Band tone="page" className="ls-prod-title">
         {sale ? (
           <CampaignHero locale={locale} campaign={sale} onlineOpen={onlineOpen} />
         ) : hero && !ended ? (
@@ -285,15 +291,15 @@ export function ProductsView({
         ) : null}
       </Band>
       {ended ? (
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           <CampaignEnded locale={locale} />
         </Band>
       ) : data === null ? (
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           <LoadNotice locale={locale} section={t.title} />
         </Band>
       ) : nothingPublished ? (
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           <EmptyState
             icon="droplet"
             title={t.emptyTitle}
@@ -312,7 +318,7 @@ export function ProductsView({
         </Band>
       ) : (
         <>
-          <Band tone="page" label={t.sectionTitle} className="ls-band--base ls-prod-list">
+          <Band tone="page" label={t.sectionTitle} className="ls-prod-list">
             <div className="ls-prod-head" id={PRODUCTS_LIST_ID}>
               <ProductsToolbar
                 locale={locale}
@@ -355,7 +361,7 @@ export function ProductsView({
             ) : null}
           </Band>
           {data.commitment ? (
-            <Band tone="page" className="ls-band--alt">
+            <Band tone="page">
               <CommitmentBox commitment={data.commitment} headingLevel={2} />
             </Band>
           ) : null}
@@ -440,32 +446,25 @@ export function ProductDetailView({
   if (detail === null) {
     return (
       <PublicMain>
-        <Band tone="page" className="ls-band--alt ls-prod-title">
+        <Band tone="page" className="ls-prod-title">
           <ProductsBack locale={locale} />
           <div className="ls-public-title">
             <h1 className="ls-h1-display">{t.title}</h1>
           </div>
         </Band>
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           <LoadNotice locale={locale} section={t.title} />
         </Band>
       </PublicMain>
     );
   }
   const { product, commitment, related } = detail;
-  // The hero band is the alternate color; the bands after it alternate down the page.
-  let tone: 'alt' | 'base' = 'alt';
-  const nextTone = () => (tone = tone === 'alt' ? 'base' : 'alt');
   const hasAbout = Boolean(product.description) || product.sections.length > 0;
   const soldOut = product.variants.every((variant) => variant.stock.state === 'OUT_OF_STOCK');
-  // A function, so the band takes its colour where it is placed (first on a sold-out page, last otherwise).
+  // A function, so the band is placed first on a sold-out page and last otherwise.
   const relatedBand = () =>
     related.length > 0 ? (
-      <Band
-        tone="page"
-        labelledBy="product-related-title"
-        className={`ls-band--${nextTone()} ls-prod-related`}
-      >
+      <Band tone="page" labelledBy="product-related-title" className="ls-prod-related">
         <h2 className="ls-site-h2" id="product-related-title">
           {soldOut ? t.similar : t.related}
         </h2>
@@ -480,7 +479,7 @@ export function ProductDetailView({
     ) : null;
   return (
     <PublicMain>
-      <Band tone="page" className="ls-band--alt ls-pd-hero">
+      <Band tone="page" className="ls-pd-hero">
         <ProductsBack locale={locale} />
         <div className="ls-prod-detail">
           <ProductGallery
@@ -529,7 +528,7 @@ export function ProductDetailView({
       {/* Sold out: the similar products come first, as the next step (product-soldout plan). */}
       {soldOut ? relatedBand() : null}
       {hasAbout ? (
-        <Band tone="page" className={`ls-band--${nextTone()} ls-pd-about`}>
+        <Band tone="page" className="ls-pd-about">
           <div className="ls-pd-about-grid">
             <div className="ls-pd-about-text">
               {product.description ? (
@@ -557,7 +556,7 @@ export function ProductDetailView({
         </Band>
       ) : null}
       {commitment ? (
-        <Band tone="page" className={`ls-band--${nextTone()}`}>
+        <Band tone="page">
           <CommitmentBox commitment={commitment} headingLevel={2} />
         </Band>
       ) : null}

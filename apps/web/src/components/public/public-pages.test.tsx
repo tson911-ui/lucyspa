@@ -452,15 +452,12 @@ test('services list: the filter links, one section per group, a chosen group alo
   );
   assert.doesNotMatch(all, /ls-btn-primary/);
   // The chips row is the bottom of the title band (B8: no strip of another colour between the bands).
-  assert.match(all, /<div class="ls-svc-chips ls-band--alt">/);
+  assert.match(all, /<div class="ls-svc-chips">/);
   assert.match(all, /class="ls-image-frame ls-svc-media"/);
   assert.ok(all.indexOf('ls-svc-title') < all.indexOf('ls-svc-chips'));
   assert.ok(all.indexOf('ls-svc-chips') < all.indexOf('ls-svc-grid'));
-  // The title band and its chips row share the alternate color; the groups then alternate from the base color.
-  assert.deepEqual(
-    [...all.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt', 'alt', 'base', 'alt'],
-  );
+  // One surface rule (Owner, 2026-10-18): every section sits on the page grey, no band carries its own color.
+  assert.doesNotMatch(all, /ls-band--(base|alt)/);
   assert.match(all, /aria-label="Đặt lịch: Gội thường"/);
   assert.match(all, /role="search"/);
   assert.match(all, /Đính đá \/ charm/);
@@ -537,11 +534,8 @@ test('service detail (C11b): the Owner’s photo replaces the placeholder, and e
   assert.match(full, /<ol class="ls-svd-steps"><li>Rửa tóc<\/li><li>Xả sạch<\/li><\/ol>/);
   assert.match(full, /<h2[^>]*id="faq-title"[^>]*>Câu hỏi thường gặp<\/h2>/);
   assert.match(full, /aria-expanded="false"[^>]*>.*Có đau không\?/s);
-  // The bands keep alternating from the hero (alt): included base, steps alt, faq base, then the booking band alt.
-  assert.deepEqual(
-    [...full.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt', 'base', 'alt', 'base', 'alt'],
-  );
+  // No alternating bands (Owner, 2026-10-18).
+  assert.doesNotMatch(full, /ls-band--(base|alt)/);
   // Only one language's content reaches the page: an English visitor gets the English headings.
   assert.match(
     renderToStaticMarkup(
@@ -624,10 +618,7 @@ test('service detail: facts, the per-nail note, the booking link and the group n
   assert.match(html, /<ul class="ls-snap-track" aria-label="Dịch vụ cùng nhóm"/);
   assert.match(html, /id="cta-title"/);
   assert.doesNotMatch(html, /FAQ|Câu hỏi|Bao gồm|Các bước/i);
-  assert.deepEqual(
-    [...html.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt', 'base', 'alt'],
-  );
+  assert.doesNotMatch(html, /ls-band--(base|alt)/);
   const plain = renderToStaticMarkup(
     <ServiceDetailView
       locale="vi"
@@ -836,9 +827,9 @@ test('home product row: no band when nothing is marked, when the catalog is empt
   const none = { ...catalog, items: catalog.items.map((item) => ({ ...item, featured: false })) };
   for (const products of [none, { ...catalog, items: [] }, null]) {
     const html = home({ ...full, products });
-    assert.doesNotMatch(html, /products-title|ls-snap-row/);
+    assert.doesNotMatch(html, /products-title|aria-label="Sản phẩm nổi bật"/);
   }
-  assert.doesNotMatch(home(full), /products-title|ls-snap-row/);
+  assert.doesNotMatch(home(full), /products-title|aria-label="Sản phẩm nổi bật"/);
 });
 
 test('home category grid: a tile for each service group and each top-level cosmetics category, no counts', () => {
@@ -855,13 +846,10 @@ test('home category grid: a tile for each service group and each top-level cosme
   assert.doesNotMatch(home({ ...full, services: null }), /categories-title/);
 });
 
-test('home: no reviews band (Owner decision Q5) and bands alternate the two colors from the hero down', () => {
+test('home: no reviews band (Owner decision Q5) and no band carries a color of its own', () => {
   const html = home({ ...full, products: catalog });
   assert.doesNotMatch(html, /Đánh giá|reviews/i);
-  const tones = [...html.matchAll(/<section class="ls-band ls-band-page ls-band--(base|alt)/g)].map(
-    (match) => match[1],
-  );
-  assert.ok(tones.length >= 3);
-  // The hero is the alternate color, so the first band after it is the base color, then alternating.
-  tones.forEach((tone, index) => assert.equal(tone, index % 2 === 0 ? 'base' : 'alt'));
+  assert.ok([...html.matchAll(/<section class="ls-band ls-band-page/g)].length >= 3);
+  // One surface rule (Owner, 2026-10-18): the bands are all on the page grey, none alternates.
+  assert.doesNotMatch(html, /ls-band--(base|alt)/);
 });

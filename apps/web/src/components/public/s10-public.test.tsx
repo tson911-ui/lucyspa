@@ -31,18 +31,20 @@ test('s10-public.css: tokens only (no hex, rgb, shadow, gradient, transition: al
   }
 });
 
-test('s10-public.css: no rule on the accent for a hover (R11), the brand band is light (R16), names are never clamped (answer 7)', () => {
+test('s10-public.css: no rule on the accent for a hover (R11), the brand band is on the page grey (R16), a product name keeps its two-line clamp (Owner, 2026-10-18)', () => {
   assert.doesNotMatch(rules, /:hover[^{]*\{[^}]*var\(--ls-hover-bg\)[^}]*var\(--ls-on-brand\)/);
-  assert.match(rules, /\.ls-brand-band \{[^}]*background: var\(--ls-band-base\)/);
+  assert.match(rules, /\.ls-brand-band \{[^}]*background: var\(--ls-bg-page\)/);
   assert.match(rules, /\.ls-brand-logo \{[^}]*filter: var\(--ls-s10-logo-filter\)/);
-  assert.match(rules, /\.ls-pcard-name a \{[^}]*line-clamp: none/);
+  // Answer 7 (names never clamped) is reversed for product cards only: the clamp comes from pages-v2.css, so this sheet must not undo it.
+  assert.doesNotMatch(rules, /\.ls-pcard-name a \{[^}]*line-clamp:/);
+  assert.match(rules, /\.ls-pcard-body\[data-rows\] \{[^}]*grid-template-rows:/);
   // The hero's CSS keyframes are off: its opening runs through useMotion (home-hero.tsx).
   assert.match(
     rules,
     /\.ls-home-hero-img,\s*\[data-ui='v2'\] \.ls-home-hero-copy > \* \{\s*animation: none;/,
   );
-  // The services chips row continues the title band (B8).
-  assert.match(rules, /\.ls-svc-chips \{\s*background: var\(--ls-band-alt\);/);
+  // The services chips row is on the page grey like the title above it (B8).
+  assert.match(rules, /\.ls-svc-chips \{\s*background: var\(--ls-bg-page\);/);
 });
 
 test('home hero: the section the opening sequence runs on, server-rendered words in it, nothing hidden before the motion', () => {
@@ -53,7 +55,7 @@ test('home hero: the section the opening sequence runs on, server-rendered words
   );
   assert.equal(
     html,
-    '<section class="ls-home-hero ls-band--alt" data-media="flat" aria-labelledby="home-title"><h1 id="home-title">Lucy Spa</h1></section>',
+    '<section class="ls-home-hero" data-media="flat" aria-labelledby="home-title"><h1 id="home-title">Lucy Spa</h1></section>',
   );
 });
 

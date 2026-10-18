@@ -99,21 +99,18 @@ export function HomeOffer({
   locale,
   campaigns,
   onlineOpen = false,
-  tone = 'base',
 }: {
   locale: Locale;
   campaigns: readonly PublicCampaign[] | null | undefined;
   /** "Bán online" is ON: the button may use the Owner's words ("Mua ngay"); otherwise it says "Xem ưu đãi". */
   onlineOpen?: boolean;
-  /** The band color it sits on (the home page alternates them). */
-  tone?: 'base' | 'alt';
 }) {
   const [campaign] = stripCampaigns(campaigns);
   if (!campaign) return null;
   const text = getCampaignsPublicText(locale);
   const banner = campaignBanner(campaign);
   return (
-    <section className={`ls-offer-wrap ls-band--${tone}`} aria-label={text.stripsLabel}>
+    <section className="ls-offer-wrap" aria-label={text.stripsLabel}>
       <div className="ls-container">
         <div className="ls-offer-card" data-picture={banner ? 'true' : 'false'}>
           <div className="ls-offer-body">

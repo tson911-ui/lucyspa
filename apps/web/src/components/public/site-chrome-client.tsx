@@ -136,7 +136,7 @@ export function PublicHeaderCta({ locale }: { locale: Locale }) {
     <Link
       prefetch
       transitionTypes={NAV_TRANSITION}
-      className={buttonClass('secondary', 'md')}
+      className={buttonClass('secondary', 'md', undefined, true)}
       href={`/${locale}/account/book`}
     >
       <Icon name="calendar" />

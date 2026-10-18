@@ -76,23 +76,15 @@ function LogoSet({
  * one height, evenly spaced, no boxes, each linking to that brand's product list. Server markup and CSS only (no script): the track moves
  * slowly and endlessly (a continuous marquee, one of the page's allowed motions), pauses while the pointer is over it, a link has focus or a
  * finger is down, has a pause checkbox, and under reduced motion, data saver or the off switch it is a still, wrapped row of the first set.
- * The band takes its place in the home page's alternation (`tone`). Nothing is drawn when no brand is switched on.
+ * The band sits on the page grey like every section. Nothing is drawn when no brand is switched on.
  */
-export function BrandBand({
-  locale,
-  brands,
-  tone = 'base',
-}: {
-  locale: Locale;
-  brands: readonly BandBrand[];
-  tone?: 'base' | 'alt';
-}) {
+export function BrandBand({ locale, brands }: { locale: Locale; brands: readonly BandBrand[] }) {
   if (brands.length === 0) return null;
   const text = getSiteText(locale);
   const loop = loopOf(brands);
   return (
     <section
-      className={`ls-brand-band ls-band--${tone}`}
+      className="ls-brand-band"
       aria-label={text.home.brandBandLabel}
       style={{ '--ls-brand-seconds': loop.length * SECONDS_PER_LOGO } as CSSProperties}
     >
@@ -102,7 +94,8 @@ export function BrandBand({
           <LogoSet locale={locale} loop={loop} unique={brands.length} hidden />
         </div>
       </div>
-      {/* The pause control for moving content (WCAG 2.2.2): a checkbox drawn as a round button, no script; checked = paused. */}
+      {/* The pause control for moving content (WCAG 2.2.2, DESIGN.md 12): a checkbox, no script; checked = paused. It is visually hidden until a
+          keyboard user focuses it, so a pointer sees no button (Owner, 2026-10-18). */}
       <MotionPause label={text.home.brandPause} />
     </section>
   );

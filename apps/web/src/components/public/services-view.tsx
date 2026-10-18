@@ -19,6 +19,7 @@ import {
   cardPrice,
 } from '../../lib/public-site-core';
 import { PageBack } from '../navigation/page-back';
+import { ChipRail } from './chip-rail';
 import { LoadNotice } from './home-sections';
 import { PhotoSlot } from './photo-slot';
 import { ScrollRow } from './scroll-row';
@@ -74,10 +75,10 @@ export function ServicesView({
   if (data === null || data.groups.length === 0) {
     return (
       <PublicMain>
-        <Band tone="page" labelledBy="services-title" className="ls-band--alt ls-svc-title">
+        <Band tone="page" labelledBy="services-title" className="ls-svc-title">
           <ServicesIntro locale={locale} />
         </Band>
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           {data === null ? (
             <LoadNotice locale={locale} section={text.home.sectionServices} />
           ) : (
@@ -125,7 +126,11 @@ export function ServicesView({
         groups={groups}
         intro={<ServicesIntro locale={locale} />}
         chips={
-          <nav className="ls-pills" aria-label={text.services.groupsLabel}>
+          <ChipRail
+            label={text.services.groupsLabel}
+            previous={text.home.scrollPrevious}
+            next={text.home.scrollNext}
+          >
             {chip('all', text.services.all, base, group === '')}
             {data.groups.map((entry) =>
               chip(
@@ -135,7 +140,7 @@ export function ServicesView({
                 group === entry.code,
               ),
             )}
-          </nav>
+          </ChipRail>
         }
       />
     </PublicMain>
@@ -160,13 +165,13 @@ export function ServiceDetailView({
   if (detail === null) {
     return (
       <PublicMain>
-        <Band tone="page" labelledBy="service-title" className="ls-band--alt ls-svd-hero">
+        <Band tone="page" labelledBy="service-title" className="ls-svd-hero">
           <ServicesBack locale={locale} />
           <h1 className="ls-h1-display" id="service-title">
             {text.services.title}
           </h1>
         </Band>
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           <LoadNotice locale={locale} section={text.home.sectionServices} />
         </Band>
       </PublicMain>
@@ -174,12 +179,9 @@ export function ServiceDetailView({
   }
   const { service, related, content } = detail;
   const book = bookServiceHref(locale, service.code);
-  // The hero band is the alternate color; the bands after it alternate down the page.
-  let tone: 'alt' | 'base' = 'alt';
-  const nextTone = () => (tone = tone === 'alt' ? 'base' : 'alt');
   return (
     <PublicMain>
-      <Band tone="page" labelledBy="service-title" className="ls-band--alt ls-svd-hero">
+      <Band tone="page" labelledBy="service-title" className="ls-svd-hero">
         <ServicesBack locale={locale} />
         <div className="ls-svd-grid">
           <SharedPhoto name={`ls-photo-svc-${service.code}`}>
@@ -225,7 +227,7 @@ export function ServiceDetailView({
         </div>
       </Band>
       {content.included.length > 0 ? (
-        <Band tone="page" labelledBy="included-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="included-title">
           <div className="ls-svd-block">
             <h2 className="ls-site-h2" id="included-title">
               {text.services.included}
@@ -244,7 +246,7 @@ export function ServiceDetailView({
         </Band>
       ) : null}
       {content.steps.length > 0 ? (
-        <Band tone="page" labelledBy="steps-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="steps-title">
           <div className="ls-svd-block">
             <h2 className="ls-site-h2" id="steps-title">
               {text.services.steps}
@@ -259,7 +261,7 @@ export function ServiceDetailView({
         </Band>
       ) : null}
       {content.faq.length > 0 ? (
-        <Band tone="page" labelledBy="faq-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="faq-title">
           <div className="ls-svd-block">
             <h2 className="ls-site-h2" id="faq-title">
               {text.services.faq}
@@ -276,7 +278,7 @@ export function ServiceDetailView({
         </Band>
       ) : null}
       {related.length > 0 ? (
-        <Band tone="page" labelledBy="related-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="related-title">
           <h2 className="ls-site-h2" id="related-title">
             {text.services.related}
           </h2>
@@ -296,7 +298,7 @@ export function ServiceDetailView({
           </ScrollRow>
         </Band>
       ) : null}
-      <Band tone="page" labelledBy="cta-title" className={`ls-band--${nextTone()} ls-svd-cta`}>
+      <Band tone="page" labelledBy="cta-title" className="ls-svd-cta">
         <div className="ls-svd-cta-copy">
           <h2 className="ls-site-h2" id="cta-title">
             {text.services.ctaTitle}

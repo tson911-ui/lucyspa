@@ -1,7 +1,7 @@
 import type { PublicSiteResponse } from '@lucy-spa/contracts';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { BrandIcon, BrandWordmark, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
+import { BrandIcon, BrandLogo, SiteFooter, type FooterColumn } from '@lucy-spa/ui';
 import type { Locale } from '../../i18n/locales';
 import { getSiteText } from '../../i18n/site';
 import { fill } from '../../lib/fill';
@@ -39,11 +39,12 @@ export function PublicHeader({
         <Link
           href={`/${locale}`}
           aria-label={text.header.brand}
+          className="ls-logo-link"
           prefetch
           transitionTypes={NAV_TRANSITION}
         >
           <SiteLogo decor={decor}>
-            <BrandWordmark serif />
+            <BrandLogo />
           </SiteLogo>
         </Link>
       }
@@ -194,11 +195,11 @@ export function PublicFooter({
           <Link
             href={`/${locale}`}
             aria-label={text.header.brand}
-            className="ls-site-footer-logo"
+            className="ls-logo-link ls-site-footer-logo"
             prefetch
             transitionTypes={NAV_TRANSITION}
           >
-            <BrandWordmark serif />
+            <BrandLogo reuse />
           </Link>
           {/* The shop's own tagline (Admin > Website > Shop info), nothing written here. */}
           {site?.tagline ? <p className="ls-footer-tagline">{site.tagline}</p> : null}

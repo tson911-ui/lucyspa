@@ -1,7 +1,8 @@
 'use client';
 
 import { IconButton } from '@lucy-spa/ui';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { useScrollEdges } from './scroll-edges';
 
 /**
  * A horizontal row that scrolls inside itself with scroll-snap (DESIGN.md 9.1, item 4): the page never scrolls sideways. A swipe or the
@@ -12,44 +13,22 @@ export function ScrollRow({
   label,
   previous,
   next,
+  variant,
   children,
 }: {
   /** The accessible name of the row. */
   label: string;
   previous: string;
   next: string;
+  /** `tiles`: the category rows of the home page (tiles of one size in a row; the two arrows sit under the row). */
+  variant?: 'tiles' | undefined;
   /** The row's items: `li` elements. */
   children: ReactNode;
 }) {
-  const track = useRef<HTMLUListElement | null>(null);
-  const [edge, setEdge] = useState({ start: true, end: true });
-
-  const measure = useCallback(() => {
-    const element = track.current;
-    if (!element) return;
-    // A fraction of a pixel of rounding must not leave an arrow enabled at the very end.
-    const start = element.scrollLeft <= 1;
-    const end = element.scrollLeft + element.clientWidth >= element.scrollWidth - 1;
-    setEdge((was) => (was.start === start && was.end === end ? was : { start, end }));
-  }, []);
-
-  useEffect(() => {
-    const element = track.current;
-    if (!element) return;
-    measure();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
-    observer?.observe(element);
-    return () => observer?.disconnect();
-  }, [measure]);
-
-  const move = (direction: 1 | -1) => {
-    const element = track.current;
-    if (!element) return;
-    element.scrollBy({ left: direction * element.clientWidth * 0.8 });
-  };
+  const { track, edge, measure, move } = useScrollEdges<HTMLUListElement>();
 
   return (
-    <div className="ls-snap-row">
+    <div className="ls-snap-row" data-variant={variant}>
       <ul
         ref={track}
         className="ls-snap-track"

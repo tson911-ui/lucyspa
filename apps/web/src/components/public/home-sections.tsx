@@ -19,6 +19,7 @@ import {
 } from '../../lib/public-site-core';
 import { NAV_TRANSITION } from '../../lib/nav-transition';
 import { CategoryTile } from './category-tile';
+import { ScrollRow } from './scroll-row';
 import { ReloadButton } from './reload-button';
 
 /** A section that could not be read: a notice with a way to try again; the rest of the page still renders. */
@@ -144,28 +145,33 @@ export function TopServices({ locale, columns }: { locale: Locale; columns: Home
 }
 
 /**
- * The category grid (DESIGN.md 9.1, item 6; R15): one tile for each group, the whole tile one link, the name in white at the bottom
- * leading corner over one flat scrim when the Owner chose a photo (the photo fills the tile), else the flat placeholder with ink text.
- * No count or badge beside a name. Three columns from 1024 px; a last row that would hold one or two tiles widens them so no tile
- * is left alone (B6, the stylesheet's six-track grid).
+ * The category rows (DESIGN.md 9.1, item 6; R15; one row per group since the Owner's 2026-10-18 fix): one tile for each group, the whole
+ * tile one link, the name at the bottom leading corner over one flat scrim when the Owner chose a photo (the photo fills the tile), else
+ * the flat placeholder with ink text. No count or badge beside a name. Every tile has the same size (three across from 1024 px, two from
+ * 640, one below); the row scrolls sideways inside itself with the round arrow buttons of the product row.
  */
 export function CategoryGrid({
   title,
   items,
+  previous,
+  next,
 }: {
   title: string;
   items: readonly { key: string; name: string; href: string; image?: PublicSlideImage | null }[];
+  /** The accessible names of the row's two arrow buttons. */
+  previous: string;
+  next: string;
 }) {
   return (
     <section className="ls-home-cats-group" aria-label={title}>
       <h3 className="ls-home-cats-title">{title}</h3>
-      <ul className="ls-home-cats">
+      <ScrollRow label={title} previous={previous} next={next} variant="tiles">
         {items.map((item) => (
-          <li key={item.key}>
+          <li key={item.key} className="ls-snap-item ls-snap-tile">
             <CategoryTile name={item.name} href={item.href} image={item.image ?? null} />
           </li>
         ))}
-      </ul>
+      </ScrollRow>
     </section>
   );
 }

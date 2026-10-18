@@ -52,10 +52,6 @@ export function HomeContent({
   const heroWidest = heroImage?.sources[heroImage.sources.length - 1];
   const photo = heroImage !== null && heroWidest !== undefined;
 
-  // The hero is the alternate color (or a photo); each band after it takes the other color.
-  let position = 1;
-  const nextTone = (): 'base' | 'alt' => (position++ % 2 === 0 ? 'alt' : 'base');
-
   const groups = services && services.groups.length > 0 ? homeGroups(services, site) : [];
   const columns = topServiceColumns(groups);
   const featured = homeFeaturedProducts(products);
@@ -114,19 +110,15 @@ export function HomeContent({
         </div>
       </HomeHero>
 
-      <BrandBand locale={locale} brands={brands} tone={brands.length > 0 ? nextTone() : 'base'} />
+      <BrandBand locale={locale} brands={brands} />
 
       {site && site.facts.length > 0 ? (
-        <Band
-          tone="page"
-          label={text.home.factsLabel}
-          className={`ls-band--${nextTone()} ls-band-facts`}
-        >
+        <Band tone="page" label={text.home.factsLabel} className="ls-band-facts">
           <FactsStrip locale={locale} site={site} />
         </Band>
       ) : null}
 
-      <Band tone="page" labelledBy="intro-title" className={`ls-band--${nextTone()}`}>
+      <Band tone="page" labelledBy="intro-title">
         <div className="ls-home-split">
           <div className="ls-home-split-copy">
             <h2 className="ls-site-h2" id="intro-title">
@@ -172,7 +164,7 @@ export function HomeContent({
       </Band>
 
       {featured.length > 0 ? (
-        <Band tone="page" labelledBy="products-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="products-title">
           <div className="ls-home-band-head">
             <h2 className="ls-site-h2" id="products-title">
               {text.home.productsTitle}
@@ -191,7 +183,7 @@ export function HomeContent({
       ) : null}
 
       {groups.length > 0 || productCategories.length > 0 ? (
-        <Band tone="page" labelledBy="categories-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="categories-title">
           <div className="ls-home-band-head">
             <div className="ls-home-band-title">
               <h2 className="ls-site-h2" id="categories-title">
@@ -203,6 +195,8 @@ export function HomeContent({
           {groups.length > 0 ? (
             <CategoryGrid
               title={text.home.categoryServices}
+              previous={text.home.scrollPrevious}
+              next={text.home.scrollNext}
               items={groups.map(({ group }) => ({
                 key: group.code,
                 name: group.name,
@@ -214,6 +208,8 @@ export function HomeContent({
           {productCategories.length > 0 ? (
             <CategoryGrid
               title={text.home.categoryProducts}
+              previous={text.home.scrollPrevious}
+              next={text.home.scrollNext}
               items={categoryItems(locale, productCategories)}
             />
           ) : null}
@@ -221,7 +217,7 @@ export function HomeContent({
       ) : null}
 
       {site?.why ? (
-        <Band tone="page" labelledBy="why-title" className={`ls-band--${nextTone()}`}>
+        <Band tone="page" labelledBy="why-title">
           <div className="ls-home-band-head">
             <h2 className="ls-site-h2" id="why-title">
               {site.why.title}
@@ -231,12 +227,7 @@ export function HomeContent({
         </Band>
       ) : null}
 
-      <HomeOffer
-        locale={locale}
-        campaigns={campaigns}
-        onlineOpen={onlineOpen === true}
-        tone={nextTone()}
-      />
+      <HomeOffer locale={locale} campaigns={campaigns} onlineOpen={onlineOpen === true} />
       {popup ? <PromoPopup locale={locale} /> : null}
     </PublicMain>
   );

@@ -38,7 +38,6 @@ export type { IconName, IconProps } from './icons';
 export { RouteFade } from './route-fade';
 export { RouteEnter } from './route-enter';
 export { useSlidingPill } from './sliding-pill';
-export { MotionPause } from './motion-pause';
 // Public site and member-area frame (Part 2): header, menu, tab bar, footer, bands, price list, steps, choice card, reveal.
 export { ContactPage, InfoPage, type InfoSection } from './info-page';
 export { InfoTable } from './info-table';
@@ -55,6 +54,8 @@ export type {
   TabBarItem,
 } from './site';
 export { BrandIcon } from './brand-icons';
+export { BrandLogo } from './brand-logo';
+export { MotionPause } from './motion-pause';
 export { ContactFab, type ContactFabChat, type ContactFabItem } from './contact-fab';
 export type { BrandIconName } from './brand-icons';
 export {
@@ -175,11 +176,7 @@ export { GreetingStrip, SeasonFrame } from './season-frame';
 export { SeasonPresetPicker, SeasonPreview } from './season-preview';
 export { SeasonSlotRow, SeasonSlotThumb } from './season-slot-row';
 export { SEASON_PREVIEW_WIDTH, SeasonLivePreview, previewScale } from './season-live-preview';
-export type {
-  SeasonLivePreviewLabels,
-  SeasonPreviewDevice,
-  SeasonPreviewTheme,
-} from './season-live-preview';
+export type { SeasonLivePreviewLabels, SeasonPreviewDevice } from './season-live-preview';
 export type { SeasonPresetChoice, SeasonPreviewLabels } from './season-preview';
 export { SeasonFxToggle, SeasonParticles, useSeasonFx } from './season-particles';
 // Site-wide season art (Step S6, docs/UXUI_REDESIGN_S6_PLAN.md): slots around the customer pages and their particles.

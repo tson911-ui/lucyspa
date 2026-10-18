@@ -11,6 +11,8 @@ export type SiteLinkComponent = ComponentType<{
   hrefLang?: string | undefined;
   lang?: string | undefined;
   'data-emphasis'?: 'true' | undefined;
+  /** The menu label again, as a hidden copy in the current entry's weight: the entry's width never changes with its state. */
+  'data-label'?: string | undefined;
   children: ReactNode;
 }>;
 

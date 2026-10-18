@@ -57,7 +57,7 @@ export function ServicesList({
   );
   return (
     <>
-      <Band tone="page" labelledBy="services-title" className="ls-band--alt ls-svc-title">
+      <Band tone="page" labelledBy="services-title" className="ls-svc-title">
         {intro}
         <div className="ls-svc-search" role="search" aria-label={text.searchLabel}>
           <SearchInput
@@ -70,11 +70,11 @@ export function ServicesList({
           />
         </div>
       </Band>
-      <div className="ls-svc-chips ls-band--alt">
+      <div className="ls-svc-chips">
         <div className="ls-container">{chips}</div>
       </div>
       {shown.length === 0 ? (
-        <Band tone="page" className="ls-band--base">
+        <Band tone="page">
           <EmptyState
             icon="search"
             title={text.noMatchTitle}
@@ -88,12 +88,12 @@ export function ServicesList({
           </EmptyState>
         </Band>
       ) : (
-        shown.map((group, index) => (
+        shown.map((group) => (
           <Band
             key={group.code}
             tone="page"
             labelledBy={`group-${group.code}`}
-            className={`ls-band--${index % 2 === 0 ? 'base' : 'alt'} ls-svc-group`}
+            className="ls-svc-group"
           >
             <h2 className="ls-site-h2" id={`group-${group.code}`}>
               {group.name}

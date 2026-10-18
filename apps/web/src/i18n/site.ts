@@ -174,8 +174,9 @@ export interface SiteText {
     viewServices: string;
     factsLabel: string;
     brandBandLabel: string;
-    brandLink: string;
+    /** The strip's pause control: visually hidden until a keyboard user focuses it (Owner, 2026-10-18). */
     brandPause: string;
+    brandLink: string;
     groupsTitle: string;
     groupsLead: string;
     viewAll: string;
@@ -197,6 +198,9 @@ export interface SiteText {
     viewAllProducts: string;
     rowPrevious: string;
     rowNext: string;
+    /** The two round buttons of a row of chips or of category tiles (it scrolls sideways). */
+    scrollPrevious: string;
+    scrollNext: string;
     /** The category grid: the heading, its sentence and the names of its two groups. */
     categoriesTitle: string;
     categoriesLead: string;
@@ -465,8 +469,8 @@ const text = {
       viewServices: 'Xem dịch vụ',
       factsLabel: 'Thông tin nhanh',
       brandBandLabel: 'Thương hiệu mỹ phẩm tại Lucy Spa',
-      brandLink: 'Xem sản phẩm {name}',
       brandPause: 'Tạm dừng dải thương hiệu',
+      brandLink: 'Xem sản phẩm {name}',
       groupsTitle: 'Bảng giá dịch vụ',
       groupsLead:
         'Giá niêm yết rõ ràng cho từng dịch vụ. Chọn một dịch vụ để xem chi tiết và đặt lịch.',
@@ -484,6 +488,8 @@ const text = {
       viewAllProducts: 'Xem tất cả mỹ phẩm',
       rowPrevious: 'Sản phẩm trước',
       rowNext: 'Sản phẩm tiếp theo',
+      scrollPrevious: 'Cuộn sang trái',
+      scrollNext: 'Cuộn sang phải',
       categoriesTitle: 'Chọn theo nhóm',
       categoriesLead: 'Chọn nhóm dịch vụ hoặc danh mục mỹ phẩm bạn quan tâm.',
       categoryServices: 'Dịch vụ',
@@ -737,8 +743,8 @@ const text = {
       viewServices: 'View services',
       factsLabel: 'Quick facts',
       brandBandLabel: 'Cosmetics brands at Lucy Spa',
-      brandLink: 'See {name} products',
       brandPause: 'Pause the brand band',
+      brandLink: 'See {name} products',
       groupsTitle: 'Service price list',
       groupsLead: 'Clear listed prices for every service. Pick one to see the details and book.',
       viewAll: 'View all',
@@ -755,6 +761,8 @@ const text = {
       viewAllProducts: 'View all cosmetics',
       rowPrevious: 'Previous products',
       rowNext: 'Next products',
+      scrollPrevious: 'Scroll left',
+      scrollNext: 'Scroll right',
       categoriesTitle: 'Browse by group',
       categoriesLead: 'Pick a service group or a cosmetics category you like.',
       categoryServices: 'Services',

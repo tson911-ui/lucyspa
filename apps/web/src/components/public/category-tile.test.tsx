@@ -17,6 +17,8 @@ test('category tiles (C11b): a chosen photo is drawn under the scrim with the na
   const html = renderToStaticMarkup(
     <CategoryGrid
       title="Dịch vụ"
+      previous="Cuộn sang trái"
+      next="Cuộn sang phải"
       items={[
         { key: 'a', name: 'Gội đầu', href: '/vi/services?group=a', image },
         { key: 'b', name: 'Nail', href: '/vi/services?group=b', image: null },
@@ -24,7 +26,10 @@ test('category tiles (C11b): a chosen photo is drawn under the scrim with the na
       ]}
     />,
   );
-  const tiles = html.split('<li>').slice(1);
+  // One row of equal tiles that scrolls inside itself (Owner, 2026-10-18): the tiles are the items of a snap row.
+  assert.match(html, /<ul class="ls-snap-track" aria-label="Dịch vụ" tabindex="0">/);
+  assert.match(html, /aria-label="Cuộn sang trái"/);
+  const tiles = html.split('<li class="ls-snap-item ls-snap-tile">').slice(1);
   assert.equal(tiles.length, 3);
   assert.match(tiles[0]!, /class="ls-home-cat" data-media="photo"/);
   assert.match(tiles[0]!, /<img[^>]*class="ls-home-cat-img"[^>]*alt=""/);

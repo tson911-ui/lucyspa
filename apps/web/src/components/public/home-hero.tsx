@@ -61,12 +61,7 @@ export function HomeHero({
   }, [enabled, run]);
 
   return (
-    <section
-      ref={ref}
-      className="ls-home-hero ls-band--alt"
-      data-media={media}
-      aria-labelledby="home-title"
-    >
+    <section ref={ref} className="ls-home-hero" data-media={media} aria-labelledby="home-title">
       {children}
     </section>
   );

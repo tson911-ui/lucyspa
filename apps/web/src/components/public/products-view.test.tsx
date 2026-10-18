@@ -101,7 +101,7 @@ test('list: no hero from the Owner means a plain title; the page has exactly one
   // The cards are the list's headings (h2 under the one h1); no eyebrow above a name.
   assert.match(
     text,
-    /<h2 class="ls-pcard-name"><a href="\/vi\/products\/kem-duong">Kem dưỡng ẩm<\/a><\/h2>/,
+    /<h2 class="ls-pcard-name"><a title="Kem dưỡng ẩm" href="\/vi\/products\/kem-duong">Kem dưỡng ẩm<\/a><\/h2>/,
   );
   assert.doesNotMatch(text, /ls-pcard-meta/);
 });
@@ -335,16 +335,12 @@ test('detail: one h1, gallery, price per variant with its own stock, where to bu
   assert.ok(!/<form\b/.test(text));
 });
 
-test('detail (C12): bands alternate from the hero, the gallery has arrows with names, the related products are a scroll row', () => {
+test('detail (C12): no alternating bands, the gallery has arrows with names, the related products are a scroll row', () => {
   const text = html(
     <ProductDetailView locale="vi" detail={detail()} site={site} />,
     '/vi/products/kem-duong',
   );
-  // Hero alt, the about band base, the commitment alt, the related row base.
-  assert.deepEqual(
-    [...text.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt', 'base', 'alt', 'base'],
-  );
+  assert.doesNotMatch(text, /ls-band--(base|alt)/);
   // Two pictures: the arrows are named, the first is disabled at the start, the second is not.
   assert.match(text, /<button[^>]*data-side="start"[^>]*aria-label="Ảnh trước"[^>]*disabled=""/);
   assert.match(text, /<button[^>]*data-side="end"[^>]*aria-label="Ảnh tiếp theo"(?![^>]*disabled)/);
@@ -364,10 +360,7 @@ test('detail (C12): bands alternate from the hero, the gallery has arrows with n
     />,
     '/vi/products/kem-duong',
   );
-  assert.deepEqual(
-    [...bare.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt'],
-  );
+  assert.doesNotMatch(bare, /ls-band--(base|alt)/);
 });
 
 test('list (C12, C4): category chips from 640 px with the brand as a select; the second row holds the sub-categories of the chosen parent', () => {
