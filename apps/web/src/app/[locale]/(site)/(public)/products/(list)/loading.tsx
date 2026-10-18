@@ -7,13 +7,13 @@ import { Band, PublicMain, Skeleton } from '@lucy-spa/ui';
 export default function Loading() {
   return (
     <PublicMain>
-      <Band tone="page" className="ls-band--alt ls-prod-title">
+      <Band tone="page" className="ls-prod-title">
         <div className="ls-skel-title" aria-busy="true">
           <Skeleton lines={1} height="var(--ls-space-9)" width="40%" />
           <Skeleton lines={1} height="var(--ls-space-5)" width="60%" />
         </div>
       </Band>
-      <Band tone="page" className="ls-band--base ls-prod-list">
+      <Band tone="page" className="ls-prod-list">
         <div aria-busy="true">
           <ul className="ls-prod-grid" aria-hidden="true">
             {[0, 1, 2, 3, 4, 5, 6, 7].map((index) => (

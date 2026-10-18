@@ -122,7 +122,7 @@ test('ContactFab css: fixed to the viewport corner on the shared layer scale, li
     css,
     /data-kind='call'\] \.ls-contact-icon \{[^}]*color: var\(--ls-on-network\);[^}]*background: var\(--ls-brand-call\)/,
   );
-  // The same colours in every theme block, and a white icon on the green and the blue keeps 4.5:1 (AA).
+  // One colour each (light only), and a white icon on the green and the blue keeps 4.5:1 (AA).
   const tokenCss = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
   const luminance = (hex: string) => {
     const [r = 0, g = 0, b = 0] = [1, 3, 5].map((index) => {
@@ -135,10 +135,7 @@ test('ContactFab css: fixed to the viewport corner on the shared layer scale, li
     const values = [...tokenCss.matchAll(new RegExp(`${name}:\\s*(#[0-9a-f]{6});`, 'g'))].map(
       (match) => match[1] ?? '',
     );
-    assert.ok(
-      values.length >= 3 && new Set(values).size === 1,
-      `${name} is one colour in every theme`,
-    );
+    assert.ok(values.length >= 1 && new Set(values).size === 1, `${name} is one colour`);
     assert.ok(
       1.05 / (luminance(values[0] ?? '#000000') + 0.05) >= 4.5,
       `${name} keeps 4.5:1 with white`,

@@ -46,8 +46,8 @@ test('C15: a member screen is a title band (one h1, the account tabs) and a cont
     </AccountScreen>,
   );
   assert.equal(html.match(/<h1\b/g)?.length, 1);
-  assert.match(html, /class="ls-band ls-band-page ls-band--alt ls-acct-title"/);
-  assert.match(html, /class="ls-band ls-band-page ls-band--base ls-acct-body"/);
+  assert.match(html, /class="ls-band ls-band-page ls-acct-title"/);
+  assert.match(html, /class="ls-band ls-band-page ls-acct-body"/);
   assert.match(
     html,
     /<nav[^>]*aria-label="Điều hướng tài khoản"[^>]*class="ls-subnav ls-acct-tabs"/,

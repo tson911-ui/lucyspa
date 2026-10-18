@@ -2,32 +2,46 @@
    spacing literals); rules scoped to classes used only by these pages. */
 
 /* ---- Placeholders (8.9 image frame; product-noimage plan) --------------------------------------------------------------------------- */
-/* A missing photo is one grey step from the band it sits on (never pure white or pure black, which read as a hole cut in the page): grey 2
-   on the base band, grey 3 on the alternate band. Hover and pressed go one step further each. */
+/* A missing photo is one step from what it sits on (Owner surface rule, 2026-10-18): inside a white card it is grey 3 (#ececef: darker than
+   the page grey, so the card keeps its outline where the photo will go); a tile or frame that sits straight on the grey page is white
+   (`.ls-home-cat`, the hero frame, the product gallery). Hover and pressed go one grey step further each. */
 [data-ui='v2'] {
-  --ls-s10-ph: var(--ls-gray-2);
-  --ls-s10-ph-hover: var(--ls-gray-3);
-  --ls-s10-ph-pressed: var(--ls-gray-4);
-  /* Brand logos are marks: drawn in ink on a light page, in white on a dark one (R16). */
-  --ls-s10-logo-filter: brightness(0);
-}
-
-[data-ui='v2'] .ls-band--alt {
   --ls-s10-ph: var(--ls-gray-3);
   --ls-s10-ph-hover: var(--ls-gray-4);
   --ls-s10-ph-pressed: var(--ls-gray-5);
+  /* Brand logos are marks: drawn in ink on the light page (R16). */
+  --ls-s10-logo-filter: brightness(0);
+  /* The L mark's hover colour: one step darker (never an underline). */
+  --ls-s10-logo-hover: var(--ls-brand-fill-hover);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-preview-theme='light']) [data-ui='v2'] {
-    --ls-s10-logo-filter: brightness(0) invert(1);
+[data-ui='v2']
+  :is(.ls-home-cat, .ls-home-hero, .ls-prod-gallery, .ls-prod-hero-picture, .ls-svd-hero) {
+  --ls-s10-ph: var(--ls-bg-surface);
+  --ls-s10-ph-hover: var(--ls-gray-3);
+  --ls-s10-ph-pressed: var(--ls-gray-4);
+}
+
+/* ---- Logo: the L mark of the customer header and footer (Owner, 2026-10-18; replaces the wordmark there) ------------------------------ */
+/* An inline vector in the link's colour, 40 px tall. The link has a class, so the bare-link underline rule (`a:not([class])`) never reaches it. */
+[data-ui='v2'] .ls-logo-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+[data-ui='v2'] .ls-logo-mark {
+  display: block;
+  height: var(--ls-space-8);
+  width: auto;
+  aspect-ratio: 2350 / 2222;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] a.ls-logo-link:hover {
+    color: var(--ls-s10-logo-hover);
+    text-decoration: none;
   }
-}
-
-:root[data-preview-theme='dark'] [data-ui='v2'],
-[data-preview-theme='dark'] [data-ui='v2'],
-[data-preview-theme='dark'][data-ui='v2'] {
-  --ls-s10-logo-filter: brightness(0) invert(1);
 }
 
 [data-ui='v2'] .ls-slot[data-empty='true'] {
@@ -78,16 +92,13 @@
 }
 
 /* ---- Home: brand band (R16, DESIGN.md 17.2) ----------------------------------------------------------------------------------------- */
-/* A light band in the page's alternation: logos in ink at one height, evenly spaced, no boxes, no colour. The pause control is a neutral
-   round button. The marquee and its still form under reduced motion and the off switch stay as pages-v2.css draws them. */
+/* A strip on the page: logos in ink at one height, evenly spaced, no boxes, no colour. The marquee shows no pause button
+   to a pointer (Owner, 2026-10-18): the pause checkbox is visually hidden until a keyboard user focuses it; the strip also pauses on hover
+   and focus. Its still form under reduced motion and the off switch stays as pages-v2.css draws it. */
 [data-ui='v2'] .ls-brand-band {
   padding-block: var(--ls-space-6);
-  background: var(--ls-band-base);
+  background: var(--ls-bg-page);
   color: var(--ls-text);
-}
-
-[data-ui='v2'] .ls-brand-band.ls-band--alt {
-  background: var(--ls-band-alt);
 }
 
 [data-ui='v2'] .ls-brand-logo {
@@ -95,52 +106,43 @@
   filter: var(--ls-s10-logo-filter);
 }
 
-[data-ui='v2'] .ls-brand-pause {
-  border-color: var(--ls-border-control);
-  color: var(--ls-text);
-}
-
-[data-ui='v2'] :is(.ls-brand-pause, .ls-brand-link):focus-visible {
+[data-ui='v2'] .ls-brand-link:focus-visible {
   outline-color: var(--ls-focus);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-brand-pause:hover {
-    border-color: var(--ls-text);
-    background: var(--ls-hover-bg);
-  }
-
   [data-ui='v2'] .ls-brand-link:hover {
     border-block-end-color: var(--ls-text);
   }
-}
-
-[data-ui='v2'] .ls-brand-pause:active {
-  background: var(--ls-pressed-bg);
 }
 
 [data-ui='v2'] .ls-brand-link:active {
   border-block-end-color: var(--ls-text-muted);
 }
 
-/* ---- Home: trust band (B3) ---------------------------------------------------------------------------------------------------------- */
-/* Words break between words only (never one syllable per line); the address is one step smaller than the other figures; the phone and the
-   map link are 44 px targets. */
+/* ---- Home: trust band (B3; rebalanced 2026-10-18) ---------------------------------------------------------------------------------------- */
+/* Three equal columns. Every column is a value and a caption of ONE size (the body step; the value in the title weight and ink, the caption
+   regular and muted), so no figure is larger than a label. The columns share two rows (subgrid), so the values start on one line and the
+   captions sit on one line even when the address wraps. Words break between words only. The phone number and the map link keep a 44 px
+   target without taking height: the target is their own ::after, which reaches past the line. */
 [data-ui='v2'] .ls-home-fact-figure {
   overflow-wrap: break-word;
 }
 
 [data-ui='v2'] .ls-home-fact-figure[data-size='long'] {
-  font-size: var(--ls-type-heading);
-  line-height: var(--ls-lh-heading);
   text-wrap: pretty;
 }
 
-[data-ui='v2'] .ls-home-fact-tel,
-[data-ui='v2'] .ls-home-fact-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--ls-control-h);
+[data-ui='v2'] :is(.ls-home-fact-tel, .ls-home-fact-link) {
+  position: relative;
+  display: inline-block;
+}
+
+[data-ui='v2'] :is(.ls-home-fact-tel, .ls-home-fact-link)::after {
+  content: '';
+  position: absolute;
+  inset-block: calc((var(--ls-control-h) - 1lh) / -2);
+  inset-inline: 0;
 }
 
 [data-ui='v2'] .ls-home-fact-tel {
@@ -178,56 +180,31 @@
   background: var(--ls-pressed-bg);
 }
 
-/* ---- Home: category grid (R15, B6) -------------------------------------------------------------------------------------------------- */
-/* Six tracks: a tile takes two (three across from 1024 px) or three (two across from 640 px). A last row that would leave one or two tiles
-   alone widens them to fill it, and the wider ratio keeps every row the same height (no orphan). Four tiles are two rows of two. */
-[data-ui='v2'] .ls-home-cats > li {
-  --ls-s10-tile: 16 / 9;
-}
-
+/* ---- Home: category rows (R15; one row of equal tiles per group, Owner 2026-10-18) -------------------------------------------------- */
+/* Each group (Dịch vụ, Mỹ phẩm) is ONE row of tiles of one size (4:3), the current tile width: one across on a phone, two from 640 px,
+   three from 1024 px, with the next tile peeking. The row scrolls sideways inside itself (ScrollRow) with the round arrows under it. */
 [data-ui='v2'] .ls-home-cat {
-  aspect-ratio: var(--ls-s10-tile);
   background: var(--ls-s10-ph);
   overflow-wrap: break-word;
 }
 
+[data-ui='v2'] .ls-snap-row[data-variant='tiles'] {
+  margin-top: 0;
+}
+
+[data-ui='v2'] .ls-snap-tile {
+  flex-basis: 85%;
+}
+
 @media (min-width: 640px) {
-  [data-ui='v2'] .ls-home-cats {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  [data-ui='v2'] .ls-home-cats > li {
-    --ls-s10-tile: 4 / 3;
-    grid-column: span 3;
-  }
-
-  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(odd) {
-    --ls-s10-tile: 8 / 3;
-    grid-column: span 6;
+  [data-ui='v2'] .ls-snap-tile {
+    flex-basis: calc((100% - var(--ls-space-4)) / 2);
   }
 }
 
 @media (min-width: 1024px) {
-  [data-ui='v2'] .ls-home-cats > li,
-  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(odd) {
-    --ls-s10-tile: 4 / 3;
-    grid-column: span 2;
-  }
-
-  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(3n + 1) {
-    --ls-s10-tile: 4 / 1;
-    grid-column: span 6;
-  }
-
-  [data-ui='v2'] .ls-home-cats > li:nth-last-child(2):nth-child(3n + 1),
-  [data-ui='v2'] .ls-home-cats > li:last-child:nth-child(3n + 2) {
-    --ls-s10-tile: 2 / 1;
-    grid-column: span 3;
-  }
-
-  [data-ui='v2'] .ls-home-cats:has(> li:nth-child(4):last-child) > li {
-    --ls-s10-tile: 2 / 1;
-    grid-column: span 3;
+  [data-ui='v2'] .ls-snap-tile {
+    flex-basis: calc((100% - 2 * var(--ls-space-4)) / 3);
   }
 }
 
@@ -292,14 +269,11 @@
 
 /* ---- Cards with a stretched link (Owner answer 2; 8.3) ------------------------------------------------------------------------------ */
 /* The name's link covers the card (its ::after, pages-v2.css); a service card's "Đặt lịch" outline button sits above it. The focus ring is
-   drawn round the whole card, the card presses in when its link is pressed, and the photo moves 2 % on hover. Names wrap by word and are
-   never cut (Owner answer 7, C15). */
+   drawn round the whole card, the card presses in when its link is pressed, and the photo moves 2 % on hover. A service name wraps by word
+   and is never cut (Owner answer 7, C15). A PRODUCT name is the one exception (Owner, 2026-10-18, reversing answer 7 for product cards):
+   two lines at most then an ellipsis, so every card of a row lines up; the full name stays in the DOM and in the link's title. */
 [data-ui='v2'] .ls-pcard-name a {
-  display: block;
-  overflow: visible;
   overflow-wrap: break-word;
-  -webkit-line-clamp: unset;
-  line-clamp: none;
 }
 
 [data-ui='v2'] .ls-svc-card-name a {
@@ -350,7 +324,7 @@
    A chosen chip is the accent fill with a check (not colour alone); its hover goes one fill step, never grey. A row that scrolls lets the
    next chip peek and snaps chip by chip (B10). */
 [data-ui='v2'] .ls-svc-chips {
-  background: var(--ls-band-alt);
+  background: var(--ls-bg-page);
 }
 
 [data-ui='v2'] .ls-pills {
@@ -383,6 +357,50 @@
 [data-ui='v2'] .ls-pills a[data-ancestor='true']:is(:hover, :active) {
   color: var(--ls-brand-on-soft);
   background: var(--ls-brand-soft);
+}
+
+/* The tinted ancestor chip keeps its own tint on hover (no grey layer over it). */
+[data-ui='v2'] .ls-pills a[data-ancestor='true']::before {
+  display: none;
+}
+
+/* A chip never lifts or scales on hover (the lift was clipped by the row's own overflow: the "Mặt nạ" chip lost its edge; Owner, 2026-10-18). */
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2'] .ls-site .ls-pills a:hover {
+    transform: none;
+  }
+}
+
+/* The chip rail (Owner, 2026-10-18): a row of chips wider than its space scrolls inside itself with two round buttons over its ends; a
+   button is hidden when there is nothing more that way (the `hidden` attribute, set from the scroll position). */
+[data-ui='v2'] .ls-rail {
+  position: relative;
+  min-width: 0;
+}
+
+[data-ui='v2'] .ls-rail > .ls-pills {
+  margin-block: 0;
+  padding-inline: var(--ls-space-1);
+}
+
+[data-ui='v2'] .ls-rail-arrow {
+  position: absolute;
+  inset-block: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+
+[data-ui='v2'] .ls-rail-arrow[hidden] {
+  display: none;
+}
+
+[data-ui='v2'] .ls-rail-arrow[data-dir='previous'] {
+  inset-inline-start: 0;
+}
+
+[data-ui='v2'] .ls-rail-arrow[data-dir='next'] {
+  inset-inline-end: 0;
 }
 
 /* ---- Services list ------------------------------------------------------------------------------------------------------------------ */
@@ -506,6 +524,59 @@
   flex: none;
 }
 
+/* The card's fixed rows (Owner, 2026-10-18, after the reference card): labels, name, pre-order line, struck price, price. Each row has a
+   track of its own, whether or not the card has that content, so the prices of every card in a row (grid or scrolling row) sit on one
+   line. A track is a minimum (`minmax(.., auto)`), so a larger text size grows the rows instead of clipping a word. A narrow card (a
+   phone's two columns) keeps two lines for the pre-order sentence; the container query reads the card's own width. */
+[data-ui='v2'] .ls-pcard {
+  container-type: inline-size;
+}
+
+[data-ui='v2'] .ls-pcard-body[data-rows] {
+  --ls-s10-note-lines: 1;
+  display: grid;
+  grid-template-rows:
+    var(--ls-space-6)
+    minmax(calc(2 * var(--ls-lh-heading) * var(--ls-type-body)), auto)
+    minmax(calc(var(--ls-s10-note-lines) * var(--ls-lh-label) * var(--ls-type-label)), auto)
+    minmax(calc(var(--ls-lh-small) * var(--ls-type-small)), auto)
+    minmax(calc(var(--ls-lh-price) * var(--ls-type-price)), auto);
+  row-gap: var(--ls-space-1);
+  align-content: start;
+}
+
+@container (max-width: 15rem) {
+  [data-ui='v2'] .ls-pcard-body[data-rows] {
+    --ls-s10-note-lines: 2;
+  }
+}
+
+[data-ui='v2'] .ls-pcard-body[data-rows] > .ls-pcard-labels {
+  grid-row: 1;
+}
+
+[data-ui='v2'] .ls-pcard-body[data-rows] > .ls-pcard-name {
+  grid-row: 2;
+}
+
+[data-ui='v2'] .ls-pcard-body[data-rows] > .ls-prod-stock {
+  grid-row: 3;
+  align-items: flex-start;
+}
+
+/* The price block adds no box: its struck price is row 4 and its price row 5, a price without a sale takes row 5 alone. */
+[data-ui='v2'] .ls-pcard-body[data-rows] > .ls-sale {
+  display: contents;
+}
+
+[data-ui='v2'] .ls-pcard-body[data-rows] .ls-sale-was {
+  grid-row: 4;
+}
+
+[data-ui='v2'] .ls-pcard-body[data-rows] :is(.ls-sale-now, .ls-prod-price) {
+  grid-row: 5;
+}
+
 /* Sold out is a status: the warning colour with its icon and word (never colour alone, B18). */
 [data-ui='v2'] .ls-prod-stock[data-state='OUT_OF_STOCK'] {
   color: var(--ls-warning);
@@ -615,12 +686,14 @@
   line-height: var(--ls-lh-label);
 }
 
-/* Where to buy: a plain text section in the about band (no card inside the band, B12/B19), one line per fact with its icon. */
+/* Where to buy: one line per fact with its icon. A white panel on the grey page (Owner surface rule, 2026-10-18; it was plain text in the band, B12/B19,
+   a rule that is retired). A field or tint inside it is the page grey. */
 [data-ui='v2'] .ls-prod-store {
-  padding: 0;
+  --ls-bg-field: var(--ls-bg-field-in-card);
+  padding: var(--ls-space-6);
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
 }
 
 [data-ui='v2'] .ls-prod-store-lines {
@@ -1022,7 +1095,7 @@ html[data-text-large] [data-ui='v2'] .ls-pay-bar {
   gap: var(--ls-space-2);
 }
 
-/* The map is a framed picture: a hairline keeps the light map from glaring on the dark band (no filter on a third-party map). */
+/* The map is a framed picture: a hairline keeps the light map from glaring on the band (no filter on a third-party map). */
 [data-ui='v2'] .ls-contact-band .ls-contact-map {
   border: 1px solid var(--ls-border);
 }
@@ -1104,4 +1177,39 @@ html[data-text-large] [data-ui='v2'] .ls-pay-bar {
    options under a thumb sized for one row. It keeps the segmented row. */
 [data-ui='v2'] .ls-segmented.ls-prod-variants {
   display: flex;
+}
+
+/* ---- One surface rule (Owner, 2026-10-18) ------------------------------------------------------------------------------------------- */
+/* The page is the grey (`--ls-bg-page`); a card, tile or panel on it is white (`--ls-bg-surface`). A product card and a service card are white
+   cards (the photo is full-bleed at the top, the text and the action are inset by 16 px); the facts strip and the price list under the hero are
+   white panels; a field or a hover tint inside them is the page grey (`--ls-bg-field-in-card`). A tile or frame straight on the page keeps a
+   white placeholder (`--ls-s10-ph`). */
+[data-ui='v2'] :is(.ls-pcard, .ls-svc-card, .ls-home-facts, .ls-home-top) {
+  --ls-bg-field: var(--ls-bg-field-in-card);
+  border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
+}
+
+[data-ui='v2'] :is(.ls-pcard, .ls-svc-card) {
+  overflow: hidden;
+}
+
+[data-ui='v2'] :is(.ls-pcard-media, .ls-svc-media) {
+  border-radius: 0;
+}
+
+[data-ui='v2'] .ls-pcard-body {
+  padding: 0 var(--ls-space-4) var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-svc-card-body {
+  padding-inline: var(--ls-space-4);
+}
+
+[data-ui='v2'] .ls-svc-card-book {
+  margin: 0 var(--ls-space-4) var(--ls-space-4);
+}
+
+[data-ui='v2'] :is(.ls-home-facts, .ls-home-top) {
+  padding: var(--ls-space-6);
 }

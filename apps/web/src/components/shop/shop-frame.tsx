@@ -47,7 +47,7 @@ export function ShopScreen({
   const backLabel = getShopText(locale).checkout.backToCart;
   return (
     <>
-      <Band tone="page" className="ls-band--alt ls-shop-title">
+      <Band tone="page" className="ls-shop-title">
         {checkout ? (
           <div className="ls-back-row">
             <Link
@@ -66,7 +66,7 @@ export function ShopScreen({
           {description ? <p className="ls-lead">{description}</p> : null}
         </div>
       </Band>
-      <Band tone="page" className="ls-band--base ls-shop-body">
+      <Band tone="page" className="ls-shop-body">
         <div className="ls-shop-content" data-narrow={narrow ? 'true' : undefined}>
           {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
           {children}

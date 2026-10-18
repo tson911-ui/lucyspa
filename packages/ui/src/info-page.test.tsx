@@ -27,7 +27,7 @@ test('C16 info page: one h1, an article of h2 sections and a table of contents t
     assert.ok(html.includes(`aria-labelledby="${section.id}-title"`));
   }
   assert.match(html, /data-toc="true"/);
-  assert.match(html, /class="ls-band ls-band-page ls-band--alt ls-info-title"/);
+  assert.match(html, /class="ls-band ls-band-page ls-info-title"/);
 });
 
 test('C16 info page: fewer than two sections (a short page, or none yet) has no table of contents', () => {

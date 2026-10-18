@@ -14,21 +14,25 @@
    once the page has scrolled (the sentinel); blur is not animated (HIG), so the surface switches at once and only the 64 to 52 px
    shrink slides. Solid where there is no blur, under reduced transparency and in forced colors. */
 [data-ui='v2'] .ls-site-header::before {
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
   border-bottom: 1px solid var(--ls-border);
   box-shadow: none;
+  /* One surface rule (Owner, 2026-10-18): the top bar is white on the grey page, also at the top (it used to be the page itself). Behind the
+     logo, the menu and the tools (the header is its own stacking context), not over them. */
+  opacity: 1;
+  z-index: -1;
   transition: translate var(--ls-dur-header) var(--ls-ease-premium);
 }
 
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   [data-ui='v2'] .ls-site-header::before {
-    background: color-mix(in srgb, var(--ls-bg-page) var(--ls-header-glass-mix), transparent);
+    background: color-mix(in srgb, var(--ls-bg-raised) var(--ls-header-glass-mix), transparent);
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   [data-ui='v2'] .ls-site-header::before {
-    background: var(--ls-bg-page);
+    background: var(--ls-bg-raised);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -54,43 +58,27 @@ html:has([data-ui='v2'] .ls-site-header) {
   scroll-padding-bottom: calc(var(--ls-space-9) + var(--ls-space-2) + var(--ls-space-4) * 3);
 }
 
-/* ---- Wordmark (D2, Q12): Be Vietnam Pro 600 in the wordmark color (header and footer alike: light the brand solid, dark the page text color) ---- */
+/* ---- Logo: the L mark takes the wordmark colour (the brand solid), header and footer alike. ---- */
 [data-ui='v2'] :is(.ls-site-brand a, .ls-site-footer-logo) {
   color: var(--ls-wordmark);
-  font-family: var(--ls-font-display);
-  font-weight: var(--ls-weight-title);
 }
 
 /* ---- Menu (8.5) --------------------------------------------------------------------------------------- */
-/* Links are 14 / 500 ink. The current page is accent text with a 2 px accent underline, offset 8 px: never a fill in the bar. Hover and
-   keyboard focus fill the hovered link itself with the solid accent and its white text, at once (Owner rule 4; session 9: no highlight
-   travels from one entry to the next). */
+/* Links are one step below the label size (12 / 500) in ink, evenly spaced. The states (the current page's pill, the hover fade) are the one
+   pattern of foundation-v2.css (Owner, 2026-10-18): no underline, no accent fill in the bar. */
 [data-ui='v2'] .ls-site-nav a {
   color: var(--ls-text);
-  font-size: var(--ls-type-label);
+  font-size: var(--ls-type-caption);
   font-weight: var(--ls-weight-label);
-  line-height: var(--ls-lh-label);
-  transition: none;
+  line-height: var(--ls-lh-caption);
+  min-height: var(--ls-control-h-compact);
+  padding-inline: var(--ls-space-4);
 }
 
-[data-ui='v2'] .ls-site-nav a[aria-current='page'] {
-  background: transparent;
-  color: var(--ls-brand);
-  text-decoration: underline;
-  text-decoration-color: currentcolor;
-  text-decoration-thickness: 2px;
-  text-underline-offset: var(--ls-space-2);
-}
-
-[data-ui='v2'] .ls-site-nav a:focus-visible {
-  background: var(--ls-hover-bg);
-  color: var(--ls-hover-text);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-site-nav a:hover {
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
+/* H3: a touch or coarse pointer (a tablet in landscape shows this menu) gets the full 44 px target. */
+@media (pointer: coarse) {
+  [data-ui='v2'] .ls-site-nav a {
+    min-height: var(--ls-control-h);
   }
 }
 
@@ -126,7 +114,7 @@ html:has([data-ui='v2'] .ls-site-header) {
 }
 
 /* ---- Footer (8.5) ------------------------------------------------------------------------------------- */
-/* The alternate band (#f5f5f7, dark #1c1c1e) under a hairline: no brand-red fill, no wave. Two columns on a phone, twelve from 1024 px; column
+/* The page grey (#f5f5f7) under a hairline: no brand-red fill, no wave. Two columns on a phone, twelve from 1024 px; column
    titles are 14 / 600, links 14 / 400 muted, the legal line is 12 px under a hairline. The content is the shop's footer blocks. */
 [data-ui='v2'] .ls-site-footer {
   margin-top: 0;
@@ -137,8 +125,8 @@ html:has([data-ui='v2'] .ls-site-header) {
 
 [data-ui='v2'] .ls-site-footer-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ls-space-7) var(--ls-space-6);
-  padding-block: var(--ls-space-9);
+  gap: var(--ls-space-6);
+  padding-block: var(--ls-space-7) var(--ls-space-6);
 }
 
 [data-ui='v2'] .ls-site-footer-grid > .ls-site-footer-brand {
@@ -183,7 +171,7 @@ html:has([data-ui='v2'] .ls-site-header) {
 
 [data-ui='v2'] .ls-social-btn {
   border-color: var(--ls-border);
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
   color: var(--ls-text);
 }
 
@@ -225,26 +213,22 @@ html:has([data-ui='v2'] .ls-site-header) {
   }
 }
 
-/* The base line (session 7b): the rights text, and under it (a phone) or beside it (from 768 px) the legal line, the links of the terms
-   and privacy pages. The line is not drawn when no such page is published. */
+/* The base line (session 7b; one small line since the Owner's 2026-10-18 fix): the rights text and, next to it, the legal links (terms,
+   privacy), left aligned. The trailing corner stays free: the floating contact button rests there at the end of the page (DESIGN 8.9), so
+   the row is as tall as the button's room (56 px + 16 px) and holds nothing under it. The line is not drawn when no such page is published. */
 [data-ui='v2'] .ls-site-footer-base {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  column-gap: var(--ls-space-4);
   align-items: center;
-  gap: var(--ls-space-2);
-}
-
-@media (min-width: 768px) {
-  [data-ui='v2'] .ls-site-footer-base {
-    flex-direction: row;
-    justify-content: space-between;
-  }
+  justify-content: flex-start;
+  min-height: calc(var(--ls-space-10) + var(--ls-space-2));
+  padding-inline-end: calc(var(--ls-space-10) + var(--ls-space-2));
 }
 
 [data-ui='v2'] .ls-site-footer-legal ul {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -258,15 +242,9 @@ html:has([data-ui='v2'] .ls-site-header) {
 [data-ui='v2'] .ls-site-footer-legal a {
   display: inline-flex;
   align-items: center;
-  min-height: var(--ls-control-h);
+  min-height: var(--ls-footer-row);
   color: inherit;
   text-decoration: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-site-footer-legal a:hover {
-    text-decoration: underline;
-  }
 }
 
 /* ---- Phone tab bar (8.5) ------------------------------------------------------------------------------ */
@@ -274,7 +252,7 @@ html:has([data-ui='v2'] .ls-site-header) {
    with the label under the icon, the current one is accent. The booking tab is a flat accent disc raised over the hairline, no shadow; on the
    booking page the disc carries an accent ring (an outline, not a shadow). */
 [data-ui='v2'] .ls-tab-bar {
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
   box-shadow: none;
 }
 

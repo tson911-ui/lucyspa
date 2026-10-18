@@ -83,7 +83,7 @@ export function AccountScreen({
   const record = pathname !== '' && hasParent(pathname, base, true);
   return (
     <>
-      <Band tone="page" className="ls-band--alt ls-acct-title">
+      <Band tone="page" className="ls-acct-title">
         <PageBack
           root={base}
           publicHome={`/${locale}`}
@@ -99,7 +99,7 @@ export function AccountScreen({
         </div>
         {record ? null : <AccountTabs pathname={pathname} />}
       </Band>
-      <Band tone="page" className="ls-band--base ls-acct-body">
+      <Band tone="page" className="ls-acct-body">
         <div className="ls-acct-content" data-narrow={narrow ? 'true' : undefined}>
           {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
           {children}

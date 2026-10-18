@@ -45,12 +45,9 @@ test('shop screen (C13): a title band with one h1 and a sentence, then the conte
     html,
     /<h1 class="ls-h1-display">Giỏ hàng<\/h1><p class="ls-lead">Giao hàng miễn phí\.<\/p>/,
   );
-  // The cart is a top-level page: no back control (B7, C40); the band order is alternate (title) then base (content).
+  // The cart is a top-level page: no back control (B7, C40); a title band then a content band, neither with a color of its own.
   assert.doesNotMatch(html, /ls-back/);
-  assert.deepEqual(
-    [...html.matchAll(/ls-band--(base|alt)/g)].map((match) => match[1]),
-    ['alt', 'base'],
-  );
+  assert.doesNotMatch(html, /ls-band--(base|alt)/);
   assert.doesNotMatch(html, /data-narrow/);
   assert.match(html, /<div class="ls-shop-content">.*nội dung/s);
 });

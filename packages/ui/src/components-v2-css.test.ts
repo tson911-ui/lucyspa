@@ -124,20 +124,17 @@ test('fields: boxed 8 px, the opposite-band fill, 44 px, a 6 rem textarea, the n
   );
 });
 
-test('the field fill tokens: a field is the step its container is not, in a card, a dialog and on either band', () => {
+test('the field fill tokens: a field is the step its container is not, white on the grey page and grey in a card or a dialog', () => {
   const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
   assert.match(
     tokens,
-    /--ls-bg-field: var\(--ls-band-alt\);\s*--ls-bg-field-in-card: var\(--ls-band-base\);/,
+    /--ls-bg-field: var\(--ls-bg-surface\);\s*--ls-bg-field-in-card: var\(--ls-band-base\);/,
   );
+  assert.doesNotMatch(tokens, /\.ls-band--(alt|base)/);
+  // Every white surface hands its fields the page grey, and its tab and segmented thumbs white.
   assert.match(
     tokens,
-    /\[data-ui='v2'\] \.ls-band--alt \{[^}]*--ls-bg-field: var\(--ls-band-base\);\s*--ls-bg-field-in-card: var\(--ls-band-alt\);/,
+    /\.ls-card,[^{]*\.ls-table-wrap,[^{]*\.ls-auth-card,[^{]*\.ls-dialog,[^{]*\.ls-drawer,[^{]*\{\s*--ls-bg-field: var\(--ls-bg-field-in-card\);\s*--ls-bg-thumb: var\(--ls-bg-surface\);/,
   );
-  assert.match(
-    tokens,
-    /\[data-ui='v2'\] \.ls-card \{\s*--ls-bg-field: var\(--ls-bg-field-in-card\);/,
-  );
-  assert.match(tokens, /\.ls-dialog, \.ls-drawer[^{]*\{\s*--ls-bg-field: var\(--ls-band-alt\);/);
   assert.match(tokens, /--ls-control-h-compact: 40px;/);
 });

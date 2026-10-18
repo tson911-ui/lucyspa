@@ -185,7 +185,7 @@ test('C11b: the optional service bands are one text column, the steps are number
   assert.match(body("[data-ui='v2'] .ls-svd-steps"), /counter-reset:\s*svd-step/);
   assert.match(body("[data-ui='v2'] .ls-svd-steps li::before"), /counter-increment:\s*svd-step/);
   const skeleton = body("[data-ui='v2'] .ls-skel");
-  assert.match(skeleton, /background:\s*var\(--ls-bg-surface\)/);
+  assert.match(skeleton, /background:\s*var\(--ls-bg-field\)/);
   assert.doesNotMatch(skeleton, /animation|gradient/);
 });
 
@@ -310,15 +310,17 @@ test('C17 counter: the final number stays in the flow and the width never change
   assert.match(body("[data-ui='v2'] .ls-count-live"), /position:\s*absolute/);
 });
 
-test('home brand band: the accent solid, white logos of one height, a slow endless track that pauses, and a still row without motion', () => {
+test('home brand band: the accent solid, white logos of one height, a slow endless track that pauses (its control shows on keyboard focus only), and a still row without motion', () => {
   const band = body("[data-ui='v2'] .ls-brand-band");
   assert.match(band, /background:\s*var\(--ls-brand-fill\)/);
   assert.match(band, /color:\s*var\(--ls-on-brand\)/);
-  // The logos move inside their own window; the pause control (a checkbox drawn as a 44 px round button, WCAG 2.2.2) sits outside it.
+  // The logos move inside their own window. The pause control (WCAG 2.2.2) is a checkbox that is visually hidden until a keyboard user
+  // focuses it (Owner, 2026-10-18: no visible button for a pointer); a 44 px round button then.
   assert.match(body("[data-ui='v2'] .ls-brand-view"), /overflow:\s*hidden/);
   const pause = body("[data-ui='v2'] .ls-brand-pause");
-  assert.match(pause, /width:\s*var\(--ls-control-h\)/);
-  assert.match(pause, /appearance:\s*none/);
+  assert.match(pause, /inline-size:\s*var\(--ls-control-h\)/);
+  assert.match(pause, /clip-path:\s*inset\(50%\)/);
+  assert.match(body("[data-ui='v2'] .ls-brand-pause:focus-visible"), /clip-path:\s*none/);
   assert.match(
     css,
     /\.ls-brand-pause:checked::before \{\s*mask: url\("data:image\/svg\+xml[^"]*M8 5l11 7-11 7z/,
@@ -333,10 +335,6 @@ test('home brand band: the accent solid, white logos of one height, a slow endle
     /@media \(hover: hover\) and \(pointer: fine\) \{\s*\[data-ui='v2'\] \.ls-brand-band:hover \.ls-brand-track \{\s*animation-play-state: paused;/,
   );
   assert.match(
-    css,
-    /html\[data-ls-fx='off'\] \[data-ui='v2'\] \.ls-brand-pause,\s*html\[data-ls-motion='reduced'\] \[data-ui='v2'\] \.ls-brand-pause \{\s*display: none;/,
-  );
-  assert.match(
     body("[data-ui='v2'] .ls-brand-track"),
     /animation:\s*ls-brand-scroll calc\(var\(--ls-brand-seconds\) \* 1s\) linear infinite/,
   );
@@ -346,6 +344,10 @@ test('home brand band: the accent solid, white logos of one height, a slow endle
   assert.match(logo, /filter:\s*brightness\(0\) invert\(1\)/);
   assert.match(body("[data-ui='v2'] .ls-brand-link"), /min-height:\s*var\(--ls-control-h\)/);
   // Reduced motion and the off switch: no animation, the duplicate copy and the fillers are not drawn.
+  assert.match(
+    css,
+    /html\[data-ls-fx='off'\] \[data-ui='v2'\] \.ls-brand-pause,\s*html\[data-ls-motion='reduced'\] \[data-ui='v2'\] \.ls-brand-pause \{\s*display: none;/,
+  );
   assert.match(
     body(
       "html[data-ls-fx='off'] [data-ui='v2'] .ls-brand-track, html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-track",

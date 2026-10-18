@@ -7,7 +7,7 @@ import { Band, PublicMain, Skeleton } from '@lucy-spa/ui';
 export default function Loading() {
   return (
     <PublicMain>
-      <section className="ls-home-hero ls-band--alt" data-media="flat" aria-busy="true">
+      <section className="ls-home-hero" data-media="flat" aria-busy="true">
         <div className="ls-container ls-home-hero-inner">
           <div className="ls-home-hero-copy">
             <Skeleton lines={2} height="var(--ls-space-9)" width="60%" />
@@ -17,7 +17,7 @@ export default function Loading() {
           <div className="ls-slot ls-home-hero-slot" data-empty="true" aria-hidden="true" />
         </div>
       </section>
-      <Band tone="page" className="ls-band--base">
+      <Band tone="page">
         <div aria-busy="true">
           <Skeleton lines={3} height="var(--ls-space-7)" />
         </div>

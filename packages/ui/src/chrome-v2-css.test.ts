@@ -37,14 +37,16 @@ test('chrome-v2.css: every selector sits under the v2 attribute, tokens only, no
 
 test('header: the 96 % blur surface and a hairline, no shadow, no fade, opaque without blur, under reduced transparency and in forced colors', () => {
   const surface = body("[data-ui='v2'] .ls-site-header::before");
-  assert.match(surface, /background:\s*var\(--ls-bg-page\)/);
+  // One surface rule (Owner, 2026-10-18): the top bar is white (the raised surface) on the grey page, also at the top of the page.
+  assert.match(surface, /background:\s*var\(--ls-bg-raised\)/);
+  assert.match(surface, /opacity:\s*1/, 'visible at the top too');
+  assert.match(surface, /z-index:\s*-1/, 'behind the logo, the menu and the tools');
   assert.match(surface, /border-bottom:\s*1px solid var\(--ls-border\)/);
   assert.match(surface, /box-shadow:\s*none/);
   assert.match(surface, /transition:\s*translate var\(--ls-dur-header\)/, 'only the shrink moves');
-  assert.doesNotMatch(surface, /opacity/);
   assert.match(
     css,
-    /@supports \(backdrop-filter: blur\(1px\)\)[^{]*\{\s*\[data-ui='v2'\] \.ls-site-header::before \{\s*background: color-mix\(in srgb, var\(--ls-bg-page\) var\(--ls-header-glass-mix\), transparent\)/,
+    /@supports \(backdrop-filter: blur\(1px\)\)[^{]*\{\s*\[data-ui='v2'\] \.ls-site-header::before \{\s*background: color-mix\(in srgb, var\(--ls-bg-raised\) var\(--ls-header-glass-mix\), transparent\)/,
   );
   assert.match(css, /@media \(prefers-reduced-transparency: reduce\)[\s\S]*backdrop-filter: none/);
   assert.match(css, /@media \(forced-colors: active\)[\s\S]*background: Canvas/);
@@ -53,20 +55,35 @@ test('header: the 96 % blur surface and a hairline, no shadow, no fade, opaque w
   assert.match(tokens, /--ls-header-blur:\s*16px/);
 });
 
-test('menu: 14 / 500 ink links, the current page is accent text with a 2 px underline and no fill, hover and focus fill the link itself at once', () => {
+test('menu: 12 / 500 ink links; the current page is a grey pill, hover fades a lighter grey in (opacity only), never an underline (2026-10-18)', () => {
   const link = body("[data-ui='v2'] .ls-site-nav a");
   assert.match(link, /color:\s*var\(--ls-text\)/);
-  assert.match(link, /font-size:\s*var\(--ls-type-label\)/);
+  assert.match(link, /font-size:\s*var\(--ls-type-caption\)/);
   assert.match(link, /font-weight:\s*var\(--ls-weight-label\)/);
-  assert.match(link, /transition:\s*none/, 'no travel and no fade: the fill is instant');
-  const current = body("[data-ui='v2'] .ls-site-nav a[aria-current='page']");
-  assert.match(current, /background:\s*transparent/);
-  assert.match(current, /color:\s*var\(--ls-brand\)/);
-  assert.match(current, /text-decoration-thickness:\s*2px/);
-  assert.match(current, /text-underline-offset:\s*var\(--ls-space-2\)/);
-  const hover = body("[data-ui='v2'] .ls-site-nav a:hover");
-  assert.match(hover, /background:\s*var\(--ls-hover-bg\)/);
-  assert.match(hover, /color:\s*var\(--ls-hover-text\)/);
+  assert.match(link, /min-height:\s*var\(--ls-control-h-compact\)/);
+  // A touch or coarse pointer gets the full 44 px target (H3).
+  assert.match(
+    css,
+    /@media \(pointer: coarse\) \{\s*\[data-ui='v2'\] \.ls-site-nav a \{\s*min-height: var\(--ls-control-h\);/,
+  );
+  // The states are one pattern with the account tabs and the chips (foundation-v2.css): a ::before layer whose OPACITY fades (DESIGN 11.1).
+  const foundation = readFileSync(new URL('foundation-v2.css', import.meta.url), 'utf8').replace(
+    /\/\*[\s\S]*?\*\//g,
+    '',
+  );
+  assert.match(
+    foundation,
+    /\.ls-site-nav, \.ls-subnav, \.ls-pills\) a::before \{[^}]*opacity:\s*0;[^}]*transition:\s*opacity var\(--ls-dur-fast\)/,
+  );
+  assert.match(
+    foundation,
+    /a\[aria-current='page'\]::before \{[^}]*background:\s*var\(--ls-pressed-bg\);[^}]*opacity:\s*1;/,
+  );
+  assert.match(
+    foundation,
+    /a\[aria-current='page'\] \{[^}]*font-weight:\s*var\(--ls-weight-title\)/,
+  );
+  assert.doesNotMatch(css, /\.ls-site-nav[^{]*\{[^}]*text-decoration:\s*underline/);
   // The sliding highlight is gone from the stylesheet.
   assert.doesNotMatch(css, /ls-nav-pill|data-under|data-pill/);
 });
@@ -127,7 +144,7 @@ test('tab bar, contact button and popup: no shadow, a hairline, a flat accent di
     'the bar box is exactly its tabs; the hairline is a pseudo-element above it',
   );
   assert.match(body("[data-ui='v2'] .ls-tab-bar::before"), /top:\s*-1px/);
-  assert.match(bar, /background:\s*var\(--ls-bg-page\)/);
+  assert.match(bar, /background:\s*var\(--ls-bg-raised\)/);
   assert.match(css, /outline: 2px solid var\(--ls-brand\)/);
   assert.match(body("[data-ui='v2'] .ls-contact-toggle"), /box-shadow:\s*none/);
   assert.match(body("[data-ui='v2'] .ls-promo"), /background:\s*var\(--ls-bg-raised\)/);

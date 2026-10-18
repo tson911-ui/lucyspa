@@ -32,6 +32,19 @@
   padding: 0;
 }
 
+/* The icon is centred in its circle by the box, not by the text baseline (Owner, 2026-10-18: the arrows of the product row sat 2.5 px high). An
+   inline svg in the label span rests on the line's baseline and the line box adds room under it; the span is a grid of one cell and the
+   svg a block, so the drawing's box and the circle share one centre. */
+[data-ui='v2'] .ls-btn-icon > .ls-btn-label {
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+
+[data-ui='v2'] .ls-btn-icon svg {
+  display: block;
+}
+
 /* The compact density (the `compact` prop, or inside `data-density='compact'`): 14 px label, 8 x 16 padding, 40 px on a fine pointer
    at 1024 px and up (the density block in tokens.css already sets the control height inside a compact scope). */
 [data-ui='v2'] .ls-btn-compact,
@@ -64,15 +77,15 @@
    is a colour step (hover one step, pressed one more) plus the press scale; nothing lifts, nothing slides, no arrow is appended.
    Hover only on a fine pointer (a touch screen keeps no sticky hover); pressed on every pointer. */
 
-/* Primary: burgundy 9, hover 10, pressed 11 (dark: 9, hover 10, pressed 8), white label. Always stronger than the secondary. */
+/* Primary: burgundy 9, hover 10, pressed 11 white label. Always stronger than the secondary. */
 [data-ui='v2'] .ls-btn-primary {
   border-color: transparent;
   color: var(--ls-on-brand);
   background: var(--ls-brand-fill);
 }
 
-/* Secondary: transparent with a 1 px border and label in the link colour (light #60212a; dark the neutral high-contrast text). Hover tints the
-   background one step (light burgundy 3, dark the elevated grey) and strengthens the border (light burgundy 12, its only use; dark grey 12);
+/* Secondary: transparent with a 1 px border and label in the link colour (#60212a). Hover tints the
+   background one step (burgundy 3) and strengthens the border (burgundy 12, its only use);
    the label keeps its colour. Pressed is one step more. It never fills solid. */
 [data-ui='v2'] .ls-btn-secondary {
   border-color: var(--ls-outline-border);
@@ -101,7 +114,7 @@
 }
 
 /* Danger is a red of its own (never the accent) and always carries an icon in its label. The solid fill is the danger scale's step 9, its hover
-   step 10; dark mode flips the label to near-black because that red is a light one. Only the confirm dialog uses the solid one. */
+   step 10. Only the confirm dialog uses the solid one. */
 [data-ui='v2'] .ls-btn-danger {
   border-color: transparent;
   color: var(--ls-on-danger);
@@ -613,11 +626,11 @@
 [data-ui='v2'] .ls-badge-outline {
   border-color: var(--ls-border-control);
   color: var(--ls-text);
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
 }
 
 [data-ui='v2'] .ls-badge-ink {
-  color: var(--ls-bg-page);
+  color: var(--ls-bg-raised);
   background: var(--ls-text);
 }
 
@@ -708,14 +721,14 @@
 [data-ui='v2'] .ls-tab-active {
   border-color: var(--ls-border);
   color: var(--ls-text);
-  background: var(--ls-bg-raised);
+  background: var(--ls-bg-thumb);
 }
 
 @media (hover: hover) and (pointer: fine) {
   [data-ui='v2'] .ls-tab-active:hover:not(:disabled) {
     border-color: var(--ls-border);
     color: var(--ls-text);
-    background: var(--ls-bg-raised);
+    background: var(--ls-bg-thumb);
   }
 }
 
@@ -739,7 +752,7 @@
 [data-ui='v2'] .ls-segmented-thumb {
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-full);
-  background: var(--ls-bg-raised);
+  background: var(--ls-bg-thumb);
 }
 
 [data-ui='v2'] .ls-segment {
@@ -767,7 +780,7 @@
 [data-ui='v2'] .ls-tooltip {
   padding: var(--ls-space-1) var(--ls-space-2);
   border-radius: var(--ls-radius-sm);
-  color: var(--ls-bg-page);
+  color: var(--ls-bg-raised);
   background: var(--ls-text);
   font-size: var(--ls-type-caption);
   line-height: var(--ls-lh-caption);
@@ -812,7 +825,7 @@
 
 /* ---- Image frame (8.9) ----------------------------------------------------------------------------- */
 /* 18 px radius, cover, a fixed ratio (no layout shift), and a flat placeholder in the field color with an icon or the wordmark. A
-   photo with a white background is dimmed a little in dark mode (the filter token is none in light). */
+   photo is never filtered. */
 [data-ui='v2'] .ls-image-frame {
   position: relative;
   display: block;
@@ -843,7 +856,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: var(--ls-image-filter);
 }
 
 [data-ui='v2'] .ls-image-frame-fallback {
@@ -1093,7 +1105,7 @@
 [data-ui='v2'] .ls-table-state {
   border-color: var(--ls-border);
   border-radius: var(--ls-radius-lg);
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
 }
 
 [data-ui='v2'] .ls-card .ls-table-wrap,

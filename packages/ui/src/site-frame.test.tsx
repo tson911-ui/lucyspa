@@ -28,8 +28,9 @@ test('SiteNav marks the current page and names the landmark', () => {
     />,
   );
   assert.match(html, /<nav aria-label="Menu chính" class="ls-site-nav">/);
-  assert.match(html, /<a href="\/vi" aria-current="page">Trang chủ<\/a>/);
-  assert.match(html, /<a href="\/vi\/services">Dịch vụ<\/a>/);
+  // Each label is repeated in `data-label`: the stylesheet reserves the width of the current entry's heavier weight with it.
+  assert.match(html, /<a href="\/vi" aria-current="page" data-label="Trang chủ">Trang chủ<\/a>/);
+  assert.match(html, /<a href="\/vi\/services" data-label="Dịch vụ">Dịch vụ<\/a>/);
 });
 
 test('the menu is plain links: no sliding highlight element, nothing is placed, hover fills the hovered link only (session 9)', () => {
@@ -115,7 +116,10 @@ test('SiteSubNav is a named landmark of route links whose strip scrolls, never t
     />,
   );
   assert.match(html, /<nav aria-label="Khu vực thành viên" class="ls-subnav">/);
-  assert.match(html, /<a href="\/vi\/account\/bookings" aria-current="page">Lịch hẹn<\/a>/);
+  assert.match(
+    html,
+    /<a href="\/vi\/account\/bookings" aria-current="page" data-label="Lịch hẹn">Lịch hẹn<\/a>/,
+  );
   assert.match(css, /\.ls-subnav \{[^}]*overflow-x: auto;/);
   assert.match(css, /\.ls-subnav a \{[^}]*flex: none;[^}]*white-space: nowrap;/);
 });

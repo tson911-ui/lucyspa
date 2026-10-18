@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { cx } from './cx';
 import { Band, PublicMain } from './site';
 
 export interface InfoSection {
@@ -20,7 +19,7 @@ function InfoTitle({
   back?: ReactNode;
 }) {
   return (
-    <Band tone="page" className="ls-band--alt ls-info-title">
+    <Band tone="page" className="ls-info-title">
       {back}
       <div className="ls-public-title">
         <h1 className="ls-h1-display">{title}</h1>
@@ -60,7 +59,7 @@ export function InfoPage({
   return (
     <PublicMain>
       <InfoTitle title={title} lead={lead} back={back} />
-      <Band tone="page" className="ls-band--base">
+      <Band tone="page">
         <div className="ls-info-layout" data-toc={toc ? 'true' : undefined}>
           <article className="ls-info-article" lang={language}>
             {intro ? <div className="ls-info-intro">{intro}</div> : null}
@@ -126,7 +125,7 @@ export function ContactPage({
   return (
     <PublicMain>
       <InfoTitle title={title} lead={lead} back={back} />
-      <Band tone="page" className={cx('ls-band--base', className)}>
+      <Band tone="page" className={className}>
         <div className="ls-info-split">
           <div className="ls-info-place">{place}</div>
           <div className="ls-info-details">

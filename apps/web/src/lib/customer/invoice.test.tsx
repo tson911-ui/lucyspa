@@ -76,7 +76,7 @@ test('screens wait for the server; no amount is shown before it answers', () => 
   assert.ok(list.includes(vi.invoices.title));
   assert.ok(list.includes(vi.common.loading));
   // The member frame (a title band with its one h1 and a content band), no legacy markup.
-  assert.match(list, /class="ls-band ls-band-page ls-band--alt ls-acct-title"/);
+  assert.match(list, /class="ls-band ls-band-page ls-acct-title"/);
   assert.match(list, /<h1 class="ls-h1-display">Hóa đơn của tôi<\/h1>/);
   assert.doesNotMatch(list, /wf-|cu-/);
   const detail = paint(<CustomerInvoiceDetailScreen id="inv-1" />, 'en');

@@ -2,6 +2,20 @@
 
 **Status: Approved by the Owner 2026-10-14 (decisions in section 16); revised by the Owner's session 10 brief (2026-10-16): A1 no theme switch, A2 customer account deletion, A3 brand colour only on clickable text, A4 button states (Apple + Radix), G motion (one main moment per page), R1-R26 reference rules, groups 1-3 built together. Where this file and the session 10 brief differed, the brief won and the text below was changed to match (section 17).**
 
+> **ONE SURFACE RULE (Owner decision, 2026-10-18; section 17.5).** The page background is always the light grey `#f5f5f7`; every card,
+> tile, panel, table, form box, modal and dropdown on it is white `#ffffff`, on the customer site, the account pages, the counter/POS and
+> the admin. This **retires the alternating white / `#f5f5f7` section bands (D7) and "a card takes the opposite of its band"**: wherever
+> this file says "alternating bands", "base band / alternate band" or a band colour, read "the grey page" and "a white surface".
+> Sections are separated by spacing and, where needed, a 1 px neutral hairline, never by a different background.
+
+> **LIGHT ONLY (Owner decision, 2026-10-18). The app has no dark mode: customer site, counter/POS and admin render in light whatever the
+> device setting (`color-scheme: light`, one `theme-color` `#ffffff`, no `prefers-color-scheme` rule, no dark token set, no image dimming).
+> Every dark-mode rule, dark column and dark value in this file is RETIRED: it is kept as history only and must not be implemented
+> again, and later sessions must not bring dark mode back without a new Owner decision. Exactly one thing still follows the device
+> setting: the **favicon** (`favicon-light-*` / `favicon-dark-*`, two `media` links in the layout head since `f528986`), unchanged. The seasonal themes and the admin
+> season preview (`data-preview-theme`, now always `light`, one device frame at a time) are not dark mode and stay. Record:
+> `docs/REDESIGN_S10_REPORT.md` ("Light only").**
+
 This is the single design spec for the Lucy Spa redesign: customer site, counter/POS and admin. It replaces direction C
 (Fraunces and Nunito, rose-cream page, pebble cards, soft rose shadows, waves, brand-red footer).
 
@@ -58,27 +72,27 @@ Locked by the Owner (used exactly; nothing added):
 2. Aevi Wellness is the layout reference for **all** pages. Customer pages follow its layouts and presentation. POS and admin
    follow its visual style in a compact work-screen layout.
 3. One shared design DNA across customer, POS and admin (section 5). Staff screens may change **density only**.
-4. Light: white `#ffffff` base, `#f5f5f7` bands. No shadows, no gradients. Single accent `#782b37`. No yellow or gold except
+4. Light: grey `#f5f5f7` page with white `#ffffff` surfaces (one surface rule, 17.5; was white base with alternating `#f5f5f7` bands). No shadows, no gradients. Single accent `#782b37`. No yellow or gold except
    holiday decorations. Font Be Vietnam Pro. Keep the "LUCY SPA" text wordmark.
-5. Apple-style dark mode: black base, stepped greys, a lighter burgundy accent that passes WCAG AA.
+5. ~~Apple-style dark mode: black base, stepped greys, a lighter burgundy accent that passes WCAG AA.~~ **RETIRED (Owner, 2026-10-18): light only.**
 6. GSAP on all pages: full on customer pages; on POS and admin at most 200 ms, never blocks input, global off switch, honours
    `prefers-reduced-motion`.
-7. All functions, data and the seasonal decoration layer stay unchanged. **The appearance follows the device setting only** (prefers-color-scheme, live while open): the in-app Light/Dark/Auto switch, its cookie and the `data-theme` mechanism are removed (A1, Owner, 2026-10-16, session 10).
+7. All functions, data and the seasonal decoration layer stay unchanged. ~~The appearance follows the device setting only~~ **(RETIRED, Owner 2026-10-18: the app is light only; the favicon alone follows the device setting.)** The in-app Light/Dark/Auto switch, its cookie and the `data-theme` mechanism stay removed (A1, Owner, 2026-10-16, session 10).
 8. Rollout: customer, then POS, then admin; each with before/after screenshots and its own deploy.
 
 Where a reference conflicts with a locked decision, the locked decision wins:
 
-| Reference says                              | Lucy Spa uses                                                                                                             |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Apple blue `#0071e3` / Aevi blue `#a3bfdb`  | Accent `#782b37` (light solid), a burgundy scale with a muted rose for dark text (6.1, revised 2026-10-15)                |
-| SF Pro                                      | Be Vietnam Pro                                                                                                            |
-| Aevi radius 2 px                            | Apple-style rounded corners: 8 px controls, 18 px cards and media, pill for buttons and tags                              |
-| Aevi powder-blue bands `#d5e0ea`            | Neutral bands `#f5f5f7`                                                                                                   |
-| Apple product-image shadow, any shadow      | No shadows. Depth comes from surface steps, hairlines and scrims                                                          |
-| Aevi bottom-line-only inputs                | Apple boxed inputs (8 px), because the HIG and the 3:1 control-border rule need a visible boundary                        |
-| Apple/Aevi weight 300 for subheads and body | Not used. HIG: "avoid light font weights". Minimum weight is 400                                                          |
-| Apple 1.07 line height, negative tracking   | Heading line height at least 1.2 (stacked Vietnamese marks clip below that); tracking 0 except display sizes              |
-| Apple "sections never contain cards"        | Customer bands hold cards only for products, prices, forms and account records. Staff screens keep FR1 (one Card surface) |
+| Reference says                              | Lucy Spa uses                                                                                                                                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apple blue `#0071e3` / Aevi blue `#a3bfdb`  | Accent `#782b37` (light solid), a burgundy scale with a muted rose for dark text (6.1, revised 2026-10-15)                                                                                                                |
+| SF Pro                                      | Be Vietnam Pro                                                                                                                                                                                                            |
+| Aevi radius 2 px                            | Apple-style rounded corners: 8 px controls, 18 px cards and media, pill for buttons and tags                                                                                                                              |
+| Aevi powder-blue bands `#d5e0ea`            | Neutral bands `#f5f5f7`                                                                                                                                                                                                   |
+| Apple product-image shadow, any shadow      | No shadows. Depth comes from surface steps, hairlines and scrims                                                                                                                                                          |
+| Aevi bottom-line-only inputs                | Apple boxed inputs (8 px), because the HIG and the 3:1 control-border rule need a visible boundary                                                                                                                        |
+| Apple/Aevi weight 300 for subheads and body | Not used. HIG: "avoid light font weights". Minimum weight is 400                                                                                                                                                          |
+| Apple 1.07 line height, negative tracking   | Heading line height at least 1.2 (stacked Vietnamese marks clip below that); tracking 0 except display sizes                                                                                                              |
+| Apple "sections never contain cards"        | ~~Customer bands hold cards only for products, prices, forms and account records.~~ **Retired (Owner, 2026-10-18, 17.5):** cards sit on the grey page everywhere, always white. Staff screens keep FR1 (one Card surface) |
 
 ## 4. HIG rules applied to Lucy Spa (mandatory)
 
@@ -93,8 +107,7 @@ Each rule has an ID for the screenshot gate (section 14).
   pointer only) may be 40 px high; never below 40; running-text links are the only exemption. Keep about 12 px of space around
   bezeled controls and about 24 px around bare icons so neighbours are not hit by mistake.
 - **H4 Contrast.** WCAG AA at least: 4.5:1 for text, 3:1 for large text (24 px, or 18.66 px bold) and for the boundary of a
-  control or an icon that carries meaning. In dark mode check **every elevation step** a token can sit on (section 6.2).
-  Custom colors in dark mode aim for 7:1 on small text where possible (accent text reaches 8.61:1 on `#1c1c1e`, 6.1).
+  control or an icon that carries meaning. (The dark-mode elevation-step and 7:1 clauses are RETIRED, 2026-10-18.)
 - **H5 Color is never the only signal.** Status, selection, errors, required, sale and focus also use a word, an icon or a shape.
 - **H6 Typography.** One family (Be Vietnam Pro). Weights 400, 500, 600 only. Hierarchy by size, weight and color, and it
   survives text enlargement. Leading is loose for long text; tight leading never for 3 or more lines. Do not lock sizes
@@ -107,8 +120,8 @@ Each rule has an ID for the screenshot gate (section 14).
 - **H8 Color use.** Accent color only for primary actions, the current location, selection and links. Never the same color
   with two meanings: the brand burgundy and the error red stay clearly different (6.4 of the old contract, kept). No colored
   backgrounds on many controls at once.
-- **H9 Dark mode is its own appearance, not an inversion.** Black base, stepped elevated greys (brighter = closer to the user),
-  semantic tokens only, no hard-coded colors, images with white backgrounds slightly dimmed. The appearance follows the device setting only (A1, Owner, 2026-10-16, session 10; no in-app toggle). Check both modes for every screen.
+- **H9 ~~Dark mode~~ RETIRED (Owner, 2026-10-18): the app is light only.** There is no dark appearance, no stepped dark greys and no image dimming;
+  semantic tokens only, no hard-coded colors. Check every screen in light (a browser set to dark must still show light).
 - **H10 Motion has a purpose.** Only to show what changed, give feedback to an action, or orient navigation. Brief and precise.
   Never the only carrier of information. Interruptible: nothing waits for an animation. No animation on frequent interactions
   (typing, table updates, scanning). Reverse of an entrance leaves the way it came. Reduced motion replaces moves with fades or
@@ -141,7 +154,7 @@ step, row height, font-size step, control height). They may never change anythin
 | D4  | **Typographic hierarchy** | The same scale (6.3), same roles (display, title, heading, body, caption), same weights. Compact moves a role down one step; it never changes the face, the weights or the ratios.                                                                                                                                                                                                                         |
 | D5  | **Accent usage**          | Accent only for: the primary action (at most one per view), the current location, selection, links, focus ring. Everything else is neutral (ink, greys, hairlines). Status colors are separate and always come with a word or icon.                                                                                                                                                                        |
 | D6  | **Icon style**            | One outline icon set from `packages/ui/src/icons.tsx`: the stroke the set already uses (1.75 px on a 24 px grid), round caps, no fills, no color except `currentColor`, sizes 16 / 20 / 24. No emoji as icons.                                                                                                                                                                                             |
-| D7  | **Section banding**       | Pages are stacked full-width bands alternating `#ffffff` and `#f5f5f7` (dark: `#000000` and `#1c1c1e`). Separation is the band change and 1 px hairlines, never shadows, never gradients, never a decorative divider ornament.                                                                                                                                                                             |
+| D7  | **Section banding**       | ~~Pages are stacked full-width bands alternating `#ffffff` and `#f5f5f7`.~~ **RETIRED (Owner, 2026-10-18, 17.5): one surface rule.** Every section sits on the `#f5f5f7` page; separation is spacing and, where needed, a 1 px neutral hairline, never a different background, never shadows, never gradients, never a decorative divider ornament.                                                        |
 | D8  | **Shape language**        | Pill for buttons, tags, badges, chips, segmented controls and search. 8 px for fields and small media. 18 px for cards, dialogs, drawers, large media. No other radius.                                                                                                                                                                                                                                    |
 | D9  | **Motion language**       | Same easing family, same direction rules (up to enter, back the way it came to leave, horizontal only for sequences and drawers), same reduced-motion behavior (section 11). Staff screens use shorter durations of the same curves.                                                                                                                                                                       |
 
@@ -155,7 +168,7 @@ ratios were computed for this draft; `tokens.test.ts` must be updated to assert 
 
 ### 6.1 Color system (revised by the Owner, 2026-10-15, session 9; replaces the old 6.1 and 6.2 tables)
 
-**One scale per family, 12 steps, light and dark, built by the Radix method** (Radix Colors usage: 1-2 backgrounds, 3-5 component
+**One scale per family, 12 steps, built by the Radix method (the dark columns below are RETIRED, 2026-10-18; light only)** (Radix Colors usage: 1-2 backgrounds, 3-5 component
 backgrounds and the selected/hover tints, 6-8 borders, 9 the solid, 10 the solid on hover, 11 low-contrast text, 12 high-contrast
 text) and read with the Apple HIG rules (color used sparingly, a neutral text hierarchy, a dark mode of its own that is not an
 inversion). The scales are tokens (`--ls-gray-1` to `-12`, `--ls-burgundy-N`, `--ls-danger-N`, `--ls-success-N`, `--ls-warning-N`,
@@ -188,6 +201,8 @@ Rules that follow from the HIG and are enforced by the roles below:
 
 #### Scales
 
+> **The Dark columns of this table are RETIRED (Owner, 2026-10-18, light only).** Only the Light values apply.
+
 | Step | gray light | gray dark | burgundy light | burgundy dark | danger light | danger dark |
 | ---- | ---------- | --------- | -------------- | ------------- | ------------ | ----------- |
 | 1    | `#ffffff`  | `#000000` | `#fffcfc`      | `#170c0d`     | `#fffcfb`    | `#170c0a`   |
@@ -218,7 +233,7 @@ Rules that follow from the HIG and are enforced by the roles below:
 | 11   | `#1e6b3c`     | `#7fd39a`    | `#8f4300`     | `#ffb066`    | `#22518a`  | `#8ebcf0` |
 | 12   | `#12361e`     | `#d5f0db`    | `#4d2809`     | `#ffe1ce`    | `#132e50`  | `#dbe9fc` |
 
-The neutrals are Apple's greys on a Radix skeleton: light 1 `#ffffff` is the page, 2 `#f5f5f7` the alternate band; dark 1 `#000000` the
+The neutrals are Apple's greys on a Radix skeleton: light 2 `#f5f5f7` is the page and light 1 `#ffffff` every surface on it (17.5; was: 1 the page, 2 the alternate band); dark 1 `#000000` the
 page, 2 `#1c1c1e` the alternate band (E1), 3 `#2c2c2e` raised surfaces (E2), 4 `#3a3a3c` the neutral hover/pressed surface (E3). The
 dark hairline is step 5 `#444447` (was `#38383a`). Dark steps 7 and 8 are borders only: they are below 4.5:1 on E2 and are never text.
 
@@ -227,25 +242,26 @@ dark hairline is step 5 `#444447` (was `#38383a`). Dark steps 7 and 8 are border
 Same step number in both modes unless the table says otherwise (elevation roles are mode specific, because light raises with
 white and dark raises with lighter greys).
 
-| Token                                                          | Light                              | Dark                                  |
-| -------------------------------------------------------------- | ---------------------------------- | ------------------------------------- |
-| `--ls-bg-page`, `--ls-band-base`                               | gray 1                             | gray 1                                |
-| `--ls-bg-sunken`, `--ls-band-alt`, `--ls-bg-surface`           | gray 2                             | gray 2                                |
-| `--ls-bg-surface-alt`, `--ls-bg-raised`                        | gray 1                             | gray 3                                |
-| `--ls-bg-pressed`, `--ls-nav-hover-bg`                         | gray 4                             | gray 4                                |
-| `--ls-row-hover-bg`                                            | gray 2                             | gray 3                                |
-| `--ls-text` / `--ls-text-muted` / `--ls-text-subtle`           | gray 12 / 10 / 8                   | gray 12 / 10 / 10 (no dimmer AA text) |
-| `--ls-border` (hairline) / `--ls-border-control`               | gray 5 / gray 7                    | gray 5 / gray 7                       |
-| `--ls-brand`, `--ls-focus` (accent text, ring)                 | burgundy 12                        | burgundy 11                           |
-| `--ls-brand-fill` / `--ls-brand-fill-hover`                    | burgundy 9 / 10                    | burgundy 9 / 10                       |
-| `--ls-on-brand`, `--ls-hover-text`                             | `#ffffff`                          | `#ffffff`                             |
-| `--ls-brand-soft` / `--ls-brand-on-soft`                       | burgundy 3 / 12                    | burgundy 3 / 11                       |
-| `--ls-hover-bg`, `--ls-nav-active-bg`                          | burgundy 9                         | burgundy 9                            |
-| `--ls-outline-border` / `--ls-outline-border-hover`            | burgundy 9 / 10                    | burgundy 9 / 10                       |
-| `--ls-wordmark`                                                | burgundy 9                         | gray 12                               |
-| `--ls-auth-flat`                                               | burgundy 9                         | gray 2                                |
-| `--ls-danger` / `-bg` / `-fill` / `-fill-hover` / `-on-danger` | danger 11 / 3 / 9 / 10 / `#ffffff` | danger 11 / 3 / 9 / 10 / `#1a0505`    |
-| `--ls-success`, `--ls-warning`, `--ls-info` (+ `-bg`)          | step 11 (+ step 3)                 | step 11 (+ step 3)                    |
+> **The Dark columns of this table are RETIRED (Owner, 2026-10-18, light only).** Only the Light values apply.
+
+| Token                                                               | Light                              | Dark                                  |
+| ------------------------------------------------------------------- | ---------------------------------- | ------------------------------------- |
+| `--ls-bg-page`, `--ls-band-base`, `--ls-band-alt`, `--ls-bg-sunken` | gray 2 (17.5: one page grey)       | gray 1                                |
+| `--ls-bg-surface`, `--ls-bg-surface-alt`, `--ls-bg-raised`          | gray 1 (every surface is white)    | gray 2 / 3                            |
+| `--ls-bg-pressed`, `--ls-nav-hover-bg`                              | gray 4                             | gray 4                                |
+| `--ls-row-hover-bg`                                                 | gray 2                             | gray 3                                |
+| `--ls-text` / `--ls-text-muted` / `--ls-text-subtle`                | gray 12 / 10 / 8                   | gray 12 / 10 / 10 (no dimmer AA text) |
+| `--ls-border` (hairline) / `--ls-border-control`                    | gray 5 / gray 7                    | gray 5 / gray 7                       |
+| `--ls-brand`, `--ls-focus` (accent text, ring)                      | burgundy 12                        | burgundy 11                           |
+| `--ls-brand-fill` / `--ls-brand-fill-hover`                         | burgundy 9 / 10                    | burgundy 9 / 10                       |
+| `--ls-on-brand`, `--ls-hover-text`                                  | `#ffffff`                          | `#ffffff`                             |
+| `--ls-brand-soft` / `--ls-brand-on-soft`                            | burgundy 3 / 12                    | burgundy 3 / 11                       |
+| `--ls-hover-bg`, `--ls-nav-active-bg`                               | burgundy 9                         | burgundy 9                            |
+| `--ls-outline-border` / `--ls-outline-border-hover`                 | burgundy 9 / 10                    | burgundy 9 / 10                       |
+| `--ls-wordmark`                                                     | burgundy 9                         | gray 12                               |
+| `--ls-auth-flat`                                                    | burgundy 9                         | gray 2                                |
+| `--ls-danger` / `-bg` / `-fill` / `-fill-hover` / `-on-danger`      | danger 11 / 3 / 9 / 10 / `#ffffff` | danger 11 / 3 / 9 / 10 / `#1a0505`    |
+| `--ls-success`, `--ls-warning`, `--ls-info` (+ `-bg`)               | step 11 (+ step 3)                 | step 11 (+ step 3)                    |
 
 #### Contrast (WCAG 2.x, measured from the tokens; all pairs pass AA)
 
@@ -268,11 +284,11 @@ session 9 report).
 
 Light `#86868b` (gray 7) is never used as text (3.62 on white). `--ls-chart-*` keeps its six-slot palette unchanged.
 
-### 6.2 Dark mode (Apple-style, summary)
+### 6.2 Dark mode: RETIRED (Owner, 2026-10-18)
 
-Dark is stepped, not inverted: the closer a surface is to the user, the lighter it is (E0 base, E1 band, E2 raised, E3 hover). The
-colors are the dark column of 6.1; the dark block is declared for the system preference and for the admin season preview (`data-preview-theme`) and the copies are identical. Scrim: light
-`rgb(0 0 0 / 0.4)`, dark `rgb(0 0 0 / 0.6)`. Product images with a white background are dimmed by `brightness(0.92)`.
+The app is light only. The dark token blocks (system preference and `data-preview-theme='dark'`), the forced-light scopes, the dark scrim, the
+dark season palettes and the image dimming (`--ls-image-filter`) are deleted from `tokens.css`, `season.css` and the season registry. The page declares
+`color-scheme: light` and one `theme-color` (`#ffffff`). Scrim: `rgb(0 0 0 / 0.4)`. The dark columns and dark values elsewhere in this file are history only.
 
 ### 6.3 Typography (Be Vietnam Pro, self-hosted through `next/font`, one family)
 
@@ -387,7 +403,7 @@ style, not size. Footers are Cancel then primary, primary last (kept).
 
 ### 8.2 Inputs
 
-- Boxed, 8 px radius, fill = the opposite band color (`#f5f5f7` on white, `#ffffff` on a band), 1 px `--ls-border-control`.
+- Boxed, 8 px radius, fill = the step its container is not (17.5: `#f5f5f7` inside a white card, dialog or drawer, `#ffffff` straight on the grey page), 1 px `--ls-border-control`.
   Height 44 (compact 40). Label above, 14/500; helper below, 12/400 `--ls-text-subtle`; required marked with the word
   "bắt buộc" in the label text or `*` plus `aria-required`.
 - Focus: 2 px ring, border becomes accent. Error: border `--ls-danger`, an icon, and the message below it (never color alone);
@@ -434,7 +450,7 @@ style, not size. Footers are Cancel then primary, primary last (kept).
   the signed-in staff name always visible at the trailing edge (C74). **Sidebar:** `--ls-bg-sunken`, 264 / 72, grouped by task (existing IA), item 40 px high
   pill, current = solid accent fill + accent-contrast text (the one place the accent marks location), hover = `--ls-nav-hover-bg`, a neutral
   tint with ink text (Q3: the accent is reserved for the current page, so a hover never competes with it).
-- **Footer (customer):** `#f5f5f7` band (dark `#1c1c1e`), multi-column link grid (12 columns from 1024, 2 on phone), column
+- **Footer (customer):** on the `#f5f5f7` page like every section, under a hairline; multi-column link grid (12 columns from 1024, 2 on phone), column
   header 14/600, links 14/400 `--ls-text-muted`, 12 px fine print, hairline above the legal line. Content comes from the
   existing footer blocks (CMS). No brand-red footer, no waves.
 - **Tabs:** pill segmented control on a `--ls-bg-sunken` track; selected = surface pill with ink text; keyboard arrows move
@@ -477,7 +493,7 @@ icon pill; **fixed to the bottom-right corner of the viewport**, Owner 2026-10-1
 
 ## 9. Customer page patterns (Aevi layouts, Apple look)
 
-Rhythm for every page: **full-bleed hero or title band, then alternating `#ffffff`/`#f5f5f7` bands**, each band one idea, a
+Rhythm for every page: **full-bleed hero or title band, then bands on the `#f5f5f7` page (17.5: no alternating colours; the cards, tiles and price lists in them are white)**, each band one idea, a
 `title` heading (28 or 40), one supporting sentence, then content in the grid. One primary action per band. Photography is
 the only imagery (no illustration, no 3D, no abstract graphics): full-bleed, tightly cropped, real photos. Where the shop's
 photos are missing use the flat placeholder and keep the shop's photo list from `docs/CUSTOMER_SITE_C.md`. A small label
@@ -488,18 +504,18 @@ may sit on a photo's bottom-left corner in white 14/500 over a flat `rgb(0 0 0 /
 1. **Hero** (full viewport width, height about 80 vh, min 560): real photo under a flat `rgb(0 0 0 / x)` scrim (no gradient) that gives the text 4.5:1, `display` headline, one supporting
    sentence, **"Đặt lịch" primary** (accent fill, as everywhere: D5) + "Xem dịch vụ" secondary (on the photo only the secondary switches to the
    outline-white variant, which keeps 4.5:1). The wordmark is not repeated as a decorative overlay.
-   1b. **Brand band** (directly under the hero; Owner, session 9, 2026-10-15): the logos of the cosmetics brands the shop sells, from the existing brand catalog (each brand has an optional logo, a "show on home" switch and a sort order in the admin brand form). **Owner-approved exception to D5: the band is the accent solid** (`--ls-brand-fill`: light `#782b37`, dark the dark solid), the logos are drawn white at one height (40 px), each links to that brand's product list (`/products?brand=code`) and carries the brand name as its alt text. A continuous slow horizontal scroll with a seamless loop (about 6 s per logo); it pauses on hover, focus and touch; under `prefers-reduced-motion` or `ls-fx=off` it is a still, centred, wrapped row. The band is not drawn when no brand is switched on. Logos must be a transparent PNG or WebP (the media library takes JPEG, PNG and WebP only; a JPEG logo on a white box becomes a white block).
-2. **Trust band** (`#f5f5f7`): 3 to 4 facts from the existing facts-strip data (no invented numbers), `title` figure + caption,
+   1b. **Brand band** (directly under the hero; Owner, session 9, 2026-10-15): the logos of the cosmetics brands the shop sells, from the existing brand catalog (each brand has an optional logo, a "show on home" switch and a sort order in the admin brand form). **Owner-approved exception to D5: the band is the accent solid** (`--ls-brand-fill`: `#782b37`), the logos are drawn white at one height (40 px), each links to that brand's product list (`/products?brand=code`) and carries the brand name as its alt text. A continuous slow horizontal scroll with a seamless loop (about 6 s per logo); it pauses on hover, focus and touch; under `prefers-reduced-motion` or `ls-fx=off` it is a still, centred, wrapped row. The band is not drawn when no brand is switched on. Logos must be a transparent PNG or WebP (the media library takes JPEG, PNG and WebP only; a JPEG logo on a white box becomes a white block).
+2. **Trust band** (page grey, facts on a white strip): 3 to 4 facts from the existing facts-strip data (no invented numbers), `title` figure + caption,
    hairline between on desktop, stacked on phone. Optional press/partner logos strip at uniform height in grey.
-3. **Split intro/services** (white): left text (`title`, 2 sentences, link to all services, "Đặt lịch" secondary), right a framed
+3. **Split intro/services** (page grey): left text (`title`, 2 sentences, link to all services, "Đặt lịch" secondary), right a framed
    photo (18 px); below it a 3-column list of the top services as text + price + arrow link. Services and booking are the most
    prominent content on the page.
-4. **Bestsellers row** (`#f5f5f7`): heading "Bán chạy" band, horizontal scroll-snap row of product cards with labels
+4. **Bestsellers row** (page grey, white product cards): heading "Bán chạy" band, horizontal scroll-snap row of product cards with labels
    **Bán chạy / Mới / -%**, "Xem tất cả" tertiary link, arrows from 1024.
-5. **Reviews band** (white): a carousel of short quotes, name initial, service name, stars drawn as 5 icons with a text rating.
+5. **Reviews band** (page grey): a carousel of short quotes, name initial, service name, stars drawn as 5 icons with a text rating.
    **Rendered only when reviews are public. Today no such switch or policy exists** (reviews are private; the publishing policy is
    an open PRD item). Owner decision Q5: this band is not built until the Owner decides to publish reviews.
-6. **Service and cosmetics category grid** (`#f5f5f7` or white by position): 3-column cards, each a full-bleed photo with the
+6. **Service and cosmetics category grid** (page grey, white tiles): 3-column cards, each a full-bleed photo with the
    category name bottom-left (no count or badge beside it: Owner rule, counts live only in the table line and empty states), whole card is one link. Two groups: services,
    cosmetics.
 7. **Footer** (8.5).
@@ -535,7 +551,7 @@ fast to scan, keyboard first.** No hero, no display type, no photo frames, no de
 counter.
 
 - **Page anatomy** (existing 10.1, kept): `Page` + `PageHeader` (one h1 in `title` 24 px, one primary action last at the trailing
-  edge), optional toolbar, content, then the footer actions inside forms. Canvas `#f5f5f7` (dark `#000000`), cards on it.
+  edge), optional toolbar, content, then the footer actions inside forms. Canvas `#f5f5f7`, white cards on it (17.5).
 - **List page:** toolbar (search pill, faceted filter pills, date range, view switch) above one table surface; 48 px rows
   (56 on coarse), 20 per page, sticky header, row `⋮` menu, bulk-selection bar on the toolbar line, "Hiển thị x-y trong n".
 - **Detail page:** header with title + status badge + primary action; two-column from 1024 (record left 8 columns, summary right 4);
@@ -695,22 +711,22 @@ shell. The last Step removes the old values and the attribute. (D1 is met at the
 ### Per-group checklist (every item answered yes/no in the Step report; any "no" is fixed or explained)
 
 Screenshots: **before** (current production look) and **after** of every changed screen at **360, 768, 1440 px light** and
-**1440 px dark** (plus 130 % text and dark 360 for the key screens), in all states (loading, empty, error, success, disabled,
+(dark renders retired 2026-10-18; instead one 1440 px render with the browser emulating dark, which must look light; plus 130 % text for the key screens), in all states (loading, empty, error, success, disabled,
 long text, many items, no image). Every image is opened and reviewed (CLAUDE.md rule), not just generated. Tool:
 `node scripts/uxui-screens.mjs`; DOM audit: `uxui-audit-capture.mjs` and `-summary.mjs --compare` (no count may rise).
 
-| #   | Check                                                                                                                                                                                                                                                                                                                                                                                      |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| G1  | **Follows HIG rules** H1-H14: for each of H1 to H14 note pass or the exact screen/element that fails. Includes 44 px targets (40 compact fine-pointer), contrast table in 6, labels on every input, focus visible, text usable at 200 %.                                                                                                                                                   |
-| G2  | **Matches the shared DNA** D1-D9: wordmark and header identical to the other groups; tokens only (no hex, no px/rem spacing literal, no new `wf-*` class); one component set with the compact variant; same scale and weights; accent only where D5 allows; icons from the one set; band colors `#ffffff`/`#f5f5f7` (dark `#000000`/`#1c1c1e`); radius 8/18/pill only; motion from tokens. |
-| G3  | **Look:** no shadow, no gradient (except the seasonal layer), hairlines not boxes inside cards, no orphaned elements, aligned edges, one vertical rhythm, sensible max widths, no layout shift.                                                                                                                                                                                            |
-| G4  | **Layout:** matches the Aevi pattern of its page (section 9) or the compact pattern (section 10); services and booking most prominent on the customer side; one primary action per view.                                                                                                                                                                                                   |
-| G5  | **Dark mode:** stepped surfaces, the burgundy fill with white text and the muted-rose accent text (6.1), no accent text on E3, images not glowing, status readable.                                                                                                                                                                                                                        |
-| G6  | **Motion:** values from tokens; staff Steps: nothing over 200 ms, nothing blocks input; reduced-motion and the off switch tested (both produce the final state with no tween); no animation of blur or layout.                                                                                                                                                                             |
-| G7  | **Functions unchanged:** no logic/API/DB change; the relevant tests pass; the season layer renders as before; the appearance follows the device, light and dark both checked.                                                                                                                                                                                                              |
-| G8  | **Copy:** natural Vietnamese, verbs on buttons, sentence case, no "khám", error text says the fix.                                                                                                                                                                                                                                                                                         |
-| G9  | **Ratchets and gate:** `ui-ratchet.test.ts` counters only down; DOM audit compared with the baseline; `pnpm format:check` clean; targeted tests and typecheck/lint of touched packages.                                                                                                                                                                                                    |
-| G10 | **Before/after pairs** delivered to `.local/uxui-screens/` for Owner approval, with what could not be fixed stated.                                                                                                                                                                                                                                                                        |
+| #   | Check                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | **Follows HIG rules** H1-H14: for each of H1 to H14 note pass or the exact screen/element that fails. Includes 44 px targets (40 compact fine-pointer), contrast table in 6, labels on every input, focus visible, text usable at 200 %.                                                                                                                                                          |
+| G2  | **Matches the shared DNA** D1-D9: wordmark and header identical to the other groups; tokens only (no hex, no px/rem spacing literal, no new `wf-*` class); one component set with the compact variant; same scale and weights; accent only where D5 allows; icons from the one set; page `#f5f5f7` and surfaces `#ffffff` (17.5; dark values retired); radius 8/18/pill only; motion from tokens. |
+| G3  | **Look:** no shadow, no gradient (except the seasonal layer), hairlines not boxes inside cards, no orphaned elements, aligned edges, one vertical rhythm, sensible max widths, no layout shift.                                                                                                                                                                                                   |
+| G4  | **Layout:** matches the Aevi pattern of its page (section 9) or the compact pattern (section 10); services and booking most prominent on the customer side; one primary action per view.                                                                                                                                                                                                          |
+| G5  | **Dark mode: RETIRED (2026-10-18).** Check instead that a browser set to dark still shows the light page.                                                                                                                                                                                                                                                                                         |
+| G6  | **Motion:** values from tokens; staff Steps: nothing over 200 ms, nothing blocks input; reduced-motion and the off switch tested (both produce the final state with no tween); no animation of blur or layout.                                                                                                                                                                                    |
+| G7  | **Functions unchanged:** no logic/API/DB change; the relevant tests pass; the season layer renders as before; the app is light only (a device set to dark still shows light).                                                                                                                                                                                                                     |
+| G8  | **Copy:** natural Vietnamese, verbs on buttons, sentence case, no "khám", error text says the fix.                                                                                                                                                                                                                                                                                                |
+| G9  | **Ratchets and gate:** `ui-ratchet.test.ts` counters only down; DOM audit compared with the baseline; `pnpm format:check` clean; targeted tests and typecheck/lint of touched packages.                                                                                                                                                                                                           |
+| G10 | **Before/after pairs** delivered to `.local/uxui-screens/` for Owner approval, with what could not be fixed stated.                                                                                                                                                                                                                                                                               |
 
 ## 15. Implementation notes (for the Steps that follow; not done in this change)
 
@@ -736,7 +752,7 @@ long text, many items, no image). Every image is opened and reviewed (CLAUDE.md 
 | Q1  | **Approved.** CLAUDE.md "Customer site redesign", "Staff screens in direction C" and the fonts/palette of "UI design rules" 1-2 are marked superseded by DESIGN.md. `docs/CUSTOMER_SITE_C.md` is superseded; its photo list stays valid.                                                                                                                                                                                            |
 | Q2  | **Approved, then revised by the Owner on 2026-10-15** (the old dark accent `#e48f9f` read as candy pink): see 6.1.                                                                                                                                                                                                                                                                                                                  |
 | Q3  | **Decided by Claude per Owner delegation.** Staff table rows and staff sidebar items hover with a neutral tint (`--ls-row-hover-bg`, `--ls-nav-hover-bg`), not the solid accent; the sidebar's current page stays solid accent. Owner rule 4 stays everywhere else. Reason: a solid accent across a full-width row recolors every cell and hurts scanning, and the HIG reserves color for primary actions and the current location. |
-| Q4  | **Approved.** Flat auth panel (accent `#782b37`; dark `#1c1c1e`) and a hairline card; no gradient, no shadow.                                                                                                                                                                                                                                                                                                                       |
+| Q4  | **Approved.** Flat auth panel (accent `#782b37`) and a hairline card; no gradient, no shadow.                                                                                                                                                                                                                                                                                                                                       |
 | Q5  | **Agreed.** The home reviews band is not built until the Owner decides to publish reviews.                                                                                                                                                                                                                                                                                                                                          |
 | Q6  | **Approved.** 40 px compact controls on fine pointers for staff; 44 px on touch.                                                                                                                                                                                                                                                                                                                                                    |
 | Q7  | **Approved.** Radius 8 / 18 / pill.                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -752,6 +768,8 @@ long text, many items, no image). Every image is opened and reviewed (CLAUDE.md 
 The Owner's session 10 brief overrides the sections above where they differ. Report: `docs/REDESIGN_S10_REPORT.md`.
 
 ### 17.1 Colour roles (A3, A4, R2, R11, R20-R26)
+
+> **The Dark columns of this table are RETIRED (Owner, 2026-10-18, light only).** Only the Light values apply.
 
 | Role                                           | Light                                            | Dark                                          |
 | ---------------------------------------------- | ------------------------------------------------ | --------------------------------------------- |
@@ -821,3 +839,41 @@ deploy (answer 6).
   wrapper clamps every tween to 200 ms in the compact scope.
 - Reduced motion, data saver and `ls-fx=off`: no tweens at all (base.css zeroes every animation and transition under all three).
 - GSAP only through `useMotion`; transform and opacity only; every context is killed on unmount and on route change (`ls:route`).
+
+### 17.4 Session 10 fix round 1: customer site (Owner, 2026-10-18)
+
+The Owner's fix round 1 (nine reported defects, `.local/s10-fixes/web/`) reverses the rules below. Each reversal is the Owner's own decision, recorded
+here so later sessions keep it. Report: `docs/REDESIGN_S10_REPORT.md` section 10.
+
+| Was                                                                                                                          | Now (customer site only)                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D2 and 3 decision 4: the "LUCY SPA" text wordmark on every header and in the footer                                          | The customer header and footer show the "L" mark (`BrandLogo`, an inline SVG in `currentColor`: light `--ls-wordmark`, dark the light neutral; 40 px; the link is named "Lucy Spa, về trang chủ"). Hover: one step darker (light) or brighter (dark), never an underline. The counter, admin and the sign-in card keep the `BrandWordmark` text.                                                                                                                               |
+| 8.5 / 17.2: header 64 px (52 compact), 14/500 links, current page = accent text with a 2 px underline, hover plain underline | Slim bar 56 px (48 compact); logo at the start, menu centred, tools and "Đặt lịch" at the end; menu links 12/500; **the current page is a neutral pill (gray 4) in weight 600; hover fades a lighter grey (gray 3) in over `--ls-dur-fast`; no underline anywhere in the menu.** The same pattern for the account tabs and the filter chips.                                                                                                                                   |
+| R10 / 17.2: a link underlines on hover                                                                                       | Only a text link that goes to another page underlines. Menus, tabs, chips and buttons never do (hover, focus or selected). The bare-link rule (`a:not([class])`) no longer reaches them.                                                                                                                                                                                                                                                                                       |
+| 11.1: only `transform` and `opacity` animate                                                                                 | Kept. The menu pill, tab pill and chip hover are a `::before` layer whose opacity fades (no background-colour transition); the footer hairline is a `transform: scaleX` of a `::after`.                                                                                                                                                                                                                                                                                        |
+| 9.1 1b / 12: the brand strip has a visible pause control                                                                     | No visible pause button. The control is a checkbox that is visually hidden until a keyboard user focuses it (then a 44 px round button); the strip also pauses on hover, on focus and while a finger is down, and stands still under reduced motion. Logo gap one step wider (64 px). (Owner, answer to the 2026-10-18 question.)                                                                                                                                              |
+| 9.1 2 / B3: trust band = `title` figure + caption                                                                            | Three equal columns; value and caption are both the body size (the value in weight 600 and ink, the caption regular and muted); the columns share two rows (subgrid), so the values and the captions each sit on one line.                                                                                                                                                                                                                                                     |
+| 9.1 3: price-list group title at the heading step                                                                            | Group title at the title step (28/600), rows at the body step (17/400).                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 8.3 / 17.2 (answer 7): product names never truncated; labels over the photo                                                  | **Product cards only:** five fixed rows under the photo (labels, name of two lines then an ellipsis with the full name in the link's title, pre-order line, struck price, price) so every card of a row lines up. Service names still wrap in full.                                                                                                                                                                                                                            |
+| 9.1 6 / R15: category tiles in a 3-column grid (a last tile may widen)                                                       | One horizontal row of equal 4:3 tiles per group (Dịch vụ, Mỹ phẩm), scrolling with the round ‹ › buttons; tile label at the label step (14/500), clearly under the group heading (21).                                                                                                                                                                                                                                                                                         |
+| Filter chip rows clipped the last chip                                                                                       | A chip row that overflows scrolls inside itself with ‹ › round buttons over its ends; a button is hidden when nothing more lies in that direction. A chip no longer lifts or scales on hover.                                                                                                                                                                                                                                                                                  |
+| Round icon buttons: the icon rested on the text baseline (2.5 px high)                                                       | The icon is centred by the box (`.ls-btn-icon` label is a one-cell grid, the svg a block); measured 0 px off centre on every round button of the customer site.                                                                                                                                                                                                                                                                                                                |
+| 8.5 / 17.2 R8: footer 12 px grey links, one link per 44 px row; 88 px room under the last row for the contact button         | Compact footer: 12/600 heads, 12/400 grey links on a 24 px row with a mouse (8 px between rows; **44 px rows on touch and coarse pointers**; Owner's answer 2026-10-18, a reversal of R8 for fine pointers only); one small base line (© and the legal links, left aligned) whose row is as tall as the contact button's room and keeps its trailing corner empty; the link hover is a 1 px hairline that slides in (`scaleX`, `--ls-dur-base`; instant under reduced motion). |
+
+### 17.5 One surface rule (Owner decision, 2026-10-18)
+
+**Rule.** The page background is always the light grey `#f5f5f7` (`--ls-bg-page`). Every card, tile, panel, table, form box, modal and dropdown
+sitting on it is white `#ffffff` (`--ls-bg-surface`, `--ls-bg-raised`). It applies to the customer site, the account pages, the counter/POS and the
+admin. Header = white top bar; footer = `#f5f5f7` like the page; the hero image placeholder is a white surface.
+
+| Was                                                                                                            | Now                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D7: sections alternate `#ffffff` and `#f5f5f7` bands (`.ls-band--base` / `.ls-band--alt`, `nextTone()`)        | **Retired.** One page grey; the classes and `tone` props are gone. Separation is spacing and, only where needed, a 1 px `--ls-border` hairline                                                                              |
+| "A card takes the opposite of its band"; sections hold cards only for products, prices, forms, account records | **Retired.** A card, tile, price list, info strip, cart, checkout, booking step and login box is white on the grey page                                                                                                     |
+| `--ls-bg-page` / `--ls-band-base` white, `--ls-bg-surface` grey                                                | `--ls-bg-page`, `--ls-band-base`, `--ls-band-alt`, `--ls-bg-sunken` = `#f5f5f7`; `--ls-bg-surface`, `--ls-bg-surface-alt`, `--ls-bg-raised` = `#ffffff`                                                                     |
+| A field is the opposite band colour                                                                            | `--ls-bg-field` (straight on the page) = white; `--ls-bg-field-in-card` (inside a white surface) = `#f5f5f7`, always with the 1 px `--ls-border-control`, so it stays visible on white. The input style itself is unchanged |
+| White chrome read `--ls-bg-page` (header, tab bar, action bars, staff top bar, table wrap, inverse text)       | They read `--ls-bg-raised` (white). Nothing else about them changed                                                                                                                                                         |
+| Q4 (session 10): the flat sign-in panel is white (`--ls-auth-flat` `#ffffff`) with a hairline card on it       | The sign-in panel is the page grey (`--ls-auth-flat` `#f5f5f7`), the card on it white; **needs the Owner's OK** (this reverses the wording of Q4)                                                                           |
+| Placeholder frames were one grey step from the band                                                            | In a white card a placeholder is `#f5f5f7`; a tile or frame straight on the page (category tiles, the hero frame) is white                                                                                                  |
+
+Only surfaces changed: no other colour, no layout, spacing, radius or type. The favicon still follows the device setting.

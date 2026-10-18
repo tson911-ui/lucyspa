@@ -66,7 +66,7 @@ function TicketFrame({
 }) {
   return (
     <PublicMain>
-      <Band tone="page" className="ls-band--base ls-ticket-band">
+      <Band tone="page" className="ls-ticket-band">
         <div className="ls-ticket-page">
           <div className="ls-public-title">
             <h1 className="ls-h1-display">{title}</h1>

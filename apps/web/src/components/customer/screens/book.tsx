@@ -426,7 +426,7 @@ export function BookScreen() {
   if (created) {
     return (
       <PublicMain className="ls-main-tall">
-        <Band tone="page" className="ls-band--alt ls-book-title">
+        <Band tone="page" className="ls-book-title">
           <PageBack root={base} publicHome={`/${locale}`} menuRoot label={t.common.back} />
           <div className="ls-public-title" aria-live="polite">
             <h1 ref={heading} tabIndex={-1} className="ls-h1-display">
@@ -434,7 +434,7 @@ export function BookScreen() {
             </h1>
           </div>
         </Band>
-        <Band tone="page" className="ls-band--base ls-book-body">
+        <Band tone="page" className="ls-book-body">
           <div className="ls-booking-main ls-booking-done">
             <Card as="section" aria-label={t.book.successTitle}>
               <Notice tone="success">{fill(t.book.successIntro, { code: created.code })}</Notice>
@@ -558,7 +558,7 @@ export function BookScreen() {
 
   return (
     <PublicMain className={totals.count > 0 ? 'ls-main-tall ls-booking-bar' : 'ls-main-tall'}>
-      <Band tone="page" className="ls-band--alt ls-book-title">
+      <Band tone="page" className="ls-book-title">
         <PageBack root={base} publicHome={`/${locale}`} menuRoot label={t.common.back} />
         <div className="ls-public-title">
           <h1 className="ls-h1-display">{t.book.title}</h1>
@@ -573,7 +573,7 @@ export function BookScreen() {
           }))}
         />
       </Band>
-      <Band tone="page" className="ls-band--base ls-book-body">
+      <Band tone="page" className="ls-book-body">
         {sessionLost ? <Notice tone="warning">{t.errors.sessionLost}</Notice> : null}
         <div className="ls-booking-layout">
           <div ref={slide} className="ls-booking-main">
