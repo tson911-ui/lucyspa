@@ -1,7 +1,7 @@
 /* Session 10 foundation (Owner brief 2026-10-16; DESIGN.md 8): the cross-cutting interaction states of every area (customer, POS, admin), loaded
    last. Tokens only. Colour rules (A3/R11/R21): hover never uses a vivid colour; a transparent control hovers one grey step (Radix 3) and
    presses the next (Radix 4); the one solid burgundy fill is the primary button and the selected state. Text links are the link colour
-   (light burgundy 11, dark the neutral high-contrast text with a permanent underline) and underline on hover. */
+   (burgundy 11) and underline on hover. */
 
 /* ---- Base (touch, focus) --------------------------------------------------------------------------------------------------------- */
 html {
@@ -19,8 +19,7 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 /* ---- Text links (R2, R10, R24, A3) ------------------------------------------------------------------------------------------------- */
-[data-ui='v2']
-  :is(.ls-link, .ls-site-link, .ls-prose a, .ls-info-article a, .ls-crumbs a, .ls-site-footer a) {
+[data-ui='v2'] :is(.ls-link, .ls-site-link, .ls-prose a, .ls-info-article a, .ls-crumbs a) {
   color: var(--ls-link);
   text-decoration-line: var(--ls-link-rest-decoration);
   text-decoration-thickness: 1px;
@@ -38,18 +37,9 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2']
-    :is(
-      .ls-link,
-      .ls-site-link,
-      .ls-prose a,
-      .ls-info-article a,
-      .ls-crumbs a,
-      .ls-site-footer a
-    ):hover {
+  [data-ui='v2'] :is(.ls-link, .ls-site-link, .ls-prose a, .ls-info-article a, .ls-crumbs a):hover {
     color: var(--ls-link);
     text-decoration-line: underline;
-    /* Visible in dark too, where links are underlined at rest. */
     text-decoration-thickness: 2px;
   }
 
@@ -58,43 +48,85 @@ html:has([data-ui='v2'] .ls-topbar) {
   }
 }
 
-[data-ui='v2']
-  :is(
-    .ls-link,
-    .ls-site-link,
-    .ls-prose a,
-    .ls-info-article a,
-    .ls-crumbs a,
-    .ls-site-footer a
-  ):active {
+[data-ui='v2'] :is(.ls-link, .ls-site-link, .ls-prose a, .ls-info-article a, .ls-crumbs a):active {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;
   background: var(--ls-hover-bg);
 }
 
-/* ---- Customer menu (R18, B21): plain hover, underline for the current page, never a fill ------------------------------------------- */
-[data-ui='v2'] .ls-site-nav a:focus-visible {
-  background: transparent;
+/* ---- Customer menu, account tabs and filter chips: one pattern (Owner, 2026-10-18; reverses "underline for the current page") ----------
+   The current entry is a neutral pill (one grey step) in a slightly heavier weight; hover fades a lighter grey in over --ls-dur-fast; there is
+   never an underline on a menu, a tab, a chip or a button. DESIGN.md 11.1 allows only transform and opacity to animate, so the pill is the
+   link's own ::before layer (behind the label) and the fade is its opacity, never a background colour change. Reduced motion and the off
+   switch zero the duration, so the pill appears at once. A text link that goes to another page is the only thing that underlines. */
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav, .ls-pills) a {
+  position: relative;
+  isolation: isolate;
+  text-decoration: none;
+  transition: none;
+}
+
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav, .ls-pills) a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ls-hover-bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ls-dur-fast) var(--ls-ease-out);
+}
+
+[data-ui='v2'] .ls-pills a::before {
+  background: var(--ls-gray-4);
+}
+
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav) a[aria-current='page'] {
   color: var(--ls-text);
+  font-weight: var(--ls-weight-title);
+}
+
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav) a[aria-current='page']::before {
+  background: var(--ls-pressed-bg);
+  opacity: 1;
+  transition: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-site-nav a:hover {
-    background: transparent;
+  [data-ui='v2'] :is(.ls-site-nav, .ls-subnav, .ls-pills) a:hover:not([aria-current]) {
     color: var(--ls-text);
-    text-decoration-line: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: var(--ls-space-2);
+    text-decoration: none;
   }
 
-  [data-ui='v2'] .ls-site-nav a[aria-current='page']:hover {
-    color: var(--ls-brand);
-    text-decoration-thickness: 2px;
+  [data-ui='v2'] :is(.ls-site-nav, .ls-subnav, .ls-pills) a:hover:not([aria-current])::before {
+    opacity: 1;
   }
 }
 
-[data-ui='v2'] .ls-site-nav a:active {
-  background: var(--ls-hover-bg);
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav) a:active:not([aria-current])::before {
+  background: var(--ls-pressed-bg);
+  opacity: 1;
+}
+
+[data-ui='v2'] .ls-pills a:active:not([aria-current])::before {
+  background: var(--ls-gray-5);
+  opacity: 1;
+}
+
+/* The heavier weight of the current entry must not move its neighbours: a hidden copy of the label in that weight reserves the width. */
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav) a[data-label] {
+  flex-direction: column;
+  justify-content: center;
+}
+
+[data-ui='v2'] :is(.ls-site-nav, .ls-subnav) a[data-label]::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  font-weight: var(--ls-weight-title);
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ---- Staff sidebar (DESIGN.md 8.5, Q3): neutral hover, pressed one step more; the current page keeps the solid accent --------------- */
@@ -112,9 +144,10 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 /* ---- Chips and filter pills (B10, B14, C50) ---------------------------------------------------------------------------------------- */
+/* A filter pill (a link) hovers through its ::before layer (the menu pattern above); a chip that is a control keeps the plain grey step. */
 @media (hover: hover) and (pointer: fine) {
   [data-ui='v2']
-    :is(.ls-pills a, .ls-chip):not([aria-current='page']):not([aria-pressed='true']):not(
+    .ls-chip:not([aria-current='page']):not([aria-pressed='true']):not(
       [aria-selected='true']
     ):hover {
     color: var(--ls-text);
@@ -123,7 +156,7 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 [data-ui='v2']
-  :is(.ls-pills a, .ls-chip):not([aria-current='page']):not([aria-pressed='true']):not(
+  .ls-chip:not([aria-current='page']):not([aria-pressed='true']):not(
     [aria-selected='true']
   ):active {
   background: var(--ls-gray-5);
@@ -227,10 +260,45 @@ html:has([data-ui='v2'] .ls-topbar) {
   display: contents;
 }
 
+/* From 1024 px the bar is three columns (Owner, 2026-10-18, after the reference bar): the logo at the start, the menu centred on the page,
+   the tools and the call to action at the end. The brand group adds no box of its own, so the logo and the menu are cells of the grid. */
+@media (min-width: 1024px) {
+  [data-ui='v2'] .ls-site-header .ls-site-header-row {
+    display: grid;
+    /* The side cells never shrink below their content (a member's five menu entries and four tools at 1024 px), so the menu is centred when
+       there is room and never runs under the tools when there is not. */
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+    column-gap: var(--ls-space-4);
+  }
+
+  [data-ui='v2'] .ls-site-header .ls-site-lead {
+    display: contents;
+  }
+
+  [data-ui='v2'] .ls-site-header .ls-site-brand {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  [data-ui='v2'] .ls-site-header .ls-site-nav {
+    grid-column: 2;
+    justify-self: center;
+    margin-inline-start: 0;
+  }
+
+  [data-ui='v2'] .ls-site-header .ls-headerbar-end {
+    display: flex;
+    grid-column: 3;
+    gap: var(--ls-space-2);
+    align-items: center;
+    justify-self: end;
+  }
+}
+
 /* The staff bar takes the customer bar's surface (the base colour, not a card surface); the season line (box-shadow) stays the season's. */
 [data-ui='v2'] .ls-topbar {
   border-bottom: 1px solid var(--ls-border);
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
 }
 
 /* B20, C16: at 200 % zoom (or any viewport under 560 css px tall) the header is not sticky: it scrolls away with the page, so it never
@@ -245,10 +313,18 @@ html:has([data-ui='v2'] .ls-topbar) {
   }
 }
 
-/* ---- Footer (R8, B13): flat band, 12 px grey links in aligned columns, 1 px dividers; one link per 44 px row, so no two targets overlap
-   (the old rows were shorter than the links). No button in the footer. -------------------------------------------------------------- */
-[data-ui='v2'] .ls-site-footer {
-  --ls-footer-row: var(--ls-control-h);
+/* ---- Footer (R8, B13; compact since the Owner's 2026-10-18 fix, after the reference footer) -----------------------------------------------
+   Flat band, 12 px grey links in aligned columns, one line each. The row is 24 px with a mouse (a 24 px target, 8 px between two, WCAG 2.5.8),
+   44 px on a touch or coarse pointer (R8, H3: the Owner's answer of 2026-10-18 reverses the 44 px row for fine pointers only). A link's
+   hover is a hairline that slides in under it (its ::after, a transform); no button in the footer. ---------------------------------------- */
+[data-ui='v2'] :is(.ls-site-footer-list, .ls-site-footer-legal) {
+  --ls-footer-row: var(--ls-space-6);
+}
+
+@media (pointer: coarse) {
+  [data-ui='v2'] :is(.ls-site-footer-list, .ls-site-footer-legal) {
+    --ls-footer-row: var(--ls-control-h);
+  }
 }
 
 [data-ui='v2'] :is(.ls-site-footer-list, .ls-footer-text, .ls-site-footer-base) {
@@ -257,12 +333,16 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 [data-ui='v2'] :is(.ls-site-footer-title, .ls-footer-links-title) {
+  min-height: 0;
+  margin-block-end: var(--ls-space-2);
   font-size: var(--ls-type-caption);
   font-weight: var(--ls-weight-title);
+  line-height: var(--ls-lh-caption);
 }
 
 [data-ui='v2'] .ls-site-footer-list a:not(.ls-footer-icon) {
   margin-block: 0;
+  min-height: var(--ls-footer-row);
 }
 
 /* 8 px between two link rows (DESIGN 12: no two targets closer than 8 px). */
@@ -271,7 +351,43 @@ html:has([data-ui='v2'] .ls-topbar) {
   row-gap: var(--ls-space-2);
 }
 
-/* ---- Native select (B9, WIG): explicit colours in both modes (Windows dark draws the open list from these), the icon-set chevron ---- */
+/* The sliding hairline: 1 px, in the link's own colour, from the leading edge to the trailing edge in --ls-dur-base. Only a transform moves
+   (DESIGN 11.1); reduced motion, data saver and the off switch zero the duration, so the line is simply there while hovered. */
+[data-ui='v2']
+  :is(
+    .ls-site-footer-list a:not(.ls-footer-icon),
+    .ls-site-footer-legal a,
+    .ls-logo-link.ls-site-footer-logo
+  ) {
+  position: relative;
+  text-decoration: none;
+}
+
+[data-ui='v2'] :is(.ls-site-footer-list a:not(.ls-footer-icon), .ls-site-footer-legal a)::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: calc((var(--ls-footer-row) - 1lh) / 2 - var(--ls-space-1) / 2);
+  block-size: 1px;
+  background: currentcolor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--ls-dur-base) var(--ls-ease-premium);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-ui='v2']
+    :is(.ls-site-footer-list a:not(.ls-footer-icon), .ls-site-footer-legal a):hover::after {
+    transform: scaleX(1);
+  }
+}
+
+[data-ui='v2']
+  :is(.ls-site-footer-list a:not(.ls-footer-icon), .ls-site-footer-legal a):focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* ---- Native select (B9, WIG): explicit colours (the open list is drawn from these), the icon-set chevron ---- */
 [data-ui='v2'] .ls-select {
   color: var(--ls-text);
   background-color: var(--ls-bg-field);
@@ -317,12 +433,6 @@ html:has([data-ui='v2'] .ls-topbar) {
   /* The wordmark is the home link: it darkens on hover like every link (B23). */
   [data-ui='v2'] :is(.ls-site-brand a, .ls-topbar-brand a):hover {
     color: var(--ls-brand-fill-hover);
-  }
-
-  /* The current customer menu entry still answers the pointer: its text goes to the ink step (B23). */
-  [data-ui='v2'] .ls-site-nav a[aria-current='page']:hover {
-    color: var(--ls-text);
-    text-decoration-color: var(--ls-text-muted);
   }
 
   .skip-link:hover {
@@ -637,7 +747,7 @@ html:has([data-ui='v2'] .ls-topbar) {
 }
 
 [data-ui='v2'] .ls-bell-count {
-  color: var(--ls-bg-page);
+  color: var(--ls-bg-raised);
   background: var(--ls-text);
 }
 
@@ -777,8 +887,8 @@ html[data-text-large]
   color: var(--ls-text-subtle);
 }
 
-/* Media tiles (admin-b request): the whole picture shows (a logo is never cropped) on a white backdrop in both modes, so a dark logo
-   with a transparent background never vanishes on the dark tile. */
+/* Media tiles (admin-b request): the whole picture shows (a logo is never cropped) on a white backdrop, so a dark logo
+   with a transparent background never vanishes on the tile. */
 [data-ui='v2'] :is(.ls-media-thumb, .ls-media-row-thumb) img {
   object-fit: contain;
   background: var(--ls-on-brand);
@@ -816,21 +926,28 @@ html[data-text-large]
 }
 
 /* A plain link with no state of its own (a card's stretched name link, a list link): it underlines on hover and dims slightly when
-   pressed, so every link answers the pointer (B23). Links with their own states (buttons, nav, tabs, chips) keep theirs. */
+   pressed, so every link answers the pointer (B23). Links with their own states (buttons, menus, tabs, chips, the footer list) keep
+   theirs, and never underline like this (Owner, 2026-10-18). */
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] a:not([class]):hover {
+  [data-ui='v2']
+    a:not([class]):not(
+      :is(.ls-pills, .ls-site-nav, .ls-subnav, .ls-tab-bar, .ls-tablist, .ls-site-footer-list) a
+    ):hover {
     text-decoration-line: underline;
   }
 }
 
-[data-ui='v2'] a:not([class]):active {
+[data-ui='v2']
+  a:not([class]):not(
+    :is(.ls-pills, .ls-site-nav, .ls-subnav, .ls-tab-bar, .ls-tablist, .ls-site-footer-list) a
+  ):active {
   opacity: 0.72;
 }
 
 /* The contact button floats over every page: it is a neutral ink button, not the primary fill, so the page's own primary is the only
    filled burgundy button in view (Owner answer 2, once per view). */
 [data-ui='v2'] .ls-contact-toggle {
-  color: var(--ls-bg-page);
+  color: var(--ls-bg-raised);
   background: var(--ls-text);
 }
 
@@ -1211,7 +1328,10 @@ html[data-text-large] [data-ui='v2'] .ls-svc-chips {
 
 /* A plain link already underlined at rest thickens its underline on hover. */
 @media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] a:not([class]):hover {
+  [data-ui='v2']
+    a:not([class]):not(
+      :is(.ls-pills, .ls-site-nav, .ls-subnav, .ls-tab-bar, .ls-tablist, .ls-site-footer-list) a
+    ):hover {
     text-decoration-thickness: 2px;
   }
 }
@@ -1293,23 +1413,6 @@ html[data-text-large] [data-ui='v2'] .ls-svc-chips {
   }
 }
 
-/* ---- C11: in dark mode a photo on a white background is dimmed one step, so it does not glare on the dark page (logos excluded). --- */
-@media (prefers-color-scheme: dark) {
-  [data-ui='v2']
-    :is(
-      .ls-pcard-media,
-      .ls-svc-media,
-      .ls-gallery,
-      .ls-prod-gallery,
-      .ls-media-thumb,
-      .ls-thumb,
-      .ls-media-preview
-    )
-    img {
-    filter: brightness(0.88);
-  }
-}
-
 /* Staff record pages: the breadcrumb is the one way back (SHELL plan); the Back chevron shows only where a page has no breadcrumb. */
 [data-ui='v2'] .ls-content:has(.ls-page-crumbs) .ls-back-row {
   display: none;
@@ -1373,7 +1476,7 @@ html[data-text-large]
 }
 
 /* A disabled primary drops its colour (HIG): neutral fill and quiet text instead of the burgundy at 55 % opacity, which read pink over
-   black (B22, E4 review of the dark checkout). */
+   black (B22). */
 [data-ui='v2'] .ls-btn-primary:is(:disabled, [aria-disabled='true']) {
   border-color: transparent;
   background: var(--ls-bg-pressed);

@@ -3,7 +3,7 @@ import { cx } from './cx';
 
 // Shared helpers of the site-wide season art (docs/UXUI_REDESIGN_S6_PLAN.md section 3): a decorative SVG wrapper and
 // the color accessor. Art never carries a color of its own: every color is `var(--ls-art-<name>)`, a token that
-// season.css sets per preset and theme, so a kit follows light and dark and tests can check its palette.
+// season.css sets per preset, so a kit follows its palette and tests can check its palette.
 
 /** `art('panelText')` is `var(--ls-art-panel-text)`; keys are camelCase like the registry. */
 export const art = (key: string): string =>

@@ -12,7 +12,7 @@ export interface IconPickerOption {
 /**
  * Picks one icon of a small built-in set (the facts strip and the "why choose us" cards). A radio group of icon
  * buttons: native radios underneath, so the arrow keys and the form behave as the browser's own. The icons are drawn in
- * `currentColor` from the theme tokens, so the picker (and what it picks) follows light and dark mode.
+ * `currentColor` from the theme tokens, so the picker (and what it picks) follows the theme.
  */
 export function IconPicker({
   label,

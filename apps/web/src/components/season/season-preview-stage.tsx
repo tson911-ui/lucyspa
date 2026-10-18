@@ -15,7 +15,7 @@ import { SeasonSiteFrame } from './site-frame-view';
  * The page behind the admin's full-page season preview (docs/UXUI_REDESIGN_S6_PLAN.md section 6): the real public
  * site, drawn from the draft the season form sends with `postMessage`. It only ever draws: it accepts a message only
  * from its parent frame or the window that opened it, on this origin, parses it with the live site's parser, keeps
- * nothing, and answers with "ready" and its own height. The theme and the preset are set on this document's own
+ * nothing, and answers with "ready" and its own height. The preset and the (light) preview marker are set on this document's own
  * `<html>` (and restored on leaving), so the admin page that holds the frame keeps its theme.
  */
 export function SeasonPreviewStage({ locale }: { locale: Locale }) {
@@ -52,7 +52,7 @@ export function SeasonPreviewStage({ locale }: { locale: Locale }) {
       const message = parsePreviewMessage(event.data);
       if (message?.type !== 'draft') return;
       const next = seasonOfDraft(message.draft);
-      // The site follows the device theme (no data-theme any more); the preview forces one through the preview attribute.
+      // The app is light only (Owner, 2026-10-18); the preview marker stays "light".
       html.setAttribute('data-preview-theme', message.theme);
       if (next) html.setAttribute('data-season', next.presetKey);
       else html.removeAttribute('data-season');

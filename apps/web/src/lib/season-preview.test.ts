@@ -34,7 +34,7 @@ const message = (patch: Record<string, unknown> = {}) => ({
   source: PREVIEW_SOURCE,
   type: 'draft',
   draft: draft(),
-  theme: 'dark',
+  theme: 'light',
   ...patch,
 });
 
@@ -104,7 +104,7 @@ test('the page accepts only well-formed messages: a draft, ready, and a clamped 
     42,
     [],
     {},
-    { type: 'draft', draft: draft(), theme: 'dark' },
+    message({ theme: 'dark' }),
     { ...message(), source: 'someone-else' },
     message({ type: 'run' }),
     message({ theme: 'sepia' }),

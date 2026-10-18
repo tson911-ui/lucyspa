@@ -53,7 +53,7 @@ test('Badge: the three shop labels are neutral (session 10, A3/B18), and a statu
   }
   assert.match(
     css,
-    /\.ls-badge-ink \{[^}]*color: var\(--ls-bg-page\);[^}]*background: var\(--ls-text\)/,
+    /\.ls-badge-ink \{[^}]*color: var\(--ls-bg-raised\);[^}]*background: var\(--ls-text\)/,
   );
   assert.match(css, /\.ls-badge \{[^}]*min-height: var\(--ls-badge-h\);[^}]*white-space: nowrap/);
   assert.match(tokens, /--ls-badge-h: 24px;\s*--ls-badge-pad-x: var\(--ls-space-3\);/);
@@ -81,7 +81,7 @@ test('ImageFrame: a ratio, alt text, and a flat placeholder when there is no pic
   );
 });
 
-test('v2 surfaces: a flat card, flush notice, pill tabs, flat placeholder, the photo dim token in dark only', () => {
+test('v2 surfaces: a flat card, flush notice, pill tabs, flat placeholder, a photo is never filtered', () => {
   assert.match(
     css,
     /\.ls-card \{[^}]*border: 0;[^}]*border-radius: var\(--ls-radius-lg\);[^}]*background: var\(--ls-bg-surface\)/,
@@ -99,18 +99,7 @@ test('v2 surfaces: a flat card, flush notice, pill tabs, flat placeholder, the p
     css,
     /\.ls-image-frame \{[^}]*border-radius: var\(--ls-radius-lg\);[^}]*background: var\(--ls-bg-field\)/,
   );
-  assert.match(
-    css,
-    /\.ls-image-frame img \{[^}]*object-fit: cover;[^}]*filter: var\(--ls-image-filter\)/,
-  );
-  assert.equal(
-    tokens.match(/--ls-image-filter: none;/g)?.length,
-    2,
-    'light block and forced-light preview',
-  );
-  assert.equal(
-    tokens.match(/--ls-image-filter: brightness\(0\.92\);/g)?.length,
-    2,
-    'both dark blocks',
-  );
+  assert.match(css, /\.ls-image-frame img \{[^}]*object-fit: cover;/);
+  assert.doesNotMatch(css, /image-filter/);
+  assert.doesNotMatch(tokens, /image-filter/, 'the photo dim token is retired with dark mode');
 });

@@ -29,15 +29,6 @@ function block(selector: RegExp): Record<string, string> {
 }
 
 const light = block(/^:root\s*\{/m);
-// No theme switch (session 10, A1): dark follows the system preference only; the admin season preview forces it on a subtree
-// (or the whole document) with `data-preview-theme`.
-const darkPreview = block(
-  /^:root\[data-preview-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
-);
-const scopedLight = block(/^\[data-preview-theme=['"]light['"]\]\s*\{/m);
-const darkSystem = block(/:root:not\(\[data-preview-theme=['"]light['"]\]\)\s*\{/m);
-const dark = darkPreview;
-
 function luminance(hex: string): number {
   const value = parseInt(hex.slice(1), 16);
   const [r, g, b] = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map((channel) => {
@@ -58,39 +49,21 @@ const color = (theme: Record<string, string>, name: string): string => {
   return value!;
 };
 
-const themes = { light, dark } as const;
+const themes = { light } as const;
 
-test('dark tokens are declared identically for the forced preview and for system preference', () => {
-  assert.deepEqual(darkSystem, darkPreview);
-  // Every color token that has a light value has a dark value.
-  const colorTokens = Object.keys(light).filter(
-    (name) =>
-      /^--ls-(?!font|text-(xs|sm|md|lg|xl|2xl))/.test(name) && /^#|^rgb|^none/.test(light[name]!),
-  );
-  for (const name of colorTokens) assert.ok(name in dark, `${name} missing in dark`);
-});
-
-test('preview scopes: forced light repeats the light value of every token the dark block overrides', () => {
-  for (const name of Object.keys(dark)) {
-    assert.equal(scopedLight[name], light[name], `${name} differs in the forced-light scope`);
-  }
-  assert.deepEqual(
-    Object.keys(scopedLight).filter((name) => !(name in dark)),
-    [],
-    'the forced-light scope carries colors only',
-  );
-});
-
-test('no theme switch: the root follows the system (light dark) and no stylesheet keys on data-theme', () => {
+test('light only (Owner, 2026-10-18): color-scheme is light, no dark block, no theme switch in any stylesheet', () => {
   const rootBody = /^:root\s*\{([^}]*)\}/m.exec(css)?.[1] ?? '';
-  assert.match(rootBody, /color-scheme:\s*light dark;/);
-  // A later `color-scheme: light` in the same block would win and pin the page to light.
-  assert.doesNotMatch(rootBody, /color-scheme:\s*light;/, 'no overriding light-only color-scheme');
+  assert.match(rootBody, /color-scheme:\s*light;/);
+  assert.doesNotMatch(rootBody, /color-scheme:\s*[^;]*dark/);
   const kit = new URL('.', import.meta.url);
   const sheets = readdirSync(kit).filter((name) => name.endsWith('.css'));
   assert.ok(sheets.length > 10, 'the kit stylesheets are read');
   for (const name of sheets) {
-    assert.doesNotMatch(readFileSync(new URL(name, kit), 'utf8'), /data-theme=/, name);
+    const sheet = readFileSync(new URL(name, kit), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.doesNotMatch(sheet, /data-theme=/, name);
+    assert.doesNotMatch(sheet, /prefers-color-scheme/, name);
+    assert.doesNotMatch(sheet, /color-scheme:\s*[^;]*dark/, name);
+    assert.doesNotMatch(sheet, /data-preview-theme=['"]dark['"]/, name);
   }
 });
 
@@ -172,25 +145,15 @@ for (const [themeName, theme] of Object.entries(themes)) {
 test('contract 6.2 ratios are reproduced (one decimal, as published)', () => {
   const published: Array<[Record<string, string>, string, string, number]> = [
     [light, 'text', 'bg-surface', 16.6],
-    [dark, 'text', 'bg-surface', 15.0],
     [light, 'text-muted', 'bg-surface', 6.9],
-    [dark, 'text-muted', 'bg-surface', 7.7],
     [light, 'text-subtle', 'bg-surface', 6.1],
-    [dark, 'text-subtle', 'bg-surface', 6.2],
     [light, 'border-control', 'bg-surface', 4.4],
-    [dark, 'border-control', 'bg-surface', 4.0],
     [light, 'brand', 'bg-surface', 9.6],
-    [dark, 'brand', 'bg-surface', 6.9],
     [light, 'on-brand', 'brand-fill-hover', 11.6],
-    [dark, 'on-brand', 'brand-fill-hover', 8.6],
     [light, 'danger', 'bg-surface', 6.5],
-    [dark, 'danger', 'bg-surface', 8.2],
     [light, 'danger', 'danger-bg', 5.7],
-    [dark, 'danger', 'danger-bg', 7.1],
     [light, 'warning', 'warning-bg', 6.2],
-    [dark, 'warning', 'warning-bg', 8.1],
     [light, 'info', 'info-bg', 7.0],
-    [dark, 'info', 'info-bg', 7.6],
   ];
   for (const [theme, foreground, background, expected] of published) {
     const actual = ratio(color(theme, foreground), color(theme, background));
@@ -201,14 +164,12 @@ test('contract 6.2 ratios are reproduced (one decimal, as published)', () => {
   }
 });
 
-test('hover, whole app: solid brand fill with on-brand text (light #782b37 + white, dark primary fill + on-primary)', () => {
+test('hover, whole app: solid brand fill with on-brand text (#782b37 + white)', () => {
   assert.equal(light['--ls-hover-bg'], '#782b37');
   assert.equal(light['--ls-hover-text'], '#ffffff');
   assert.equal(light['--ls-hover-bg'], light['--ls-brand-fill']);
   assert.equal(light['--ls-hover-text'], light['--ls-on-brand']);
-  assert.equal(dark['--ls-hover-bg'], dark['--ls-brand-fill']);
-  assert.equal(dark['--ls-hover-text'], dark['--ls-on-brand']);
-  for (const theme of [light, dark]) {
+  for (const theme of [light]) {
     assert.equal(theme['--ls-hover-border'], theme['--ls-hover-bg']);
     assert.equal(theme['--ls-hover-ghost-border'], theme['--ls-hover-bg']);
     // The sidebar tokens are the same fill; one rule everywhere.
@@ -217,21 +178,13 @@ test('hover, whole app: solid brand fill with on-brand text (light #782b37 + whi
   }
   // The one exception: a whole table row keeps a subtle tint, never the solid fill.
   assert.notEqual(light['--ls-row-hover-bg'], light['--ls-hover-bg']);
-  assert.notEqual(dark['--ls-row-hover-bg'], dark['--ls-hover-bg']);
-  assert.deepEqual(darkSystem, darkPreview);
 });
 
-test('sidebar items: solid brand fill with its on-brand text in both themes (light red + white, dark primary fill + on-primary)', () => {
+test('sidebar items: solid brand fill with its on-brand text (red + white)', () => {
   assert.equal(light['--ls-nav-hover-bg'], '#782b37', 'the Owner brand red');
   assert.equal(light['--ls-nav-hover-text'], '#ffffff');
   assert.equal(light['--ls-nav-active-bg'], light['--ls-nav-hover-bg']);
   assert.equal(light['--ls-nav-active-text'], '#ffffff');
-  assert.equal(dark['--ls-nav-hover-bg'], dark['--ls-brand-fill'], 'the primary button fill');
-  assert.equal(dark['--ls-nav-hover-text'], dark['--ls-on-brand'], 'the primary button text');
-  assert.equal(dark['--ls-nav-active-bg'], dark['--ls-nav-hover-bg']);
-  assert.equal(dark['--ls-nav-active-text'], dark['--ls-nav-hover-text']);
-  assert.equal(dark['--ls-nav-active-bar'], 'transparent', 'the fill carries it');
-  assert.deepEqual(darkSystem, darkPreview);
   for (const [name, theme] of Object.entries(themes)) {
     for (const state of ['hover', 'active']) {
       const value = ratio(color(theme, `nav-${state}-text`), color(theme, `nav-${state}-bg`));
@@ -248,14 +201,14 @@ test('sidebar items: solid brand fill with its on-brand text in both themes (lig
   }
 });
 
-test('brand red and danger red stay distinct in both themes (contract 6.4)', () => {
-  for (const theme of [light, dark]) {
+test('brand red and danger red stay distinct (contract 6.4)', () => {
+  for (const theme of [light]) {
     assert.notEqual(color(theme, 'brand'), color(theme, 'danger'));
     assert.notEqual(color(theme, 'brand-soft'), color(theme, 'danger-bg'));
   }
 });
 
-test('auth brand panel: text is at least 4.5:1 on both gradient stops in both themes', () => {
+test('auth brand panel: text is at least 4.5:1 on both gradient stops', () => {
   for (const [themeName, theme] of Object.entries(themes)) {
     for (const text of ['auth-panel-text', 'auth-panel-text-muted']) {
       for (const stop of ['auth-panel-from', 'auth-panel-to']) {

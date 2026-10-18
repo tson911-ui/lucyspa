@@ -260,7 +260,7 @@ test('the season form: create page, access rules, loading frame for an existing 
   assert.ok(create.includes(en.seasons.createTitle));
   assert.ok(create.includes(en.seasons.form.label) && create.includes(en.seasons.form.startDate));
   assert.ok(create.includes(en.seasons.form.lastDate) && create.includes(en.seasons.form.save));
-  // The picker offers every preset; the full-page preview is one frame with a device and a theme selector.
+  // The picker offers every preset; the full-page preview is one frame with a device selector (light only).
   for (const preset of SEASON_PRESETS)
     assert.ok(create.includes(`value="${preset.key}"`), preset.key);
   assert.equal([...create.matchAll(/<iframe\b/g)].length, 1, 'one preview frame at a time');
@@ -268,8 +268,6 @@ test('the season form: create page, access rules, loading frame for an existing 
   for (const label of [
     en.seasons.form.previewDesktop,
     en.seasons.form.previewPhone,
-    en.seasons.form.previewLight,
-    en.seasons.form.previewDark,
     en.seasons.form.previewOpen,
   ]) {
     assert.ok(create.includes(label), label);

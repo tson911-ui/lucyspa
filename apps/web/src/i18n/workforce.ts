@@ -1120,13 +1120,10 @@ const vi = {
       saved: 'Đã lưu mùa lễ.',
       previewSection: 'Xem trước',
       previewHint:
-        'Trang chủ thật của website, vẽ theo đúng những gì bạn đang chỉnh (kể cả khi chưa lưu). Chỉ bạn xem được, không có đường dẫn để chia sẻ. Mỗi lần xem một khung: máy tính hoặc điện thoại, nền sáng hoặc tối.',
+        'Trang chủ thật của website, vẽ theo đúng những gì bạn đang chỉnh (kể cả khi chưa lưu). Chỉ bạn xem được, không có đường dẫn để chia sẻ. Mỗi lần xem một khung: máy tính hoặc điện thoại.',
       previewDevice: 'Thiết bị xem trước',
-      previewTheme: 'Nền xem trước',
       previewDesktop: 'Máy tính',
       previewPhone: 'Điện thoại',
-      previewLight: 'Nền sáng',
-      previewDark: 'Nền tối',
       previewFrame: 'Xem trước trang chủ',
       previewOpen: 'Mở cỡ thật',
       previewKitNote:
@@ -4100,13 +4097,10 @@ const en: Dictionary = {
       saved: 'Season saved.',
       previewSection: 'Preview',
       previewHint:
-        'The real home page of the website, drawn from what you are editing now (saved or not). Only you can open it; there is no link to share. One frame at a time: desktop or phone, light or dark.',
+        'The real home page of the website, drawn from what you are editing now (saved or not). Only you can open it; there is no link to share. One frame at a time: desktop or phone.',
       previewDevice: 'Preview device',
-      previewTheme: 'Preview theme',
       previewDesktop: 'Desktop',
       previewPhone: 'Phone',
-      previewLight: 'Light',
-      previewDark: 'Dark',
       previewFrame: 'Home page preview',
       previewOpen: 'Open at 100%',
       previewKitNote:

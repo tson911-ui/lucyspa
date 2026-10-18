@@ -2,8 +2,8 @@ import type { SeasonAccentTokens, SeasonPreset } from '@lucy-spa/contracts';
 
 // Builds season.css from the contracts registry (docs/UXUI_REDESIGN_DESIGN.md 20.2). `pnpm season:css` writes the
 // file; season-css.test.ts fails when the committed file is out of date. Selectors are scopable: a preset applies to
-// any element carrying `data-season`, so `<html>` (public site) and a preview frame (admin) share one source. Dark
-// values are declared twice, like tokens.css: the explicit toggle and the system preference.
+// any element carrying `data-season`, so `<html>` (public site) and a preview frame (admin) share one source. The app is
+// light only (Owner, 2026-10-18): one palette per preset, no dark set.
 
 export const SEASON_CSS_HEADER =
   '/* Generated from packages/contracts/src/season-registry.ts by `pnpm season:css`. Do not edit by hand. */';
@@ -37,10 +37,8 @@ function rule(selectors: string[], lines: string[], indent = ''): string {
 export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
   const blocks = presets.map((preset) => {
     const scope = `[data-season='${preset.key}']`;
-    const dark = accentLines(preset.dark, preset.ornament.dark, preset.art?.dark);
     return [
       `/* ${preset.key}: ${preset.name.en} */`,
-      // The line follows the accent on the same element, so the dark block recolors it without redeclaring it.
       rule(
         [scope],
         [
@@ -48,33 +46,7 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
           '--ls-season-line: var(--ls-season-accent);',
         ],
       ),
-      '@media (prefers-color-scheme: dark) {',
-      rule(
-        [
-          `:root:not([data-preview-theme='light']) ${scope}`,
-          `:root:not([data-preview-theme='light'])${scope}`,
-        ],
-        dark,
-        '  ',
-      ),
-      '}',
     ].join('\n');
-  });
-  // Forced themes for the admin preview (`data-preview-theme` on the frame or an ancestor, tokens.css). They come last
-  // and are as specific as the page-theme rules above, so a forced theme wins over the page theme either way.
-  const forced = presets.flatMap((preset) => {
-    const scope = `[data-season='${preset.key}']`;
-    return (['light', 'dark'] as const).map((theme) =>
-      rule(
-        [
-          // The preview stage forces the theme on <html> itself, which also carries data-season.
-          `:root[data-preview-theme='${theme}']${scope}`,
-          `:root [data-preview-theme='${theme}'] ${scope}`,
-          `:root [data-preview-theme='${theme}']${scope}`,
-        ],
-        accentLines(preset[theme], preset.ornament[theme], preset.art?.[theme]),
-      ),
-    );
   });
   const off = rule(
     ["[data-season-admin='off']", "[data-season][data-season-admin='off']"],
@@ -83,7 +55,6 @@ export function buildSeasonCss(presets: readonly SeasonPreset[]): string {
   return [
     SEASON_CSS_HEADER,
     ...blocks,
-    `/* Forced light and dark for the admin preview frames. */\n${forced.join('\n')}`,
     `/* Admin opt-out (apply_admin = false, wired in S5): no accent line. */\n${off}`,
     '',
   ].join('\n\n');

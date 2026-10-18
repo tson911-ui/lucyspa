@@ -4,14 +4,12 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { SegmentedControl } from './segmented';
 
 // The full-page live preview of a season (docs/UXUI_REDESIGN_S6_PLAN.md section 6): the real public home page in an
-// iframe at its true width (desktop 1440 or phone 390), light or dark, one frame at a time, scaled down to fit the
+// iframe at its true width (desktop 1440 or phone 390), one frame at a time, scaled down to fit the
 // column. The page inside is the app's own `season-preview` route, which draws the draft the form sends it; this
-// component is only the frame, the two selectors and the scaling. The frame's size is set from CSS variables so the
+// component is only the frame, the device selector and the scaling. The preview is light only (Owner, 2026-10-18). The frame's size is set from CSS variables so the
 // stylesheet holds no length literal.
 
 export type SeasonPreviewDevice = 'desktop' | 'phone';
-export type SeasonPreviewTheme = 'light' | 'dark';
-
 /** The width the page is laid out at inside each frame (CSS pixels). */
 export const SEASON_PREVIEW_WIDTH: Record<SeasonPreviewDevice, number> = {
   desktop: 1440,
@@ -25,22 +23,17 @@ export function previewScale(available: number, width: number): number {
 }
 
 export interface SeasonLivePreviewLabels {
-  /** Accessible names of the two selectors (not drawn). */
+  /** Accessible name of the device selector (not drawn). */
   device: string;
-  theme: string;
   desktop: string;
   phone: string;
-  light: string;
-  dark: string;
 }
 
 export function SeasonLivePreview({
   src,
   frameTitle,
   device,
-  theme,
   onDeviceChange,
-  onThemeChange,
   height,
   frameRef,
   labels,
@@ -49,9 +42,7 @@ export function SeasonLivePreview({
   src: string;
   frameTitle: string;
   device: SeasonPreviewDevice;
-  theme: SeasonPreviewTheme;
   onDeviceChange: (device: SeasonPreviewDevice) => void;
-  onThemeChange: (theme: SeasonPreviewTheme) => void;
   /** The page's own height inside the frame, reported by the page; the frame shows all of it. */
   height: number;
   frameRef: RefObject<HTMLIFrameElement | null>;
@@ -95,15 +86,6 @@ export function SeasonLivePreview({
           ]}
           value={device}
           onChange={onDeviceChange}
-        />
-        <SegmentedControl
-          label={labels.theme}
-          options={[
-            { value: 'light', label: labels.light },
-            { value: 'dark', label: labels.dark },
-          ]}
-          value={theme}
-          onChange={onThemeChange}
         />
         {actions ? <div className="ls-season-live-actions">{actions}</div> : null}
       </div>

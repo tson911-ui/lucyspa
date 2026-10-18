@@ -6,7 +6,6 @@ import {
   SeasonLivePreview,
   isSeasonArtKit,
   type SeasonPreviewDevice,
-  type SeasonPreviewTheme,
 } from '@lucy-spa/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_SOURCE, parsePreviewMessage } from '../../../lib/season-preview';
@@ -16,7 +15,7 @@ import { Button } from '../ui';
 
 /**
  * The full-page live preview of the season form (docs/UXUI_REDESIGN_S6_PLAN.md section 6): the real public home page
- * in a frame at its true width, desktop or phone, light or dark (one frame at a time), drawn from the form as it
+ * in a frame at its true width, desktop or phone (one frame at a time), drawn from the form as it
  * stands, saved or not. The form sends its state to the `season-preview` page with `postMessage` on every change; that
  * page answers "ready" (so a reopened frame or a window opened at 100% gets the state at once) and its own height.
  * Messages are accepted only from the frame or the window this panel opened, on this origin.
@@ -25,7 +24,6 @@ export function SeasonPreviewPanel({ form }: { form: SeasonForm }) {
   const { t, locale } = useWorkforce();
   const text = t.seasons.form;
   const [device, setDevice] = useState<SeasonPreviewDevice>('desktop');
-  const [theme, setTheme] = useState<SeasonPreviewTheme>('light');
   const [height, setHeight] = useState(900);
   const frame = useRef<HTMLIFrameElement | null>(null);
   const opened = useRef<Window | null>(null);
@@ -36,9 +34,9 @@ export function SeasonPreviewPanel({ form }: { form: SeasonForm }) {
       source: PREVIEW_SOURCE,
       type: 'draft' as const,
       draft: draftOfForm(form, locale),
-      theme,
+      theme: 'light' as const,
     }),
-    [form, locale, theme],
+    [form, locale],
   );
   const latest = useRef(message);
   const send = useCallback((target: Window | null) => {
@@ -100,18 +98,13 @@ export function SeasonPreviewPanel({ form }: { form: SeasonForm }) {
         src={src}
         frameTitle={text.previewFrame}
         device={device}
-        theme={theme}
         onDeviceChange={setDevice}
-        onThemeChange={setTheme}
         height={height}
         frameRef={frame}
         labels={{
           device: text.previewDevice,
-          theme: text.previewTheme,
           desktop: text.previewDesktop,
           phone: text.previewPhone,
-          light: text.previewLight,
-          dark: text.previewDark,
         }}
       />
     </FormSection>

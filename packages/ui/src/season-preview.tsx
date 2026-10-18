@@ -5,17 +5,14 @@ import { GreetingStrip, SeasonFrame } from './season-frame';
 import { SeasonOrnament } from './season-ornaments';
 
 // Admin preview of a season (docs/UXUI_REDESIGN_DESIGN.md 20.7): the real banner frame and greeting strip, scoped to
-// one preset, in a desktop-width and a phone-width frame, each in light and in dark. `data-season` scopes the preset
-// to the frame and `data-preview-theme` forces the theme there (tokens.css, season.css), so the four pictures do not
-// depend on the page theme. Pictures, not controls: nothing inside takes focus, and no public URL shows them.
+// one preset, in a desktop-width and a phone-width frame, light only (Owner, 2026-10-18). `data-season` scopes the
+// preset to the frame; `data-preview-theme` stays "light" there (no stylesheet reads it any more). Pictures, not controls: nothing inside takes focus, and no public URL shows them.
 
 export interface SeasonPreviewLabels {
   desktop: string;
   phone: string;
-  light: string;
-  dark: string;
-  /** Names the frame for assistive technology, for example "Phone, dark". */
-  frame: (device: string, theme: string) => string;
+  /** Names the frame for assistive technology, for example "Phone". */
+  frame: (device: string) => string;
   /** The sample of the accent colour (a chip) and of the unchanged brand button. */
   accentSample: string;
   buttonSample: string;
@@ -72,7 +69,6 @@ export function SeasonPresetPicker({
 }
 
 const DEVICES = ['desktop', 'phone'] as const;
-const THEMES = ['light', 'dark'] as const;
 
 export function SeasonPreview({
   presetKey,
@@ -90,30 +86,25 @@ export function SeasonPreview({
 }) {
   return (
     <div className="ls-season-previews">
-      {THEMES.flatMap((theme) =>
-        DEVICES.map((device) => {
-          const caption = labels.frame(labels[device], labels[theme]);
-          return (
-            <figure
-              key={`${theme}-${device}`}
-              className={cx('ls-season-pframe', `ls-season-pframe-${device}`)}
-            >
-              <figcaption className="ls-season-pcaption">{caption}</figcaption>
-              <div className="ls-season-pstage" data-season={presetKey} data-preview-theme={theme}>
-                <SeasonFrame ornamentId={ornamentId}>
-                  <p className="ls-season-ptitle">{title}</p>
-                  <p className="ls-season-greeting">{greeting}</p>
-                </SeasonFrame>
-                <div className="ls-season-pbody">
-                  <span className="ls-season-pchip">{labels.accentSample}</span>
-                  <span className={buttonClass('primary', 'md')}>{labels.buttonSample}</span>
-                </div>
-                <GreetingStrip ornamentId={ornamentId} greeting={greeting} />
+      {DEVICES.map((device) => {
+        const caption = labels.frame(labels[device]);
+        return (
+          <figure key={device} className={cx('ls-season-pframe', `ls-season-pframe-${device}`)}>
+            <figcaption className="ls-season-pcaption">{caption}</figcaption>
+            <div className="ls-season-pstage" data-season={presetKey} data-preview-theme="light">
+              <SeasonFrame ornamentId={ornamentId}>
+                <p className="ls-season-ptitle">{title}</p>
+                <p className="ls-season-greeting">{greeting}</p>
+              </SeasonFrame>
+              <div className="ls-season-pbody">
+                <span className="ls-season-pchip">{labels.accentSample}</span>
+                <span className={buttonClass('primary', 'md')}>{labels.buttonSample}</span>
               </div>
-            </figure>
-          );
-        }),
-      )}
+              <GreetingStrip ornamentId={ornamentId} greeting={greeting} />
+            </div>
+          </figure>
+        );
+      })}
     </div>
   );
 }

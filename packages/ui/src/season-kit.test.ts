@@ -49,18 +49,13 @@ test('particles per preset follow the approved table (flag-day presets have none
   }
 });
 
-test('every ornament color is at least 3:1 against both frame stops, in light and dark', () => {
+test('every ornament color is at least 3:1 against both frame stops', () => {
   for (const preset of SEASON_PRESETS) {
-    for (const theme of ['light', 'dark'] as const) {
-      const { frameFrom, frameTo } = preset[theme];
-      for (const color of preset.ornament[theme]) {
-        for (const stop of [frameFrom, frameTo]) {
-          const value = ratio(color, stop);
-          assert.ok(
-            value >= 3,
-            `${preset.key} ${theme}: ${color} on ${stop} = ${value.toFixed(2)}`,
-          );
-        }
+    const { frameFrom, frameTo } = preset.light;
+    for (const color of preset.ornament.light) {
+      for (const stop of [frameFrom, frameTo]) {
+        const value = ratio(color, stop);
+        assert.ok(value >= 3, `${preset.key}: ${color} on ${stop} = ${value.toFixed(2)}`);
       }
     }
   }

@@ -21,7 +21,8 @@ import { parsePublicSeason } from './season-core';
 
 export const PREVIEW_SOURCE = 'lucy-season-preview';
 
-export type PreviewTheme = 'light' | 'dark';
+/** The preview is light only (Owner, 2026-10-18); the field stays so the message shape is unchanged. */
+export type PreviewTheme = 'light';
 
 /** Everything the page needs to draw a season; `mediaIds` become the admin library's image URLs on arrival. */
 export interface SeasonPreviewDraft {
@@ -84,9 +85,7 @@ export function parsePreviewMessage(data: unknown): PreviewMessage | null {
   if (type === 'draft') {
     const theme = data['theme'];
     const draft = parseDraft(data['draft']);
-    return draft && (theme === 'light' || theme === 'dark')
-      ? { source: PREVIEW_SOURCE, type, draft, theme }
-      : null;
+    return draft && theme === 'light' ? { source: PREVIEW_SOURCE, type, draft, theme } : null;
   }
   return null;
 }

@@ -3446,7 +3446,7 @@ export const SHOP_FACT_ICONS = [
 ] as const;
 export type ShopFactIcon = (typeof SHOP_FACT_ICONS)[number];
 
-/** The icons of a "why choose us" card: one line-icon set, drawn in the theme's brand colours (light and dark). */
+/** The icons of a "why choose us" card: one line-icon set, drawn in the brand colours. */
 export const WHY_ICONS = [
   'sparkles',
   'heart',

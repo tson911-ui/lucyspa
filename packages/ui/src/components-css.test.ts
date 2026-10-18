@@ -234,7 +234,7 @@ test('hover is one theme: every interactive control reads the solid hover tokens
     rule(".ls-btn-secondary:hover:not([aria-disabled='true']):not(:disabled)"),
     /border-color:\s*var\(--ls-hover-border\)/,
   );
-  // The sidebar has its own hover (solid brand red, white text in light; the neutral hover in dark).
+  // The sidebar has its own hover (solid brand red, white text).
   assert.match(
     rule('.ls-nav-link:hover,\n  .ls-sidebar-toggle:hover'),
     /background:\s*var\(--ls-nav-hover-bg\)/,

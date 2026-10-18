@@ -181,7 +181,7 @@
 }
 
 /* The current page's highlight (pattern M8): one element behind the links that slides to the next current link on a
-   route change. It is the locked solid fill (light: brand + white text, dark: pink + dark text). Until it is placed (no
+   route change. It is the locked solid fill (brand + white text). Until it is placed (no
    scripts, first paint) the current link carries its own fill, so the menu is never without one. */
 .ls-sidebar-pill {
   position: absolute;
@@ -332,7 +332,7 @@
   flex: none;
 }
 
-/* Hover: the solid brand fill with its on-brand text in both themes (Owner rule); dark uses the primary button fill. */
+/* Hover: the solid brand fill with its on-brand text (Owner rule). */
 @media (hover: hover) and (pointer: fine) {
   .ls-nav-link:hover,
   .ls-sidebar-toggle:hover {
@@ -499,7 +499,7 @@
 /* The public site's hover and press motion on the same tokens, quieter for a dense screen: colours ease over the base
    duration; on hover a button lifts half the public distance (fine pointers only, no zoom, so a toolbar never reflows);
    on press it dips by --ls-press-scale. The hover COLOURS are not touched here: they stay the locked solid fills
-   (light: brand + white text, dark: pink + dark text); only the way they arrive is smooth. All distances are tokens,
+   (brand + white text); only the way they arrive is smooth. All distances are tokens,
    0 / 1 under reduced motion. The public site overrides this with its own, stronger rules (`.ls-site ...`). */
 .ls-btn {
   transition:
@@ -945,7 +945,7 @@ html[data-ls-motion='reduced'] .ls-shell {
   border: 1px solid var(--ls-border-control);
   border-radius: var(--ls-radius-sm);
   color: var(--ls-text);
-  background: var(--ls-bg-surface);
+  background: var(--ls-bg-field);
   font: inherit;
   /* Same focus micro-interaction as `.ls-input` (these are plain inputs, not the component). */
   outline: 2px solid transparent;

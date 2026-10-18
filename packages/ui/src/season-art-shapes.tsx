@@ -4,7 +4,7 @@ import { starPoints } from './season-ornaments';
 
 // Drawing primitives shared by the S6d/S6e kits (Valentine, 8/3, 20/10, Mid-Autumn, 30/4-1/5, 2/9, Vu Lan). Every
 // shape is a `<g>` centred on (0, 0) that takes palette key names (`art('rose')` is `var(--ls-art-rose)`), never a
-// color of its own, so one drawing follows each kit's palette, light and dark. Decoration only (the callers wrap them
+// color of its own, so one drawing follows each kit's palette. Decoration only (the callers wrap them
 // in an `ArtSvg`).
 
 /** `translate(x y) rotate(r) scale(s)`, trimmed. */

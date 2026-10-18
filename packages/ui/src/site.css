@@ -233,16 +233,8 @@ html[data-ls-motion='reduced'] .ls-site-lead {
     color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-/* The current entry is always the solid brand pill (light: brand red with white text; dark: pink with dark text), on
-   every page, header state and season: the nav-active tokens, the same ones the staff sidebar uses. Here is the version
-   without scripts or before the pill is placed; once the pill is placed (menu pill section below) the pill carries it. */
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-site-nav:not([data-pill='still'], [data-pill='slide']) a:hover:not([aria-current='page']) {
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
-  }
-}
+/* The states of the menu (the current entry's neutral pill, the hover fade) are one pattern with the account tabs and the filter
+   chips: foundation-v2.css (Owner, 2026-10-18). */
 
 /* The menu sits next to the logo and the tools at the trailing edge, so the member entries that arrive once the session
    is known grow into free space and nothing else moves. */
@@ -495,7 +487,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
 
 /* On a white band a card takes the page colour so it still reads as a surface; border, radius and shadow stay the same everywhere. */
 
-/* Hover (Owner rule): solid brand red with white text in light mode, the pink accent in dark mode. */
+/* Hover (Owner rule): solid brand red with white text. */
 
 .ls-site-link {
   display: inline-flex;
@@ -829,8 +821,7 @@ html[data-ls-motion='reduced'] .ls-site-lead {
     border-color var(--ls-dur-fast) var(--ls-ease-out);
 }
 
-/* A row answers the pointer with the brand tokens like every other row of the site: solid red and white in light mode, the
-   pink accent in dark mode. What it holds (time, price, the note, the tick) follows the row's colour. */
+/* A row answers the pointer with the brand tokens like every other row of the site: solid red and white. What it holds (time, price, the note, the tick) follows the row's colour. */
 @media (hover: hover) and (pointer: fine) {
   .ls-choice:not(.ls-choice-disabled):hover {
     border-color: var(--ls-hover-border);
@@ -1260,13 +1251,6 @@ a.ls-bell-body:focus-visible .ls-bell-time {
   transition:
     background var(--ls-dur-fast) var(--ls-ease-out),
     color var(--ls-dur-fast) var(--ls-ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .ls-subnav:not([data-pill='still'], [data-pill='slide']) a:hover:not([aria-current='page']) {
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
-  }
 }
 
 /* The Back button of a full-width public flow (the booking page) sits right under the header: give it room above. */
@@ -1989,7 +1973,7 @@ html[data-ls-motion='reduced'] .ls-site .ls-reveal[data-reveal='hidden'] {
   transition: scale var(--ls-dur-base) var(--ls-ease-premium);
 }
 
-/* Each button wears its app's familiar colour with a white icon, in light and dark alike (Owner 2026-10-06): Zalo blue, the
+/* Each button wears its app's familiar colour with a white icon, (Owner 2026-10-06): Zalo blue, the
    Messenger gradient, and the phone-call green. The toggle alone keeps the brand fill. */
 .ls-contact-link[data-kind='zalo'] .ls-contact-icon {
   background: var(--ls-brand-zalo);
@@ -2286,8 +2270,8 @@ button.ls-contact-link {
   line-height: var(--ls-lh-small);
 }
 
-/* A row of a table on the customer side answers the pointer like every other row of the site: solid brand red with white text in light
-   mode, the pink accent in dark mode (the kit's pale tint belongs to the staff tables). A link in the row follows the row's colour. */
+/* A row of a table on the customer side answers the pointer like every other row of the site: solid brand red with white text
+   (the kit's pale tint belongs to the staff tables). A link in the row follows the row's colour. */
 @media (hover: hover) and (pointer: fine) {
   .ls-site .ls-table tbody tr:hover td {
     background: var(--ls-hover-bg);

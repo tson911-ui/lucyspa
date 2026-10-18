@@ -79,12 +79,10 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
   // The on-screen keyboard shrinks the page (the shell then ends above it) instead of covering it.
   interactiveWidget: 'resizes-content',
-  // The appearance follows the device only (Owner A1, 2026-10-16): both schemes, and the browser bar takes the page base of each.
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#000000' },
-  ],
+  // Light only (Owner, 2026-10-18): the device setting never changes the app; the browser bar takes the white page base.
+  // The favicon is the one exception: it follows the device through `media` on its links (see the head below).
+  colorScheme: 'light',
+  themeColor: '#ffffff',
 };
 
 export function generateStaticParams() {

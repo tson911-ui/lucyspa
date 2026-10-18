@@ -848,15 +848,11 @@ test('open states: tablet overlay above sticky content, nav drawer leaves a stri
   assert.match(sheet, /ls-drawer ls-drawer-bottom/);
 });
 
-test('auth card UX: token rhythm, elevation token in every theme block, segmented and password styles', () => {
+test('auth card UX: token rhythm, elevation token, segmented and password styles', () => {
   const card = block(shellCss, '.ls-auth-card');
   assert.match(card, /box-shadow:\s*var\(--ls-auth-card-shadow\)/);
   const tokens = readFileSync(new URL('tokens.css', import.meta.url), 'utf8');
-  assert.equal(
-    tokens.match(/--ls-auth-card-shadow:/g)?.length,
-    4,
-    'defined for light, the forced dark preview, the dark system preference and the forced-light preview scope',
-  );
+  assert.equal(tokens.match(/--ls-auth-card-shadow:/g)?.length, 1, 'defined once (light only)');
   // Spacing between blocks comes from spacing tokens only (no px/rem literals on margins or gaps).
   const rhythm = [...shellCss.matchAll(/\.ls-auth-card > [^{]*\{([^}]*)\}/g)].map((m) => m[1]!);
   assert.ok(rhythm.length >= 4, 'rhythm rules exist');
@@ -912,11 +908,7 @@ test('auth styles: full-screen flat sunken canvas (v2), one hairline raised card
     /\.ls-auth-top \.ls-btn-ghost:hover:not\(\[aria-disabled='true'\]\):not\(:disabled\) \{[^}]*background: var\(--ls-hover-bg\)/,
   );
   const card = block(shellCss, '.ls-auth-card');
-  assert.match(
-    card,
-    /background:\s*var\(--ls-bg-surface\)/,
-    'light card in light, dark card in dark',
-  );
+  assert.match(card, /background:\s*var\(--ls-bg-surface\)/, 'a light card');
   assert.match(card, /color:\s*var\(--ls-text\)/);
   assert.match(card, /width:\s*min\(100%, 26rem\)/, 'the card width of before');
   assert.doesNotMatch(

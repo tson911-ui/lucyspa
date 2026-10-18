@@ -5,15 +5,12 @@ import { SEASON_PRESETS } from '@lucy-spa/contracts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SeasonPresetPicker, SeasonPreview, type SeasonPreviewLabels } from './index';
 
-// The admin season preview and preset picker (docs/UXUI_REDESIGN_DESIGN.md 20.7): four pictures (desktop and phone,
-// light and dark), each scoped to the preset and forced to its theme, none of them a control; and one radio card
-// per preset.
+// The admin season preview and preset picker (docs/UXUI_REDESIGN_DESIGN.md 20.7): two pictures (desktop and phone,
+// light only since 2026-10-18), each scoped to the preset, none of them a control; and one radio card per preset.
 const labels: SeasonPreviewLabels = {
   desktop: 'Desktop',
   phone: 'Phone',
-  light: 'light',
-  dark: 'dark',
-  frame: (device, theme) => `${device}, ${theme}`,
+  frame: (device) => device,
   accentSample: 'Accent',
   buttonSample: 'Book now',
 };
@@ -29,32 +26,31 @@ const render = (presetKey: string, ornamentId: Parameters<typeof SeasonPreview>[
     />,
   );
 
-test('season preview: desktop and phone in light and dark, scoped to the preset and forced per frame', () => {
+test('season preview: desktop and phone, light only, scoped to the preset', () => {
   const preset = SEASON_PRESETS[0]!;
   const html = render(preset.key, preset.ornament.id);
-  assert.equal([...html.matchAll(/<figure/g)].length, 4);
+  assert.equal([...html.matchAll(/<figure/g)].length, 2);
   const stages = [...html.matchAll(/<div class="ls-season-pstage"[^>]*>/g)].map(
     (match) => match[0],
   );
-  assert.equal(stages.length, 4);
-  for (const theme of ['light', 'dark']) {
-    const forced = stages.filter((tag) => tag.includes(`data-preview-theme="${theme}"`));
-    assert.equal(forced.length, 2, `${theme}: desktop and phone`);
-    for (const tag of forced) assert.match(tag, new RegExp(`data-season="${preset.key}"`));
+  assert.equal(stages.length, 2);
+  for (const tag of stages) {
+    assert.match(tag, /data-preview-theme="light"/);
+    assert.match(tag, new RegExp(`data-season="${preset.key}"`));
   }
-  // The caption stays on the page theme, so it is always readable.
+  assert.doesNotMatch(html, /data-preview-theme="dark"/);
   assert.doesNotMatch(html, /<figure[^>]*data-preview-theme/);
   for (const device of ['desktop', 'phone']) {
-    assert.equal([...html.matchAll(new RegExp(`ls-season-pframe-${device}`, 'g'))].length, 2);
+    assert.equal([...html.matchAll(new RegExp(`ls-season-pframe-${device}`, 'g'))].length, 1);
   }
-  for (const caption of ['Desktop, light', 'Desktop, dark', 'Phone, light', 'Phone, dark']) {
+  for (const caption of ['Desktop', 'Phone']) {
     assert.ok(html.includes(`>${caption}</figcaption>`), caption);
   }
   // The real frame and the strip are drawn in every picture, with the greeting and the brand heading.
-  assert.equal([...html.matchAll(/ls-season-frame-banner/g)].length, 4);
-  assert.equal([...html.matchAll(/ls-season-frame-strip/g)].length, 4);
-  assert.equal([...html.matchAll(/Happy New Year/g)].length, 8);
-  assert.equal([...html.matchAll(/Lucy Spa/g)].length, 4);
+  assert.equal([...html.matchAll(/ls-season-frame-banner/g)].length, 2);
+  assert.equal([...html.matchAll(/ls-season-frame-strip/g)].length, 2);
+  assert.equal([...html.matchAll(/Happy New Year/g)].length, 4);
+  assert.equal([...html.matchAll(/Lucy Spa/g)].length, 2);
 });
 
 test('season preview: a picture, not a control (nothing focusable, nothing interactive, decorations hidden)', () => {

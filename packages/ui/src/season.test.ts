@@ -11,7 +11,7 @@ import {
 import { buildSeasonCss } from './season-css';
 
 // Season layer (docs/UXUI_REDESIGN_DESIGN.md 20.1-20.3, 20.9; Owner decisions in 20.10). Registry data, generated CSS,
-// neutral defaults, contrast for presets x themes, and the scoped yellow exception (Q-S1).
+// neutral defaults, contrast for presets, and the scoped yellow exception (Q-S1). Light only since 2026-10-18.
 const read = (name: string): string => readFileSync(new URL(name, import.meta.url), 'utf8');
 const tokensCss = read('./tokens.css');
 const seasonCss = read('./season.css');
@@ -40,12 +40,7 @@ function block(css: string, selector: RegExp): Record<string, string> {
 }
 
 const light = block(tokensCss, /^:root\s*\{/m);
-// No theme switch (session 10, A1): the dark block is the forced preview copy (the system-preference copy is identical, tokens.test.ts).
-const dark = block(
-  tokensCss,
-  /^:root\[data-preview-theme=['"]dark['"]\],\s*\[data-preview-theme=['"]dark['"]\]\s*\{/m,
-);
-const themes = { light, dark } as const;
+const themes = { light } as const;
 
 function rgb(hex: string): [number, number, number] {
   const value = parseInt(hex.slice(1), 16);
@@ -118,12 +113,7 @@ test('every preset has names, greetings up to 80 characters, hex colors and a va
       );
       assert.doesNotMatch(greeting, /[<>]/, `${preset.key}: greeting is plain text`);
     }
-    for (const value of [
-      ...accentValues(preset.light),
-      ...accentValues(preset.dark),
-      ...preset.ornament.light,
-      ...preset.ornament.dark,
-    ]) {
+    for (const value of [...accentValues(preset.light), ...preset.ornament.light]) {
       assert.match(value, HEX, `${preset.key}: ${value}`);
     }
     assert.match(preset.ornament.id, /^[a-z-]+$/);
@@ -148,10 +138,7 @@ test('lunar holidays (Tet, Mid-Autumn, Vu Lan) and the custom-event kit have no 
   });
 });
 
-for (const [themeName, theme] of Object.entries(themes) as [
-  'light' | 'dark',
-  Record<string, string>,
-][]) {
+for (const [themeName, theme] of Object.entries(themes) as ['light', Record<string, string>][]) {
   test(`${themeName}: every preset passes the contrast rules on every surface (20.3)`, () => {
     const surfaces = ['bg-page', 'bg-surface', 'bg-raised', 'bg-sunken'].map((name) =>
       tokenColor(theme, name),
@@ -181,14 +168,14 @@ for (const [themeName, theme] of Object.entries(themes) as [
 
 test('accent and frame colors are never yellow or gold; yellow ornaments exist only for Tet, Mid-Autumn, 30/4-1/5 and 2/9 (Q-S1)', () => {
   for (const preset of SEASON_PRESETS) {
-    for (const value of [...accentValues(preset.light), ...accentValues(preset.dark)]) {
+    for (const value of accentValues(preset.light)) {
       assert.equal(isGoldHue(value), false, `${preset.key}: ${value} is a gold-hue accent token`);
     }
-    const ornaments = [...preset.ornament.light, ...preset.ornament.dark];
+    const ornaments = [...preset.ornament.light];
     const gold = ornaments.filter(isGoldHue);
     if (GOLD_ORNAMENT_PRESETS.includes(preset.key)) {
-      assert.ok(gold.length > 0, `${preset.key} keeps its warm ornament color in both themes`);
-      assert.ok(isGoldHue(preset.ornament.light[0]) && isGoldHue(preset.ornament.dark[0]));
+      assert.ok(gold.length > 0, `${preset.key} keeps its warm ornament color`);
+      assert.ok(isGoldHue(preset.ornament.light[0]));
     } else {
       assert.deepEqual(gold, [], `${preset.key}: no gold-hue ornament allowed`);
     }
@@ -199,7 +186,7 @@ test('flag-day presets: a brighter red banner with a solid yellow star, while ac
   for (const key of FLAG_DAY_PRESETS) {
     const preset: SeasonPreset = SEASON_PRESETS.find((candidate) => candidate.key === key)!;
     for (const [themeName, theme] of Object.entries(themes)) {
-      const tokens = preset[themeName as 'light' | 'dark'];
+      const tokens = preset[themeName as 'light'];
       // The accent (text, boundary, admin line) is never confusable with the danger status color.
       const danger = hsv(tokenColor(theme, 'danger')).hue;
       const accent = hsv(tokens.accent).hue;
@@ -222,8 +209,8 @@ test('flag-day presets: a brighter red banner with a solid yellow star, while ac
         );
       }
     }
-    // A solid yellow star: the first ornament color is yellow in both themes.
-    assert.ok(isGoldHue(preset.ornament.light[0]) && isGoldHue(preset.ornament.dark[0]), key);
+    // A solid yellow star: the first ornament color is yellow.
+    assert.ok(isGoldHue(preset.ornament.light[0]), key);
   }
 });
 
@@ -232,41 +219,19 @@ test('season.css is generated from the registry (fails when stale; run pnpm seas
   assert.equal(squash(seasonCss), squash(buildSeasonCss(SEASON_PRESETS)));
 });
 
-test('every preset has scopable light, forced-preview-dark and dark-system blocks, and the dark blocks agree', () => {
+test('every preset has one scopable light block, and the stylesheet has no dark or forced-theme rule', () => {
   assert.doesNotMatch(seasonCss, /data-theme=/, 'no theme switch (A1)');
+  assert.doesNotMatch(
+    seasonCss,
+    /prefers-color-scheme|data-preview-theme/,
+    'light only (2026-10-18)',
+  );
   for (const preset of SEASON_PRESETS) {
     const scope = `[data-season='${preset.key}']`;
     const escaped = scope.replace(/[[\]'.]/g, '\\$&');
     const lightBlock = block(seasonCss, new RegExp(`^${escaped}\\s*\\{`, 'm'));
-    const darkPreview = block(
-      seasonCss,
-      new RegExp(`^:root \\[data-preview-theme='dark'\\] ${escaped}`, 'm'),
-    );
-    const darkSystem = block(
-      seasonCss,
-      new RegExp(`^\\s*:root:not\\(\\[data-preview-theme='light'\\]\\) ${escaped}`, 'm'),
-    );
-    // The forced preview block repeats every accent token of the system block (and nothing that the system block lacks).
-    assert.deepEqual(darkPreview, darkSystem, `${preset.key}: dark blocks differ`);
     assert.equal(lightBlock['--ls-season-accent'], preset.light.accent);
-    assert.equal(darkSystem['--ls-season-accent'], preset.dark.accent);
     assert.equal(lightBlock['--ls-season-line'], 'var(--ls-season-accent)');
-    assert.equal(
-      '--ls-season-line' in darkSystem,
-      false,
-      `${preset.key}: the line follows the accent, so the dark block does not redeclare it`,
-    );
-    // The selector also attaches to the element that carries data-season itself (public <html>; the admin season preview
-    // stage sets data-preview-theme and data-season on <html> too).
-    assert.match(
-      seasonCss,
-      new RegExp(`:root:not\\(\\[data-preview-theme='light'\\]\\)${escaped}`),
-    );
-    assert.match(
-      seasonCss,
-      new RegExp(`:root\\[data-preview-theme='dark'\\]${escaped}`),
-      `${preset.key}: the forced dark preview on <html> reaches the season tokens`,
-    );
   }
   assert.match(seasonCss, /\[data-season\]\[data-season-admin='off'\]/);
 });
@@ -288,15 +253,7 @@ test('neutral defaults equal the brand, so nothing changes without data-season',
       '--ls-season-line-w': '2px',
     },
   );
-  // The dark blocks inherit those references (they resolve to the dark brand values), so they declare none.
-  assert.deepEqual(
-    Object.keys(dark).filter((name) => name.startsWith('--ls-season-')),
-    [],
-  );
-  assert.ok(
-    tokensCss.indexOf('--ls-season-accent:') < tokensCss.indexOf("[data-preview-theme='dark']"),
-    'defaults are declared before season.css overrides them',
-  );
+  assert.doesNotMatch(tokensCss, /data-preview-theme/);
 });
 
 test('only the admin topbar reads a season token outside season components (20.5)', () => {

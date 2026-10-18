@@ -18,7 +18,7 @@ const BUDS: ReadonlyArray<readonly [number, number]> = [
 
 /**
  * Botanical line art as a tiling SVG pattern. Stroke only, in `currentColor`; the parent sets the
- * color and a low opacity. No image file, so it renders in both themes and costs no request.
+ * color and a low opacity. No image file, so it costs no request.
  */
 export function BotanicalPattern({ className }: { className?: string | undefined }) {
   const key = useId().replace(/[^a-zA-Z0-9_-]/g, '');
@@ -68,9 +68,9 @@ export function BotanicalPattern({ className }: { className?: string | undefined
 /**
  * Sign-in and recovery pages (contract 12.6, Owner correction after Step 5): the centered card of
  * before, on a full-screen brand background (deep brand-red gradient plus botanical line art, the same
- * in light and dark). The wordmark sits at the top inside the card; the language switch and theme
+ * on every device). The wordmark sits at the top inside the card; the language switch and theme
  * toggle sit at the top right of the page, styled for the red background. The card keeps the normal
- * surface tokens (light card in light mode, dark card in dark mode). The background is decoration and
+ * surface tokens (a light card). The background is decoration and
  * hidden from assistive technology; a photo can replace it later.
  */
 export function AuthLayout({

@@ -1,5 +1,5 @@
-/* Admin season preview (SeasonPreview, docs/UXUI_REDESIGN_DESIGN.md 20.7): desktop and phone frames, each forced to light
-   and to dark. It is the one place outside the season components that reads the accent tokens, to show the accent. */
+/* Admin season preview (SeasonPreview, docs/UXUI_REDESIGN_DESIGN.md 20.7): desktop and phone frames, light only (Owner,
+   2026-10-18). It is the one place outside the season components that reads the accent tokens, to show the accent. */
 .ls-season-previews {
   display: grid;
   gap: var(--ls-space-4);

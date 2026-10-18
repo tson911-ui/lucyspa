@@ -500,7 +500,7 @@
 }
 
 /* ---- Booking flow --------------------------------------------------------------------------------------------------------------------- */
-/* The current step is told by its bar (the accent) and its weight; its words are ink, not the accent (B22: nothing reads as pink in dark). */
+/* The current step is told by its bar (the accent) and its weight; its words are ink, not the accent (B22: nothing reads as pink). */
 [data-ui='v2'] .ls-book-title .ls-steps li[aria-current='step'] {
   color: var(--ls-text);
 }

@@ -1,8 +1,8 @@
 /* The customer pages in the v2 look (DESIGN.md 9): the home page (C10) and the service pages (C11), and the pages that follow in the later Steps.
    Every rule sits under `[data-ui='v2']`, like components-v2.css and chrome-v2.css, and loads after them. Tokens only: no color, no spacing
    literal, no shadow, no gradient. The direction C rules it replaces are deleted from customer.css as each page is rebuilt (site.css keeps
-   its own until C18). Bands alternate `.ls-band--base` and `.ls-band--alt` (tokens.css); inside a band a card or a tile takes the step the
-   band is not (`--ls-bg-surface`), and a field or a placeholder the same (`--ls-bg-field`). */
+   its own until C18). One surface rule (Owner, 2026-10-18): every section sits on the grey page (`--ls-bg-page`, no alternating bands) and a
+   card or a tile on it is white (`--ls-bg-surface`); a field is the step its container is not (`--ls-bg-field`, `--ls-bg-field-in-card`). */
 
 /* ---- Home: hero (9.1, item 1) -------------------------------------------------------------------------------------------------------- */
 /* Full width, about 80 % of the screen and never under 35 rem. With the shop's photo: the photo under one flat scrim, white text, the
@@ -29,7 +29,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: var(--ls-image-filter);
 }
 
 [data-ui='v2'] .ls-home-hero-scrim {
@@ -98,6 +97,7 @@
    the accent). One uniform logo height; the track moves slowly and endlessly (two equal copies, translated by half), and pauses while the
    pointer is over it, a link has focus or a finger is down. Reduced motion and the off switch draw a still, centred, wrapped row. */
 [data-ui='v2'] .ls-brand-band {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--ls-space-4);
@@ -107,27 +107,39 @@
   color: var(--ls-on-brand);
 }
 
-/* The logos move inside their own window; the pause control sits outside it at the trailing edge. */
+/* The logos move inside their own window, edge to edge. */
 [data-ui='v2'] .ls-brand-view {
   flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
-/* The pause control (WCAG 2.2.2, moving content): a checkbox drawn as a 44 px round button with the pause icon; checked = paused, and the icon is
-   the play triangle. The icons are drawn from the icon set's shapes as masks in the label color. */
+/* The pause control (WCAG 2.2.2, DESIGN.md 12): a checkbox, checked = paused. Visually hidden until a keyboard user focuses it (Owner,
+   2026-10-18: no visible button for a pointer); then it is a 44 px round button with the pause icon (the play triangle when checked) over
+   the strip's trailing edge. The icons are the icon set's shapes as masks in the label colour. */
 [data-ui='v2'] .ls-brand-pause {
-  position: relative;
-  flex: none;
-  width: var(--ls-control-h);
-  height: var(--ls-control-h);
-  margin: 0;
-  border: 1px solid color-mix(in srgb, var(--ls-on-brand) 70%, transparent);
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--ls-gutter);
+  z-index: 1;
+  inline-size: var(--ls-control-h);
+  block-size: var(--ls-control-h);
+  margin: auto;
+  border: 1px solid var(--ls-border-control);
   border-radius: var(--ls-radius-full);
-  background: transparent;
-  color: var(--ls-on-brand);
+  background: var(--ls-bg-raised);
+  color: var(--ls-text);
   appearance: none;
   cursor: pointer;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+[data-ui='v2'] .ls-brand-pause:focus-visible {
+  clip-path: none;
+  opacity: 1;
+  outline: 2px solid var(--ls-focus);
+  outline-offset: var(--ls-space-1);
 }
 
 [data-ui='v2'] .ls-brand-pause::before {
@@ -147,25 +159,14 @@
     center / contain no-repeat;
 }
 
-[data-ui='v2'] .ls-brand-pause:focus-visible {
-  outline: 2px solid var(--ls-on-brand);
-  outline-offset: var(--ls-space-1);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-brand-pause:hover {
-    border-color: var(--ls-on-brand);
-  }
-}
-
 [data-ui='v2'] .ls-brand-track {
   display: flex;
   width: max-content;
   animation: ls-brand-scroll calc(var(--ls-brand-seconds) * 1s) linear infinite;
 }
 
-/* Paused while a link has focus, a finger is down, the pause box is checked and, on a mouse only, while the pointer is over the band (a tap on a
-   touch screen would leave :hover stuck, so the pointer pause is gated). */
+/* Paused while a link or the pause box has keyboard focus, a finger is down, the pause box is checked and, on a mouse only, while the
+   pointer is over the band (a tap on a touch screen would leave :hover stuck, so the pointer pause is gated). */
 [data-ui='v2']
   .ls-brand-band:is(:focus-within, :active, :has(.ls-brand-pause:checked))
   .ls-brand-track {
@@ -181,10 +182,10 @@
 [data-ui='v2'] .ls-brand-set {
   display: flex;
   flex: none;
-  gap: var(--ls-space-9);
+  gap: var(--ls-space-10);
   margin: 0;
   padding: 0;
-  padding-inline-end: var(--ls-space-9);
+  padding-inline-end: var(--ls-space-10);
   list-style: none;
 }
 
@@ -313,11 +314,16 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   [data-ui='v2'] .ls-home-facts {
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
   }
 
+  /* Each column spans both rows and shares them with its neighbours (subgrid): the values start on one line, the captions on the next. */
   [data-ui='v2'] .ls-home-fact,
   [data-ui='v2'] .ls-home-fact:first-child,
   [data-ui='v2'] .ls-home-fact:last-child {
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    align-content: start;
     padding: var(--ls-space-2) var(--ls-space-6);
     border-top: 0;
     border-inline-start: 1px solid var(--ls-border);
@@ -329,12 +335,13 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   }
 }
 
+/* The value: the body step in the title weight and ink (Owner, 2026-10-18: the figures were larger than their words). */
 [data-ui='v2'] .ls-home-fact-figure {
   margin: 0;
   color: var(--ls-text);
-  font-size: var(--ls-type-title);
+  font-size: var(--ls-type-body);
   font-weight: var(--ls-weight-title);
-  line-height: var(--ls-lh-title);
+  line-height: var(--ls-lh-body);
   overflow-wrap: anywhere;
   text-wrap: balance;
   font-variant-numeric: lining-nums tabular-nums;
@@ -353,15 +360,16 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   }
 }
 
+/* The caption: the same size as the value, regular and muted, icon first. */
 [data-ui='v2'] .ls-home-fact-caption {
   display: flex;
   gap: var(--ls-space-2);
   align-items: center;
   margin: 0;
   color: var(--ls-text-muted);
-  font-size: var(--ls-type-label);
-  font-weight: var(--ls-weight-label);
-  line-height: var(--ls-lh-label);
+  font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-body);
+  line-height: var(--ls-lh-body);
 }
 
 [data-ui='v2'] .ls-home-fact-caption .ls-icon-lead {
@@ -432,7 +440,6 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: var(--ls-image-filter);
 }
 
 /* The Owner's slider keeps its picture, words and controls. Here the picture is the 18 px framed photo, the words sit under it (never on
@@ -451,10 +458,6 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   aspect-ratio: 4 / 3;
   border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-field);
-}
-
-[data-ui='v2'] .ls-home-split-media .ls-slider-media img {
-  filter: var(--ls-image-filter);
 }
 
 [data-ui='v2'] .ls-home-split-media .ls-slider-caption {
@@ -494,11 +497,12 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
   align-content: start;
 }
 
+/* The group title is one step above the rows (the title step against the body step; Owner, 2026-10-18: title and rows were too close). */
 [data-ui='v2'] .ls-home-top-title {
   margin: 0;
-  font-size: var(--ls-type-heading);
+  font-size: var(--ls-type-title);
   font-weight: var(--ls-weight-title);
-  line-height: var(--ls-lh-heading);
+  line-height: var(--ls-lh-title);
 }
 
 [data-ui='v2'] .ls-home-top-desc {
@@ -542,6 +546,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-brand-item[aria-hidden='true']
 
 [data-ui='v2'] .ls-home-top-name {
   font-size: var(--ls-type-body);
+  font-weight: var(--ls-weight-body);
   line-height: var(--ls-lh-heading);
   overflow-wrap: anywhere;
 }
@@ -679,7 +684,6 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-snap-track {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: var(--ls-image-filter);
   transition: scale var(--ls-dur-base) var(--ls-ease-out);
 }
 
@@ -693,14 +697,13 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   transition: none;
 }
 
+/* The labels are the first row of the card's text (they were laid over the photo's corner). */
 [data-ui='v2'] .ls-pcard-labels {
-  position: absolute;
-  inset-block-start: var(--ls-space-3);
-  inset-inline-start: var(--ls-space-3);
-  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: var(--ls-space-2);
+  align-items: center;
+  align-content: start;
 }
 
 [data-ui='v2'] .ls-pcard-body {
@@ -761,7 +764,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   display: block;
   width: 60%;
   border-radius: var(--ls-radius-sm);
-  background: var(--ls-bg-surface);
+  background: var(--ls-bg-field);
   color: transparent;
 }
 
@@ -809,42 +812,17 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   line-height: var(--ls-lh-heading);
 }
 
-[data-ui='v2'] .ls-home-cats {
-  display: grid;
-  gap: var(--ls-space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 640px) {
-  [data-ui='v2'] .ls-home-cats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  [data-ui='v2'] .ls-home-cats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* A tile: the flat placeholder (the card step), the name at the bottom-left, the whole tile one link. Hover is the solid accent (rule 4). */
+/* A tile: the flat placeholder (the card step), the name at the bottom-left, the whole tile one link. Every tile is 4:3 (a phone's one-across
+   tile too: the tile size is the same everywhere in a row, 'Khác' included). Hover is one grey step (R11). */
 [data-ui='v2'] .ls-home-cat {
   display: flex;
   align-items: flex-end;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   padding: var(--ls-space-5);
   border-radius: var(--ls-radius-lg);
   background: var(--ls-bg-surface);
   color: var(--ls-text);
   text-decoration: none;
-}
-
-@media (min-width: 640px) {
-  [data-ui='v2'] .ls-home-cat {
-    aspect-ratio: 4 / 3;
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -869,7 +847,6 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: var(--ls-image-filter);
 }
 
 [data-ui='v2'] .ls-home-cat[data-media='photo']::after {
@@ -896,10 +873,11 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   }
 }
 
+/* The tile's name is the label step: clearly smaller than the group heading above the row (the heading step) and the section title. */
 [data-ui='v2'] .ls-home-cat-name {
-  font-size: var(--ls-type-heading);
-  font-weight: var(--ls-weight-title);
-  line-height: var(--ls-lh-heading);
+  font-size: var(--ls-type-label);
+  font-weight: var(--ls-weight-label);
+  line-height: var(--ls-lh-label);
   overflow-wrap: anywhere;
 }
 
@@ -954,7 +932,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 
 /* ---- Home: the running offer ----------------------------------------------------------------------------------------------------------- */
 /* One flat accent block (no gradient, no shadow) in the Owner's words, with the campaign's banner beside them when there is one. The
-   button is the inverse of the block (on-brand fill, brand text), so it reads in both modes; its hover darkens the fill and keeps an
+   button is the inverse of the block (on-brand fill, brand text), so it reads on the block; its hover darkens the fill and keeps an
    on-brand outline, because the solid-accent hover would vanish on the accent block. */
 [data-ui='v2'] .ls-offer-wrap {
   padding-block: var(--ls-band-pad);
@@ -1051,7 +1029,6 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: var(--ls-image-filter);
 }
 
 [data-ui='v2'] .ls-offer-card .ls-btn-offer {
@@ -1068,10 +1045,10 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   }
 }
 
-/* The floating contact button is fixed to the corner of the screen (site.css), so the footer keeps room under its last row for it: at the end of the
-   page the button rests in that padding and covers no footer text or link (56 px button, 16 px above and below). */
+/* The floating contact button is fixed to the corner of the screen (site.css): the footer's base row (chrome-v2.css) is as tall as the button's
+   room and keeps its trailing corner empty, so at the end of the page the button covers no footer text or link. */
 [data-ui='v2'] .ls-site-footer {
-  padding-block-end: calc(var(--ls-space-9) + var(--ls-space-2) + var(--ls-space-4) * 2);
+  padding-block-end: 0;
 }
 
 /* ---- Services list (9.2) ----------------------------------------------------------------------------------------------------------------- */
@@ -1374,7 +1351,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
     padding: var(--ls-space-3) var(--ls-gutter) calc(var(--ls-space-3) + var(--ls-safe-bottom));
     border-top: 1px solid var(--ls-border);
     border-radius: 0;
-    background: var(--ls-bg-page);
+    background: var(--ls-bg-raised);
     box-shadow: none;
   }
 }
@@ -1580,16 +1557,12 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   background: var(--ls-bg-field);
 }
 
-[data-ui='v2'] .ls-prod-slide img {
-  filter: var(--ls-image-filter);
-}
-
 [data-ui='v2'] .ls-prod-arrow {
   position: absolute;
   top: 50%;
   z-index: 1;
   translate: 0 -50%;
-  background: var(--ls-band-base);
+  background: var(--ls-bg-raised);
   color: var(--ls-text);
 }
 
@@ -2003,7 +1976,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 [data-ui='v2'] .ls-action-bar {
   border-top: 1px solid var(--ls-border);
   border-radius: 0;
-  background: var(--ls-bg-page);
+  background: var(--ls-bg-raised);
   box-shadow: none;
 }
 
@@ -2032,7 +2005,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
 }
 
 /* ---- Sign-in, register, forgot password (C15, DESIGN.md 9.2, Q4) ------------------------------------------------------------------------ */
-/* One band of the flat panel color (the accent; #1c1c1e in dark; no gradient, no shadow) that fills the page between the header and the footer,
+/* One band of the flat panel color (the accent; no gradient, no shadow) that fills the page between the header and the footer,
    the wordmark above one 26 rem card in the raised surface with a hairline. Staff sign-in is another layout (`.ls-auth`) and keeps its own. */
 [data-ui='v2'] .ls-site-main:has(> .ls-auth-panel) {
   display: flex;
@@ -2070,9 +2043,9 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   --ls-wordmark-display: var(--ls-type-title);
 }
 
-/* The card: a raised surface with a hairline; a field on it is the band-alt step (the card is not that step). */
+/* The card: a raised surface with a hairline; a field on it is the page grey (the card is white). */
 [data-ui='v2'] .ls-auth-panel .ls-member-card {
-  --ls-bg-field: var(--ls-band-alt);
+  --ls-bg-field: var(--ls-bg-field-in-card);
   width: 100%;
   padding: var(--ls-space-6);
   border: 1px solid var(--ls-border);
@@ -2138,7 +2111,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   box-shadow: none;
 }
 
-/* The tabs: the header menu's look (14 / 500 ink; the current page is accent text with a 2 px underline; hover and focus are the solid accent pill). */
+/* The tabs: the header menu's look (14 / 500 ink; the current tab is a grey pill, hover fades a lighter grey in; never an underline). */
 [data-ui='v2'] .ls-acct-tabs {
   display: none;
 }
@@ -2180,31 +2153,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   line-height: var(--ls-lh-label);
 }
 
-[data-ui='v2'] .ls-acct-tabs a[aria-current='page'] {
-  background: transparent;
-  color: var(--ls-brand);
-  text-decoration: underline;
-  text-decoration-color: currentcolor;
-  text-decoration-thickness: 2px;
-  text-underline-offset: var(--ls-space-2);
-}
-
-/* Hover and keyboard focus fill the link itself, at once; no highlight travels between the tabs (session 9). */
-[data-ui='v2'] .ls-acct-tabs a {
-  transition: none;
-}
-
-[data-ui='v2'] .ls-acct-tabs a:focus-visible {
-  background: var(--ls-hover-bg);
-  color: var(--ls-hover-text);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-ui='v2'] .ls-acct-tabs a:hover {
-    background: var(--ls-hover-bg);
-    color: var(--ls-hover-text);
-  }
-}
+/* The states (the current tab's pill, the hover fade, no underline) are the menu's one pattern: foundation-v2.css (Owner, 2026-10-18). */
 
 /* The account home: four summary cards, each one link (a pill says where it goes; hover fills the pill, not the card). */
 [data-ui='v2'] .ls-acct-grid {
@@ -2496,6 +2445,7 @@ html[data-ls-motion='reduced'] [data-ui='v2'] .ls-pcard-media img {
   margin: 0 0 var(--ls-space-4);
   border: 1px solid var(--ls-border);
   border-radius: var(--ls-radius-lg);
+  background: var(--ls-bg-surface);
   overflow: hidden;
 }
 

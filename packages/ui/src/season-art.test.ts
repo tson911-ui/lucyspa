@@ -8,7 +8,7 @@ import { SEASON_ART_KITS, hasZodiacArt, isSeasonArtKit } from './season-scene';
 
 // The site-wide art palettes (docs/UXUI_REDESIGN_S6_PLAN.md sections 3 and 4): each kit's colors come from the
 // registry as `--ls-art-*` tokens, every color the art reads exists, yellow stays inside the Q-S1 presets, and text on
-// a panel is readable in light and dark.
+// a panel is readable. Light only since 2026-10-18.
 const read = (name: string): string => readFileSync(new URL(name, import.meta.url), 'utf8');
 const withArt = SEASON_PRESETS.filter(
   (preset): preset is SeasonPreset & Required<Pick<SeasonPreset, 'art'>> => Boolean(preset.art),
@@ -66,14 +66,9 @@ test('all ten kits have site art; the registry and the scene agree on the kits',
   assert.equal(isSeasonArtKit(null), false);
 });
 
-test('light and dark define the same names, all 6-digit hex', () => {
+test('every art color is a 6-digit hex', () => {
   for (const preset of withArt) {
-    assert.deepEqual(
-      Object.keys(preset.art.light).sort(),
-      Object.keys(preset.art.dark).sort(),
-      preset.key,
-    );
-    for (const value of [...Object.values(preset.art.light), ...Object.values(preset.art.dark)]) {
+    for (const value of Object.values(preset.art.light)) {
       assert.match(value, /^#[0-9a-f]{6}$/i, `${preset.key}: ${value}`);
     }
   }
@@ -131,41 +126,33 @@ test('yellow art exists only in the four Q-S1 presets; every other kit, Vu Lan a
   for (const key of yellowKits) {
     const preset = withArt.find((candidate) => candidate.key === key)!;
     assert.ok(Object.values(preset.art.light).some(isGoldHue), `${key} light keeps its yellow`);
-    assert.ok(Object.values(preset.art.dark).some(isGoldHue), `${key} dark keeps its yellow`);
   }
   for (const key of ALL_KITS.filter((kit) => !yellowKits.includes(kit))) {
     const preset = withArt.find((candidate) => candidate.key === key)!;
-    for (const theme of ['light', 'dark'] as const) {
-      assert.deepEqual(
-        Object.entries(preset.art[theme]).filter(([, value]) => isGoldHue(value)),
-        [],
-        `${key} ${theme}: no yellow-hue art color`,
-      );
-    }
+    assert.deepEqual(
+      Object.entries(preset.art.light).filter(([, value]) => isGoldHue(value)),
+      [],
+      `${key}: no yellow-hue art color`,
+    );
   }
 });
 
-test('text on a panel is readable: panel text on panel is at least 4.5:1 in light and dark', () => {
+test('text on a panel is readable: panel text on panel is at least 4.5:1', () => {
   for (const preset of withArt) {
-    for (const theme of ['light', 'dark'] as const) {
-      const { panel, panelText } = preset.art[theme] as Record<string, string>;
-      const value = ratio(panelText!, panel!);
-      assert.ok(value >= 4.5, `${preset.key} ${theme}: ${value.toFixed(2)}`);
-    }
+    const { panel, panelText } = preset.art.light as Record<string, string>;
+    const value = ratio(panelText!, panel!);
+    assert.ok(value >= 4.5, `${preset.key}: ${value.toFixed(2)}`);
   }
 });
 
-test('the generated season.css carries every art token in light, the dark preference and the forced preview (no theme switch)', () => {
+test('the generated season.css carries every art token once, in the preset scope (light only)', () => {
   const squash = (css: string): string => css.replace(/\s+/g, '');
   assert.equal(squash(seasonCss), squash(buildSeasonCss(SEASON_PRESETS)), 'run pnpm season:css');
   for (const preset of withArt) {
-    for (const theme of ['light', 'dark'] as const) {
-      for (const [key, value] of Object.entries(preset.art[theme])) {
-        const line = `${artToken(key)}: ${value};`;
-        const count = seasonCss.split(line).length - 1;
-        // Light: scope + forced light; dark: system preference + forced dark (session 10 A1: no theme toggle copy).
-        assert.ok(count >= 2, `${preset.key} ${theme} ${line} x${count}`);
-      }
+    for (const [key, value] of Object.entries(preset.art.light)) {
+      const line = `${artToken(key)}: ${value};`;
+      const count = seasonCss.split(line).length - 1;
+      assert.ok(count >= 1, `${preset.key} ${line} x${count}`);
     }
   }
   assert.doesNotMatch(seasonCss, /data-theme=/, 'the theme-toggle copy is gone');
