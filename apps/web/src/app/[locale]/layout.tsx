@@ -34,7 +34,6 @@ import '@lucy-spa/ui/foundation-v2.css';
 // foundation and only in their own area.
 import { getDictionary } from '../../i18n/dictionaries';
 import { Suspense } from 'react';
-import { FaviconTheme } from '../../components/favicon-theme';
 import { ListUrlRecorder, RouteHistoryTracker } from '../../components/navigation/page-back';
 import { isLocale, locales } from '../../i18n/locales';
 import { ADMIN_HIDE_COOKIE, seasonRootAttributes } from '../../lib/season-core';
@@ -131,19 +130,25 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: MOTION_PREPAINT_SCRIPT }} />
-        {/* The owner's favicon pack (public/): the tab icon follows the browser's colour scheme through favicon-theme.js
-            (run by FaviconTheme after hydration), which swaps the href of #lucy-favicon; the light icon is the fallback
-            without script and the apple-touch icon. */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        {/* The owner's favicon pack (public/): the tab icon follows the browser's colour scheme through `media`, with no
+            script. Do not add a media-less `rel="icon"` (such as /favicon.ico with sizes="any"): Chrome and Edge then
+            keep that one and ignore the dark PNG. Dark comes first so that a browser that ignores `media` ends on the
+            light icon; /favicon.ico stays in public/ as the root fallback for agents that do not read links. */}
         <link
-          id="lucy-favicon"
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-dark-32.png"
+          media="(prefers-color-scheme: dark)"
+        />
+        <link
           rel="icon"
           type="image/png"
           sizes="32x32"
           href="/favicon-light-32.png"
+          media="(prefers-color-scheme: light)"
         />
         <link rel="apple-touch-icon" sizes="180x180" href="/favicon-light-180.png" />
-        <FaviconTheme />
       </head>
       {/* One token source for every area (DESIGN.md D1, session 10): the v2 tokens on the whole document. */}
       <body data-ui="v2">

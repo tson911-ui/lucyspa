@@ -13,8 +13,6 @@ export default tseslint.config(
       '**/generated/**',
       '**/next-env.d.ts',
       '.local/**',
-      // The owner's favicon script, served as delivered (browser globals, not linted as Node code).
-      'apps/web/public/favicon-theme.js',
     ],
   },
   js.configs.recommended,
